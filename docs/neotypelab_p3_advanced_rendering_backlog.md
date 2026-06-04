@@ -29,12 +29,15 @@ Introduce a distinct render directive that visualizes wear, dust, burn marks, an
 Design a render output mode for rotation-ready or sequence-ready previews, even if the first version is still image based.
 
 4. `Multi-angle contact sheet layout`  
+Status: first pass implemented  
 Evolve multi-angle preview from a generic mode into a more explicit sheet-style output for front / side / rear readability.
 
 5. `Material finish comparison render`  
+Status: first pass implemented  
 Allow a concept to be previewed across multiple material finish interpretations for decision support.
 
 6. `Before / after weathering split preview`  
+Status: first pass implemented  
 Expose a visual comparison between clean and weathered states to make the finishing layer easier to reason about.
 
 7. `Render history labeling and retrieval`  

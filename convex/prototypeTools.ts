@@ -12,8 +12,22 @@ type RenderMode =
   | "multi-angle-preview"
   | "high-fidelity-render"
   | "build-stage-visualization"
-  | "weathering-simulation";
+  | "weathering-simulation"
+  | "weathering-split-preview"
+  | "material-finish-comparison";
 type SimulationStage = "primer-pass" | "decal-pass" | "weathering-pass";
+type MaterialComparisonVariant = {
+  id: Id<"materialPresets">;
+  name: string;
+  slug: string;
+  finishType: string;
+  reflectivityLevel?: string;
+  paintFinish?: string;
+  difficultyLevel?: string;
+  sheenLevel?: string;
+  promptKeywords: string[];
+  role: "current" | "comparison";
+};
 
 export const generateStyleSuggestion = mutation({
   args: {
@@ -321,6 +335,24 @@ export const requestWeatheringSimulation = mutation({
   },
 });
 
+export const requestWeatheringSplitPreview = mutation({
+  args: {
+    conceptId: v.id("concepts"),
+  },
+  async handler(ctx, { conceptId }) {
+    return await queueConceptRender(ctx, conceptId, "weathering-split-preview");
+  },
+});
+
+export const requestMaterialFinishComparison = mutation({
+  args: {
+    conceptId: v.id("concepts"),
+  },
+  async handler(ctx, { conceptId }) {
+    return await queueConceptRender(ctx, conceptId, "material-finish-comparison");
+  },
+});
+
 export const requestBuildStageVisualization = mutation({
   args: {
     conceptId: v.id("concepts"),
@@ -393,11 +425,22 @@ async function queueConceptRender(
     throw new Error("Advanced renders can only run after a concept preview has been generated");
   }
 
-  const [baseModel, stylePreset, materialPreset, colorRoles, paintMappings, account, template, priceRule] =
+  const [
+    baseModel,
+    stylePreset,
+    materialPreset,
+    materialPresets,
+    colorRoles,
+    paintMappings,
+    account,
+    template,
+    priceRule,
+  ] =
     await Promise.all([
       concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
+      ctx.db.query("materialPresets").collect(),
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
       ctx.db.query("paintMappings").collect(),
       ctx.db
@@ -447,6 +490,12 @@ async function queueConceptRender(
     colorRoles,
     paintMappings,
   });
+  const materialComparisonVariants = selectMaterialComparisonVariants(
+    materialPreset,
+    materialPresets,
+    stylePreset.recommendedMaterialSlugs
+  );
+  const materialComparisonSummary = formatMaterialComparisonVariants(materialComparisonVariants);
 
   const promptPreview = composePrompt(template.userPromptTemplate, {
     baseModel: baseModel.name,
@@ -489,6 +538,11 @@ async function queueConceptRender(
       notes: `Operator notes: ${concept.notes ?? "No extra notes."}`,
       renderMode: `Render Mode: ${getRenderLabel(renderMode)}`,
       renderDirective: `Render Directive: ${getRenderDirective(renderMode, simulationStage)}`,
+      layoutSpec: `Layout Spec: ${getRenderLayoutSpec(renderMode)}`,
+      materialComparison:
+        renderMode === "material-finish-comparison"
+          ? `Material Comparison Set: ${materialComparisonSummary}`
+          : "",
     }
   );
 
@@ -523,12 +577,18 @@ async function queueConceptRender(
       renderMode,
       simulationStage,
       renderDirective: getRenderDirective(renderMode, simulationStage),
+      layoutSpec: getRenderLayoutSpec(renderMode),
+      materialComparisonVariants:
+        renderMode === "material-finish-comparison" ? materialComparisonVariants : undefined,
     }),
     outputSummaryJson: JSON.stringify({
       template: template.name,
       templateVersion: template.version,
       sourceConceptId: concept._id,
       tool: renderMode,
+      layoutSpec: getRenderLayoutSpec(renderMode),
+      materialComparisonVariants:
+        renderMode === "material-finish-comparison" ? materialComparisonVariants : undefined,
     }),
   });
 
@@ -548,6 +608,9 @@ async function queueConceptRender(
       requestedAt: Date.now(),
       renderMode,
       simulationStage,
+      layoutSpec: getRenderLayoutSpec(renderMode),
+      materialComparisonVariants:
+        renderMode === "material-finish-comparison" ? materialComparisonVariants : undefined,
     }),
     outputSummaryJson: JSON.stringify({
       phase: "queued",
@@ -555,6 +618,9 @@ async function queueConceptRender(
       generationKind: "hd-preview",
       renderMode,
       simulationStage,
+      layoutSpec: getRenderLayoutSpec(renderMode),
+      materialComparisonVariants:
+        renderMode === "material-finish-comparison" ? materialComparisonVariants : undefined,
     }),
   });
 
@@ -845,7 +911,8 @@ function appendPromptFallbackLines(
 ) {
   const missingLines = Object.entries(fallbackLines)
     .filter(([key]) => !template.includes(`{{${key}}}`))
-    .map(([, value]) => value);
+    .map(([, value]) => value)
+    .filter((value) => value.trim().length > 0);
 
   if (missingLines.length === 0) {
     return prompt;
@@ -862,6 +929,107 @@ function uniqueReasons(reasons: string[]) {
   return Array.from(new Set(reasons));
 }
 
+function selectMaterialComparisonVariants(
+  currentMaterial: {
+    _id: Id<"materialPresets">;
+    name: string;
+    slug: string;
+    finishType: string;
+    reflectivityLevel?: string;
+    paintFinish?: string;
+    difficultyLevel?: string;
+    sheenLevel?: string;
+    promptKeywords: string[];
+  },
+  materialPresets: Array<{
+    _id: Id<"materialPresets">;
+    name: string;
+    slug: string;
+    finishType: string;
+    reflectivityLevel?: string;
+    paintFinish?: string;
+    difficultyLevel?: string;
+    sheenLevel?: string;
+    promptKeywords: string[];
+    isActive: boolean;
+  }>,
+  recommendedMaterialSlugs: string[]
+): MaterialComparisonVariant[] {
+  const variants: MaterialComparisonVariant[] = [
+    toMaterialComparisonVariant(currentMaterial, "current"),
+  ];
+  const seenIds = new Set<string>([currentMaterial._id]);
+  const seenFinishTypes = new Set<string>([currentMaterial.finishType]);
+  const activeCandidates = materialPresets
+    .filter((preset) => preset.isActive)
+    .filter((preset) => preset._id !== currentMaterial._id);
+  const recommendedCandidates = activeCandidates.filter((preset) =>
+    recommendedMaterialSlugs.includes(preset.slug)
+  );
+  const fallbackCandidates = activeCandidates.filter(
+    (preset) => !recommendedMaterialSlugs.includes(preset.slug)
+  );
+
+  for (const candidate of [...recommendedCandidates, ...fallbackCandidates]) {
+    if (variants.length >= 4 || seenIds.has(candidate._id)) {
+      continue;
+    }
+    if (seenFinishTypes.has(candidate.finishType) && variants.length >= 3) {
+      continue;
+    }
+
+    variants.push(toMaterialComparisonVariant(candidate, "comparison"));
+    seenIds.add(candidate._id);
+    seenFinishTypes.add(candidate.finishType);
+  }
+
+  return variants;
+}
+
+function toMaterialComparisonVariant(
+  material: {
+    _id: Id<"materialPresets">;
+    name: string;
+    slug: string;
+    finishType: string;
+    reflectivityLevel?: string;
+    paintFinish?: string;
+    difficultyLevel?: string;
+    sheenLevel?: string;
+    promptKeywords: string[];
+  },
+  role: "current" | "comparison"
+): MaterialComparisonVariant {
+  return {
+    id: material._id,
+    name: material.name,
+    slug: material.slug,
+    finishType: material.finishType,
+    reflectivityLevel: material.reflectivityLevel,
+    paintFinish: material.paintFinish,
+    difficultyLevel: material.difficultyLevel,
+    sheenLevel: material.sheenLevel,
+    promptKeywords: material.promptKeywords,
+    role,
+  };
+}
+
+function formatMaterialComparisonVariants(variants: MaterialComparisonVariant[]) {
+  return variants
+    .map((variant, index) =>
+      [
+        `${index + 1}. ${variant.role === "current" ? "CURRENT" : "ALT"} ${variant.name}`,
+        `finish=${variant.finishType}`,
+        variant.reflectivityLevel ? `reflectivity=${variant.reflectivityLevel}` : undefined,
+        variant.sheenLevel ? `sheen=${variant.sheenLevel}` : undefined,
+        variant.difficultyLevel ? `difficulty=${variant.difficultyLevel}` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" / ")
+    )
+    .join(" | ");
+}
+
 function getRenderActionType(renderMode: RenderMode) {
   if (renderMode === "multi-angle-preview") {
     return "generate-multi-angle-preview" as const;
@@ -869,7 +1037,9 @@ function getRenderActionType(renderMode: RenderMode) {
   if (
     renderMode === "high-fidelity-render" ||
     renderMode === "build-stage-visualization" ||
-    renderMode === "weathering-simulation"
+    renderMode === "weathering-simulation" ||
+    renderMode === "weathering-split-preview" ||
+    renderMode === "material-finish-comparison"
   ) {
     return "generate-high-fidelity-render" as const;
   }
@@ -878,7 +1048,7 @@ function getRenderActionType(renderMode: RenderMode) {
 
 function getRenderLabel(renderMode: RenderMode) {
   if (renderMode === "multi-angle-preview") {
-    return "Multi-angle Preview";
+    return "Multi-angle Contact Sheet";
   }
   if (renderMode === "high-fidelity-render") {
     return "High-fidelity Render";
@@ -889,6 +1059,12 @@ function getRenderLabel(renderMode: RenderMode) {
   if (renderMode === "weathering-simulation") {
     return "Weathering Simulation";
   }
+  if (renderMode === "weathering-split-preview") {
+    return "Before / After Weathering Split";
+  }
+  if (renderMode === "material-finish-comparison") {
+    return "Material Finish Comparison";
+  }
   return "HD Render";
 }
 
@@ -897,7 +1073,7 @@ function getQueuedRenderLabel(
   simulationStage?: SimulationStage
 ) {
   if (renderMode === "multi-angle-preview") {
-    return "QUEUED MULTI-ANGLE PREVIEW";
+    return "QUEUED MULTI-ANGLE CONTACT SHEET";
   }
   if (renderMode === "high-fidelity-render") {
     return "QUEUED HIGH-FIDELITY RENDER";
@@ -908,12 +1084,18 @@ function getQueuedRenderLabel(
   if (renderMode === "weathering-simulation") {
     return "QUEUED WEATHERING SIMULATION";
   }
+  if (renderMode === "weathering-split-preview") {
+    return "QUEUED BEFORE / AFTER WEATHERING SPLIT";
+  }
+  if (renderMode === "material-finish-comparison") {
+    return "QUEUED MATERIAL FINISH COMPARISON";
+  }
   return "QUEUED HD RENDER";
 }
 
 function getRenderDirective(renderMode: RenderMode, simulationStage?: SimulationStage) {
   if (renderMode === "multi-angle-preview") {
-    return "Produce a turntable-style preview language with front, three-quarter, and rear-readable surface logic.";
+    return "Produce a labeled 2x2 multi-angle contact sheet with front, side, rear, and three-quarter panels. Keep the approved paint plan consistent across every angle, preserve readable surface mapping, and avoid changing the concept design.";
   }
   if (renderMode === "high-fidelity-render") {
     return "Push the highest material realism, crispest decals, and premium showcase polish without redesigning the palette.";
@@ -933,7 +1115,26 @@ function getRenderDirective(renderMode: RenderMode, simulationStage?: Simulation
   if (renderMode === "weathering-simulation") {
     return "Visualize wear, dust, abrasion, chipping, and burn marks without mutating the approved paint plan or base material matching.";
   }
+  if (renderMode === "weathering-split-preview") {
+    return "Produce a side-by-side before / after weathering split preview. The left panel must show the clean approved paint plan before finishing effects; the right panel must show the same concept after dust, chipping, abrasion, streaking, and burn marks are applied. Keep pose, scale, camera, palette, and base material matching consistent across both panels.";
+  }
+  if (renderMode === "material-finish-comparison") {
+    return "Produce a material finish comparison render using the provided comparison set. Keep base model, camera, pose, Style DNA, palette, weathering level, and color-role mapping identical across panels; only change the material finish interpretation, reflectivity, sheen, and surface response for each panel.";
+  }
   return "Upgrade the stabilized concept into a premium single-angle HD preview without changing the paint plan.";
+}
+
+function getRenderLayoutSpec(renderMode: RenderMode) {
+  if (renderMode === "multi-angle-preview") {
+    return "2x2 contact sheet: FRONT, SIDE, REAR, and THREE-QUARTER panels with consistent palette mapping, visible angle labels, and enough spacing for each silhouette to be inspected independently.";
+  }
+  if (renderMode === "weathering-split-preview") {
+    return "horizontal split preview: BEFORE CLEAN BUILD on the left and AFTER WEATHERING PASS on the right, with matching camera, scale, palette, and material interpretation.";
+  }
+  if (renderMode === "material-finish-comparison") {
+    return "2x2 material comparison board: CURRENT FINISH plus up to three alternate material presets, with locked palette, pose, camera, weathering, and color-role mapping.";
+  }
+  return "single stabilized preview frame";
 }
 
 function getBuildStageLabel(stage?: SimulationStage) {

@@ -517,7 +517,7 @@ const creditPriceRules = [
   },
   {
     actionType: "generate-multi-angle-preview" as const,
-    label: "Multi-angle Preview",
+    label: "Multi-angle Contact Sheet",
     generationKind: "hd-preview" as const,
     creditCost: 10,
     description: "Generate multiple preview angles for the approved scheme.",

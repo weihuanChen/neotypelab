@@ -1474,13 +1474,19 @@ function statusDisplayLabel(status?: string) {
 function formatJobKind(kind?: string, renderMode?: string) {
   if (kind === "hd-preview") {
     if (renderMode === "multi-angle-preview") {
-      return "Multi-angle Preview";
+      return "Multi-angle Contact Sheet";
     }
     if (renderMode === "high-fidelity-render") {
       return "High-fidelity Render";
     }
     if (renderMode === "weathering-simulation") {
       return "Weathering Simulation";
+    }
+    if (renderMode === "weathering-split-preview") {
+      return "Before / After Weathering Split";
+    }
+    if (renderMode === "material-finish-comparison") {
+      return "Material Finish Comparison";
     }
     if (renderMode === "build-stage-visualization") {
       return "Build-stage Visualization";

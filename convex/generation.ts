@@ -140,13 +140,17 @@ export const getJobForExecution = internalQuery({
       return null;
     }
 
-      return {
-        generationJobId: job._id,
-        kind: job.kind,
-        renderMode: safeRenderMode(job.inputSnapshotJson, job.outputSummaryJson),
-        simulationStage: safeSimulationStage(job.inputSnapshotJson, job.outputSummaryJson),
-        status: job.status,
-        concept,
+    return {
+      generationJobId: job._id,
+      kind: job.kind,
+      renderMode: safeRenderMode(job.inputSnapshotJson, job.outputSummaryJson),
+      materialComparisonVariants: safeMaterialComparisonVariants(
+        job.inputSnapshotJson,
+        prompt.inputSnapshotJson
+      ),
+      simulationStage: safeSimulationStage(job.inputSnapshotJson, job.outputSummaryJson),
+      status: job.status,
+      concept,
       prompt: {
         _id: prompt._id,
         composedPrompt: prompt.composedPrompt,
@@ -168,7 +172,9 @@ export const markJobRunning = internalMutation({
         v.literal("multi-angle-preview"),
         v.literal("high-fidelity-render"),
         v.literal("build-stage-visualization"),
-        v.literal("weathering-simulation")
+        v.literal("weathering-simulation"),
+        v.literal("weathering-split-preview"),
+        v.literal("material-finish-comparison")
       )
     ),
     simulationStage: v.optional(
@@ -191,13 +197,17 @@ export const markJobRunning = internalMutation({
         label:
           kind === "hd-preview"
             ? renderMode === "multi-angle-preview"
-              ? "RENDERING MULTI-ANGLE PREVIEW"
+              ? "RENDERING MULTI-ANGLE CONTACT SHEET"
               : renderMode === "high-fidelity-render"
                 ? "RENDERING HIGH-FIDELITY PREVIEW"
                 : renderMode === "build-stage-visualization"
                   ? `RENDERING ${getSimulationStageLabel(simulationStage).toUpperCase()} VISUALIZATION`
                 : renderMode === "weathering-simulation"
                   ? "RENDERING WEATHERING SIMULATION"
+                : renderMode === "weathering-split-preview"
+                  ? "RENDERING BEFORE / AFTER WEATHERING SPLIT"
+                : renderMode === "material-finish-comparison"
+                  ? "RENDERING MATERIAL FINISH COMPARISON"
                 : "RENDERING HD PREVIEW"
             : "COMPOSING SPRAY PLAN",
       }),
@@ -229,7 +239,24 @@ export const markJobSucceeded = internalMutation({
     ctx,
     { generationJobId, conceptId, promptCompositionId, provider, providerJobId, asset, outputSummaryJson }
   ) => {
+    const job = await ctx.db.get(generationJobId);
     const assetId = await ctx.db.insert("assets", asset);
+
+    const renderMode = safeRenderMode(job?.inputSnapshotJson, outputSummaryJson);
+    const simulationStage = safeSimulationStage(job?.inputSnapshotJson, outputSummaryJson);
+    const outputSummary = safeOutputSummary(outputSummaryJson);
+    const shouldRecordRenderOutput = job?.kind === "hd-preview" && renderMode !== undefined;
+    const shouldUpdateConceptPreview =
+      job?.kind !== "hd-preview" || renderMode === undefined || renderMode === "hd-render";
+
+    const existingRenderOutput =
+      shouldRecordRenderOutput
+        ? await ctx.db
+            .query("renderOutputs")
+            .withIndex("by_generationJobId", (q) => q.eq("generationJobId", generationJobId))
+            .unique()
+        : null;
+
     await Promise.all([
       ctx.db.patch(generationJobId, {
         status: "succeeded",
@@ -239,13 +266,33 @@ export const markJobSucceeded = internalMutation({
         outputSummaryJson,
         errorMessage: undefined,
       }),
-      ctx.db.patch(conceptId, {
-        status: "generated",
-        previewAssetId: assetId,
-      }),
+      ctx.db.patch(
+        conceptId,
+        shouldUpdateConceptPreview
+          ? {
+              status: "generated",
+              previewAssetId: assetId,
+            }
+          : {
+              status: "generated",
+            }
+      ),
       ctx.db.patch(promptCompositionId, {
         status: "consumed",
       }),
+      shouldRecordRenderOutput && existingRenderOutput === null
+        ? ctx.db.insert("renderOutputs", {
+            userId: asset.userId,
+            conceptId,
+            generationJobId,
+            assetId,
+            renderMode,
+            simulationStage,
+            label: buildRenderOutputLabel(renderMode, simulationStage, outputSummary?.label),
+            status: "available",
+            summaryJson: outputSummaryJson,
+          })
+        : Promise.resolve(),
     ]);
   },
 });
@@ -342,24 +389,37 @@ function safeOutputSummary(summaryJson?: string) {
     return null;
   }
   try {
-      const parsed = JSON.parse(summaryJson) as {
-        errorMessage?: string;
-        generationKind?: "palette-plan" | "hd-preview";
-        label?: string;
-        mimeType?: string;
-        phase?: string;
-        provider?: "internal" | "openai";
-        renderMode?:
-          | "hd-render"
-          | "multi-angle-preview"
-          | "high-fidelity-render"
-          | "build-stage-visualization"
-          | "weathering-simulation";
-        simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass";
-        revisedPrompt?: string;
-        templateVersion?: string;
-      };
-      return parsed;
+    const parsed = JSON.parse(summaryJson) as {
+      errorMessage?: string;
+      generationKind?: "palette-plan" | "hd-preview";
+      label?: string;
+      layoutSpec?: string;
+      materialComparisonVariants?: Array<{
+        name: string;
+        slug: string;
+        finishType: string;
+        reflectivityLevel?: string;
+        paintFinish?: string;
+        difficultyLevel?: string;
+        sheenLevel?: string;
+        role?: "current" | "comparison";
+      }>;
+      mimeType?: string;
+      phase?: string;
+      provider?: "internal" | "openai";
+      renderMode?:
+        | "hd-render"
+        | "multi-angle-preview"
+        | "high-fidelity-render"
+        | "build-stage-visualization"
+        | "weathering-simulation"
+        | "weathering-split-preview"
+        | "material-finish-comparison";
+      simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass";
+      revisedPrompt?: string;
+      templateVersion?: string;
+    };
+    return parsed;
   } catch {
     return null;
   }
@@ -377,7 +437,9 @@ function safeRenderMode(inputSnapshotJson?: string, outputSummaryJson?: string) 
           | "multi-angle-preview"
           | "high-fidelity-render"
           | "build-stage-visualization"
-          | "weathering-simulation";
+          | "weathering-simulation"
+          | "weathering-split-preview"
+          | "material-finish-comparison";
       };
       if (parsed.renderMode) {
         return parsed.renderMode;
@@ -408,6 +470,34 @@ function safeSimulationStage(inputSnapshotJson?: string, outputSummaryJson?: str
   return undefined;
 }
 
+function safeMaterialComparisonVariants(inputSnapshotJson?: string, promptSnapshotJson?: string) {
+  for (const payload of [inputSnapshotJson, promptSnapshotJson]) {
+    if (!payload) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(payload) as {
+        materialComparisonVariants?: Array<{
+          name: string;
+          slug: string;
+          finishType: string;
+          reflectivityLevel?: string;
+          paintFinish?: string;
+          difficultyLevel?: string;
+          sheenLevel?: string;
+          role?: "current" | "comparison";
+        }>;
+      };
+      if (parsed.materialComparisonVariants) {
+        return parsed.materialComparisonVariants;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
 function getSimulationStageLabel(
   simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass"
 ) {
@@ -421,4 +511,42 @@ function getSimulationStageLabel(
     return "Weathering Pass";
   }
   return "Build Stage";
+}
+
+function buildRenderOutputLabel(
+  renderMode:
+    | "hd-render"
+    | "multi-angle-preview"
+    | "high-fidelity-render"
+    | "build-stage-visualization"
+    | "weathering-simulation"
+    | "weathering-split-preview"
+    | "material-finish-comparison",
+  simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass",
+  summaryLabel?: string
+) {
+  if (renderMode === "build-stage-visualization") {
+    return `${getSimulationStageLabel(simulationStage)} Visualization`;
+  }
+  if (renderMode === "multi-angle-preview") {
+    return "Multi-angle Contact Sheet";
+  }
+  if (renderMode === "high-fidelity-render") {
+    return "High-fidelity Render";
+  }
+  if (renderMode === "weathering-simulation") {
+    return "Weathering Simulation";
+  }
+  if (renderMode === "weathering-split-preview") {
+    return "Before / After Weathering Split";
+  }
+  if (renderMode === "material-finish-comparison") {
+    return "Material Finish Comparison";
+  }
+  if (summaryLabel) {
+    return summaryLabel
+      .toLowerCase()
+      .replace(/\b\w/g, (character) => character.toUpperCase());
+  }
+  return "HD Render";
 }

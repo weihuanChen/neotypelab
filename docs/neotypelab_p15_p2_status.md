@@ -17,7 +17,7 @@ P1 is largely in place:
 - public `showcase` feed and `prototype/[conceptId]` share surface
 - public remix entry points, lineage display, and remix counts
 - route-level metadata, canonical tags, Open Graph/Twitter metadata, plus `robots` and `sitemap` foundations
-- advanced render actions: `HD Render`, `Multi-angle Preview`, and `High-fidelity Render`
+- advanced render actions: `HD Render`, `Multi-angle Contact Sheet`, and `High-fidelity Render`
 
 Relevant implementation already exists in:
 

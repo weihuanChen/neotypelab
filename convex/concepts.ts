@@ -328,7 +328,9 @@ function safeRenderMode(inputSnapshotJson?: string, outputSummaryJson?: string) 
           | "multi-angle-preview"
           | "high-fidelity-render"
           | "build-stage-visualization"
-          | "weathering-simulation";
+          | "weathering-simulation"
+          | "weathering-split-preview"
+          | "material-finish-comparison";
       };
       if (parsed.renderMode) {
         return parsed.renderMode;

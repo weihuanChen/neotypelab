@@ -31,6 +31,7 @@ import type * as prototypeTools from "../prototypeTools.js";
 import type * as prototypes from "../prototypes.js";
 import type * as recommendationFeedback from "../recommendationFeedback.js";
 import type * as recommendations from "../recommendations.js";
+import type * as renderHistory from "../renderHistory.js";
 import type * as shopping from "../shopping.js";
 import type * as showcase from "../showcase.js";
 import type * as types from "../types.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   prototypes: typeof prototypes;
   recommendationFeedback: typeof recommendationFeedback;
   recommendations: typeof recommendations;
+  renderHistory: typeof renderHistory;
   shopping: typeof shopping;
   showcase: typeof showcase;
   types: typeof types;

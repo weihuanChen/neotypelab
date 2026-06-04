@@ -16,6 +16,8 @@ import {
     vMoodTag,
     vPromptCompositionStatus,
     vPromptTemplateKind,
+    vRenderMode,
+    vSimulationStage,
     vUserAccountStatus,
     vUserPlan,
     vWeatheringLevel,
@@ -359,6 +361,22 @@ const schema = defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"])
     .index("by_conceptId", ["conceptId"]),
+
+  renderOutputs: defineTable({
+    userId: v.id("users"),
+    conceptId: v.id("concepts"),
+    generationJobId: v.id("generationJobs"),
+    assetId: v.id("assets"),
+    renderMode: vRenderMode,
+    simulationStage: v.optional(vSimulationStage),
+    label: v.string(),
+    status: v.union(v.literal("available"), v.literal("hidden")),
+    summaryJson: v.optional(v.string()),
+  })
+    .index("by_user_concept", ["userId", "conceptId"])
+    .index("by_conceptId", ["conceptId"])
+    .index("by_generationJobId", ["generationJobId"])
+    .index("by_assetId", ["assetId"]),
 
   feedbackReports: defineTable({
     userId: v.id("users"),

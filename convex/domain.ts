@@ -63,6 +63,24 @@ export const vGenerationKind = v.union(
 );
 export type GenerationKind = Infer<typeof vGenerationKind>;
 
+export const vRenderMode = v.union(
+  v.literal("hd-render"),
+  v.literal("multi-angle-preview"),
+  v.literal("high-fidelity-render"),
+  v.literal("build-stage-visualization"),
+  v.literal("weathering-simulation"),
+  v.literal("weathering-split-preview"),
+  v.literal("material-finish-comparison")
+);
+export type RenderMode = Infer<typeof vRenderMode>;
+
+export const vSimulationStage = v.union(
+  v.literal("primer-pass"),
+  v.literal("decal-pass"),
+  v.literal("weathering-pass")
+);
+export type SimulationStage = Infer<typeof vSimulationStage>;
+
 export const vGenerationStatus = v.union(
   v.literal("queued"),
   v.literal("running"),

@@ -34,6 +34,8 @@ export function LibraryWorkbench() {
   const requestHighFidelityRender = useMutation(api.prototypeTools.requestHighFidelityRender);
   const requestBuildStageVisualization = useMutation(api.prototypeTools.requestBuildStageVisualization);
   const requestWeatheringSimulation = useMutation(api.prototypeTools.requestWeatheringSimulation);
+  const requestWeatheringSplitPreview = useMutation(api.prototypeTools.requestWeatheringSplitPreview);
+  const requestMaterialFinishComparison = useMutation(api.prototypeTools.requestMaterialFinishComparison);
   const stabilizeConceptPreviewAsset = useAction(api.generationNode.stabilizeConceptPreviewAsset);
   const paintPlans = useQuery(
     api.paintMappingPlans.listForViewerConcepts,
@@ -51,6 +53,10 @@ export function LibraryWorkbench() {
     api.recommendations.listForViewerConcepts,
     concepts ? { conceptIds: concepts.map((concept) => concept._id) } : "skip"
   );
+  const renderHistory = useQuery(
+    api.renderHistory.listForViewerConcepts,
+    concepts ? { conceptIds: concepts.map((concept) => concept._id) } : "skip"
+  );
   const rerunJob = useAction(api.generationNode.rerunJob);
   const [rerunningJobId, setRerunningJobId] = useState<string | null>(null);
   const [renderingState, setRenderingState] = useState<{
@@ -60,7 +66,9 @@ export function LibraryWorkbench() {
       | "multi-angle-preview"
       | "high-fidelity-render"
       | "build-stage-visualization"
-      | "weathering-simulation";
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison";
     stage?: BuildStage;
   } | null>(null);
   const [stabilizingConceptId, setStabilizingConceptId] = useState<string | null>(null);
@@ -144,7 +152,9 @@ export function LibraryWorkbench() {
       | "multi-angle-preview"
       | "high-fidelity-render"
       | "build-stage-visualization"
-      | "weathering-simulation",
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison",
     stage?: BuildStage
   ) {
     setRenderingState({ conceptId, mode, stage });
@@ -156,6 +166,10 @@ export function LibraryWorkbench() {
         await requestBuildStageVisualization({ conceptId: conceptId as never, stage: stage as never });
       } else if (mode === "weathering-simulation") {
         await requestWeatheringSimulation({ conceptId: conceptId as never });
+      } else if (mode === "weathering-split-preview") {
+        await requestWeatheringSplitPreview({ conceptId: conceptId as never });
+      } else if (mode === "material-finish-comparison") {
+        await requestMaterialFinishComparison({ conceptId: conceptId as never });
       } else if (mode === "high-fidelity-render") {
         await requestHighFidelityRender({ conceptId: conceptId as never });
       } else {
@@ -187,6 +201,13 @@ export function LibraryWorkbench() {
   const shoppingByConceptId = new Map((shopping ?? []).map((entry) => [entry.conceptId, entry]));
   const recommendationsByConceptId = new Map(
     (recommendations ?? []).map((entry) => [entry.conceptId, entry])
+  );
+  const renderHistoryByConceptId = new Map(
+    (renderHistory ?? []).map((entry) => [entry.conceptId, entry.outputs])
+  );
+  const renderOutputCount = (renderHistory ?? []).reduce(
+    (sum, entry) => sum + entry.outputs.length,
+    0
   );
 
   return (
@@ -337,6 +358,7 @@ export function LibraryWorkbench() {
               const feasibilityEntry = feasibilityByConceptId.get(concept._id);
               const shoppingEntry = shoppingByConceptId.get(concept._id);
               const recommendationEntry = recommendationsByConceptId.get(concept._id);
+              const renderOutputs = renderHistoryByConceptId.get(concept._id) ?? [];
               return (
               <article
                 key={concept._id}
@@ -442,6 +464,100 @@ export function LibraryWorkbench() {
                           >
                             Open Source Surface
                           </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {renderOutputs.length > 0 ? (
+                      <div className="mt-4 rounded-[18px] border border-[#8FEAFF]/20 bg-black/20 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-[#8FEAFF]">
+                              Render History
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-[#C7D0DA]">
+                              {renderOutputs.length} archived render output{renderOutputs.length === 1 ? "" : "s"} for
+                              this concept.
+                            </p>
+                          </div>
+                          <StatusPill label="independent assets" tone="cyan" />
+                        </div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                          {renderOutputs.slice(0, 4).map((output) => (
+                            <div
+                              key={output._id}
+                              className="overflow-hidden rounded-[16px] border border-white/10 bg-[#0D1117]"
+                            >
+                              <div className="aspect-[16/10] bg-black/30">
+                                {output.asset?.publicUrl ? (
+                                  <img
+                                    src={output.asset.publicUrl}
+                                    alt={output.label}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-end p-3">
+                                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                                      Asset URL pending
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-3 p-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <StatusPill
+                                    label={formatJobKind("hd-preview", output.renderMode)}
+                                    tone="green"
+                                  />
+                                  {output.simulationStage ? (
+                                    <StatusPill
+                                      label={formatSimulationStagePill(output.simulationStage)}
+                                      tone="amber"
+                                    />
+                                  ) : null}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-[#E6EDF3]">{output.label}</p>
+                                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#6E7A88]">
+                                    {formatHistoryTimestamp(output._creationTime)}
+                                  </p>
+                                </div>
+                                {output.summary?.layoutSpec ? (
+                                  <p className="rounded-[12px] border border-[#8FEAFF]/15 bg-[#8FEAFF]/5 p-2 text-xs leading-5 text-[#C7D0DA]">
+                                    {output.summary.layoutSpec}
+                                  </p>
+                                ) : null}
+                                {output.summary?.materialComparisonVariants?.length ? (
+                                  <div className="rounded-[12px] border border-[#EFCB7A]/15 bg-[#EFCB7A]/5 p-2 text-xs leading-5 text-[#C7D0DA]">
+                                    {output.summary.materialComparisonVariants
+                                      .slice(0, 4)
+                                      .map((variant) => variant.name)
+                                      .join(" / ")}
+                                  </div>
+                                ) : null}
+                                <div className="grid gap-2 text-xs text-[#9BA7B4]">
+                                  <span>{output.job?.provider ?? "provider pending"}</span>
+                                  <span>{output.asset?.contentType ?? "asset pending"}</span>
+                                  <span className="break-all font-mono">{output.generationJobId}</span>
+                                </div>
+                                {output.asset?.publicUrl ? (
+                                  <a
+                                    href={output.asset.publicUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                                  >
+                                    Open Render Asset
+                                  </a>
+                                ) : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {renderOutputs.length > 4 ? (
+                          <p className="mt-3 text-xs leading-5 text-[#9BA7B4]">
+                            {renderOutputs.length - 4} older render output{renderOutputs.length - 4 === 1 ? "" : "s"} retained in
+                            history.
+                          </p>
                         ) : null}
                       </div>
                     ) : null}
@@ -720,8 +836,8 @@ export function LibraryWorkbench() {
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
                         renderingState.mode === "multi-angle-preview"
-                          ? "Queueing Multi-angle Preview"
-                          : "Generate Multi-angle Preview"}
+                          ? "Queueing Contact Sheet"
+                          : "Generate Contact Sheet"}
                       </Button>
                       <Button
                         type="button"
@@ -751,6 +867,25 @@ export function LibraryWorkbench() {
                           renderingState?.conceptId === concept._id
                         }
                         onClick={() => {
+                          void onRequestRender(concept._id, "material-finish-comparison");
+                        }}
+                        className="h-11 w-full rounded-[18px] border border-[#EFCB7A]/40 bg-[#292414] text-[#E6EDF3] hover:bg-[#38301A]"
+                      >
+                        {renderingState &&
+                        renderingState.conceptId === concept._id &&
+                        renderingState.mode === "material-finish-comparison"
+                          ? "Queueing Finish Comparison"
+                          : "Generate Finish Comparison"}
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          concept.status !== "generated" ||
+                          concept.generationJob?.status === "queued" ||
+                          concept.generationJob?.status === "running" ||
+                          renderingState?.conceptId === concept._id
+                        }
+                        onClick={() => {
                           void onRequestRender(concept._id, "weathering-simulation");
                         }}
                         className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/40 bg-[#113042] text-[#E6EDF3] hover:bg-[#174155]"
@@ -760,6 +895,25 @@ export function LibraryWorkbench() {
                         renderingState.mode === "weathering-simulation"
                           ? "Queueing Weathering Simulation"
                           : "Generate Weathering Simulation"}
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={
+                          concept.status !== "generated" ||
+                          concept.generationJob?.status === "queued" ||
+                          concept.generationJob?.status === "running" ||
+                          renderingState?.conceptId === concept._id
+                        }
+                        onClick={() => {
+                          void onRequestRender(concept._id, "weathering-split-preview");
+                        }}
+                        className="h-11 w-full rounded-[18px] border border-[#FFB84D]/35 bg-[#2B1F16] text-[#E6EDF3] hover:bg-[#3A2B1D]"
+                      >
+                        {renderingState &&
+                        renderingState.conceptId === concept._id &&
+                        renderingState.mode === "weathering-split-preview"
+                          ? "Queueing Weathering Split"
+                          : "Generate Weathering Split"}
                       </Button>
                       {(["primer-pass", "decal-pass", "weathering-pass"] as const).map((stage) => (
                         <Button
@@ -823,6 +977,7 @@ export function LibraryWorkbench() {
             <MetaRow label="Pilot" value={viewer?.handle ?? "Unknown"} />
             <MetaRow label="Credits" value={`${viewer?.credits.balance ?? 0}`} />
             <MetaRow label="Drafts + outputs" value={`${concepts.length}`} />
+            <MetaRow label="Render outputs" value={`${renderOutputCount}`} />
             <MetaRow label="Queued / running" value={`${queuedJobs.length}`} />
             <MetaRow label="Failed jobs" value={`${failedJobs.length}`} />
             <MetaRow label="Succeeded jobs" value={`${successfulJobs.length}`} />
@@ -1022,13 +1177,19 @@ function statusTone(status: string): "neutral" | "cyan" | "green" | "amber" | "r
 function formatJobKind(kind?: string, renderMode?: string) {
   if (kind === "hd-preview") {
     if (renderMode === "multi-angle-preview") {
-      return "Multi-angle Preview";
+      return "Multi-angle Contact Sheet";
     }
     if (renderMode === "high-fidelity-render") {
       return "High-fidelity Render";
     }
     if (renderMode === "weathering-simulation") {
       return "Weathering Simulation";
+    }
+    if (renderMode === "weathering-split-preview") {
+      return "Before / After Weathering Split";
+    }
+    if (renderMode === "material-finish-comparison") {
+      return "Material Finish Comparison";
     }
     if (renderMode === "build-stage-visualization") {
       return "Build-stage Visualization";
@@ -1052,6 +1213,28 @@ function formatBuildStageLabel(stage: BuildStage) {
     return "Decal Pass Visualization";
   }
   return "Weathering Pass Visualization";
+}
+
+function formatSimulationStagePill(stage: string) {
+  if (stage === "primer-pass") {
+    return "Primer Pass";
+  }
+  if (stage === "decal-pass") {
+    return "Decal Pass";
+  }
+  if (stage === "weathering-pass") {
+    return "Weathering Pass";
+  }
+  return "Build Stage";
+}
+
+function formatHistoryTimestamp(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
 }
 
 function formatMoodTagLabel(tag: string) {
