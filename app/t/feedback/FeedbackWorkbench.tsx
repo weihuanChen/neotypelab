@@ -118,8 +118,8 @@ export function FeedbackWorkbench() {
     reports === undefined
   ) {
     return (
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Feedback relay</p>
+      <section className="rounded-[28px] border border-line-secondary bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Feedback relay</p>
         <h2 className="mt-4 text-3xl font-semibold">Syncing operator feedback channels</h2>
       </section>
     );
@@ -127,10 +127,10 @@ export function FeedbackWorkbench() {
 
   if (viewer === null) {
     return (
-      <section className="rounded-[28px] border border-[#FF5F5F]/20 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#FF8E8E]">Session required</p>
+      <section className="rounded-[28px] border border-accent-red bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-red">Session required</p>
         <h2 className="mt-4 text-3xl font-semibold">Operator identity is not available</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
           Sign back in before routing feedback into the expansion queue.
         </p>
       </section>
@@ -140,23 +140,23 @@ export function FeedbackWorkbench() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_380px]">
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Feedback pipeline</p>
+        <section className="rounded-[28px] border border-line-secondary bg-panel p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Feedback pipeline</p>
           <h2 className="mt-4 text-3xl font-semibold">Structured lab reports for dataset expansion</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
             This channel turns operator experience into structured product signals. Every
             report enters `feedbackReports`, links to the relevant concept when available,
             and lands in `adminQueue` for internal triage.
           </p>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
+        <section className="rounded-[28px] border border-line-secondary bg-panel p-6 text-ink-primary">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[#6E7A88]">Report composer</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-ink-muted">Report composer</p>
               <h3 className="mt-2 text-2xl font-semibold">Capture the issue in product terms</h3>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-[#9BA7B4]">
+            <p className="max-w-xl text-sm leading-6 text-ink-secondary">
               Keep the report specific. Reference the prototype when relevant, and describe
               what should change in the model catalog, Style DNA library, or generation logic.
             </p>
@@ -173,15 +173,15 @@ export function FeedbackWorkbench() {
                   className={cn(
                     "rounded-[22px] border p-4 text-left transition-all",
                     active
-                      ? "border-[#58FFB2]/45 bg-[#58FFB2]/10 shadow-[0_0_0_1px_rgba(88,255,178,0.14)]"
-                      : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                      ? "border-accent-teal bg-accent-teal/10 shadow-[0_0_0_1px_rgba(88,255,178,0.14)]"
+                      : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-[#3DD9FF]">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-accent-blue">
                     Category
                   </p>
                   <h4 className="mt-2 text-lg font-semibold">{option.label}</h4>
-                  <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">{option.detail}</p>
+                  <p className="mt-3 text-sm leading-6 text-ink-secondary">{option.detail}</p>
                 </button>
               );
             })}
@@ -190,10 +190,10 @@ export function FeedbackWorkbench() {
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <Field label="Related Prototype">
               <Select value={conceptId} onValueChange={setConceptId}>
-                <SelectTrigger className="h-11 border-white/10 bg-[#161B22] text-[#E6EDF3]">
+                <SelectTrigger className="h-11 border-line-secondary bg-surface text-ink-primary">
                   <SelectValue placeholder="Attach a concept if this report came from a prototype" />
                 </SelectTrigger>
-                <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                   <SelectItem value="none">No concept attachment</SelectItem>
                   {concepts.map((concept) => (
                     <SelectItem key={concept._id} value={concept._id}>
@@ -208,7 +208,7 @@ export function FeedbackWorkbench() {
               <Input
                 readOnly
                 value={`${viewer.fullName} / @${viewer.handle}`}
-                className="h-11 border-white/10 bg-[#161B22] text-[#9BA7B4]"
+                className="h-11 border-line-secondary bg-surface text-ink-secondary"
               />
             </Field>
           </div>
@@ -216,10 +216,10 @@ export function FeedbackWorkbench() {
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <Field label="Base Model Context">
               <Select value={baseModelId} onValueChange={setBaseModelId}>
-                <SelectTrigger className="h-11 border-white/10 bg-[#161B22] text-[#E6EDF3]">
+                <SelectTrigger className="h-11 border-line-secondary bg-surface text-ink-primary">
                   <SelectValue placeholder="Select base model or inherit from concept" />
                 </SelectTrigger>
-                <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                   <SelectItem value="none">
                     {selectedConcept?.baseModel?.name
                       ? `Inherit from concept: ${selectedConcept.baseModel.name}`
@@ -236,10 +236,10 @@ export function FeedbackWorkbench() {
 
             <Field label="Style DNA Context">
               <Select value={stylePresetId} onValueChange={setStylePresetId}>
-                <SelectTrigger className="h-11 border-white/10 bg-[#161B22] text-[#E6EDF3]">
+                <SelectTrigger className="h-11 border-line-secondary bg-surface text-ink-primary">
                   <SelectValue placeholder="Select style or inherit from concept" />
                 </SelectTrigger>
-                <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                   <SelectItem value="none">
                     {selectedConcept?.stylePreset?.name
                       ? `Inherit from concept: ${selectedConcept.stylePreset.name}`
@@ -261,22 +261,22 @@ export function FeedbackWorkbench() {
                 value={titleHint}
                 onChange={(event) => setTitleHint(event.target.value)}
                 placeholder="Example: Missing HG Aerial Rebuild"
-                className="h-11 border-white/10 bg-[#161B22] text-[#E6EDF3] placeholder:text-[#6E7A88]"
+                className="h-11 border-line-secondary bg-surface text-ink-primary placeholder:text-ink-muted"
               />
             </Field>
 
             <Field label="Feedback Report">
-              <div className="rounded-[22px] border border-white/10 bg-[#161B22] p-4">
+              <div className="rounded-[22px] border border-line-secondary bg-surface p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-[#9BA7B4]">
+                  <p className="text-sm text-ink-secondary">
                     Explain the issue or request in plain product language.
                   </p>
                   <span
                     className={cn(
                       "rounded-full border px-2 py-1 text-[11px]",
                       messageRemaining < 0
-                        ? "border-[#FF5F5F]/30 text-[#FF8E8E]"
-                        : "border-white/10 text-[#9BA7B4]"
+                        ? "border-accent-red text-accent-red"
+                        : "border-line-secondary text-ink-secondary"
                     )}
                   >
                     {message.length}/500
@@ -286,19 +286,19 @@ export function FeedbackWorkbench() {
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   placeholder="Example: The masking boundaries between primary armor and accent zones break apart around the shoulder blocks. This makes the scheme feel unpaintable."
-                  className="mt-4 min-h-[180px] resize-none border-white/10 bg-[#0D1117] text-[#E6EDF3] placeholder:text-[#6E7A88] focus-visible:ring-[#58FFB2]"
+                  className="mt-4 min-h-[180px] resize-none border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
                 />
               </div>
             </Field>
           </div>
 
           {errorMessage ? (
-            <div className="mt-4 rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+            <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
               {errorMessage}
             </div>
           ) : null}
           {statusMessage ? (
-            <div className="mt-4 rounded-[18px] border border-[#58FFB2]/20 bg-[#58FFB2]/10 p-4 text-sm text-[#CFFFE6]">
+            <div className="mt-4 rounded-[18px] border border-accent-teal bg-accent-teal/10 p-4 text-sm text-accent-teal">
               {statusMessage}
             </div>
           ) : null}
@@ -310,11 +310,11 @@ export function FeedbackWorkbench() {
               onClick={() => {
                 void onSubmit();
               }}
-              className="h-12 rounded-[18px] border border-[#58FFB2]/40 bg-[#0F251C] px-5 text-[#E6EDF3] hover:bg-[#163126]"
+              className="h-12 rounded-[18px] border border-accent-teal bg-[#0F251C] px-5 text-ink-primary hover:bg-[#163126]"
             >
               {isSubmitting ? "Routing Lab Report" : "Submit Lab Report"}
             </Button>
-            <div className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-xs leading-5 text-[#9BA7B4]">
+            <div className="rounded-[18px] border border-line-secondary bg-main px-4 py-3 text-xs leading-5 text-ink-secondary">
               Each report becomes a structured expansion signal, not a freeform support ticket.
             </div>
           </div>
@@ -322,8 +322,8 @@ export function FeedbackWorkbench() {
       </div>
 
       <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Context relay</p>
+        <section className="rounded-[28px] border border-line-secondary bg-panel p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Context relay</p>
           <div className="mt-5 space-y-4">
             <MetaRow label="Reports filed" value={`${reports.length}`} />
             <MetaRow
@@ -353,11 +353,11 @@ export function FeedbackWorkbench() {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">My reports</p>
+        <section className="rounded-[28px] border border-line-secondary bg-surface p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">My reports</p>
           <div className="mt-4 space-y-3">
             {reports.length === 0 ? (
-              <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm leading-6 text-[#9BA7B4]">
+              <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm leading-6 text-ink-secondary">
                 No feedback reports yet. The first structured report you send will appear here
                 with status and queue context.
               </div>
@@ -365,7 +365,7 @@ export function FeedbackWorkbench() {
               reports.map((report) => (
                 <article
                   key={report._id}
-                  className="rounded-[20px] border border-white/10 bg-[#11161D] p-4"
+                  className="rounded-[20px] border border-line-secondary bg-panel p-4"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill label={report.category} tone="cyan" />
@@ -374,8 +374,8 @@ export function FeedbackWorkbench() {
                       <StatusPill label={`priority ${report.queue.priority}`} tone="amber" />
                     ) : null}
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-[#E6EDF3]">{report.message}</p>
-                  <div className="mt-4 space-y-2 text-xs text-[#9BA7B4]">
+                  <p className="mt-3 text-sm leading-6 text-ink-primary">{report.message}</p>
+                  <div className="mt-4 space-y-2 text-xs text-ink-secondary">
                     {report.concept ? <p>Prototype: {report.concept.title}</p> : null}
                     {report.baseModel ? <p>Base Model: {report.baseModel.name}</p> : null}
                     {report.stylePreset ? <p>Style DNA: {report.stylePreset.name}</p> : null}
@@ -394,7 +394,7 @@ export function FeedbackWorkbench() {
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="block">
-      <span className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</span>
       <div className="mt-2">{children}</div>
     </label>
   );
@@ -402,9 +402,9 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/6 pb-3">
-      <span className="text-[11px] uppercase tracking-[0.2em] text-[#6E7A88]">{label}</span>
-      <span className="max-w-[58%] text-right text-sm text-[#E6EDF3]">{value}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-dashed border-line-guide pb-3">
+      <span className="text-[11px] uppercase tracking-[0.2em] text-ink-muted">{label}</span>
+      <span className="max-w-[58%] text-right text-sm text-ink-primary">{value}</span>
     </div>
   );
 }
@@ -420,10 +420,10 @@ function StatusPill({
     <span
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "cyan" && "border-[#3DD9FF]/30 bg-[#3DD9FF]/10 text-[#8FEAFF]",
-        tone === "green" && "border-[#58FFB2]/30 bg-[#58FFB2]/10 text-[#A6FFD5]",
-        tone === "amber" && "border-[#FFB84D]/30 bg-[#FFB84D]/10 text-[#FFD59A]",
-        tone === "red" && "border-[#FF5F5F]/30 bg-[#FF5F5F]/10 text-[#FFD2D2]"
+        tone === "cyan" && "border-accent-blue bg-accent-blue/10 text-accent-blue",
+        tone === "green" && "border-accent-teal bg-accent-teal/10 text-accent-teal",
+        tone === "amber" && "border-accent-orange bg-accent-orange/10 text-accent-orange",
+        tone === "red" && "border-accent-red bg-accent-red/10 text-[#FFD2D2]"
       )}
     >
       {label}

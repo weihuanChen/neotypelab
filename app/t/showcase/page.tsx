@@ -11,7 +11,7 @@ export default function ShowcasePage() {
 
 function ShowcaseFeedFallback() {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-sm text-[#9BA7B4]">
+    <section className="border-2 border-line-primary bg-panel p-6 text-sm text-ink-secondary">
       Loading showcase feed.
     </section>
   );

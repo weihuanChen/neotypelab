@@ -1,17 +1,20 @@
 # NeotypeLab Frontend Skill System
 
-# Purpose
+# V2 Bright Retro-Futurism Line-Art Constitution
 
-This document defines the mandatory frontend development constitution for all future NeotypeLab development tasks.
+## Purpose
 
-This skill system exists to ensure:
+This document defines the mandatory frontend development constitution for NeotypeLab after the V2 visual direction change.
 
-- Visual consistency
-- Brand identity stability
-- Mobile usability
-- Controlled cinematic atmosphere
-- Long-term maintainability
-- High-quality UI execution using Codex or AI coding systems
+The previous dark industrial terminal / cockpit HUD direction is no longer the active frontend target.
+
+Current primary visual direction:
+
+> Bright retro-futurism + technical line-art + mecha blueprint sketch + clean hobby lab + analog control panels + cream / warm white surfaces + muted orange / teal accents + thin technical strokes + printed manual aesthetic + spray-planning workstation.
+
+This document is for frontend/UI execution only.
+
+Do not use visual redesign work as a reason to change backend, Convex contracts, product behavior, permissions, pricing, public URL semantics, or creation flow.
 
 ---
 
@@ -19,645 +22,566 @@ This skill system exists to ensure:
 
 NeotypeLab is NOT:
 
-- A generic AI image generator
-- An anime portal
-- A web3 dashboard
-- A colorful SaaS template
-- A toy catalog
+- a generic AI image generator
+- an anime portal
+- a toy catalog
+- a generic SaaS dashboard
+- a dark cyberpunk terminal
+- a neon cockpit simulator
 
 NeotypeLab IS:
 
-> A future mecha repaint R&D terminal for hobby builders.
+> A mecha paint planning and visual prototyping platform for hobby builders.
 
-The experience should feel like:
+V2 experience should feel like:
 
-- Industrial
-- Tactical
-- Experimental
-- Structured
-- Functional
-- Cinematic but restrained
-
-Core mood:
-
-> Death Stranding industrial terminal UI
-+ Hathaway cockpit HUD accents
+> A bright future mecha repaint planning manual combined with an interactive retro-futurist prototype console.
 
 ---
 
 # Mandatory Frontend Philosophy
 
-# 1. Controlled Creativity
+## 1. Product Behavior Is Preserved
 
-The UI must guide creativity without chaos.
+Frontend redesign may change:
 
-Avoid:
+- layout
+- colors
+- spacing
+- typography
+- visual hierarchy
+- component presentation
+- responsive composition
+- decorative line-art systems
 
-- Overwhelming effects
-- Visual noise
-- Infinite customization complexity
-- Over-designed interfaces
+Frontend redesign must not change:
 
-The system should feel:
+- Convex data flow
+- route semantics
+- search params
+- form payloads
+- mutation/action behavior
+- credit costs
+- visibility states
+- publish gates
+- remix lineage
+- engagement behavior
+- metadata and structured data behavior
 
-- Stable
-- Engineered
-- Purpose-built
+## 2. Color Scheme Is the Main Visual
 
----
+V1 treated generated images as the primary visual anchor.
 
-# 2. User Creations Are the Hero
+V2 shifts the anchor:
 
-The generated repaint concepts are the primary visual focus.
+> Color scheme, swatches, color-role mapping, material finish, and spray feasibility are the main visual story.
 
-The UI is only the delivery system.
+Generated previews still matter, but they should support the repaint plan instead of replacing it.
 
-Therefore:
+## 3. Structured Creativity
 
-- UI colors must remain restrained
-- Layout should frame the work
-- Interface should not compete with generated images
+Users should not write large prompts.
 
----
+The UI must continue to guide creation through:
 
-# 3. Mobile-First Inspiration Workflow
+- base model
+- Style DNA
+- material profile / paint finish
+- weathering
+- mood vector
+- visibility
+- controlled notes
+- credit confirmation
+- result outputs and practical planning data
 
-The platform must work extremely well on mobile.
+## 4. Mobile-First Hobby Workflow
 
-Users may discover inspiration from:
+Mobile must remain a primary workflow.
 
-- Reddit
-- Facebook
-- YouTube
-- Pinterest
-- Discord
+The V2 mobile experience should feel like:
 
-The UI should allow users to prototype concepts quickly on mobile.
+> A pocket technical field manual for fast repaint planning.
 
-Goal:
-
-> Create a repaint concept in under 60 seconds.
+Users should be able to discover, prototype, save, remix, and share from mobile.
 
 ---
 
 # Global Design Direction
 
-# Primary Design Language
-
-70% Death Stranding
-
-Used for:
-
-- Layout
-- Navigation
-- Panels
-- Typography
-- Dashboard
-- Empty states
-- Information architecture
-
-30% Hathaway HUD
-
-Used for:
-
-- Loading sequences
-- Simulation moments
-- Tactical overlays
-- Reactor feedback
-- Cinematic emphasis
-
-Do NOT turn the entire application into a cockpit simulator.
-
-HUD effects must be used sparingly.
-
----
-
-# Visual Restrictions
-
-# Forbidden Styles
-
-NEVER use:
-
-- Rainbow gradients
-- Web3 glow effects
-- Neon overload
-- Generic AI startup visuals
-- Anime portal aesthetics
-- Bright saturated dashboard colors
-- Oversized marketing typography
-- Glassmorphism overload
-- Floating blob backgrounds
-- Excessive motion
-- Colorful cards everywhere
-
-Avoid:
-
-- Pure black backgrounds
-- Full cyberpunk UI
-- Cartoon styling
-- Cute anime aesthetics
-
----
-
-# Required Visual Traits
+## Required Visual Traits
 
 Always prioritize:
 
-- Industrial dark surfaces
-- Thin borders
-- Modular layouts
-- Tactical spacing
-- System-style labeling
-- Strong hierarchy
-- Functional minimalism
-- Cinematic restraint
+- bright retro-futurism
+- technical line-art
+- mecha blueprint sketch
+- cream / warm white surfaces
+- printed manual aesthetic
+- clean hobby lab atmosphere
+- analog control panels
+- thin technical strokes
+- muted orange / teal / blue accents
+- strong readability
+- practical spray-planning hierarchy
+
+## Forbidden Styles
+
+Do not use:
+
+- dark cyberpunk UI
+- neon glow
+- cockpit overload
+- generic SaaS gradients
+- anime portal styling
+- toy catalog feeling
+- rainbow accent systems
+- glassmorphism overload
+- decorative blobs
+- default shadcn appearance
+- image-only gallery layouts
+- low-contrast beige text
 
 ---
 
 # Color System
 
-# Primary Background Colors
+Use these canonical V2 colors.
 
 ```ts
 export const colors = {
-  bgMain: '#0D1117',
-  bgSurface: '#11161D',
-  bgPanel: '#161B22',
-  bgElevated: '#1B222C',
-}
+  bgMain: "#F4F0E6",
+  bgSurface: "#FBF7ED",
+  bgPanel: "#E8E0D0",
+  bgElevated: "#FFFDF6",
+
+  lineSubtle: "rgba(35, 40, 45, 0.10)",
+  lineMuted: "#C9BFAE",
+  lineActive: "#2F3A3D",
+
+  textPrimary: "#202426",
+  textSecondary: "#5E625F",
+  textMuted: "#8A8377",
+
+  accentOrange: "#E46F2D",
+  accentTeal: "#2A8C8C",
+  accentBlue: "#3B6D8C",
+  accentRed: "#B84A3A",
+};
 ```
 
-# Border Colors
+## Usage Rules
 
-```ts
-export const borders = {
-  subtle: 'rgba(255,255,255,0.08)',
-  muted: '#2B3440',
-  active: '#3A4654',
-}
-```
+- `bgMain`: app canvas
+- `bgSurface`: main sheets and page regions
+- `bgPanel`: control panels, side annotations, grouped modules
+- `bgElevated`: active surfaces, dialogs, important summaries
+- `lineSubtle`: background grid, ruled lines, minor dividers
+- `lineMuted`: regular borders
+- `lineActive`: selected state, strong outlines, technical strokes
+- `textPrimary`: titles and critical values
+- `textSecondary`: body and metadata
+- `textMuted`: helper text and low-emphasis labels
+- `accentOrange`: primary CTA, cost, warning, confirmation
+- `accentTeal`: selected states, success, Style DNA, active planning
+- `accentBlue`: navigation, public discovery, neutral status
+- `accentRed`: destructive, failed, blocked, irreversible
 
-# Text Colors
-
-```ts
-export const text = {
-  primary: '#E6EDF3',
-  secondary: '#9BA7B4',
-  muted: '#6E7A88',
-}
-```
-
-# Accent Colors
-
-Primary accent:
-
-```ts
-export const accent = {
-  cyan: '#3DD9FF',
-  cyanSoft: 'rgba(61,217,255,0.16)',
-}
-```
-
-Secondary accent:
-
-```ts
-export const accentGreen = {
-  green: '#58FFB2',
-  greenSoft: 'rgba(88,255,178,0.14)',
-}
-```
-
-Warning colors:
-
-```ts
-export const warning = {
-  amber: '#FFB84D',
-  red: '#FF5F5F',
-}
-```
+Do not reintroduce the old dark palette as the dominant system.
 
 ---
 
 # Typography Rules
 
-# Primary Fonts
+## Primary Fonts
 
 Allowed:
 
-- Inter
-- Sora
 - Space Grotesk
+- Sora
+- Geist
+- Inter if tuned carefully
 
-# Technical Fonts
+## Technical Fonts
 
 Allowed:
 
-- JetBrains Mono
 - IBM Plex Mono
+- JetBrains Mono
 - Space Mono
 
-# Optional Accent Font
+## Optional Manual Accent
 
 Allowed sparingly:
 
-- Orbitron
+- restrained serif for large manual-like headings
 
-Do NOT overuse sci-fi fonts.
-
-Main UI should remain readable.
-
----
-
-# Typography Hierarchy
-
-Avoid:
-
-- Giant landing-page typography
-- Marketing-heavy SaaS headlines
+## Hierarchy Rules
 
 Prefer:
 
-- System hierarchy
-- Technical labeling
-- Compact structured sections
+- technical manual labels
+- compact but readable metadata
+- tabular numbers
+- sentence-case section headings
+- uppercase labels only where useful
+- strong contrast on warm light backgrounds
 
-Example labels:
+Avoid:
 
-```text
-STYLE DNA
-PAINT FINISH
-WEATHERING
-REACTOR OUTPUT
-PAINT MAPPING
-```
+- giant generic SaaS headlines
+- sci-fi display fonts everywhere
+- tiny low-contrast annotations
+- all-caps overload
 
 ---
 
 # Layout Rules
 
-# Desktop Layout
+## Desktop Layout
 
-Preferred structure:
+Preferred V2 structures:
 
 ```text
-Left Navigation Rail
-Main Workspace
-Right Context Panel
+Top Command Strip
+Primary Planning Sheet
+Side Annotation Rail
+Control Deck
 ```
 
-# Left Navigation
+or:
 
-Contains:
+```text
+Manual Header
+Step Index
+Color Scheme / Prototype Sheet
+Technical Notes
+Sticky Action Bar
+```
 
-- Dashboard
-- Prototype
-- Library
-- Showcase
-- Feedback
-- Credits
-- Settings
+Do not keep the old left navigation rail solely because it existed in V1.
 
-# Main Workspace
+If a rail is used, it should feel like:
 
-Contains:
+- manual index
+- binder tab system
+- route map
+- compact workstation navigation
 
-- Builder flow
-- Preview area
-- Community showcase
-- Result display
+## Main Workspace
 
-# Right Panel
+The main workspace should prioritize:
 
-Contains:
+- color scheme
+- swatches
+- color role assignments
+- material finish
+- spray feasibility
+- generated preview as applied reference
+- practical repaint output
 
-- Credit cost
-- Style DNA
-- Paint finish
-- Weathering level
-- Paint mapping
-- Reactor status
+## Right / Side Panel
+
+Side context should feel like annotation, not generic dashboard widgets.
+
+Use for:
+
+- credit capacity
+- current cost
+- selected Style DNA
+- selected material
+- weathering
+- visibility
+- remix source
+- warnings
+- recommendations
 
 ---
 
 # Mobile Layout Rules
 
-# Mobile Is Mandatory
+Mobile is mandatory.
 
-Every component must work naturally on mobile.
+Required:
 
-Do NOT treat mobile as secondary.
+- one-thumb operation
+- sticky CTA
+- large touch targets
+- horizontal preset browsing
+- quick preview/scheme access
+- minimal typing
+- readable technical labels
+- mobile-safe filters and sorting
 
-# Mobile Priorities
+Avoid:
 
-- One-thumb operation
-- Fast creation
-- Minimal typing
-- Large touch targets
-- Sticky bottom CTA
-- Quick preview access
+- compressed desktop tables
+- hover-only controls
+- excessive grid texture behind text
+- hidden essential actions
+- tiny line-art controls
 
-# Mobile Navigation
+Recommended:
 
-Use bottom navigation.
-
-Recommended tabs:
-
-- Create
-- Explore
-- Library
-- Feedback
-- Account
+- bottom action bar
+- step chips
+- collapsible annotation panels
+- swipeable Style DNA and material cards
+- sticky cost confirmation
 
 ---
 
 # Component Constitution
 
-# Panels
+## Panels
 
-All panels MUST:
+All panels should:
 
-- Use dark surfaces
-- Use thin borders
-- Use subtle elevation only
-- Avoid bright glow
-- Maintain modular spacing
+- use warm paper-like surfaces
+- use thin technical strokes
+- avoid heavy shadow
+- avoid glow
+- preserve strong hierarchy
+- support readable dense content
 
-Standard:
+Standard V2 feel:
 
 ```css
-border-radius: 16px;
-border: 1px solid rgba(255,255,255,0.08);
-background: #161B22;
+border: 1px solid #C9BFAE;
+background: #FBF7ED;
+color: #202426;
 ```
 
----
+## Buttons
 
-# Buttons
+Primary CTA:
 
-# Primary CTA
-
-Required style:
-
-- Dark fill
-- Cyan border or glow
-- Strong typography
-- Minimal animation
+- warm/elevated fill
+- orange or active ink stroke
+- clear label
+- visible focus state
+- tactile hover/press state
 
 Allowed labels:
 
 - Initialize Prototype
-- Run Simulation
 - Build Concept
+- Generate Palette Plan
 - Save to Hangar
 - Remix Scheme
+- Open Share Surface
 
 Avoid:
 
-- “Generate AI Art”
-- “Create Image”
-- Generic AI wording
+- Generate AI Art
+- Create Image
+- Magic generation wording
 
-# Secondary Buttons
-
-- Outline style
-- Low emphasis
-- Minimal glow
-
----
-
-# Cards
+## Cards
 
 Cards should feel like:
 
-> Industrial data modules.
+> Technical catalog records or specimen sheets.
 
 Card structure:
 
-- Thumbnail
-- Technical label
-- Small metadata
-- Minimal decoration
+- scheme/preview area
+- technical label
+- title
+- compact metadata
+- status / visibility
+- action zone
 
 Avoid:
 
-- Large colorful shadows
-- Bright gradients
-- Overly playful layouts
+- generic white cards
+- large colorful shadows
+- neon active rings
+- hiding practical metadata
 
----
+## Inputs
 
-# Inputs
+Inputs should feel like:
 
-Inputs should:
+> Worksheet fields on a technical planning sheet.
 
-- Be compact
-- Be structured
-- Feel technical
+Inputs must preserve:
+
+- labels
+- helper copy
+- validation
+- character counters
+- disabled states
+- focus states
 
 Avoid:
 
-- Giant prompt textareas
-- Long freeform prompt systems
+- giant prompt textareas
+- long freeform prompt systems
+- removing the controlled note limit
 
-Users should mostly interact through:
+## Status Indicators
 
-- Structured selections
-- Chips
-- Presets
-- Toggles
-- Limited notes
+Use technical stamps or inspection marks.
 
----
+Examples:
 
-# Motion Constitution
+```text
+STYLE DNA LOADED
+MATERIAL PROFILE SET
+WEATHERING PASS READY
+SPRAY FEASIBILITY CHECKED
+PAINT MAPPING VERIFIED
+PROTOTYPE READY
+```
 
-# Allowed Motion
-
-- Panel fade
-- Soft scan activation
-- Tactical sweep
-- Reactor pulse
-- Progress line animation
-- Small hover lift
-
-# Forbidden Motion
-
-- Excessive particles
-- Floating animations everywhere
-- Large cinematic transitions
-- Long intro animations
-- Motion that blocks interaction
-- Web3-style movement systems
-
-Animation must support usability.
-
----
-
-# HUD Accent Rules
-
-HUD overlays are accent systems only.
-
-Allowed use cases:
-
-- Generation state
-- Reactor loading
-- Simulation complete
-- High-value reveal moments
-
-Allowed HUD elements:
-
-- Thin scan lines
-- Tactical grids
-- Small radar arcs
-- System diagnostics
-- Numeric overlays
-
-Do NOT:
-
-- Cover the whole screen
-- Reduce readability
-- Use permanent cockpit overlays
+Do not overuse fake stamps.
 
 ---
 
 # Loading State Rules
 
-Loading sequences should feel like:
+Loading and generation should feel like a technical drawing and spray plan being assembled.
 
-> A simulation process.
-
-Allowed examples:
+Canonical generation sequence:
 
 ```text
-INITIALIZING STYLE DNA
-SYNCING PAINT FINISH
-CALCULATING WEATHERING TIPS
-COMPOSING SPRAY PLAN
-RENDERING PREVIEW
-OUTPUT STABILIZED
+LOADING BASE SILHOUETTE
+DRAWING PANEL LINES
+ASSIGNING COLOR BLOCKS
+CHECKING SPRAY FEASIBILITY
+MAPPING PAINT FINISH
+PROTOTYPE READY
 ```
 
-Avoid meme AI loading text.
+Allowed motion:
+
+- line draw-on
+- swatch fill
+- panel-line sweep
+- feasibility check mark
+- manual stamp
+- sheet reveal
+
+Forbidden:
+
+- reactor startup language
+- cockpit activation
+- neon scanlines
+- chaotic particles
+- long cinematic loading theater
+
+---
+
+# Motion Constitution
+
+Allowed:
+
+- line draw-on
+- paper sheet reveal
+- tab slide
+- control press
+- underline sweep
+- swatch recalibration
+- technical stamp transition
+- small hover lift only when useful
+
+Forbidden:
+
+- excessive particles
+- floating animations everywhere
+- neon glow pulses
+- cockpit overlays
+- large cinematic transitions
+- long intro animations
+- motion that blocks interaction
+
+Motion must support usability.
 
 ---
 
 # Content Philosophy
 
-# User Work Is the Content
+User work is the content.
 
-The interface should elevate:
+In V2, "user work" means:
 
-- Generated concepts
-- Paint plans
-- Community showcases
-- Remix culture
+- color scheme
+- swatches
+- paint role logic
+- material finish
+- spray feasibility
+- generated preview
+- practical repaint plan
+- remix lineage
+- public share surface
 
-The interface itself should not dominate.
+Do not make decorative line-art more important than the user's repaint plan.
 
 ---
 
 # Community Experience Rules
 
-The platform should feel:
+Showcase, prototype, pilot, creator, and creator-pack surfaces should feel like:
 
-- Serious enough for hobby builders
-- Stylish enough for sharing
-- Functional enough for long-term use
+- public reference dossiers
+- concept catalog sheets
+- technical archive pages
+- shareable repaint records
 
-Avoid:
+Must preserve:
 
-- Social media chaos
-- Meme overload
-- Excessive gamification
-
----
-
-# Mobile Workflow Constitution
-
-# Target Experience
-
-Users should:
-
-1. Open app/site
-2. Select base model
-3. Select style DNA
-4. Select paint finish
-5. Select weathering
-6. Run prototype
-7. Save/share concept
-
-All within:
-
-> Under 60 seconds.
-
----
-
-# Mobile UX Rules
-
-Required:
-
-- Sticky CTA
-- Large cards
-- Horizontal preset scrolling
-- Minimal typing
-- Autosave selections
-- Fast transitions
-
-Forbidden:
-
-- Multi-column forms
-- Tiny controls
-- Long dropdowns
-- Hidden actions
-- Desktop-style tables
+- public concept metadata
+- filters and sort modes
+- likes and saves
+- remix CTAs
+- share/export actions
+- creator/pilot identity
+- pack access behavior
+- SEO sections and internal links
 
 ---
 
 # Design Tokens Requirement
 
-All UI must use centralized design tokens.
+All repeated V2 styling should move toward centralized tokens.
 
-Required files:
+Recommended files or layers:
 
 ```text
-/colors.ts
-/spacing.ts
-/typography.ts
-/motion.ts
-/radius.ts
-/shadows.ts
+colors
+spacing
+typography
+motion
+radius
+strokes
+surfaces
 ```
 
-Never hardcode styles repeatedly.
+Never repeatedly hardcode unrelated one-off values when a token would keep the V2 system consistent.
+
+Do not put business logic in style tokens.
 
 ---
 
 # Engineering Requirements
 
-# Frontend Stack Direction
-
-Preferred:
+Preferred stack remains:
 
 - Next.js
+- TypeScript
+- React function components
 - Tailwind
-- shadcn/ui as base only
-- Framer Motion (restrained usage)
+- shadcn/ui and Radix as behavior primitives
+- Convex hooks already in place
 
-shadcn/ui must be heavily customized.
+Rules:
 
-Do NOT ship default shadcn appearance.
-
----
-
-# Responsive Rules
-
-All screens must be validated for:
-
-- Mobile portrait
-- Tablet portrait
-- Desktop widescreen
-
-Desktop-only interfaces are unacceptable.
+- preserve all `useQuery`, `useMutation`, `useAction`, and `fetchQuery` behavior
+- preserve server/client component boundaries unless a safe UI split requires a change
+- do not install new dependencies without approval
+- do not change backend contracts
+- do not remove loading, empty, error, disabled, or permission states
+- do not replace live data with static mock data
 
 ---
 
@@ -665,51 +589,92 @@ Desktop-only interfaces are unacceptable.
 
 Required:
 
-- Strong contrast
-- Readable text
-- Clear active states
-- Reduced motion support
-- Keyboard navigation support
+- strong contrast on cream / warm white backgrounds
+- readable text
+- clear active states
+- visible focus states
+- keyboard navigation support
+- mobile-friendly touch targets
+- reduced motion support
+- status not communicated by color alone
 
-Avoid relying only on color.
+Line-art, grid, paper grain, and background texture must never reduce readability.
 
 ---
 
 # Page-Level Direction
 
-# Landing Page
+## Landing / Home Page
 
 Feel:
 
-- Future industrial terminal
-- Controlled cinematic atmosphere
-- Mecha R&D system
+- bright mecha repaint manual
+- immediate prototype entry
+- color scheme and swatch logic visible
+- public inspiration visible
 
 Avoid:
 
-- Marketing-heavy SaaS hero
-- Bright startup visuals
+- generic SaaS hero
+- dark cyberpunk splash
+- abstract gradients
 
-# Create Page
-
-Feel:
-
-- Structured prototype workflow
-- Technical but approachable
-
-# Showcase Page
+## Create Page
 
 Feel:
 
-- Curated concept archive
-- Industrial gallery
+- structured spray-planning workstation
+- color scheme and preview sheet
+- analog control deck
+- annotation rail for cost/selection/lineage
 
-# Admin Panel
+Must preserve every creation step and all costs.
+
+## Showcase Page
 
 Feel:
 
-- Functional operations terminal
-- Minimal cinematic effects
+- public technical concept archive
+- repaint reference catalog
+
+Must preserve filters, sort modes, engagement, and remix actions.
+
+## Prototype / Result Page
+
+Feel:
+
+- technical specimen sheet
+- palette and spray-plan dossier
+
+Must preserve preview, palette/paint planning data, feasibility, shopping, recommendations, share, remix, engagement, and lineage.
+
+## Library
+
+Feel:
+
+- archive binder
+- prototype registry
+
+Must preserve publishing, render actions, saved concepts, visibility, lineage, repair, and planning data.
+
+## Feedback
+
+Feel:
+
+- lab report sheet
+
+Must preserve categories, related concept/style behavior, submission, status, and report history.
+
+## Admin
+
+Feel:
+
+- operations ledger
+- maintenance binder
+
+Keep decoration minimal.
+
+Must preserve all admin controls and diagnostics.
 
 ---
 
@@ -718,21 +683,27 @@ Feel:
 Preferred wording:
 
 - Prototype
-- Simulation
 - Style DNA
+- Material Profile
 - Paint Finish
 - Weathering
-- Reactor Output
-- Build Concept
+- Mood Vector
 - Paint Mapping
+- Palette Plan
+- Spray Feasibility
+- Credit Capacity
 - Saved Hangar
+- Variant Fork
+- Build Concept
+- Share Surface
 
 Avoid:
 
 - AI image generator
-- Prompt engineering
+- prompt engineering
 - AI art creation
-- Magic generation wording
+- magic generation wording
+- reactor startup language
 
 ---
 
@@ -740,20 +711,14 @@ Avoid:
 
 Users should feel:
 
-> I am operating a future mecha repaint system used to prototype experimental machine configurations before committing paint to plastic.
+> I am using a bright future mecha repaint planning manual and retro-futurist console to build, document, compare, save, remix, and share spray-ready color schemes.
 
-The experience must feel:
+The experience must be:
 
-- Functional
-- Premium
-- Immersive
-- Structured
-- Stable
-- Mobile-friendly
-- Community-ready
-
-Not:
-
-- Cheap AI tool
-- Anime fan portal
-- Generic startup dashboard
+- bright but not sterile
+- technical but readable
+- nostalgic but not toy-like
+- structured but not rigid
+- visual but not image-only
+- mobile-friendly
+- practical for hobby builders

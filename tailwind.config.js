@@ -15,6 +15,26 @@ module.exports = {
     },
     extend: {
       colors: {
+        surface: "var(--bg-surface)",
+        panel: "var(--bg-panel)",
+        main: "var(--bg-main)",
+        elevated: "var(--bg-elevated)",
+        "hover-surface": "var(--bg-hover-surface)",
+        "hover-panel": "var(--bg-hover-panel)",
+        "hover-subtle": "var(--bg-hover-subtle)",
+        line: {
+          primary: "var(--line-primary)",
+          secondary: "var(--line-secondary)",
+          guide: "var(--line-guide)",
+          subtle: "var(--line-subtle)",
+          muted: "var(--line-muted)",
+          active: "var(--line-active)",
+        },
+        ink: {
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          muted: "var(--text-muted)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -39,6 +59,10 @@ module.exports = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          orange: "var(--accent-orange)",
+          teal: "var(--accent-teal)",
+          blue: "var(--accent-blue)",
+          red: "var(--accent-red)",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -50,9 +74,15 @@ module.exports = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        none: "0",
+        sm: "0",
+        DEFAULT: "0",
+        md: "0",
+        lg: "0",
+        xl: "0",
+        "2xl": "0",
+        "3xl": "0",
+        full: "0",
       },
       keyframes: {
         "accordion-down": {
@@ -71,10 +101,15 @@ module.exports = {
             opacity: 1,
           },
         },
+        "psycho-blink": {
+          "0%, 100%": { opacity: "0.4" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "psycho-blink": "psycho-blink 1.5s ease-in-out infinite",
       },
     },
   },

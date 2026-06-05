@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { CommandButton } from "@/components/ui/command-button";
 import { ShoppingListActions } from "@/components/public/ShoppingListActions";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
@@ -12,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
+import { PsychoFrameBorder } from "@/components/ui/PsychoFrameBorder";
 
 type WeatheringLevel = "clean" | "light" | "heavy";
 type MoodTag =
@@ -499,8 +501,8 @@ export function CreateWorkbench() {
 
   if (catalog === undefined || viewer === undefined) {
     return (
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">
+      <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">
           Initializing catalog
         </p>
         <h2 className="mt-4 text-3xl font-semibold">Syncing style DNA and material profiles</h2>
@@ -511,12 +513,12 @@ export function CreateWorkbench() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)]">
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">
+        <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">
             Prototype flow
           </p>
           <h2 className="mt-4 text-3xl font-semibold">Structured repaint initialization</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
             Build the concept through base model, Style DNA, material profile,
             weathering, and a tightly controlled note field. No raw prompt engineering,
             no hidden credit cost.
@@ -524,19 +526,19 @@ export function CreateWorkbench() {
         </section>
 
         {remixConceptId ? (
-          <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Remix intake</p>
+          <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Remix intake</p>
             {remixSource === undefined ? (
               <>
                 <h2 className="mt-4 text-2xl font-semibold">Resolving public source telemetry</h2>
-                <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">
+                <p className="mt-3 text-sm leading-6 text-ink-secondary">
                   Loading the shareable concept before this dispatch can preserve lineage.
                 </p>
               </>
             ) : remixSource === null ? (
               <>
                 <h2 className="mt-4 text-2xl font-semibold">Remix source unavailable</h2>
-                <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">
+                <p className="mt-3 text-sm leading-6 text-ink-secondary">
                   This share link no longer points at a public or unlisted generated concept. You
                   can still create a new prototype manually, but lineage will not be attached.
                 </p>
@@ -545,19 +547,19 @@ export function CreateWorkbench() {
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_260px]">
                 <div>
                   <h2 className="mt-4 text-2xl font-semibold">{remixSource.title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">
+                  <p className="mt-3 text-sm leading-6 text-ink-secondary">
                     Remix seed from {remixSource.baseModel.name} · {remixSource.stylePreset.name} ·{" "}
                     {remixSource.materialPreset.name}. Dispatching from this page will write
                     `sourceConceptId` into the new concept and keep the branch trace intact.
                   </p>
                   {remixSource.notes ? (
-                    <p className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-[#C7D0DA]">
+                    <p className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-muted">
                       {clampNotes(remixSource.notes)}
                     </p>
                   ) : null}
                 </div>
-                <div className="rounded-[22px] border border-white/10 bg-[#0D1117] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-[#FFB84D]">
+                <div className="rounded-[22px] border border-line-secondary bg-main p-4">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-accent-orange">
                     Source record
                   </p>
                   <div className="mt-4 space-y-3 text-sm">
@@ -577,7 +579,7 @@ export function CreateWorkbench() {
                   </div>
                   <Link
                     href={`/prototype/${remixSource._id}`}
-                    className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                    className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[16px] border border-accent-blue bg-[#0E2430] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
                   >
                     Open Source Surface
                   </Link>
@@ -601,36 +603,37 @@ export function CreateWorkbench() {
                   type="button"
                   onClick={() => setSelectedBaseModelId(baseModel._id)}
                   className={cn(
-                    "rounded-[22px] border p-4 text-left transition-all",
+                    "rounded-[22px] border p-4 text-left transition-all relative overflow-hidden",
                     active
-                      ? "border-[#3DD9FF]/50 bg-[#3DD9FF]/10 shadow-[0_0_0_1px_rgba(61,217,255,0.18)]"
-                      : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                      ? "border-accent-blue bg-accent-blue/10 shadow-[0_0_0_1px_rgba(61,217,255,0.18)]"
+                      : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  {active && <PsychoFrameBorder color="#58FFB2" particleCount={80} />}
+                  <div className="flex items-start justify-between gap-3 relative z-10">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-[#58FFB2]">
+                      <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
                         Base Model
                       </p>
-                      <h3 className="mt-2 text-lg font-semibold text-[#E6EDF3]">
+                      <h3 className="mt-2 text-lg font-semibold text-ink-primary">
                         {baseModel.name}
                       </h3>
                     </div>
-                    <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[#9BA7B4]">
+                    <span className="rounded-full border border-line-secondary px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
                       {baseModel.grade ?? "Grade N/A"}
                     </span>
                   </div>
-                  <p className="mt-3 text-sm text-[#9BA7B4]">
+                  <p className="mt-3 text-sm text-ink-secondary">
                     {baseModel.series ?? "Series unknown"} · {baseModel.silhouetteType ?? "Unclassified silhouette"}
                   </p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
                     Complexity {baseModel.complexityLevel ?? "Unknown"}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {baseModel.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-[#9BA7B4]"
+                        className="rounded-full border border-line-secondary px-2 py-1 text-[11px] text-ink-secondary"
                       >
                         {tag}
                       </span>
@@ -648,31 +651,74 @@ export function CreateWorkbench() {
           description="Use one governed preset. The system will translate that preset into controlled prompt logic and material bias."
         >
           <div className="grid gap-3 lg:grid-cols-2">
-            {catalog.stylePresets.map((preset) => {
+            {catalog.stylePresets.map((preset, index) => {
               const active = selectedStylePresetId === preset._id;
+              const pseudoStatuses = ["EXPERIMENTAL", "DRAFT", "LOCKED"];
+              const status = active ? "ACTIVE" : pseudoStatuses[index % pseudoStatuses.length];
+              
               return (
                 <button
                   key={preset._id}
                   type="button"
                   onClick={() => setSelectedStylePresetId(preset._id)}
                   className={cn(
-                    "rounded-[22px] border p-4 text-left transition-all",
+                    "border p-4 text-left transition-all relative overflow-hidden",
                     active
-                      ? "border-[#58FFB2]/45 bg-[#58FFB2]/10 shadow-[0_0_0_1px_rgba(88,255,178,0.14)]"
-                      : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                      ? "border-2 border-accent-teal bg-surface shadow-[0_0_20px_rgba(42,140,140,0.1)]"
+                      : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#3DD9FF]">
-                    Style DNA / {preset.category ?? "Unsorted"}
-                  </p>
-                  <h3 className="mt-2 text-lg font-semibold text-[#E6EDF3]">{preset.name}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">
-                    {preset.shortDescription}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
-                    <span>Contrast {preset.contrastLevel ?? "N/A"}</span>
-                    <span>Weathering {preset.weatheringProfile ?? "N/A"}</span>
-                  </div>
+                  {active && <PsychoFrameBorder color="#58FFB2" particleCount={120} speedMultiplier={2} />}
+                  {active ? (
+                    <div className="flex flex-col h-full relative z-10">
+                      <div className="flex items-center justify-between border-b-2 border-accent-teal pb-3 mb-4">
+                        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent-teal">
+                          Technical Dossier
+                        </span>
+                        <span className="bg-accent-teal text-white px-2 py-1 text-[10px] font-bold tracking-widest">
+                          ACTIVE
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted">Type:</p>
+                          <p className="mt-1 text-sm font-bold text-ink-primary uppercase tracking-widest">{preset.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted">Sync:</p>
+                          <p className="mt-1 font-mono text-sm font-bold text-accent-teal tracking-widest">82%</p>
+                        </div>
+                      </div>
+                      <div className="border-l-2 border-accent-teal/30 pl-3 mb-4">
+                        <p className="text-sm leading-6 text-ink-secondary">
+                          {preset.shortDescription}
+                        </p>
+                      </div>
+                      <div className="mt-auto flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-ink-muted">
+                        <span className="border border-accent-teal/20 bg-accent-teal/5 px-2 py-1">Contrast {preset.contrastLevel ?? "N/A"}</span>
+                        <span className="border border-accent-teal/20 bg-accent-teal/5 px-2 py-1">Weathering {preset.weatheringProfile ?? "N/A"}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col h-full opacity-70 hover:opacity-100 transition-opacity">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-[11px] uppercase tracking-[0.28em] text-accent-blue">
+                          Style DNA / {preset.category ?? "Unsorted"}
+                        </p>
+                        <span className="border border-line-secondary px-2 py-0.5 text-[9px] font-bold tracking-widest text-ink-muted">
+                          {status}
+                        </span>
+                      </div>
+                      <h3 className="mt-2 text-lg font-bold uppercase tracking-widest text-ink-primary">{preset.name}</h3>
+                      <p className="mt-3 text-sm leading-6 text-ink-secondary">
+                        {preset.shortDescription}
+                      </p>
+                      <div className="mt-auto pt-4 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+                        <span className="border border-line-secondary px-2 py-1">Contrast {preset.contrastLevel ?? "N/A"}</span>
+                        <span className="border border-line-secondary px-2 py-1">Weathering {preset.weatheringProfile ?? "N/A"}</span>
+                      </div>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -695,16 +741,16 @@ export function CreateWorkbench() {
                   className={cn(
                     "rounded-[22px] border p-4 text-left transition-all",
                     active
-                      ? "border-[#FFB84D]/45 bg-[#FFB84D]/10 shadow-[0_0_0_1px_rgba(255,184,77,0.12)]"
-                      : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                      ? "border-accent-orange bg-accent-orange/10 shadow-[0_0_0_1px_rgba(255,184,77,0.12)]"
+                      : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#FFB84D]">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-orange">
                     Material Profile
                   </p>
-                  <h3 className="mt-2 text-base font-semibold text-[#E6EDF3]">{preset.name}</h3>
-                  <p className="mt-3 text-sm text-[#9BA7B4]">{preset.finishType}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                  <h3 className="mt-2 text-base font-semibold text-ink-primary">{preset.name}</h3>
+                  <p className="mt-3 text-sm text-ink-secondary">{preset.finishType}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                     <span>Reflectivity {preset.reflectivityLevel ?? "N/A"}</span>
                     <span>Difficulty {preset.difficultyLevel ?? "N/A"}</span>
                   </div>
@@ -731,17 +777,17 @@ export function CreateWorkbench() {
                     className={cn(
                       "rounded-[20px] border p-4 text-left transition-all",
                       active
-                        ? "border-[#58FFB2]/45 bg-[#58FFB2]/10 shadow-[0_0_0_1px_rgba(88,255,178,0.14)]"
-                        : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                        ? "border-accent-teal bg-accent-teal/10 shadow-[0_0_0_1px_rgba(88,255,178,0.14)]"
+                        : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-base font-semibold text-[#E6EDF3]">{option.label}</h3>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <h3 className="text-base font-semibold text-ink-primary">{option.label}</h3>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         Mood
                       </span>
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">{option.detail}</p>
+                    <p className="mt-3 text-sm leading-6 text-ink-secondary">{option.detail}</p>
                   </button>
                 );
               })}
@@ -757,17 +803,17 @@ export function CreateWorkbench() {
                     className={cn(
                       "rounded-[20px] border p-4 text-left transition-all",
                       active
-                        ? "border-[#FFB84D]/45 bg-[#FFB84D]/10 shadow-[0_0_0_1px_rgba(255,184,77,0.12)]"
-                        : "border-white/10 bg-[#161B22] hover:border-white/20 hover:bg-[#1B222C]"
+                        ? "border-accent-orange bg-accent-orange/10 shadow-[0_0_0_1px_rgba(255,184,77,0.12)]"
+                        : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-base font-semibold text-[#E6EDF3]">{option.label}</h3>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <h3 className="text-base font-semibold text-ink-primary">{option.label}</h3>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         Visibility
                       </span>
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-[#9BA7B4]">{option.detail}</p>
+                    <p className="mt-3 text-sm leading-6 text-ink-secondary">{option.detail}</p>
                   </button>
                 );
               })}
@@ -792,35 +838,35 @@ export function CreateWorkbench() {
                     className={cn(
                       "rounded-[20px] border p-4 text-left transition-all",
                       active
-                        ? "border-[#3DD9FF]/45 bg-[#3DD9FF]/10"
-                        : "border-white/10 bg-[#161B22] hover:border-white/20"
+                        ? "border-accent-blue bg-accent-blue/10"
+                        : "border-line-secondary bg-surface hover:border-line-active"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="text-base font-semibold text-[#E6EDF3]">{option.label}</h3>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <h3 className="text-base font-semibold text-ink-primary">{option.label}</h3>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         Weathering
                       </span>
                     </div>
-                    <p className="mt-2 text-sm text-[#9BA7B4]">{option.detail}</p>
+                    <p className="mt-2 text-sm text-ink-secondary">{option.detail}</p>
                   </button>
                 );
               })}
             </div>
-            <div className="rounded-[22px] border border-white/10 bg-[#161B22] p-4">
+            <div className="rounded-[22px] border border-line-secondary bg-surface p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#58FFB2]">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
                     Additional Note
                   </p>
-                  <p className="mt-2 text-sm text-[#9BA7B4]">{notePolicy}</p>
+                  <p className="mt-2 text-sm text-ink-secondary">{notePolicy}</p>
                 </div>
                 <span
                   className={cn(
                     "rounded-full border px-2 py-1 text-[11px]",
                     notesRemaining < 0
-                      ? "border-[#FF5F5F]/30 text-[#FF5F5F]"
-                      : "border-white/10 text-[#9BA7B4]"
+                      ? "border-accent-red text-[#FF5F5F]"
+                      : "border-line-secondary text-ink-secondary"
                   )}
                 >
                   {notes.length}/100
@@ -830,16 +876,79 @@ export function CreateWorkbench() {
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Add a small direction, e.g. orange warning decals"
-                className="mt-4 min-h-[140px] resize-none border-white/10 bg-[#0D1117] text-[#E6EDF3] placeholder:text-[#6E7A88] focus-visible:ring-[#3DD9FF]"
+                className="mt-4 min-h-[140px] resize-none border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-blue"
               />
             </div>
           </div>
         </StepPanel>
       </div>
 
-      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">
+      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start w-full">
+        
+        {/* NEW TECHNICAL BOARD (Replaces Image Viewer concept) */}
+        <section className="border-2 border-line-primary bg-surface flex flex-col w-full">
+          {/* Top Documentation Block */}
+          <div className="border-b-2 border-line-primary p-4 bg-panel flex justify-between items-start">
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-ink-muted">Doc Type</p>
+              <p className="text-lg font-bold tracking-widest text-ink-primary mt-1">PAINT MAPPING</p>
+            </div>
+            <div className="text-right">
+               <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-ink-muted">Status</p>
+               <p className="text-sm font-bold tracking-widest text-accent-teal mt-1">AWAITING SYNC</p>
+            </div>
+          </div>
+          
+          {/* Main Content Split */}
+          <div className="flex flex-col sm:flex-row min-h-[400px]">
+             {/* Left Canvas (The actual board) */}
+             <div className="flex-1 border-b-2 sm:border-b-0 sm:border-r-2 border-line-primary relative bg-grid-blueprint p-4 flex flex-col items-center justify-center overflow-hidden">
+                <span className="absolute top-4 left-4 text-[9px] font-bold tracking-widest text-ink-muted border border-line-secondary px-1 bg-surface z-20">SAFE ZONE</span>
+                <span className="absolute bottom-4 left-4 text-[9px] font-bold tracking-widest text-ink-muted border border-line-secondary px-1 bg-surface z-20">WORK AREA</span>
+                <span className="absolute top-4 right-4 text-[9px] font-bold tracking-widest text-ink-muted border border-line-secondary px-1 bg-surface z-20">ALIGNMENT GRID</span>
+                
+                {/* Engineering Crosshairs */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none z-0">
+                  <div className="w-full h-px bg-line-primary absolute top-1/2 -translate-y-1/2" />
+                  <div className="w-px h-full bg-line-primary absolute left-1/2 -translate-x-1/2" />
+                  {/* Note: NO rounded-full, we use a diamond/square crosshair to strictly follow NO RADIUS rule */}
+                  <div className="w-32 h-32 border border-line-primary rotate-45 absolute" />
+                  <div className="w-48 h-48 border border-dashed border-line-primary absolute" />
+                </div>
+                
+                {/* Placeholder text */}
+                <div className="relative z-10 flex flex-col items-center justify-center text-ink-muted bg-surface/80 p-4 border border-line-primary">
+                   <p className="font-mono text-sm uppercase tracking-widest font-bold text-ink-primary">NO STRUCTURAL DATA</p>
+                   <p className="font-mono text-[10px] mt-2 tracking-widest">INITIALIZE PROTOTYPE TO GENERATE MAPPING</p>
+                </div>
+             </div>
+             
+             {/* Right Sidebar (Data Legends) */}
+             <div className="w-full sm:w-48 bg-panel flex flex-col shrink-0">
+               <div className="p-4 border-b border-line-secondary">
+                 <p className="text-[10px] font-bold tracking-widest text-ink-muted uppercase mb-2">Primary Color</p>
+                 <div className="h-10 border border-dashed border-line-primary bg-surface w-full" />
+               </div>
+               <div className="p-4 border-b border-line-secondary">
+                 <p className="text-[10px] font-bold tracking-widest text-ink-muted uppercase mb-2">Secondary Color</p>
+                 <div className="h-10 border border-dashed border-line-primary bg-surface w-full" />
+               </div>
+               <div className="p-4 border-b border-line-secondary">
+                 <p className="text-[10px] font-bold tracking-widest text-ink-muted uppercase mb-2">Accent Color</p>
+                 <div className="h-10 border border-dashed border-line-primary bg-surface w-full" />
+               </div>
+               <div className="p-4 flex-1 flex flex-col">
+                 <p className="text-[10px] font-bold tracking-widest text-ink-muted uppercase mb-2">Spray Notes</p>
+                 <div className="flex-1 min-h-[80px] border border-dashed border-line-primary bg-surface w-full flex items-center justify-center">
+                    <span className="text-[10px] text-ink-muted font-mono tracking-widest">PENDING</span>
+                 </div>
+               </div>
+             </div>
+          </div>
+        </section>
+
+        <section className="border-2 border-line-primary bg-panel p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">
             Reactor summary
           </p>
           <div className="mt-5 space-y-4">
@@ -875,8 +984,8 @@ export function CreateWorkbench() {
             />
           </div>
           {(recommendedStyleSlug || recommendedMaterialSlug || recommendedWorkflow) ? (
-            <div className="mt-6 rounded-[22px] border border-[#58FFB2]/20 bg-[#58FFB2]/10 p-4 text-sm leading-6 text-[#C7D0DA]">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-[#58FFB2]">
+            <div className="mt-6 rounded-[22px] border border-accent-teal bg-accent-teal/10 p-4 text-sm leading-6 text-ink-muted">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
                 Recommendation Bridge Applied
               </p>
               <p className="mt-3">
@@ -886,15 +995,15 @@ export function CreateWorkbench() {
             </div>
           ) : null}
           {creatorPackSlug ? (
-            <div className="mt-4 rounded-[22px] border border-[#3DD9FF]/20 bg-[#3DD9FF]/10 p-4 text-sm leading-6 text-[#C7D0DA]">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-[#3DD9FF]">
+            <div className="mt-4 rounded-[22px] border border-accent-blue bg-accent-blue/10 p-4 text-sm leading-6 text-ink-muted">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-accent-blue">
                 Creator Pack Bridge Applied
               </p>
               <p className="mt-3">
-                This create session was initialized from creator pack <span className="font-semibold text-[#E6EDF3]">{creatorPackSlug}</span>
+                This create session was initialized from creator pack <span className="font-semibold text-ink-primary">{creatorPackSlug}</span>
                 {creatorPackVariant ? (
                   <>
-                    {" "}using variant starter <span className="font-semibold text-[#E6EDF3]">{formatCreatorPackVariantLabel(creatorPackVariant)}</span>
+                    {" "}using variant starter <span className="font-semibold text-ink-primary">{formatCreatorPackVariantLabel(creatorPackVariant)}</span>
                   </>
                 ) : null}
                 . Review the loaded base model, Style DNA, and material profile before dispatching.
@@ -902,23 +1011,23 @@ export function CreateWorkbench() {
             </div>
           ) : null}
           {creatorPackLocked ? (
-            <div className="mt-4 rounded-[22px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm leading-6 text-[#FFD5D5]">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-[#FF8E8E]">Premium Pack Locked</p>
+            <div className="mt-4 rounded-[22px] border border-accent-red bg-accent-red/10 p-4 text-sm leading-6 text-accent-red">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-accent-red">Premium Pack Locked</p>
               <p className="mt-3">{creatorPackAccess.message}</p>
             </div>
           ) : null}
-          <div className="mt-6 rounded-[22px] border border-white/10 bg-black/20 p-4">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[#58FFB2]">
+          <div className="mt-6 rounded-[22px] border border-line-secondary bg-main p-4">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
               Credit Capacity
             </p>
             <div className="mt-3 flex items-end justify-between gap-4">
               <div>
-                <p className="text-4xl font-semibold text-[#E6EDF3]">
+                <p className="text-4xl font-semibold text-ink-primary">
                   {viewer?.credits.balance ?? 0}
                 </p>
-                <p className="mt-1 text-sm text-[#6E7A88]">Available credits</p>
+                <p className="mt-1 text-sm text-ink-muted">Available credits</p>
               </div>
-              <div className="text-right text-sm text-[#9BA7B4]">
+              <div className="text-right text-sm text-ink-secondary">
                 <p>{styleSuggestionCost} credits · style suggestion</p>
                 <p>{palettePlanCost} credits · palette plan</p>
                 <p>{createCost} credits · concept dispatch</p>
@@ -927,67 +1036,70 @@ export function CreateWorkbench() {
             </div>
           </div>
           {errorMessage ? (
-            <div className="mt-4 rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+            <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
               {errorMessage}
             </div>
           ) : null}
-          <Button
+          <CommandButton
             type="button"
             onClick={() => {
               void onInitializePrototype();
             }}
             disabled={!canSubmit}
-            className="mt-6 h-12 w-full rounded-[18px] border border-[#3DD9FF]/40 bg-[#0E2430] text-[#E6EDF3] hover:bg-[#123342]"
+            className="mt-6 w-full"
+            commandLabel="COMMAND"
           >
-            {isSubmitting ? "INITIALIZING STYLE DNA" : "Initialize Prototype"}
-          </Button>
+            {isSubmitting ? "INITIALIZING STYLE DNA" : "INITIALIZE PROTOTYPE"}
+          </CommandButton>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Operator tools</p>
+        <section className="border-2 border-line-primary bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Operator tools</p>
           <div className="mt-4 grid gap-3">
-            <Button
+            <CommandButton
               type="button"
               disabled={!canGenerateStyleSuggestion}
               onClick={() => {
                 void onGenerateStyleSuggestion();
               }}
-              className="h-11 rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3] hover:bg-[#193021]"
+              className="w-full !border-accent-teal !text-accent-teal hover:!bg-accent-teal/10"
+              commandLabel="OPERATOR TOOL"
             >
               {isGeneratingStyleSuggestion
-                ? "Resolving Style DNA"
-                : `Generate Style Suggestion · ${styleSuggestionCost} credit${
-                    styleSuggestionCost === 1 ? "" : "s"
+                ? "RESOLVING STYLE DNA"
+                : `GENERATE STYLE SUGGESTION · ${styleSuggestionCost} CREDIT${
+                    styleSuggestionCost === 1 ? "" : "S"
                   }`}
-            </Button>
-            <Button
+            </CommandButton>
+            <CommandButton
               type="button"
               disabled={!canGeneratePalettePlan}
               onClick={() => {
                 void onGeneratePalettePlan();
               }}
-              className="h-11 rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] text-[#E6EDF3] hover:bg-[#382C13]"
+              className="w-full !border-accent-orange !text-accent-orange hover:!bg-accent-orange/10"
+              commandLabel="OPERATOR TOOL"
             >
               {isGeneratingPalettePlan
-                ? "Composing Palette Plan"
-                : `Generate Palette Plan · ${palettePlanCost} credit${
-                    palettePlanCost === 1 ? "" : "s"
+                ? "COMPOSING PALETTE PLAN"
+                : `GENERATE PALETTE PLAN · ${palettePlanCost} CREDIT${
+                    palettePlanCost === 1 ? "" : "S"
                   }`}
-            </Button>
+            </CommandButton>
           </div>
 
           {styleSuggestionResult ? (
-            <div className="mt-5 rounded-[22px] border border-white/10 bg-[#11161D] p-4">
+            <div className="mt-5 rounded-[22px] border border-line-secondary bg-panel p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-[#58FFB2]">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-accent-teal">
                     Style DNA Suggestion
                   </p>
-                  <p className="mt-2 text-sm text-[#9BA7B4]">
+                  <p className="mt-2 text-sm text-ink-secondary">
                     {styleSuggestionResult.templateName} · {styleSuggestionResult.priceRule.creditCost} credit
                   </p>
                 </div>
-                <span className="text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                <span className="text-xs uppercase tracking-[0.18em] text-ink-muted">
                   Balance {styleSuggestionResult.balanceAfter}
                 </span>
               </div>
@@ -995,27 +1107,27 @@ export function CreateWorkbench() {
                 {styleSuggestionResult.suggestions.map((suggestion) => (
                   <div
                     key={suggestion.stylePresetId}
-                    className="rounded-[18px] border border-white/10 bg-black/20 p-4"
+                    className="rounded-[18px] border border-line-secondary bg-main p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-sm font-semibold text-[#E6EDF3]">{suggestion.name}</p>
-                        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                        <p className="text-sm font-semibold text-ink-primary">{suggestion.name}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                           {suggestion.category ?? "Unsorted"} · {suggestion.confidenceLabel}
                         </p>
                       </div>
                       <Button
                         type="button"
                         onClick={() => setSelectedStylePresetId(suggestion.stylePresetId)}
-                        className="h-9 rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] hover:bg-[#123342]"
+                        className="h-9 rounded-[14px] border border-accent-blue bg-[#0E2430] px-3 text-xs text-ink-primary hover:bg-white/10"
                       >
                         Apply
                       </Button>
                     </div>
                     {suggestion.shortDescription ? (
-                      <p className="mt-3 text-sm text-[#C7D0DA]">{suggestion.shortDescription}</p>
+                      <p className="mt-3 text-sm text-ink-muted">{suggestion.shortDescription}</p>
                     ) : null}
-                    <p className="mt-3 text-xs leading-5 text-[#9BA7B4]">{suggestion.rationale}</p>
+                    <p className="mt-3 text-xs leading-5 text-ink-secondary">{suggestion.rationale}</p>
                   </div>
                 ))}
               </div>
@@ -1023,17 +1135,17 @@ export function CreateWorkbench() {
           ) : null}
 
           {palettePlanResult ? (
-            <div className="mt-5 rounded-[22px] border border-white/10 bg-[#11161D] p-4">
+            <div className="mt-5 rounded-[22px] border border-line-secondary bg-panel p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-[#FFB84D]">
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-accent-orange">
                     Palette Plan
                   </p>
-                  <p className="mt-2 text-sm text-[#9BA7B4]">
+                  <p className="mt-2 text-sm text-ink-secondary">
                     {palettePlanResult.templateName} · {palettePlanResult.priceRule.creditCost} credit
                   </p>
                 </div>
-                <span className="text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                <span className="text-xs uppercase tracking-[0.18em] text-ink-muted">
                   Balance {palettePlanResult.balanceAfter}
                 </span>
               </div>
@@ -1041,33 +1153,33 @@ export function CreateWorkbench() {
                 {palettePlanResult.plan.entries.slice(0, 4).map((entry) => (
                   <div
                     key={entry.roleSlug}
-                    className="rounded-[18px] border border-white/10 bg-black/20 p-4"
+                    className="rounded-[18px] border border-line-secondary bg-main p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-sm font-semibold text-[#E6EDF3]">{entry.roleName}</p>
-                        <p className="mt-1 text-xs text-[#6E7A88]">
+                        <p className="text-sm font-semibold text-ink-primary">{entry.roleName}</p>
+                        <p className="mt-1 text-xs text-ink-muted">
                           {entry.recommendedArea ?? "Controlled application zone"}
                         </p>
                       </div>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#9BA7B4]">
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
                         {entry.suggestedPaint?.code ?? "N/A"}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm text-[#C7D0DA]">
+                    <p className="mt-3 text-sm text-ink-muted">
                       {entry.suggestedPaint
                         ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`
                         : "No active paint mapping"}
                     </p>
-                    <p className="mt-3 text-xs leading-5 text-[#9BA7B4]">{entry.rationale}</p>
+                    <p className="mt-3 text-xs leading-5 text-ink-secondary">{entry.rationale}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#58FFB2]">
+              <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-accent-teal">
                   Spray Notes
                 </p>
-                <div className="mt-3 space-y-2 text-xs leading-5 text-[#9BA7B4]">
+                <div className="mt-3 space-y-2 text-xs leading-5 text-ink-secondary">
                   {palettePlanResult.plan.sprayNotes.map((note) => (
                     <p key={note}>{note}</p>
                   ))}
@@ -1077,11 +1189,11 @@ export function CreateWorkbench() {
           ) : null}
 
           {(recommendedStyleSlug || recommendedMaterialSlug || recommendedWorkflow || recommendedBaseModelSlug || recommendedMoodTagsParam || recommendedWeathering || creatorPackSlug || creatorPackVariant) ? (
-            <div className="mt-5 rounded-[22px] border border-white/10 bg-[#11161D] p-4">
-              <p className="text-[11px] uppercase tracking-[0.26em] text-[#58FFB2]">
+            <div className="mt-5 rounded-[22px] border border-line-secondary bg-panel p-4">
+              <p className="text-[11px] uppercase tracking-[0.26em] text-accent-teal">
                 Recommendation Bridge
               </p>
-              <div className="mt-4 space-y-3 text-sm text-[#C7D0DA]">
+              <div className="mt-4 space-y-3 text-sm text-ink-muted">
                 {creatorPackSlug ? (
                   <SummaryRow label="Creator Pack" value={creatorPackSlug} />
                 ) : null}
@@ -1116,7 +1228,7 @@ export function CreateWorkbench() {
                   <SummaryRow label="Recommended Workflow" value={recommendedWorkflow} />
                 ) : null}
               </div>
-              <p className="mt-4 text-xs leading-5 text-[#9BA7B4]">
+              <p className="mt-4 text-xs leading-5 text-ink-secondary">
                 These overrides came from the P3 recommendation system and are already applied to the current create
                 state.
               </p>
@@ -1124,8 +1236,8 @@ export function CreateWorkbench() {
           ) : null}
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">
+        <section className="border-2 border-line-primary bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">
             Dispatch queue
           </p>
           {result ? (
@@ -1133,27 +1245,27 @@ export function CreateWorkbench() {
               <div
                 className={cn(
                   "rounded-[20px] border p-4",
-                  liveTone === "green" && "border-[#58FFB2]/20 bg-[#58FFB2]/10",
-                  liveTone === "cyan" && "border-[#3DD9FF]/20 bg-[#3DD9FF]/10",
-                  liveTone === "red" && "border-[#FF5F5F]/20 bg-[#FF5F5F]/10",
-                  liveTone === "neutral" && "border-white/10 bg-white/5"
+                  liveTone === "green" && "border-accent-teal bg-accent-teal/10",
+                  liveTone === "cyan" && "border-accent-blue bg-accent-blue/10",
+                  liveTone === "red" && "border-accent-red bg-accent-red/10",
+                  liveTone === "neutral" && "border-line-secondary bg-black/5"
                 )}
               >
                 <p
                   className={cn(
                     "text-[11px] uppercase tracking-[0.28em]",
-                    liveTone === "green" && "text-[#58FFB2]",
-                    liveTone === "cyan" && "text-[#3DD9FF]",
-                    liveTone === "red" && "text-[#FF8E8E]",
-                    liveTone === "neutral" && "text-[#9BA7B4]"
+                    liveTone === "green" && "text-accent-teal",
+                    liveTone === "cyan" && "text-accent-blue",
+                    liveTone === "red" && "text-accent-red",
+                    liveTone === "neutral" && "text-ink-secondary"
                   )}
                 >
                   {livePhaseLabel}
                 </p>
-                <h3 className="mt-2 text-lg font-semibold text-[#E6EDF3]">
+                <h3 className="mt-2 text-lg font-semibold text-ink-primary">
                   {result.title}
                 </h3>
-                <p className="mt-3 text-sm text-[#C7D0DA]">
+                <p className="mt-3 text-sm text-ink-muted">
                   {liveJob == null
                     ? "Acquiring live telemetry from Convex."
                     : liveJob.status === "queued"
@@ -1208,41 +1320,41 @@ export function CreateWorkbench() {
                 value={liveJob?.promptComposition?.status ?? "ready"}
               />
               {paintPlan ? (
-                <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#FFB84D]">
+                <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-orange">
                     Paint Mapping Plan
                   </p>
                   <div className="mt-4 space-y-3">
                     {paintPlan.entries.slice(0, 4).map((entry) => (
                       <div
                         key={entry.roleSlug}
-                        className="rounded-[16px] border border-white/10 bg-white/5 p-3"
+                        className="rounded-[16px] border border-line-secondary bg-black/5 p-3"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm font-medium text-[#E6EDF3]">{entry.roleName}</p>
-                            <p className="text-xs text-[#6E7A88]">
+                            <p className="text-sm font-medium text-ink-primary">{entry.roleName}</p>
+                            <p className="text-xs text-ink-muted">
                               {entry.recommendedArea ?? "Controlled application zone"}
                             </p>
                           </div>
-                          <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-[#9BA7B4]">
+                          <span className="rounded-full border border-line-secondary px-2 py-1 text-[11px] text-ink-secondary">
                             {entry.suggestedPaint?.code ?? "N/A"}
                           </span>
                         </div>
-                        <p className="mt-3 text-sm text-[#C7D0DA]">
+                        <p className="mt-3 text-sm text-ink-muted">
                           {entry.suggestedPaint
                             ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`
                             : "No active paint mapping"}
                         </p>
-                        <p className="mt-2 text-xs leading-5 text-[#9BA7B4]">{entry.rationale}</p>
+                        <p className="mt-2 text-xs leading-5 text-ink-secondary">{entry.rationale}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 rounded-[16px] border border-white/10 bg-black/20 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-[#58FFB2]">
+                  <div className="mt-4 rounded-[16px] border border-line-secondary bg-main p-3">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">
                       Spray Notes
                     </p>
-                    <ul className="mt-3 space-y-2 text-xs leading-5 text-[#9BA7B4]">
+                    <ul className="mt-3 space-y-2 text-xs leading-5 text-ink-secondary">
                       {paintPlan.sprayNotes.map((note) => (
                         <li key={note}>{note}</li>
                       ))}
@@ -1251,11 +1363,11 @@ export function CreateWorkbench() {
                 </div>
               ) : null}
               {feasibility ? (
-                <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#FFB84D]">
+                <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-orange">
                     Spray Feasibility
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-[#C7D0DA]">{feasibility.summary}</p>
+                  <p className="mt-3 text-sm leading-6 text-ink-muted">{feasibility.summary}</p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <SummaryBadge label="Difficulty" value={feasibility.beginnerDifficulty} />
                     <SummaryBadge label="Layers" value={`${feasibility.estimatedLayerCount}`} />
@@ -1265,8 +1377,8 @@ export function CreateWorkbench() {
                 </div>
               ) : null}
               {shoppingList ? (
-                <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#3DD9FF]">
+                <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-blue">
                     Shopping Readiness
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1279,14 +1391,14 @@ export function CreateWorkbench() {
                     />
                   </div>
                   {shoppingList.bundles.core[0] ? (
-                    <div className="mt-4 rounded-[16px] border border-white/10 bg-black/20 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                    <div className="mt-4 rounded-[16px] border border-line-secondary bg-main p-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         Core Anchor
                       </p>
-                      <p className="mt-2 text-sm text-[#E6EDF3]">
+                      <p className="mt-2 text-sm text-ink-primary">
                         {shoppingList.bundles.core[0].brand} {shoppingList.bundles.core[0].code}
                       </p>
-                      <p className="mt-1 text-xs text-[#9BA7B4]">
+                      <p className="mt-1 text-xs text-ink-secondary">
                         {shoppingList.bundles.core[0].colorName}
                       </p>
                     </div>
@@ -1297,10 +1409,10 @@ export function CreateWorkbench() {
                       target="_blank"
                       rel="noreferrer"
                       className={cn(
-                        "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-[#E6EDF3] transition-colors",
+                        "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-ink-primary transition-colors",
                         shoppingList.featuredPurchasePath.type === "affiliate"
-                          ? "border border-[#58FFB2]/35 bg-[#13241B] hover:bg-[#193021]"
-                          : "border border-[#3DD9FF]/35 bg-[#0E2430] hover:bg-[#123342]"
+                          ? "border border-accent-teal bg-[#13241B] hover:bg-white/10"
+                          : "border border-accent-blue bg-[#0E2430] hover:bg-white/10"
                       )}
                     >
                       {shoppingList.featuredPurchasePath.type === "affiliate"
@@ -1322,11 +1434,11 @@ export function CreateWorkbench() {
                 </div>
               ) : null}
               {recommendations ? (
-                <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#58FFB2]">
+                <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
                     Recommendation Bias
                   </p>
-                  <p className="mt-3 text-sm leading-6 text-[#C7D0DA]">
+                  <p className="mt-3 text-sm leading-6 text-ink-muted">
                     {recommendations.feasibilityBias === "practical"
                       ? "The recommendation system is currently favoring easier execution and safer procurement paths."
                       : "The recommendation system is currently balanced between visual ambition and practical execution."}
@@ -1346,12 +1458,12 @@ export function CreateWorkbench() {
                 <SummaryRow label="Provider Job" value={liveJob.providerJobId} mono />
               ) : null}
               {liveJob?.errorMessage ? (
-                <div className="rounded-[20px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm leading-6 text-[#FFD5D5]">
+                <div className="rounded-[20px] border border-accent-red bg-accent-red/10 p-4 text-sm leading-6 text-accent-red">
                   {liveJob.errorMessage}
                 </div>
               ) : null}
               {liveJob?.asset?.publicUrl ? (
-                <div className="overflow-hidden rounded-[20px] border border-white/10 bg-[#0D1117]">
+                <div className="overflow-hidden rounded-[20px] border border-line-secondary bg-main">
                   <Image
                     src={liveJob.asset.publicUrl}
                     alt={`${result.title} preview`}
@@ -1361,9 +1473,9 @@ export function CreateWorkbench() {
                   />
                 </div>
               ) : liveJob?.status === "succeeded" ? (
-                <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4 text-sm leading-6 text-[#9BA7B4]">
+                <div className="rounded-[20px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-secondary">
                   Preview asset was written to R2, but no public URL is attached yet. Current key:
-                  <span className="mt-2 block break-all font-mono text-[12px] text-[#E6EDF3]">
+                  <span className="mt-2 block break-all font-mono text-[12px] text-ink-primary">
                     {liveJob.asset?.key ?? "Unavailable"}
                   </span>
                 </div>
@@ -1376,35 +1488,35 @@ export function CreateWorkbench() {
                       void onRequestHdRender();
                     }}
                     disabled={isQueueingHdRender}
-                    className="h-11 rounded-[18px] border border-[#3DD9FF]/40 bg-[#0E2430] text-[#E6EDF3] hover:bg-[#123342]"
+                    className="h-11 rounded-[18px] border border-accent-blue bg-[#0E2430] text-ink-primary hover:bg-white/10"
                   >
                     {isQueueingHdRender ? "Queueing HD Render" : `Generate HD Render · ${hdCost} credits`}
                   </Button>
                 ) : (
                   <Link
                     href="/t/library"
-                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 bg-[#0D1117] px-4 text-sm font-medium text-[#E6EDF3] transition-colors hover:bg-[#131A22]"
+                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-line-secondary bg-main px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-[#131A22]"
                   >
                     Open Library
                   </Link>
                 )}
-                <div className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-xs leading-5 text-[#9BA7B4]">
+                <div className="rounded-[18px] border border-line-secondary bg-main px-4 py-3 text-xs leading-5 text-ink-secondary">
                   {liveJob?.status === "succeeded"
                     ? "HD render derives from the stabilized concept and replaces the current preview asset when complete."
                     : "Live telemetry stays subscribed while you remain on this terminal."}
                 </div>
               </div>
-              <div className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
-                <p className="text-[11px] uppercase tracking-[0.28em] text-[#3DD9FF]">
+              <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                <p className="text-[11px] uppercase tracking-[0.28em] text-accent-blue">
                   Prompt Preview
                 </p>
-                <pre className="mt-3 whitespace-pre-wrap text-xs leading-6 text-[#9BA7B4]">
+                <pre className="mt-3 whitespace-pre-wrap text-xs leading-6 text-ink-secondary">
                   {result.promptPreview}
                 </pre>
               </div>
             </div>
           ) : (
-            <div className="mt-4 rounded-[20px] border border-white/10 bg-[#0D1117] p-4 text-sm leading-6 text-[#9BA7B4]">
+            <div className="mt-4 rounded-[20px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-secondary">
               The system will create:
               <ul className="mt-3 space-y-2">
                 <li>`concepts` draft record</li>
@@ -1431,10 +1543,10 @@ function TelemetryPill({
     <span
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "neutral" && "border-white/10 text-[#9BA7B4]",
-        tone === "cyan" && "border-[#3DD9FF]/30 bg-[#3DD9FF]/10 text-[#8FEAFF]",
-        tone === "green" && "border-[#58FFB2]/30 bg-[#58FFB2]/10 text-[#A6FFD5]",
-        tone === "red" && "border-[#FF5F5F]/30 bg-[#FF5F5F]/10 text-[#FFD2D2]"
+        tone === "neutral" && "border-line-secondary text-ink-secondary",
+        tone === "cyan" && "border-accent-blue bg-accent-blue/10 text-accent-blue",
+        tone === "green" && "border-accent-teal bg-accent-teal/10 text-accent-teal",
+        tone === "red" && "border-accent-red bg-accent-red/10 text-[#FFD2D2]"
       )}
     >
       {label}
@@ -1514,13 +1626,17 @@ function StepPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-[#6E7A88]">{step}</p>
-          <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
+    <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between border-b border-dashed border-line-guide pb-6">
+        <div className="flex flex-col gap-2">
+          <span className="flex h-6 w-6 items-center justify-center border border-line-primary bg-main text-[11px] font-bold text-ink-primary">
+            {step}
+          </span>
+          <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-ink-primary">
+            {title}
+          </h2>
         </div>
-        <p className="max-w-xl text-sm leading-6 text-[#9BA7B4]">{description}</p>
+        <p className="max-w-xl text-sm leading-6 text-ink-secondary md:text-right">{description}</p>
       </div>
       <div className="mt-6">{children}</div>
     </section>
@@ -1537,13 +1653,13 @@ function SummaryRow({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/6 pb-3">
-      <span className="text-[11px] uppercase tracking-[0.24em] text-[#6E7A88]">
+    <div className="flex items-start justify-between gap-4 border-b border-dashed border-line-guide pb-3">
+      <span className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
         {label}
       </span>
       <span
         className={cn(
-          "max-w-[60%] text-right text-sm text-[#E6EDF3]",
+          "max-w-[60%] text-right text-sm text-ink-primary",
           mono && "font-mono text-[12px]"
         )}
       >
@@ -1555,9 +1671,9 @@ function SummaryRow({
 
 function SummaryBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[16px] border border-white/10 bg-black/20 p-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">{label}</p>
-      <p className="mt-2 text-sm text-[#E6EDF3]">{value}</p>
+    <div className="rounded-[16px] border border-line-secondary bg-main p-3">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{label}</p>
+      <p className="mt-2 text-sm text-ink-primary">{value}</p>
     </div>
   );
 }

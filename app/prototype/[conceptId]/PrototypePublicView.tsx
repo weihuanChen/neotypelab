@@ -44,7 +44,7 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
         </p>
         <Link
           href="/showcase"
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
         >
           Back to Showcase
         </Link>
@@ -139,21 +139,21 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href={`/t/create?remix=${concept._id}`}
-            className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+            className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Remix This Prototype
           </Link>
           {concept.baseModel?.slug && concept.stylePreset?.slug ? (
             <Link
               href={`/${concept.baseModel.slug}/${concept.stylePreset.slug}`}
-              className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+              className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
             >
               Open Style Landing
             </Link>
           ) : null}
           <Link
             href="/showcase"
-            className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+            className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Back to Showcase
           </Link>
@@ -321,8 +321,8 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
                     className={cn(
                       "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-[#E6EDF3] transition-colors",
                       shoppingList.featuredPurchasePath.type === "affiliate"
-                        ? "border border-[#58FFB2]/35 bg-[#13241B] hover:bg-[#193021]"
-                        : "border border-[#3DD9FF]/35 bg-[#0E2430] hover:bg-[#123342]"
+                        ? "border border-[#58FFB2]/35 bg-[#13241B] hover:bg-white/10"
+                        : "border border-[#3DD9FF]/35 bg-[#0E2430] hover:bg-white/10"
                     )}
                   >
                     {shoppingList.featuredPurchasePath.type === "affiliate"
@@ -447,7 +447,7 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
                 </div>
                 <Link
                   href={`/t/create?remix=${concept._id}`}
-                  className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                  className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                 >
                   Start Your Remix
                 </Link>
@@ -506,14 +506,14 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
               </div>
               <Link
                 href={`/prototype/${concept.sourceConcept._id}`}
-                className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
               >
                 Open Source Prototype
               </Link>
               {concept.sourceConcept.baseModel?.slug && concept.sourceConcept.stylePreset?.slug ? (
                 <Link
                   href={`/${concept.sourceConcept.baseModel.slug}/${concept.sourceConcept.stylePreset.slug}`}
-                  className="mt-3 inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+                  className="mt-3 inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                 >
                   Open Source Landing
                 </Link>
@@ -658,7 +658,7 @@ function RecommendationGroup({
               />
               <Link
                 href={buildCreateRecommendationHref(conceptId, item)}
-                className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-white/10"
               >
                 Open In Create
               </Link>
@@ -743,7 +743,7 @@ function ShoppingListItem({
             href={item.affiliateUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Open Purchase Link
           </a>
@@ -752,7 +752,7 @@ function ShoppingListItem({
           href={item.purchaseSearchUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
         >
           Search This Paint
         </a>
@@ -793,7 +793,7 @@ function ShoppingListItem({
                       href={alternative.affiliateUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#58FFB2]/35 bg-[#13241B] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+                      className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#58FFB2]/35 bg-[#13241B] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-white/10"
                     >
                       Buy Alternative
                     </a>
@@ -802,7 +802,7 @@ function ShoppingListItem({
                     href={alternative.purchaseSearchUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-white/10"
                   >
                     Search Alternative
                   </a>

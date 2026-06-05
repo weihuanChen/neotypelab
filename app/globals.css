@@ -33,6 +33,36 @@
     --ring: 240 10% 3.9%;
 
     --radius: 0.5rem;
+
+    /* V2 Bright Retro-Futurist Variables */
+    --bg-main: #F4F0E6;
+    --bg-surface: #FBF7ED;
+    --bg-panel: #E8E0D0;
+    --bg-elevated: #FFFDF6;
+
+    /* V2 Structural Lines */
+    --line-primary: #2f3533;
+    --line-secondary: #a9a08f;
+    --line-guide: #d3ccbe;
+
+    /* V2 Bright Hover System */
+    --bg-hover-surface: #FFFFFF;
+    --bg-hover-panel: #F5EFE4;
+    --bg-hover-subtle: rgba(0, 0, 0, 0.03);
+
+    /* Legacy Structural (Deprecated but kept for safety during migration) */
+    --line-subtle: rgba(35, 40, 45, 0.10);
+    --line-muted: #C9BFAE;
+    --line-active: #2F3A3D;
+
+    --text-primary: #202426;
+    --text-secondary: #3B403D;
+    --text-muted: #5B544A;
+
+    --accent-orange: #E46F2D;
+    --accent-teal: #2A8C8C;
+    --accent-blue: #3B6D8C;
+    --accent-red: #B84A3A;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -71,9 +101,19 @@
 @layer base {
   * {
     @apply border-border;
+    border-radius: 0px !important;
   }
   body {
     @apply bg-background text-foreground min-h-full;
+  }
+}
+
+@layer utilities {
+  .bg-grid-blueprint {
+    background-image: 
+      linear-gradient(rgba(47, 53, 51, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(47, 53, 51, 0.08) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 }
 

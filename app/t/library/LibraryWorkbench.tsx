@@ -184,8 +184,8 @@ export function LibraryWorkbench() {
 
   if (concepts === undefined || savedConcepts === undefined || jobs === undefined) {
     return (
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Hangar sync</p>
+      <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Hangar sync</p>
         <h2 className="mt-4 text-3xl font-semibold">Indexing saved prototypes and reactor jobs</h2>
       </section>
     );
@@ -213,36 +213,36 @@ export function LibraryWorkbench() {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_380px]">
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Saved Hangar</p>
+        <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Saved Hangar</p>
           <h2 className="mt-4 text-3xl font-semibold">Prototype library and generation ledger</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
             This is the operator archive for draft concepts, successful previews,
             and failed simulation attempts. Every item here is backed by the current
             P1 domain model: concept, generation job, asset record, and credit transaction.
           </p>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
+        <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Saved Public Builds</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Saved Public Builds</p>
               <h3 className="mt-3 text-2xl font-semibold">Bookmarked showcase concepts in your hangar</h3>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
                 Public concepts you save from showcase, profile, and landing pages now land here for
                 quick recall inside the terminal.
               </p>
             </div>
-            <div className="grid gap-2 text-right text-sm text-[#9BA7B4]">
+            <div className="grid gap-2 text-right text-sm text-ink-secondary">
               <span>{savedConcepts.length} saved public build{savedConcepts.length === 1 ? "" : "s"}</span>
               <span>Syncs from public share surfaces</span>
             </div>
           </div>
 
           {savedConcepts.length === 0 ? (
-            <div className="mt-5 rounded-[20px] border border-white/10 bg-black/20 p-5">
-              <p className="text-sm font-semibold text-[#E6EDF3]">No saved public builds yet.</p>
-              <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+            <div className="mt-5 rounded-[20px] border border-line-secondary bg-main p-5">
+              <p className="text-sm font-semibold text-ink-primary">No saved public builds yet.</p>
+              <p className="mt-2 text-sm leading-6 text-ink-secondary">
                 Visit the public showcase, a pilot profile, or a style landing page and save a concept
                 to pin it into your terminal library.
               </p>
@@ -252,9 +252,9 @@ export function LibraryWorkbench() {
               {savedConcepts.map((concept) => (
                 <article
                   key={concept._id}
-                  className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20"
+                  className="overflow-hidden rounded-[24px] border border-line-secondary bg-main"
                 >
-                  <div className="aspect-[4/3] bg-[#0D1117]">
+                  <div className="aspect-[4/3] bg-main">
                     {concept.previewAsset?.publicUrl ? (
                       <img
                         src={concept.previewAsset.publicUrl}
@@ -264,10 +264,10 @@ export function LibraryWorkbench() {
                     ) : (
                       <div className="flex h-full items-end p-5">
                         <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-[#6E7A88]">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-ink-muted">
                             Preview unavailable
                           </p>
-                          <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                          <p className="mt-2 text-sm leading-6 text-ink-secondary">
                             Asset exists, but no public URL is attached yet.
                           </p>
                         </div>
@@ -284,18 +284,18 @@ export function LibraryWorkbench() {
                     </div>
                     <div>
                       <h3 className="text-2xl font-semibold tracking-tight">{concept.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                      <p className="mt-2 text-sm leading-6 text-ink-secondary">
                         {concept.baseModel?.name ?? "Unknown base model"} ·{" "}
                         {concept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
                         {concept.materialPreset?.name ?? "Unknown material profile"}
                       </p>
                       {concept.owner ? (
-                        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
                           Pilot · @{concept.owner.handle}
                         </p>
                       ) : null}
                     </div>
-                    <div className="grid gap-2 text-sm text-[#C7D0DA]">
+                    <div className="grid gap-2 text-sm text-ink-muted">
                       <MetaRow label="Weathering" value={concept.weatheringLevel} />
                       <MetaRow label="Finish" value={concept.materialPreset?.finishType ?? "Unknown"} />
                     </div>
@@ -315,7 +315,7 @@ export function LibraryWorkbench() {
                           onClick={() => {
                             void onStabilizePreviewAsset(concept._id);
                           }}
-                          className="h-11 rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3] hover:bg-[#193021]"
+                          className="h-11 rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
                         >
                           {stabilizingConceptId === concept._id
                             ? "Stabilizing Preview"
@@ -324,13 +324,13 @@ export function LibraryWorkbench() {
                       ) : null}
                       <Link
                         href={`/prototype/${concept._id}`}
-                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm font-medium text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-blue bg-[#0E2430] px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-white/10"
                       >
                         Open Share Surface
                       </Link>
                       <Link
                         href={`/t/create?remix=${concept._id}`}
-                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm font-medium text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-orange bg-[#2A210F] px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-white/10"
                       >
                         Remix in Create
                       </Link>
@@ -343,10 +343,10 @@ export function LibraryWorkbench() {
         </section>
 
         {concepts.length === 0 ? (
-          <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-8 text-[#E6EDF3]">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#3DD9FF]">Library empty</p>
+          <section className="border-2 border-line-primary bg-surface p-8 text-ink-primary">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Library empty</p>
             <h3 className="mt-4 text-2xl font-semibold">No prototypes have been initialized yet.</h3>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#9BA7B4]">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-secondary">
               Use the Create terminal to dispatch the first structured concept. Once
               queued, succeeded, or failed, it will appear here with job and credit context.
             </p>
@@ -362,7 +362,7 @@ export function LibraryWorkbench() {
               return (
               <article
                 key={concept._id}
-                className="rounded-[28px] border border-white/10 bg-[#161B22] p-5 text-[#E6EDF3]"
+                className="rounded-[28px] border border-line-secondary bg-surface p-5 text-ink-primary"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
@@ -379,12 +379,12 @@ export function LibraryWorkbench() {
                     <h3 className="mt-4 text-2xl font-semibold tracking-tight">
                       {concept.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                    <p className="mt-2 text-sm leading-6 text-ink-secondary">
                       {concept.baseModel?.name ?? "Unknown base model"} ·{" "}
                       {concept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
                       {concept.materialPreset?.name ?? "Unknown material profile"}
                     </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                       {concept.sourceConcept ? (
                         <span>Remix Source · {concept.sourceConcept.title}</span>
                       ) : (
@@ -393,13 +393,13 @@ export function LibraryWorkbench() {
                       {concept.remixCount > 0 ? <span>Outbound Remixes · {concept.remixCount}</span> : null}
                     </div>
                     {concept.moodTags.length > 0 ? (
-                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
                         Mood Vector · {concept.moodTags.map(formatMoodTagLabel).join(" / ")}
                       </p>
                     ) : null}
                   </div>
-                  <div className="w-full max-w-[320px] rounded-[22px] border border-white/10 bg-[#0D1117] p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[#3DD9FF]">
+                  <div className="w-full max-w-[320px] rounded-[22px] border border-line-secondary bg-main p-4">
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-blue">
                       Reactor record
                     </p>
                     <div className="mt-4 space-y-3 text-sm">
@@ -429,30 +429,30 @@ export function LibraryWorkbench() {
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-                  <div className="rounded-[22px] border border-white/10 bg-[#11161D] p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[#58FFB2]">
+                  <div className="rounded-[22px] border border-line-secondary bg-panel p-4">
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-teal">
                       Notes + status
                     </p>
-                    <p className="mt-3 text-sm leading-6 text-[#C7D0DA]">
+                    <p className="mt-3 text-sm leading-6 text-ink-muted">
                       {concept.notes?.trim() || "No additional operator note was attached."}
                     </p>
                     {concept.generationJob?.errorMessage ? (
-                      <div className="mt-4 rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+                      <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
                         {concept.generationJob.errorMessage}
                       </div>
                     ) : null}
                     {concept.previewAsset?.key ? (
-                      <p className="mt-4 break-all text-xs leading-5 text-[#6E7A88]">
+                      <p className="mt-4 break-all text-xs leading-5 text-ink-muted">
                         Asset key: {concept.previewAsset.key}
                       </p>
                     ) : null}
                     {concept.sourceConcept ? (
-                      <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#58FFB2]">
+                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">
                           Source lineage
                         </p>
-                        <p className="mt-3 text-sm text-[#E6EDF3]">{concept.sourceConcept.title}</p>
-                        <p className="mt-2 text-xs leading-5 text-[#9BA7B4]">
+                        <p className="mt-3 text-sm text-ink-primary">{concept.sourceConcept.title}</p>
+                        <p className="mt-2 text-xs leading-5 text-ink-secondary">
                           {concept.sourceConcept.baseModel?.name ?? "Unknown base model"} ·{" "}
                           {concept.sourceConcept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
                           {concept.sourceConcept.owner?.handle ?? concept.sourceConcept.owner?.fullName ?? "Unknown pilot"}
@@ -460,7 +460,7 @@ export function LibraryWorkbench() {
                         {concept.sourceConcept.visibility !== "private" ? (
                           <Link
                             href={`/prototype/${concept.sourceConcept._id}`}
-                            className="mt-3 inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                            className="mt-3 inline-flex h-9 items-center justify-center rounded-[14px] border border-accent-blue bg-[#0E2430] px-3 text-xs text-ink-primary transition-colors hover:bg-white/10"
                           >
                             Open Source Surface
                           </Link>
@@ -468,13 +468,13 @@ export function LibraryWorkbench() {
                       </div>
                     ) : null}
                     {renderOutputs.length > 0 ? (
-                      <div className="mt-4 rounded-[18px] border border-[#8FEAFF]/20 bg-black/20 p-4">
+                      <div className="mt-4 rounded-[18px] border border-[#8FEAFF]/20 bg-main p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.22em] text-[#8FEAFF]">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-accent-blue">
                               Render History
                             </p>
-                            <p className="mt-2 text-sm leading-6 text-[#C7D0DA]">
+                            <p className="mt-2 text-sm leading-6 text-ink-muted">
                               {renderOutputs.length} archived render output{renderOutputs.length === 1 ? "" : "s"} for
                               this concept.
                             </p>
@@ -485,9 +485,9 @@ export function LibraryWorkbench() {
                           {renderOutputs.slice(0, 4).map((output) => (
                             <div
                               key={output._id}
-                              className="overflow-hidden rounded-[16px] border border-white/10 bg-[#0D1117]"
+                              className="overflow-hidden rounded-[16px] border border-line-secondary bg-main"
                             >
-                              <div className="aspect-[16/10] bg-black/30">
+                              <div className="aspect-[16/10] bg-main/30">
                                 {output.asset?.publicUrl ? (
                                   <img
                                     src={output.asset.publicUrl}
@@ -496,7 +496,7 @@ export function LibraryWorkbench() {
                                   />
                                 ) : (
                                   <div className="flex h-full items-end p-3">
-                                    <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                                    <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                                       Asset URL pending
                                     </p>
                                   </div>
@@ -516,25 +516,25 @@ export function LibraryWorkbench() {
                                   ) : null}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-semibold text-[#E6EDF3]">{output.label}</p>
-                                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#6E7A88]">
+                                  <p className="text-sm font-semibold text-ink-primary">{output.label}</p>
+                                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
                                     {formatHistoryTimestamp(output._creationTime)}
                                   </p>
                                 </div>
                                 {output.summary?.layoutSpec ? (
-                                  <p className="rounded-[12px] border border-[#8FEAFF]/15 bg-[#8FEAFF]/5 p-2 text-xs leading-5 text-[#C7D0DA]">
+                                  <p className="rounded-[12px] border border-[#8FEAFF]/15 bg-[#8FEAFF]/5 p-2 text-xs leading-5 text-ink-muted">
                                     {output.summary.layoutSpec}
                                   </p>
                                 ) : null}
                                 {output.summary?.materialComparisonVariants?.length ? (
-                                  <div className="rounded-[12px] border border-[#EFCB7A]/15 bg-[#EFCB7A]/5 p-2 text-xs leading-5 text-[#C7D0DA]">
+                                  <div className="rounded-[12px] border border-[#EFCB7A]/15 bg-[#EFCB7A]/5 p-2 text-xs leading-5 text-ink-muted">
                                     {output.summary.materialComparisonVariants
                                       .slice(0, 4)
                                       .map((variant) => variant.name)
                                       .join(" / ")}
                                   </div>
                                 ) : null}
-                                <div className="grid gap-2 text-xs text-[#9BA7B4]">
+                                <div className="grid gap-2 text-xs text-ink-secondary">
                                   <span>{output.job?.provider ?? "provider pending"}</span>
                                   <span>{output.asset?.contentType ?? "asset pending"}</span>
                                   <span className="break-all font-mono">{output.generationJobId}</span>
@@ -544,7 +544,7 @@ export function LibraryWorkbench() {
                                     href={output.asset.publicUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-[#3DD9FF]/35 bg-[#0E2430] px-3 text-xs text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-accent-blue bg-[#0E2430] px-3 text-xs text-ink-primary transition-colors hover:bg-white/10"
                                   >
                                     Open Render Asset
                                   </a>
@@ -554,7 +554,7 @@ export function LibraryWorkbench() {
                           ))}
                         </div>
                         {renderOutputs.length > 4 ? (
-                          <p className="mt-3 text-xs leading-5 text-[#9BA7B4]">
+                          <p className="mt-3 text-xs leading-5 text-ink-secondary">
                             {renderOutputs.length - 4} older render output{renderOutputs.length - 4 === 1 ? "" : "s"} retained in
                             history.
                           </p>
@@ -562,20 +562,20 @@ export function LibraryWorkbench() {
                       </div>
                     ) : null}
                     {paintPlan ? (
-                      <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#FFB84D]">
+                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-orange">
                           Paint Mapping Plan
                         </p>
                         <div className="mt-3 space-y-3">
                           {paintPlan.entries.slice(0, 4).map((entry) => (
-                            <div key={entry.roleSlug} className="rounded-[14px] border border-white/10 p-3">
+                            <div key={entry.roleSlug} className="rounded-[14px] border border-line-secondary p-3">
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm text-[#E6EDF3]">{entry.roleName}</span>
-                                <span className="text-[11px] uppercase tracking-[0.16em] text-[#9BA7B4]">
+                                <span className="text-sm text-ink-primary">{entry.roleName}</span>
+                                <span className="text-[11px] uppercase tracking-[0.16em] text-ink-secondary">
                                   {entry.suggestedPaint?.code ?? "N/A"}
                                 </span>
                               </div>
-                              <p className="mt-2 text-xs text-[#C7D0DA]">
+                              <p className="mt-2 text-xs text-ink-muted">
                                 {entry.suggestedPaint
                                   ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`
                                   : "No active paint mapping"}
@@ -583,7 +583,7 @@ export function LibraryWorkbench() {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 space-y-2 text-xs leading-5 text-[#9BA7B4]">
+                        <div className="mt-4 space-y-2 text-xs leading-5 text-ink-secondary">
                           {paintPlan.sprayNotes.slice(0, 2).map((note) => (
                             <p key={note}>{note}</p>
                           ))}
@@ -591,11 +591,11 @@ export function LibraryWorkbench() {
                       </div>
                     ) : null}
                     {feasibilityEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#FFB84D]">
+                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-orange">
                           Spray Feasibility
                         </p>
-                        <p className="mt-3 text-sm leading-6 text-[#C7D0DA]">
+                        <p className="mt-3 text-sm leading-6 text-ink-muted">
                           {feasibilityEntry.summary}
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -619,8 +619,8 @@ export function LibraryWorkbench() {
                       </div>
                     ) : null}
                     {shoppingEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#3DD9FF]">
+                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-blue">
                           Shopping Readiness
                         </p>
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -641,19 +641,19 @@ export function LibraryWorkbench() {
                             value={`${shoppingEntry.purchaseSummary.affiliateReadyCount}`}
                           />
                         </div>
-                        <p className="mt-4 text-xs leading-5 text-[#9BA7B4]">
+                        <p className="mt-4 text-xs leading-5 text-ink-secondary">
                           This concept already has a P3 shopping list model behind it, including primary purchase items
                           and fallback sourcing options.
                         </p>
                         {shoppingEntry.bundles.core[0] ? (
-                          <div className="mt-4 rounded-[16px] border border-white/10 bg-[#0D1117] p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                          <div className="mt-4 rounded-[16px] border border-line-secondary bg-main p-3">
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                               Core Anchor
                             </p>
-                            <p className="mt-2 text-sm text-[#E6EDF3]">
+                            <p className="mt-2 text-sm text-ink-primary">
                               {shoppingEntry.bundles.core[0].brand} {shoppingEntry.bundles.core[0].code}
                             </p>
-                            <p className="mt-1 text-xs text-[#9BA7B4]">
+                            <p className="mt-1 text-xs text-ink-secondary">
                               {shoppingEntry.bundles.core[0].colorName}
                             </p>
                           </div>
@@ -664,10 +664,10 @@ export function LibraryWorkbench() {
                             target="_blank"
                             rel="noreferrer"
                             className={cn(
-                              "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-[#E6EDF3] transition-colors",
+                              "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-ink-primary transition-colors",
                               shoppingEntry.featuredPurchasePath.type === "affiliate"
-                                ? "border border-[#58FFB2]/35 bg-[#13241B] hover:bg-[#193021]"
-                                : "border border-[#3DD9FF]/35 bg-[#0E2430] hover:bg-[#123342]"
+                                ? "border border-accent-teal bg-[#13241B] hover:bg-white/10"
+                                : "border border-accent-blue bg-[#0E2430] hover:bg-white/10"
                             )}
                           >
                             {shoppingEntry.featuredPurchasePath.type === "affiliate"
@@ -689,11 +689,11 @@ export function LibraryWorkbench() {
                       </div>
                     ) : null}
                     {recommendationEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-[#58FFB2]">
+                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
+                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">
                           Recommendation Bias
                         </p>
-                        <p className="mt-3 text-sm leading-6 text-[#C7D0DA]">
+                        <p className="mt-3 text-sm leading-6 text-ink-muted">
                           {recommendationEntry.feasibilityBias === "practical"
                             ? "Current guidance is leaning toward easier execution and safer procurement paths."
                             : "Current guidance is balanced between visual ambition and practical execution."}
@@ -711,11 +711,11 @@ export function LibraryWorkbench() {
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
                           <Link
                             href={`/t/create?remix=${concept._id}`}
-                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-accent-blue bg-[#0E2430] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
                           >
                             Open In Create
                           </Link>
-                          <div className="rounded-[16px] border border-white/10 bg-[#0D1117] p-3 text-xs leading-5 text-[#9BA7B4]">
+                          <div className="rounded-[16px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
                             Use the recommendation bridge from the prototype page when you want the create session to
                             preload a specific style, material, or workflow recommendation.
                           </div>
@@ -724,13 +724,13 @@ export function LibraryWorkbench() {
                     ) : null}
                   </div>
 
-                  <div className="rounded-[22px] border border-white/10 bg-[#11161D] p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-[#FFB84D]">
+                  <div className="rounded-[22px] border border-line-secondary bg-panel p-4">
+                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-orange">
                       Action surface
                     </p>
                     <div className="mt-4 space-y-3">
-                      <div className="rounded-[18px] border border-white/10 bg-black/20 p-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-[#9BA7B4]">
+                      <div className="rounded-[18px] border border-line-secondary bg-main p-3">
+                        <p className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
                           Publish workflow
                         </p>
                         <div className="mt-3 grid gap-2">
@@ -756,15 +756,15 @@ export function LibraryWorkbench() {
                               className={cn(
                                 "rounded-[14px] border px-3 py-2 text-left text-xs uppercase tracking-[0.18em] transition-colors",
                                 concept.visibility === option
-                                  ? "border-[#3DD9FF]/35 bg-[#3DD9FF]/10 text-[#E6EDF3]"
-                                  : "border-white/10 text-[#9BA7B4] hover:border-white/20 hover:text-[#E6EDF3]"
+                                  ? "border-accent-blue bg-accent-blue/10 text-ink-primary"
+                                  : "border-line-secondary text-ink-secondary hover:border-line-active hover:text-ink-primary"
                               )}
                             >
                               {option}
                             </button>
                           ))}
                         </div>
-                        <div className="mt-3 rounded-[14px] border border-white/10 bg-[#0D1117] p-3 text-xs leading-5 text-[#9BA7B4]">
+                        <div className="mt-3 rounded-[14px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
                           `private` keeps the concept internal.
                           `unlisted` creates a direct-link share surface.
                           `public` sends it to the showcase, landing pages, and profile surfaces.
@@ -773,7 +773,7 @@ export function LibraryWorkbench() {
                       {concept.visibility !== "private" ? (
                         <Link
                           href={`/prototype/${concept._id}`}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-accent-teal bg-[#13241B] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
                         >
                           Open Share Surface
                         </Link>
@@ -782,7 +782,7 @@ export function LibraryWorkbench() {
                       concept.visibility !== "private" ? (
                         <Link
                           href={`/t/create?remix=${concept._id}`}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-accent-orange bg-[#2A210F] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
                         >
                           Remix in Create
                         </Link>
@@ -794,7 +794,7 @@ export function LibraryWorkbench() {
                           onClick={() => {
                             void onStabilizePreviewAsset(concept._id);
                           }}
-                          className="h-11 w-full rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3] hover:bg-[#193021]"
+                          className="h-11 w-full rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
                         >
                           {stabilizingConceptId === concept._id
                             ? "Stabilizing Public Preview"
@@ -812,7 +812,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "hd-render");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#3DD9FF]/40 bg-[#0E2430] text-[#E6EDF3] hover:bg-[#123342]"
+                        className="h-11 w-full rounded-[18px] border border-accent-blue bg-[#0E2430] text-ink-primary hover:bg-white/10"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -831,7 +831,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "multi-angle-preview");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3] hover:bg-[#193021]"
+                        className="h-11 w-full rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -850,7 +850,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "high-fidelity-render");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#FFB84D]/40 bg-[#2C2211] text-[#E6EDF3] hover:bg-[#3A2C15]"
+                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2C2211] text-ink-primary hover:bg-[#3A2C15]"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -869,7 +869,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "material-finish-comparison");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#EFCB7A]/40 bg-[#292414] text-[#E6EDF3] hover:bg-[#38301A]"
+                        className="h-11 w-full rounded-[18px] border border-[#EFCB7A]/40 bg-[#292414] text-ink-primary hover:bg-[#38301A]"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -888,7 +888,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "weathering-simulation");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/40 bg-[#113042] text-[#E6EDF3] hover:bg-[#174155]"
+                        className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/40 bg-[#113042] text-ink-primary hover:bg-[#174155]"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -907,7 +907,7 @@ export function LibraryWorkbench() {
                         onClick={() => {
                           void onRequestRender(concept._id, "weathering-split-preview");
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#FFB84D]/35 bg-[#2B1F16] text-[#E6EDF3] hover:bg-[#3A2B1D]"
+                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2B1F16] text-ink-primary hover:bg-[#3A2B1D]"
                       >
                         {renderingState &&
                         renderingState.conceptId === concept._id &&
@@ -928,7 +928,7 @@ export function LibraryWorkbench() {
                           onClick={() => {
                             void onRequestRender(concept._id, "build-stage-visualization", stage);
                           }}
-                          className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/35 bg-[#102632] text-[#E6EDF3] hover:bg-[#173444]"
+                          className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/35 bg-[#102632] text-ink-primary hover:bg-[#173444]"
                         >
                           {renderingState &&
                           renderingState.conceptId === concept._id &&
@@ -950,13 +950,13 @@ export function LibraryWorkbench() {
                             void onRetry(concept.generationJob._id);
                           }
                         }}
-                        className="h-11 w-full rounded-[18px] border border-[#FFB84D]/40 bg-[#2C2211] text-[#E6EDF3] hover:bg-[#3A2C15]"
+                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2C2211] text-ink-primary hover:bg-[#3A2C15]"
                       >
                         {rerunningJobId === concept.generationJob?._id
                           ? "Re-dispatching"
                           : "Retry Failed Job"}
                       </Button>
-                      <div className="rounded-[18px] border border-white/10 bg-black/20 p-3 text-xs leading-5 text-[#9BA7B4]">
+                      <div className="rounded-[18px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
                         Publishing now runs through a review gate before the concept moves onto
                         public or unlisted surfaces. Retry remains available only for failed jobs.
                       </div>
@@ -971,8 +971,8 @@ export function LibraryWorkbench() {
       </div>
 
       <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Operator ledger</p>
+        <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Operator ledger</p>
           <div className="mt-5 space-y-4">
             <MetaRow label="Pilot" value={viewer?.handle ?? "Unknown"} />
             <MetaRow label="Credits" value={`${viewer?.credits.balance ?? 0}`} />
@@ -984,34 +984,34 @@ export function LibraryWorkbench() {
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Queue monitor</p>
+        <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Queue monitor</p>
           <div className="mt-4 space-y-3">
             {jobs.slice(0, 6).map((job) => (
               <div
                 key={job._id}
-                className="rounded-[18px] border border-white/10 bg-[#0D1117] p-4"
+                className="rounded-[18px] border border-line-secondary bg-main p-4"
               >
                 <div className="flex items-center justify-between gap-3">
                   <StatusPill label={job.status} tone={statusTone(job.status)} />
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                     {job.requestedCredits} credits
                   </span>
                 </div>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                   {formatJobKind(job.kind, job.renderMode)}
                 </p>
-                <p className="mt-3 break-all font-mono text-[12px] leading-5 text-[#9BA7B4]">
+                <p className="mt-3 break-all font-mono text-[12px] leading-5 text-ink-secondary">
                   {job._id}
                 </p>
                 {job.errorMessage ? (
-                  <p className="mt-3 text-xs leading-5 text-[#FFD5D5]">{job.errorMessage}</p>
+                  <p className="mt-3 text-xs leading-5 text-accent-red">{job.errorMessage}</p>
                 ) : null}
               </div>
             ))}
           </div>
           {errorMessage ? (
-            <div className="mt-4 rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+            <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
               {errorMessage}
             </div>
           ) : null}
@@ -1026,18 +1026,18 @@ export function LibraryWorkbench() {
           }
         }}
       >
-        <AlertDialogContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+        <AlertDialogContent className="border-line-secondary bg-panel text-ink-primary">
           <AlertDialogHeader>
             <AlertDialogTitle>Review publish change</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9BA7B4]">
+            <AlertDialogDescription className="text-ink-secondary">
               Confirm how this concept should move between private, direct-share, and public surfaces.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {publishIntent ? (
             <div className="space-y-4">
-              <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[#58FFB2]">Concept</p>
+              <div className="rounded-[18px] border border-line-secondary bg-main p-4">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">Concept</p>
                 <p className="mt-3 text-lg font-semibold">{publishIntent.conceptTitle}</p>
                 <div className="mt-4 space-y-3 text-sm">
                   <MetaRow label="Current visibility" value={publishIntent.currentVisibility} />
@@ -1050,7 +1050,7 @@ export function LibraryWorkbench() {
                 </div>
               </div>
 
-              <div className="rounded-[18px] border border-white/10 bg-black/20 p-4 text-sm leading-6 text-[#C7D0DA]">
+              <div className="rounded-[18px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-muted">
                 {publishIntent.nextVisibility === "private" ? (
                   <p>
                     This will remove the concept from all public and direct-share surfaces. Existing public discovery
@@ -1072,13 +1072,13 @@ export function LibraryWorkbench() {
               {(publishIntent.nextVisibility !== "private" &&
                 publishIntent.currentStatus !== "generated" &&
                 publishIntent.currentStatus !== "archived") ? (
-                <div className="rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+                <div className="rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
                   Only generated or archived concepts can move onto shared surfaces.
                 </div>
               ) : null}
 
               {publishIntent.nextVisibility !== "private" && !publishIntent.previewUrlAvailable ? (
-                <div className="rounded-[18px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+                <div className="rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
                   A public preview URL is required before this concept can be shared. Generate or stabilize a public
                   preview asset first.
                 </div>
@@ -1087,7 +1087,7 @@ export function LibraryWorkbench() {
           ) : null}
 
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 bg-transparent text-[#E6EDF3] hover:bg-white/5 hover:text-[#E6EDF3]">
+            <AlertDialogCancel className="border-line-secondary bg-transparent text-ink-primary hover:bg-hover-subtle hover:text-ink-primary">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1102,7 +1102,7 @@ export function LibraryWorkbench() {
               onClick={() => {
                 void confirmPublishReview();
               }}
-              className="border border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3] hover:bg-[#193021]"
+              className="border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
             >
               {publishIntent?.nextVisibility === "private"
                 ? "Confirm unpublish"
@@ -1119,18 +1119,18 @@ export function LibraryWorkbench() {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/6 pb-3">
-      <span className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">{label}</span>
-      <span className="max-w-[58%] text-right text-sm text-[#E6EDF3]">{value}</span>
+    <div className="flex items-start justify-between gap-4 border-b border-dashed border-line-guide pb-3">
+      <span className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</span>
+      <span className="max-w-[58%] text-right text-sm text-ink-primary">{value}</span>
     </div>
   );
 }
 
 function FeasibilityStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[14px] border border-white/10 p-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">{label}</p>
-      <p className="mt-2 text-sm text-[#E6EDF3]">{value}</p>
+    <div className="rounded-[14px] border border-line-secondary p-3">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{label}</p>
+      <p className="mt-2 text-sm text-ink-primary">{value}</p>
     </div>
   );
 }
@@ -1146,11 +1146,11 @@ function StatusPill({
     <span
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "neutral" && "border-white/10 text-[#9BA7B4]",
-        tone === "cyan" && "border-[#3DD9FF]/30 bg-[#3DD9FF]/10 text-[#8FEAFF]",
-        tone === "green" && "border-[#58FFB2]/30 bg-[#58FFB2]/10 text-[#A6FFD5]",
-        tone === "amber" && "border-[#FFB84D]/30 bg-[#FFB84D]/10 text-[#FFD59A]",
-        tone === "red" && "border-[#FF5F5F]/30 bg-[#FF5F5F]/10 text-[#FFD2D2]"
+        tone === "neutral" && "border-line-secondary text-ink-secondary",
+        tone === "cyan" && "border-accent-blue bg-accent-blue/10 text-accent-blue",
+        tone === "green" && "border-accent-teal bg-accent-teal/10 text-accent-teal",
+        tone === "amber" && "border-accent-orange bg-accent-orange/10 text-accent-orange",
+        tone === "red" && "border-accent-red bg-accent-red/10 text-[#FFD2D2]"
       )}
     >
       {label}

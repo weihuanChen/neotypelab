@@ -111,7 +111,7 @@ export function CreatorHubView({ handle }: { handle: string }) {
               </div>
               <Link
                 href={`/pilot/${profile.pilot.handle}`}
-                className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+                className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
               >
                 Open Profile
               </Link>

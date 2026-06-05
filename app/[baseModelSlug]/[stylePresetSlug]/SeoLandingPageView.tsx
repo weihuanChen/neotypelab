@@ -38,7 +38,7 @@ export function SeoLandingPageView({
         </p>
         <Link
           href="/showcase"
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
         >
           Back to Showcase
         </Link>

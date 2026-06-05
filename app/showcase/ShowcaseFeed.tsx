@@ -106,24 +106,24 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
 
   if (sortedConcepts === undefined) {
     return (
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Showcase Sync</p>
+      <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Showcase Sync</p>
         <h2 className="mt-4 text-3xl font-semibold">Indexing public prototype signals</h2>
       </section>
     );
   }
 
   return (
-    <div className="space-y-6 text-[#E6EDF3]">
+    <div className="space-y-6 text-ink-primary">
       <section
         className={cn(
-          "rounded-[28px] border border-white/10 p-6",
-          terminalMode ? "bg-[#11161D]" : "bg-[#11161D]/95 backdrop-blur"
+          "rounded-[28px] border border-line-secondary p-6",
+          terminalMode ? "bg-panel" : "bg-panel/95 backdrop-blur"
         )}
       >
-        <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Public Showcase</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Public Showcase</p>
         <h1 className="mt-4 text-3xl font-semibold">Published prototype surface</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
           This feed only surfaces concepts marked `public`. Unlisted operator work stays
           off the grid but remains accessible by direct share link.
         </p>
@@ -137,8 +137,8 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
                 className={cn(
                   "inline-flex h-10 items-center justify-center rounded-[16px] border px-4 text-sm transition-colors",
                   active
-                    ? "border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3]"
-                    : "border-white/10 text-[#9BA7B4] hover:border-white/20 hover:text-[#E6EDF3]"
+                    ? "border-accent-teal bg-accent-teal/10 text-ink-primary"
+                    : "border-line-secondary text-ink-secondary hover:border-line-active hover:text-ink-primary"
                 )}
               >
                 {option.label}
@@ -146,7 +146,7 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
             );
           })}
         </div>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
           Discovery lens: {activeSort.description}
         </p>
         {filterOptions ? (
@@ -186,19 +186,19 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
           </div>
         ) : null}
         {(baseModelFilter || styleFilter || categoryFilter || creatorFilter) && sortedConcepts.length > 0 ? (
-          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+          <p className="mt-4 text-xs uppercase tracking-[0.18em] text-ink-muted">
             Filtered surface · {sortedConcepts.length} match{sortedConcepts.length === 1 ? "" : "es"}
           </p>
         ) : null}
       </section>
 
       {rankedCreators && rankedCreators.length > 0 ? (
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+        <section className="border-2 border-line-primary bg-surface p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Featured / Verified Pilots</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Featured / Verified Pilots</p>
               <h2 className="mt-3 text-2xl font-semibold">Creator ranking surface</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
                 Ranked public creators weighted by featured or verified status plus live concept saves, likes, and remix activity.
               </p>
             </div>
@@ -212,15 +212,15 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
       ) : null}
 
       {sortedCreatorPacks && sortedCreatorPacks.length > 0 ? (
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+        <section className="border-2 border-line-primary bg-surface p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Featured Creator Packs</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Featured Creator Packs</p>
               <h2 className="mt-3 text-2xl font-semibold">Reusable starter sets</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
                 Discover creator-built pack surfaces that can launch directly into create flows or serve as remix entry points.
               </p>
-              <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+              <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
                 Pack ranking follows the current discovery lens: {activeSort.label}
               </p>
             </div>
@@ -234,8 +234,8 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
       ) : null}
 
       {sortedConcepts.length === 0 ? (
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-8">
-          <p className="text-xs uppercase tracking-[0.28em] text-[#58FFB2]">
+        <section className="border-2 border-line-primary bg-surface p-8">
+          <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">
             {baseModelFilter || styleFilter || categoryFilter || creatorFilter ? "No filtered concepts" : "No public concepts"}
           </p>
           <h2 className="mt-4 text-2xl font-semibold">
@@ -243,7 +243,7 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
               ? "No public concepts matched this discovery filter."
               : "The showcase has not been populated yet."}
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-secondary">
             {baseModelFilter || styleFilter || categoryFilter || creatorFilter
               ? "Try clearing one or more filters, or publish more concepts that cover this base model and Style DNA combination."
               : "Move a generated concept to `public` from the library to expose it here."}
@@ -256,7 +256,7 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
                 category: null,
                 creator: null,
               })}
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+              className="mt-5 inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-blue bg-surface shadow-sm px-4 text-sm text-ink-primary transition-colors hover:bg-hover-panel"
             >
               Clear Filters
             </Link>
@@ -267,9 +267,9 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
           {sortedConcepts.map((concept) => (
             <article
               key={concept._id}
-              className="overflow-hidden rounded-[28px] border border-white/10 bg-[#161B22]"
+              className="overflow-hidden rounded-[28px] border border-line-secondary bg-surface"
             >
-              <div className="aspect-[4/3] bg-[#0D1117]">
+              <div className="aspect-[4/3] bg-main">
                 {concept.previewAsset?.publicUrl ? (
                   <img
                     src={concept.previewAsset.publicUrl}
@@ -279,10 +279,10 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
                 ) : (
                   <div className="flex h-full items-end p-5">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-[#6E7A88]">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-ink-muted">
                         Preview unavailable
                       </p>
-                      <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                      <p className="mt-2 text-sm leading-6 text-ink-secondary">
                         Asset exists, but no public URL is attached yet.
                       </p>
                     </div>
@@ -299,25 +299,25 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
                 </div>
                 <div>
                   <h2 className="text-2xl font-semibold tracking-tight">{concept.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                  <p className="mt-2 text-sm leading-6 text-ink-secondary">
                     {concept.baseModel?.name ?? "Unknown base model"} ·{" "}
                     {concept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
                     {concept.materialPreset?.name ?? "Unknown material profile"}
                   </p>
                   {concept.moodTags.length > 0 ? (
-                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#6E7A88]">
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
                       Mood Vector · {concept.moodTags.map(formatMoodTagLabel).join(" / ")}
                     </p>
                   ) : null}
                 </div>
-                <div className="grid gap-2 text-sm text-[#C7D0DA]">
+                <div className="grid gap-2 text-sm text-ink-muted">
                   <MetaRow
                     label="Pilot"
                     value={
                       concept.owner ? (
                         <Link
                           href={`/pilot/${concept.owner.handle}`}
-                          className="transition-colors hover:text-[#E6EDF3]"
+                          className="transition-colors hover:text-ink-primary"
                         >
                           @{concept.owner.handle}
                         </Link>
@@ -340,13 +340,13 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Link
                     href={`/prototype/${concept._id}`}
-                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm font-medium text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-blue bg-surface shadow-sm px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-hover-panel"
                   >
                     Open Share Surface
                   </Link>
                   <Link
                     href={`/t/create?remix=${concept._id}`}
-                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm font-medium text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-orange bg-accent-orange/10 px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-accent-orange/20"
                   >
                     Remix in Terminal
                   </Link>
@@ -362,8 +362,8 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
 
 function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-white/6 pb-2">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">{label}</span>
+    <div className="flex items-start justify-between gap-3 border-b border-dashed border-line-guide pb-2">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{label}</span>
       <span className="max-w-[58%] text-right">{value}</span>
     </div>
   );
@@ -371,7 +371,7 @@ function MetaRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 function Pill({ children }: { children: string }) {
   return (
-    <span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-[#9BA7B4]">
+    <span className="rounded-full border border-line-secondary px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
       {children}
     </span>
   );
@@ -436,16 +436,16 @@ function FilterGroup({
   searchParams: ReturnType<typeof useSearchParams>;
 }) {
   return (
-    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">{label}</p>
+    <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Link
           href={buildShowcaseHref(pathname, searchParams, { [paramName]: null })}
           className={cn(
             "inline-flex h-9 items-center justify-center rounded-[14px] border px-3 text-xs transition-colors",
             activeValue === null
-              ? "border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3]"
-              : "border-white/10 text-[#9BA7B4] hover:border-white/20 hover:text-[#E6EDF3]"
+              ? "border-accent-teal bg-accent-teal/10 text-ink-primary"
+              : "border-line-secondary text-ink-secondary hover:border-line-active hover:text-ink-primary"
           )}
         >
           All
@@ -459,8 +459,8 @@ function FilterGroup({
               className={cn(
                 "inline-flex h-9 items-center justify-center rounded-[14px] border px-3 text-xs transition-colors",
                 active
-                  ? "border-[#58FFB2]/35 bg-[#13241B] text-[#E6EDF3]"
-                  : "border-white/10 text-[#9BA7B4] hover:border-white/20 hover:text-[#E6EDF3]"
+                  ? "border-accent-teal bg-accent-teal/10 text-ink-primary"
+                  : "border-line-secondary text-ink-secondary hover:border-line-active hover:text-ink-primary"
               )}
             >
               {option.label}

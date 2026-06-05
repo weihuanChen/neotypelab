@@ -253,8 +253,8 @@ export function AdminWorkbench() {
 
   if (viewer === undefined) {
     return (
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Admin boot</p>
+      <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Admin boot</p>
         <h2 className="mt-3 text-3xl font-semibold">Resolving operator privileges</h2>
       </section>
     );
@@ -263,10 +263,10 @@ export function AdminWorkbench() {
   if (!viewer?.canManagePlatform) {
     return (
       <div className="space-y-6">
-        <section className="rounded-[28px] border border-[#FF5F5F]/20 bg-[#161B22] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#FF8E8E]">Access locked</p>
+        <section className="rounded-[28px] border border-accent-red bg-surface p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-red">Access locked</p>
           <h2 className="mt-3 text-3xl font-semibold">Super admin clearance required</h2>
-          <p className="mt-4 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-4 max-w-3xl text-sm leading-6 text-ink-secondary">
             The current viewer record is not being recognized as a platform admin. Use the
             diagnostics below to confirm which Clerk identity and Convex deployment are active.
           </p>
@@ -314,18 +314,18 @@ export function AdminWorkbench() {
         </section>
 
         {statusMessage ? (
-          <div className="rounded-[20px] border border-[#58FFB2]/20 bg-[#58FFB2]/10 p-4 text-sm text-[#CFFFE6]">
+          <div className="rounded-[20px] border border-accent-teal bg-accent-teal/10 p-4 text-sm text-accent-teal">
             {statusMessage}
           </div>
         ) : null}
         {errorMessage ? (
-          <div className="rounded-[20px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+          <div className="rounded-[20px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
             {errorMessage}
           </div>
         ) : null}
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6 text-[#E6EDF3]">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Access diagnostics</p>
+        <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Access diagnostics</p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <DiagnosticRow label="Clerk Loaded" value={String(isClerkLoaded)} />
             <DiagnosticRow label="Clerk Signed In" value={String(Boolean(isSignedIn))} />
@@ -349,11 +349,11 @@ export function AdminWorkbench() {
   }
 
   return (
-    <div className="space-y-6 text-[#E6EDF3]">
-      <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Admin terminal</p>
+    <div className="space-y-6 text-ink-primary">
+      <section className="border-2 border-line-primary bg-panel p-6">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Admin terminal</p>
         <h2 className="mt-3 text-3xl font-semibold">Super admin control surface</h2>
-        <p className="mt-4 max-w-4xl text-sm leading-6 text-[#9BA7B4]">
+        <p className="mt-4 max-w-4xl text-sm leading-6 text-ink-secondary">
           This console governs user access, credits, charge rules, and prompt templates.
           All mutations write into `adminAuditLogs` for traceability.
         </p>
@@ -365,12 +365,12 @@ export function AdminWorkbench() {
       </section>
 
       {statusMessage ? (
-        <div className="rounded-[20px] border border-[#58FFB2]/20 bg-[#58FFB2]/10 p-4 text-sm text-[#CFFFE6]">
+        <div className="rounded-[20px] border border-accent-teal bg-accent-teal/10 p-4 text-sm text-accent-teal">
           {statusMessage}
         </div>
       ) : null}
       {errorMessage ? (
-        <div className="rounded-[20px] border border-[#FF5F5F]/20 bg-[#FF5F5F]/10 p-4 text-sm text-[#FFD5D5]">
+        <div className="rounded-[20px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
           {errorMessage}
         </div>
       ) : null}
@@ -398,13 +398,13 @@ export function AdminWorkbench() {
         />
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+      <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Feedback triage</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Feedback triage</p>
             <h3 className="mt-2 text-2xl font-semibold">Expansion queue and lab reports</h3>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
             Route incoming model requests, generation quality reports, and paint mapping
             issues through a controlled admin queue. This is the operational half of the
             P1 feedback pipeline.
@@ -412,11 +412,11 @@ export function AdminWorkbench() {
         </div>
         <div className="mt-5 grid gap-4">
           {feedbackPipeline === undefined ? (
-            <div className="rounded-[20px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="rounded-[20px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               Loading structured feedback reports.
             </div>
           ) : feedbackPipeline.length === 0 ? (
-            <div className="rounded-[20px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="rounded-[20px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               No feedback reports have entered the queue yet.
             </div>
           ) : (
@@ -430,7 +430,7 @@ export function AdminWorkbench() {
               return (
                 <article
                   key={report._id}
-                  className="rounded-[22px] border border-white/10 bg-[#11161D] p-5"
+                  className="rounded-[22px] border border-line-secondary bg-panel p-5"
                 >
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
@@ -449,13 +449,13 @@ export function AdminWorkbench() {
                       <h4 className="mt-3 text-xl font-semibold">
                         {report.reporter?.fullName ?? "Unknown operator"}
                       </h4>
-                      <p className="mt-1 text-sm text-[#9BA7B4]">
+                      <p className="mt-1 text-sm text-ink-secondary">
                         {report.reporter?.email ?? "No reporter email"} · @{report.reporter?.handle ?? "unknown"}
                       </p>
-                      <p className="mt-4 max-w-3xl text-sm leading-6 text-[#E6EDF3]">
+                      <p className="mt-4 max-w-3xl text-sm leading-6 text-ink-primary">
                         {report.message}
                       </p>
-                      <div className="mt-4 flex flex-wrap gap-4 text-xs text-[#9BA7B4]">
+                      <div className="mt-4 flex flex-wrap gap-4 text-xs text-ink-secondary">
                         {report.baseModel ? <span>Base Model: {report.baseModel.name}</span> : null}
                         {report.stylePreset ? <span>Style DNA: {report.stylePreset.name}</span> : null}
                         {report.concept ? <span>Concept: {report.concept.title}</span> : null}
@@ -468,8 +468,8 @@ export function AdminWorkbench() {
                       </div>
                     </div>
 
-                    <div className="w-full max-w-[360px] rounded-[20px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">
+                    <div className="w-full max-w-[360px] rounded-[20px] border border-line-secondary bg-main p-4">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
                         Queue Summary
                       </p>
                       <div className="mt-3 space-y-3 text-sm">
@@ -499,7 +499,7 @@ export function AdminWorkbench() {
                             [report._id]: { ...draft, adminNotes: event.target.value },
                           }))
                         }
-                        className="min-h-[130px] border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#58FFB2]"
+                        className="min-h-[130px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
                       />
                     </Field>
                     <Field label="Feedback Status">
@@ -512,10 +512,10 @@ export function AdminWorkbench() {
                           }))
                         }
                       >
-                        <SelectTrigger className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3]">
+                        <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                        <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                           <SelectItem value="open">Open</SelectItem>
                           <SelectItem value="triaged">Triaged</SelectItem>
                           <SelectItem value="resolved">Resolved</SelectItem>
@@ -533,7 +533,7 @@ export function AdminWorkbench() {
                                 [report._id]: { ...draft, priority: event.target.value },
                               }))
                             }
-                            className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#58FFB2]"
+                            className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
                           />
                         </Field>
                       </div>
@@ -548,10 +548,10 @@ export function AdminWorkbench() {
                           }))
                         }
                       >
-                        <SelectTrigger className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3]">
+                        <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                        <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                           <SelectItem value="open">Open</SelectItem>
                           <SelectItem value="in-review">In Review</SelectItem>
                           <SelectItem value="done">Done</SelectItem>
@@ -616,29 +616,29 @@ export function AdminWorkbench() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+        <section className="border-2 border-line-primary bg-surface p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">User control</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">User control</p>
               <h3 className="mt-2 text-2xl font-semibold">Accounts, roles, and credits</h3>
             </div>
             <Input
               value={userSearch}
               onChange={(event) => setUserSearch(event.target.value)}
               placeholder="Search email, handle, or operator"
-              className="h-11 w-full max-w-sm border-white/10 bg-[#0D1117] text-[#E6EDF3] placeholder:text-[#6E7A88] focus-visible:ring-[#3DD9FF]"
+              className="h-11 w-full max-w-sm border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-blue"
             />
           </div>
           <div className="mt-5 space-y-4">
             {users === undefined ? (
-              <div className="rounded-[20px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+              <div className="rounded-[20px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
                 Syncing operator roster.
               </div>
             ) : (
               users.map((user) => (
                 <article
                   key={user._id}
-                  className="rounded-[22px] border border-white/10 bg-[#11161D] p-4"
+                  className="rounded-[22px] border border-line-secondary bg-panel p-4"
                 >
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
@@ -652,19 +652,19 @@ export function AdminWorkbench() {
                         {user.isFeaturedCreator ? <FlagPill label="featured creator" tone="cyan" /> : null}
                       </div>
                       <h4 className="mt-3 text-xl font-semibold">{user.fullName}</h4>
-                      <p className="mt-1 text-sm text-[#9BA7B4]">
+                      <p className="mt-1 text-sm text-ink-secondary">
                         {user.email} · @{user.handle}
                       </p>
                       {user.creatorTagline ? (
-                        <p className="mt-2 text-sm text-[#C7D0DA]">{user.creatorTagline}</p>
+                        <p className="mt-2 text-sm text-ink-muted">{user.creatorTagline}</p>
                       ) : null}
                       {user.creatorSpecialties.length > 0 ? (
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[#6E7A88]">
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-muted">
                           {user.creatorSpecialties.join(" / ")}
                         </p>
                       ) : null}
                     </div>
-                    <div className="grid min-w-[220px] gap-2 rounded-[18px] border border-white/10 bg-black/20 p-3 text-sm">
+                    <div className="grid min-w-[220px] gap-2 rounded-[18px] border border-line-secondary bg-main p-3 text-sm">
                       <MetaRow label="Balance" value={`${user.credits.balance}`} />
                       <MetaRow label="Granted" value={`${user.credits.lifetimeGranted}`} />
                       <MetaRow label="Spent" value={`${user.credits.lifetimeSpent}`} />
@@ -833,54 +833,54 @@ export function AdminWorkbench() {
         </section>
 
         <aside className="space-y-6">
-          <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Failure monitor</p>
+          <section className="border-2 border-line-primary bg-surface p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Failure monitor</p>
             <div className="mt-4 space-y-3">
               {overview?.recentFailedJobs.length ? (
                 overview.recentFailedJobs.map((job) => (
-                  <div key={job._id} className="rounded-[18px] border border-white/10 bg-[#11161D] p-4">
+                  <div key={job._id} className="rounded-[18px] border border-line-secondary bg-panel p-4">
                     <div className="flex items-center justify-between gap-3">
                       <FlagPill label={job.provider ?? "provider pending"} tone="amber" />
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         failed
                       </span>
                     </div>
-                    <p className="mt-3 break-all font-mono text-[12px] text-[#9BA7B4]">{job._id}</p>
+                    <p className="mt-3 break-all font-mono text-[12px] text-ink-secondary">{job._id}</p>
                     {job.errorMessage ? (
-                      <p className="mt-3 text-sm leading-6 text-[#FFD5D5]">{job.errorMessage}</p>
+                      <p className="mt-3 text-sm leading-6 text-accent-red">{job.errorMessage}</p>
                     ) : null}
                   </div>
                 ))
               ) : (
-                <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+                <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
                   No failed generation jobs in the recent window.
                 </div>
               )}
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Audit trail</p>
+          <section className="border-2 border-line-primary bg-surface p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Audit trail</p>
             <div className="mt-4 space-y-3">
               {auditLog === undefined ? (
-                <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+                <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
                   Loading recent mutations.
                 </div>
               ) : (
                 auditLog.map((entry) => (
-                  <div key={entry._id} className="rounded-[18px] border border-white/10 bg-[#11161D] p-4">
+                  <div key={entry._id} className="rounded-[18px] border border-line-secondary bg-panel p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-[#FFB84D]">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-accent-orange">
                         {entry.action}
                       </span>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                         {entry.entityType}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm text-[#E6EDF3]">
+                    <p className="mt-2 text-sm text-ink-primary">
                       {entry.actor?.fullName ?? "Unknown operator"}
                     </p>
-                    <p className="mt-1 text-xs break-all text-[#9BA7B4]">
+                    <p className="mt-1 text-xs break-all text-ink-secondary">
                       {entry.entityId ?? "No entity reference"}
                     </p>
                   </div>
@@ -891,18 +891,18 @@ export function AdminWorkbench() {
         </aside>
       </div>
 
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+      <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Credit campaigns</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Credit campaigns</p>
             <h3 className="mt-2 text-2xl font-semibold">Activity code management</h3>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
             Time-boxed credit grants with one-time or capped activation codes.
           </p>
         </div>
 
-        <article className="mt-5 rounded-[22px] border border-dashed border-white/15 bg-[#11161D] p-5">
+        <article className="mt-5 rounded-[22px] border border-dashed border-line-secondary bg-panel p-5">
           <div className="flex flex-wrap items-center gap-2">
             <FlagPill label="new campaign" tone="amber" />
             <FlagPill label={newCreditCampaignDraft.isActive ? "active" : "paused"} tone={newCreditCampaignDraft.isActive ? "green" : "red"} />
@@ -914,7 +914,7 @@ export function AdminWorkbench() {
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, name: event.target.value }))
                 }
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
               />
             </Field>
             <Field label="Starts At">
@@ -924,7 +924,7 @@ export function AdminWorkbench() {
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, startsAt: event.target.value }))
                 }
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
               />
             </Field>
             <Field label="Ends At">
@@ -934,7 +934,7 @@ export function AdminWorkbench() {
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, endsAt: event.target.value }))
                 }
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
               />
             </Field>
             <Field label="Default Credits">
@@ -948,7 +948,7 @@ export function AdminWorkbench() {
                     defaultCreditAmount: event.target.value,
                   }))
                 }
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
               />
             </Field>
             <Field label="Campaign Cap">
@@ -963,7 +963,7 @@ export function AdminWorkbench() {
                   }))
                 }
                 placeholder="Unlimited"
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] placeholder:text-[#6E7A88] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
               />
             </Field>
             <Field label="Per User Limit">
@@ -977,7 +977,7 @@ export function AdminWorkbench() {
                     perUserLimit: event.target.value,
                   }))
                 }
-                className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
               />
             </Field>
             <div className="md:col-span-2">
@@ -990,7 +990,7 @@ export function AdminWorkbench() {
                       description: event.target.value,
                     }))
                   }
-                  className="h-11 border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                  className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                 />
               </Field>
             </div>
@@ -1040,7 +1040,7 @@ export function AdminWorkbench() {
                   isActive: !current.isActive,
                 }))
               }
-              className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]"
+              className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
             >
               {newCreditCampaignDraft.isActive ? "Create Paused" : "Create Active"}
             </button>
@@ -1049,11 +1049,11 @@ export function AdminWorkbench() {
 
         <div className="mt-5 space-y-4">
           {creditCampaigns === undefined ? (
-            <div className="rounded-[20px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="rounded-[20px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               Loading credit campaigns.
             </div>
           ) : creditCampaigns.length === 0 ? (
-            <div className="rounded-[20px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="rounded-[20px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               No credit campaigns have been created yet.
             </div>
           ) : (
@@ -1074,7 +1074,7 @@ export function AdminWorkbench() {
               const generatedCodes = generatedCodeBatches[campaign._id] ?? [];
 
               return (
-                <article key={campaign._id} className="rounded-[22px] border border-white/10 bg-[#11161D] p-5">
+                <article key={campaign._id} className="rounded-[22px] border border-line-secondary bg-panel p-5">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1084,16 +1084,16 @@ export function AdminWorkbench() {
                         <FlagPill label={`${campaign.activeCodeCount} live`} tone="amber" />
                       </div>
                       <h4 className="mt-3 text-xl font-semibold">{campaign.name}</h4>
-                      <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                      <p className="mt-2 text-sm leading-6 text-ink-secondary">
                         {formatDateTime(campaign.startsAt)} / {formatDateTime(campaign.endsAt)}
                       </p>
                       {campaign.description ? (
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#C7D0DA]">
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
                           {campaign.description}
                         </p>
                       ) : null}
                     </div>
-                    <div className="grid min-w-[240px] gap-2 rounded-[18px] border border-white/10 bg-black/20 p-3 text-sm">
+                    <div className="grid min-w-[240px] gap-2 rounded-[18px] border border-line-secondary bg-main p-3 text-sm">
                       <MetaRow label="Default" value={`${campaign.defaultCreditAmount} credits`} />
                       <MetaRow label="Campaign Cap" value={campaign.maxRedemptions ? `${campaign.maxRedemptions}` : "Unlimited"} />
                       <MetaRow label="Per User" value={`${campaign.perUserLimit}`} />
@@ -1101,8 +1101,8 @@ export function AdminWorkbench() {
                   </div>
 
                   <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.8fr)]">
-                    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">
+                    <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
                         Campaign Control
                       </p>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1115,7 +1115,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...draft, name: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <Field label="Default Credits">
@@ -1129,7 +1129,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...draft, defaultCreditAmount: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <Field label="Starts At">
@@ -1142,7 +1142,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...draft, startsAt: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <Field label="Ends At">
@@ -1155,7 +1155,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...draft, endsAt: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <Field label="Campaign Cap">
@@ -1170,7 +1170,7 @@ export function AdminWorkbench() {
                               }))
                             }
                             placeholder="Unlimited"
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] placeholder:text-[#6E7A88] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <Field label="Per User Limit">
@@ -1184,7 +1184,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...draft, perUserLimit: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                           />
                         </Field>
                         <div className="md:col-span-2">
@@ -1197,7 +1197,7 @@ export function AdminWorkbench() {
                                   [campaign._id]: { ...draft, description: event.target.value },
                                 }))
                               }
-                              className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#FFB84D]"
+                              className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
                             />
                           </Field>
                         </div>
@@ -1244,15 +1244,15 @@ export function AdminWorkbench() {
                               [campaign._id]: { ...draft, isActive: !draft.isActive },
                             }))
                           }
-                          className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]"
+                          className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
                         >
                           {draft.isActive ? "Pause Campaign" : "Activate Campaign"}
                         </button>
                       </div>
                     </div>
 
-                    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">
+                    <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
                         Code Batch
                       </p>
                       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1268,7 +1268,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...batchDraft, count: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                           />
                         </Field>
                         <Field label="Credits">
@@ -1282,7 +1282,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...batchDraft, creditAmount: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                           />
                         </Field>
                         <Field label="Uses Per Code">
@@ -1299,7 +1299,7 @@ export function AdminWorkbench() {
                                 },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                           />
                         </Field>
                         <Field label="Prefix">
@@ -1311,7 +1311,7 @@ export function AdminWorkbench() {
                                 [campaign._id]: { ...batchDraft, prefix: event.target.value },
                               }))
                             }
-                            className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                           />
                         </Field>
                         <div className="sm:col-span-2">
@@ -1325,7 +1325,7 @@ export function AdminWorkbench() {
                                   [campaign._id]: { ...batchDraft, expiresAt: event.target.value },
                                 }))
                               }
-                              className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                              className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                             />
                           </Field>
                         </div>
@@ -1367,7 +1367,7 @@ export function AdminWorkbench() {
                         </ActionButton>
                       </div>
                       {generatedCodes.length > 0 ? (
-                        <div className="mt-4 rounded-[16px] border border-[#58FFB2]/20 bg-[#58FFB2]/10 p-3">
+                        <div className="mt-4 rounded-[16px] border border-accent-teal bg-accent-teal/10 p-3">
                           <p className="text-[11px] uppercase tracking-[0.18em] text-[#A6FFD5]">
                             Latest Batch
                           </p>
@@ -1375,7 +1375,7 @@ export function AdminWorkbench() {
                             {generatedCodes.map((code) => (
                               <code
                                 key={code}
-                                className="rounded-[10px] border border-white/10 bg-black/25 px-3 py-2 font-mono text-xs text-[#E6EDF3]"
+                                className="rounded-[10px] border border-line-secondary bg-black/25 px-3 py-2 font-mono text-xs text-ink-primary"
                               >
                                 {code}
                               </code>
@@ -1387,23 +1387,23 @@ export function AdminWorkbench() {
                   </div>
 
                   <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]">
-                    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">
+                    <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
                         Activation Codes
                       </p>
                       <div className="mt-3 grid gap-2">
                         {campaign.codes.length === 0 ? (
-                          <p className="text-sm text-[#9BA7B4]">No activation codes generated.</p>
+                          <p className="text-sm text-ink-secondary">No activation codes generated.</p>
                         ) : (
                           campaign.codes.map((activationCode) => {
                             const codeState = getActivationCodeState(activationCode);
                             return (
                               <div
                                 key={activationCode._id}
-                                className="grid gap-3 rounded-[16px] border border-white/10 bg-[#0D1117] p-3 md:grid-cols-[minmax(0,1fr)_120px_120px]"
+                                className="grid gap-3 rounded-[16px] border border-line-secondary bg-main p-3 md:grid-cols-[minmax(0,1fr)_120px_120px]"
                               >
                                 <div className="min-w-0">
-                                  <code className="break-all font-mono text-sm text-[#E6EDF3]">
+                                  <code className="break-all font-mono text-sm text-ink-primary">
                                     {activationCode.code}
                                   </code>
                                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1447,23 +1447,23 @@ export function AdminWorkbench() {
                       </div>
                     </div>
 
-                    <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">
+                    <div className="rounded-[20px] border border-line-secondary bg-main p-4">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
                         Recent Redemptions
                       </p>
                       <div className="mt-3 space-y-3">
                         {campaign.recentRedemptions.length === 0 ? (
-                          <p className="text-sm text-[#9BA7B4]">No redemptions yet.</p>
+                          <p className="text-sm text-ink-secondary">No redemptions yet.</p>
                         ) : (
                           campaign.recentRedemptions.map((redemption) => (
                             <div
                               key={redemption._id}
-                              className="rounded-[16px] border border-white/10 bg-[#0D1117] p-3"
+                              className="rounded-[16px] border border-line-secondary bg-main p-3"
                             >
-                              <p className="text-sm font-medium text-[#E6EDF3]">
+                              <p className="text-sm font-medium text-ink-primary">
                                 {redemption.user?.email ?? "Unknown user"}
                               </p>
-                              <p className="mt-1 break-all font-mono text-[12px] text-[#9BA7B4]">
+                              <p className="mt-1 break-all font-mono text-[12px] text-ink-secondary">
                                 {redemption.code}
                               </p>
                               <div className="mt-3 grid gap-2 text-sm">
@@ -1485,11 +1485,11 @@ export function AdminWorkbench() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">Prompt templates</p>
+        <section className="border-2 border-line-primary bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Prompt templates</p>
           <div className="mt-4 space-y-2">
             {promptTemplates === undefined ? (
-              <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+              <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
                 Loading prompt templates.
               </div>
             ) : (
@@ -1501,30 +1501,30 @@ export function AdminWorkbench() {
                   className={cn(
                     "w-full rounded-[18px] border p-4 text-left transition-colors",
                     selectedTemplate?._id === template._id
-                      ? "border-[#58FFB2]/35 bg-[#58FFB2]/10"
-                      : "border-white/10 bg-[#11161D] hover:border-white/20"
+                      ? "border-[#58FFB2]/35 bg-accent-teal/10"
+                      : "border-line-secondary bg-panel hover:border-line-active"
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-[#6E7A88]">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
                         {template.kind}
                       </p>
-                      <h4 className="mt-2 text-base font-semibold text-[#E6EDF3]">
+                      <h4 className="mt-2 text-base font-semibold text-ink-primary">
                         {template.name}
                       </h4>
                     </div>
                     <FlagPill label={template.isActive ? "active" : "inactive"} tone={template.isActive ? "green" : "red"} />
                   </div>
-                  <p className="mt-2 text-xs text-[#9BA7B4]">Version {template.version}</p>
+                  <p className="mt-2 text-xs text-ink-secondary">Version {template.version}</p>
                 </button>
               ))
             )}
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Template editor</p>
+        <section className="border-2 border-line-primary bg-surface p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Template editor</p>
           {templateDraft && selectedTemplate ? (
             <div className="mt-4 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -1536,7 +1536,7 @@ export function AdminWorkbench() {
                         current ? { ...current, name: event.target.value } : current
                       )
                     }
-                    className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                    className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                   />
                 </Field>
                 <Field label="Version">
@@ -1547,7 +1547,7 @@ export function AdminWorkbench() {
                         current ? { ...current, version: event.target.value } : current
                       )
                     }
-                    className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                    className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                   />
                 </Field>
               </div>
@@ -1559,7 +1559,7 @@ export function AdminWorkbench() {
                       current ? { ...current, notePolicy: event.target.value } : current
                     )
                   }
-                  className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                  className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                 />
               </Field>
               <Field label="System Prompt">
@@ -1570,7 +1570,7 @@ export function AdminWorkbench() {
                       current ? { ...current, systemPrompt: event.target.value } : current
                     )
                   }
-                  className="min-h-[150px] border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                  className="min-h-[150px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                 />
               </Field>
               <Field label="User Prompt Template">
@@ -1581,7 +1581,7 @@ export function AdminWorkbench() {
                       current ? { ...current, userPromptTemplate: event.target.value } : current
                     )
                   }
-                  className="min-h-[180px] border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                  className="min-h-[180px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                 />
               </Field>
               <Field label="Negative Prompt Template">
@@ -1592,7 +1592,7 @@ export function AdminWorkbench() {
                       current ? { ...current, negativePromptTemplate: event.target.value } : current
                     )
                   }
-                  className="min-h-[120px] border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                  className="min-h-[120px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                 />
               </Field>
               <div className="flex flex-wrap items-center gap-3">
@@ -1629,35 +1629,35 @@ export function AdminWorkbench() {
                       current ? { ...current, isActive: !current.isActive } : current
                     )
                   }
-                  className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]"
+                  className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
                 >
                   {templateDraft.isActive ? "Mark Inactive" : "Mark Active"}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="mt-4 rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="mt-4 rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               Select a prompt template to edit its composition rules.
             </div>
           )}
         </section>
       </div>
 
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
+      <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">Catalog operations</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Catalog operations</p>
             <h3 className="mt-2 text-2xl font-semibold">Base models, Style DNA, materials, paint maps</h3>
           </div>
-          <p className="max-w-2xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
             This is the operational catalog layer behind P1. Each entry can be tuned,
             enabled, or disabled without reseeding the deployment.
           </p>
         </div>
 
         <div className="mt-5 grid gap-6 xl:grid-cols-2">
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#58FFB2]">Base Models</p>
+          <section className="border-2 border-line-primary bg-panel p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Base Models</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading base models." />
@@ -1676,42 +1676,42 @@ export function AdminWorkbench() {
                     isActive: model.isActive,
                   };
                   return (
-                    <article key={model._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                    <article key={model._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <FlagPill label={model.slug} tone="cyan" />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
                       </div>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Field label="Name">
-                          <Input value={draft.name} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.name} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Series">
-                          <Input value={draft.series} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, series: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.series} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, series: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Manufacturer">
-                          <Input value={draft.manufacturer} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, manufacturer: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.manufacturer} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, manufacturer: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Grade">
-                          <Input value={draft.grade} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, grade: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.grade} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, grade: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Silhouette">
-                          <Input value={draft.silhouetteType} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, silhouetteType: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.silhouetteType} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, silhouetteType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Complexity">
-                          <Input value={draft.complexityLevel} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, complexityLevel: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.complexityLevel} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, complexityLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Aliases CSV">
-                          <Input value={draft.aliases} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, aliases: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.aliases} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, aliases: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Tags CSV">
-                          <Input value={draft.tags} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, tags: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.tags} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, tags: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Default Material">
                           <Select value={draft.defaultMaterialPresetId} onValueChange={(value) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, defaultMaterialPresetId: value } }))}>
-                            <SelectTrigger className="h-11 border-white/10 bg-black/20 text-[#E6EDF3]">
+                            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                               <SelectItem value="none">None</SelectItem>
                               {catalogData.materialPresets.map((preset) => (
                                 <SelectItem key={preset._id} value={preset._id}>{preset.name}</SelectItem>
@@ -1750,7 +1750,7 @@ export function AdminWorkbench() {
                         >
                           Save Base Model
                         </ActionButton>
-                        <button type="button" onClick={() => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -1761,8 +1761,8 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#FFB84D]">Style DNA</p>
+          <section className="border-2 border-line-primary bg-panel p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Style DNA</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading style presets." />
@@ -1786,7 +1786,7 @@ export function AdminWorkbench() {
                     isActive: preset.isActive,
                   };
                   return (
-                    <article key={preset._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                    <article key={preset._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <FlagPill label={preset.slug} tone="cyan" />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
@@ -1795,46 +1795,46 @@ export function AdminWorkbench() {
                       <div className="mt-4 grid gap-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <Field label="Name">
-                            <Input value={draft.name} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input value={draft.name} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                           <Field label="Category">
-                            <Input value={draft.category} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, category: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input value={draft.category} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, category: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                           <Field label="Contrast">
-                            <Input value={draft.contrastLevel} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, contrastLevel: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input value={draft.contrastLevel} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, contrastLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                           <Field label="Weathering Profile">
-                            <Input value={draft.weatheringProfile} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, weatheringProfile: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input value={draft.weatheringProfile} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, weatheringProfile: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                         </div>
                         <Field label="Short Description">
-                          <Textarea value={draft.shortDescription} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Textarea value={draft.shortDescription} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Prompt Keywords CSV">
-                          <Input value={draft.promptKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.promptKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Negative Keywords CSV">
-                          <Input value={draft.negativeKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, negativeKeywords: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.negativeKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, negativeKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Recommended Material Slugs CSV">
-                          <Input value={draft.recommendedMaterialSlugs} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, recommendedMaterialSlugs: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.recommendedMaterialSlugs} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, recommendedMaterialSlugs: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="SEO Keywords CSV">
-                          <Input value={draft.seoKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, seoKeywords: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.seoKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, seoKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <div className="grid gap-4 md:grid-cols-2">
                           <Field label="Prompt Version">
-                            <Input value={draft.promptVersion} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptVersion: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input value={draft.promptVersion} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptVersion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                           <Field label="Visibility Weight">
-                            <Input type="number" step="0.01" min="0" max="1" value={draft.visibilityWeight} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, visibilityWeight: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                            <Input type="number" step="0.01" min="0" max="1" value={draft.visibilityWeight} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, visibilityWeight: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                           </Field>
                           <Field label="Creator Owner">
                             <Select value={draft.creatorUserId} onValueChange={(value) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, creatorUserId: value } }))}>
-                              <SelectTrigger className="h-11 border-white/10 bg-black/20 text-[#E6EDF3]">
+                              <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                              <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                                 <SelectItem value="none">None</SelectItem>
                                 {users?.map((user) => (
                                   <SelectItem key={user._id} value={user._id}>
@@ -1846,7 +1846,7 @@ export function AdminWorkbench() {
                           </Field>
                         </div>
                         <Field label="System Prompt Fragment">
-                          <Textarea value={draft.systemPromptFragment} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, systemPromptFragment: event.target.value } }))} className="min-h-[100px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Textarea value={draft.systemPromptFragment} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, systemPromptFragment: event.target.value } }))} className="min-h-[100px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1884,10 +1884,10 @@ export function AdminWorkbench() {
                         >
                           Save Style DNA
                         </ActionButton>
-                        <button type="button" onClick={() => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isFeaturedStyle: !draft.isFeaturedStyle } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isFeaturedStyle: !draft.isFeaturedStyle } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isFeaturedStyle ? "Unfeature Style" : "Feature Style"}
                         </button>
-                        <button type="button" onClick={() => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -1898,8 +1898,8 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#58FFB2]">Material Presets</p>
+          <section className="border-2 border-line-primary bg-panel p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Material Presets</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading material presets." />
@@ -1917,37 +1917,37 @@ export function AdminWorkbench() {
                     isActive: preset.isActive,
                   };
                   return (
-                    <article key={preset._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                    <article key={preset._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <FlagPill label={preset.slug} tone="cyan" />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
                       </div>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Field label="Name">
-                          <Input value={draft.name} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.name} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Finish Type">
-                          <Input value={draft.finishType} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, finishType: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.finishType} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, finishType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Reflectivity">
-                          <Input value={draft.reflectivityLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, reflectivityLevel: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.reflectivityLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, reflectivityLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Paint Finish">
-                          <Input value={draft.paintFinish} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, paintFinish: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.paintFinish} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, paintFinish: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Difficulty">
-                          <Input value={draft.difficultyLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, difficultyLevel: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.difficultyLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, difficultyLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Sheen">
-                          <Input value={draft.sheenLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, sheenLevel: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.sheenLevel} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, sheenLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Prompt Keywords CSV">
-                          <Input value={draft.promptKeywords} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Input value={draft.promptKeywords} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                       </div>
                       <div className="mt-4">
                         <Field label="Short Description">
-                          <Textarea value={draft.shortDescription} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#58FFB2]" />
+                          <Textarea value={draft.shortDescription} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1979,7 +1979,7 @@ export function AdminWorkbench() {
                         >
                           Save Material
                         </ActionButton>
-                        <button type="button" onClick={() => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -1990,11 +1990,11 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
+          <section className="border-2 border-line-primary bg-panel p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-[#3DD9FF]">Creator Packs</p>
-                <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">
+                <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Creator Packs</p>
+                <p className="mt-2 text-sm leading-6 text-ink-secondary">
                   Bundle creator-owned Style DNA, base models, and material presets into shareable starter packs.
                 </p>
               </div>
@@ -2037,7 +2037,7 @@ export function AdminWorkbench() {
                 <CatalogLoading label="Loading creator packs." />
               ) : (
                 <>
-                  <article className="rounded-[20px] border border-dashed border-white/15 bg-[#0D1117] p-4">
+                  <article className="rounded-[20px] border border-dashed border-line-secondary bg-main p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <FlagPill label="new pack" tone="cyan" />
                       <FlagPill label={newCreatorPackDraft.packType} tone={newCreatorPackDraft.packType === "premium" ? "amber" : "green"} />
@@ -2045,14 +2045,14 @@ export function AdminWorkbench() {
                     <div className="mt-4 grid gap-4">
                       <div className="grid gap-4 md:grid-cols-2">
                         <Field label="Pack Name">
-                          <Input value={newCreatorPackDraft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Input value={newCreatorPackDraft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Creator Owner">
                           <Select value={newCreatorPackDraft.creatorUserId || undefined} onValueChange={(value) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, creatorUserId: value } }))}>
-                            <SelectTrigger className="h-11 border-white/10 bg-black/20 text-[#E6EDF3]">
+                            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                               <SelectValue placeholder="Select creator" />
                             </SelectTrigger>
-                            <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                               {users?.map((user) => (
                                 <SelectItem key={user._id} value={user._id}>
                                   {user.fullName} · @{user.handle}
@@ -2063,19 +2063,19 @@ export function AdminWorkbench() {
                         </Field>
                       </div>
                       <Field label="Tagline">
-                        <Input value={newCreatorPackDraft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, tagline: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                        <Input value={newCreatorPackDraft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, tagline: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                       <Field label="Description">
-                        <Textarea value={newCreatorPackDraft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, description: event.target.value } }))} className="min-h-[88px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                        <Textarea value={newCreatorPackDraft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, description: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                       <Field label="Style Preset IDs CSV">
-                        <Input value={newCreatorPackDraft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, stylePresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                        <Input value={newCreatorPackDraft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                       <Field label="Base Model IDs CSV">
-                        <Input value={newCreatorPackDraft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, baseModelIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                        <Input value={newCreatorPackDraft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                       <Field label="Material Preset IDs CSV">
-                        <Input value={newCreatorPackDraft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, materialPresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                        <Input value={newCreatorPackDraft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                     </div>
                   </article>
@@ -2093,7 +2093,7 @@ export function AdminWorkbench() {
                       isActive: pack.isActive,
                     };
                     return (
-                      <article key={pack._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                      <article key={pack._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                         <div className="flex flex-wrap items-center gap-2">
                           <FlagPill label={pack.slug} tone="cyan" />
                           <FlagPill label={draft.packType} tone={draft.packType === "premium" ? "amber" : "green"} />
@@ -2103,14 +2103,14 @@ export function AdminWorkbench() {
                         <div className="mt-4 grid gap-4">
                           <div className="grid gap-4 md:grid-cols-2">
                             <Field label="Pack Name">
-                              <Input value={draft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                              <Input value={draft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                             </Field>
                             <Field label="Creator Owner">
                               <Select value={draft.creatorUserId} onValueChange={(value) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, creatorUserId: value } }))}>
-                                <SelectTrigger className="h-11 border-white/10 bg-black/20 text-[#E6EDF3]">
+                                <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                                   {users?.map((user) => (
                                     <SelectItem key={user._id} value={user._id}>
                                       {user.fullName} · @{user.handle}
@@ -2121,19 +2121,19 @@ export function AdminWorkbench() {
                             </Field>
                           </div>
                           <Field label="Tagline">
-                            <Input value={draft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, tagline: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Input value={draft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, tagline: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Description">
-                            <Textarea value={draft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, description: event.target.value } }))} className="min-h-[88px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Textarea value={draft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, description: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Style Preset IDs CSV">
-                            <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Base Model IDs CSV">
-                            <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Material Preset IDs CSV">
-                            <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2166,13 +2166,13 @@ export function AdminWorkbench() {
                           >
                             Save Creator Pack
                           </ActionButton>
-                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, packType: draft.packType === "free" ? "premium" : "free" } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, packType: draft.packType === "free" ? "premium" : "free" } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                             {draft.packType === "free" ? "Set Premium" : "Set Free"}
                           </button>
-                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isFeatured: !draft.isFeatured } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isFeatured: !draft.isFeatured } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                             {draft.isFeatured ? "Unfeature Pack" : "Feature Pack"}
                           </button>
-                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                          <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                             {draft.isActive ? "Disable" : "Enable"}
                           </button>
                         </div>
@@ -2184,8 +2184,8 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#FFB84D]">Paint Mappings</p>
+          <section className="border-2 border-line-primary bg-panel p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Paint Mappings</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading paint mappings." />
@@ -2237,7 +2237,7 @@ export function AdminWorkbench() {
                     isActive: mapping.isActive,
                   };
                   return (
-                    <article key={mapping._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                    <article key={mapping._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <FlagPill label={mapping.mappingKey} tone="cyan" />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
@@ -2260,31 +2260,31 @@ export function AdminWorkbench() {
                       </div>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Field label="Brand">
-                          <Input value={draft.brand} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, brand: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.brand} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, brand: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Line">
-                          <Input value={draft.line} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, line: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.line} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, line: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Code">
-                          <Input value={draft.code} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, code: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.code} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, code: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Color Name">
-                          <Input value={draft.colorName} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, colorName: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.colorName} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, colorName: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Finish Type">
-                          <Input value={draft.finishType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, finishType: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.finishType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, finishType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Paint Type">
-                          <Input value={draft.paintType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, paintType: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.paintType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, paintType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Availability Region">
-                          <Input value={draft.availabilityRegion} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, availabilityRegion: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.availabilityRegion} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, availabilityRegion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Hex Preview">
-                          <Input value={draft.hexPreview} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, hexPreview: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.hexPreview} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, hexPreview: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                         <Field label="Affiliate URL">
-                          <Input value={draft.affiliateUrl} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, affiliateUrl: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#FFB84D]" />
+                          <Input value={draft.affiliateUrl} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, affiliateUrl: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2317,7 +2317,7 @@ export function AdminWorkbench() {
                         >
                           Save Paint Map
                         </ActionButton>
-                        <button type="button" onClick={() => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -2329,8 +2329,8 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#11161D] p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-[#3DD9FF]">Creator Packs</p>
+          <section className="border-2 border-line-primary bg-panel p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Creator Packs</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading creator packs." />
@@ -2349,14 +2349,14 @@ export function AdminWorkbench() {
                     isActive: pack.isActive,
                   };
                   return (
-                    <article key={pack._id} className="rounded-[20px] border border-white/10 bg-[#0D1117] p-4">
+                    <article key={pack._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <FlagPill label={pack.slug} tone="cyan" />
                         <FlagPill label={draft.packType} tone={draft.packType === "premium" ? "amber" : "green"} />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
                         {draft.isFeatured ? <FlagPill label="featured pack" tone="amber" /> : null}
                       </div>
-                      <div className="mt-4 grid gap-2 text-sm text-[#C7D0DA]">
+                      <div className="mt-4 grid gap-2 text-sm text-ink-muted">
                         <MetaRow label="Pack likes" value={`${pack.analytics.packLikes}`} />
                         <MetaRow label="Pack saves" value={`${pack.analytics.packSaves}`} />
                         <MetaRow label="Public concepts" value={`${pack.analytics.publicConceptCount}`} />
@@ -2364,14 +2364,14 @@ export function AdminWorkbench() {
                       <div className="mt-4 grid gap-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <Field label="Pack Name">
-                            <Input value={draft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, name: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                            <Input value={draft.name} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Creator Owner">
                             <Select value={draft.creatorUserId} onValueChange={(value) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, creatorUserId: value } }))}>
-                              <SelectTrigger className="h-11 border-white/10 bg-black/20 text-[#E6EDF3]">
+                              <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="border-white/10 bg-[#11161D] text-[#E6EDF3]">
+                              <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                                 {users?.map((user) => (
                                   <SelectItem key={user._id} value={user._id}>
                                     {user.fullName} · @{user.handle}
@@ -2382,19 +2382,19 @@ export function AdminWorkbench() {
                           </Field>
                         </div>
                         <Field label="Tagline">
-                          <Input value={draft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, tagline: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Input value={draft.tagline} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, tagline: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Description">
-                          <Textarea value={draft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, description: event.target.value } }))} className="min-h-[88px] border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Textarea value={draft.description} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, description: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Style Preset IDs CSV">
-                          <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Base Model IDs CSV">
-                          <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Material Preset IDs CSV">
-                          <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-white/10 bg-black/20 text-[#E6EDF3] focus-visible:ring-[#3DD9FF]" />
+                          <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2427,13 +2427,13 @@ export function AdminWorkbench() {
                         >
                           Save Creator Pack
                         </ActionButton>
-                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, packType: draft.packType === "free" ? "premium" : "free" } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, packType: draft.packType === "free" ? "premium" : "free" } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.packType === "free" ? "Set Premium" : "Set Free"}
                         </button>
-                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isFeatured: !draft.isFeatured } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isFeatured: !draft.isFeatured } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isFeatured ? "Unfeature Pack" : "Feature Pack"}
                         </button>
-                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]">
+                        <button type="button" onClick={() => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -2446,11 +2446,11 @@ export function AdminWorkbench() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-[#161B22] p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#FFB84D]">Charge rules</p>
+      <section className="border-2 border-line-primary bg-surface p-6">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Charge rules</p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {priceRules === undefined ? (
-            <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4 text-sm text-[#9BA7B4]">
+            <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
               Loading credit price rules.
             </div>
           ) : (
@@ -2464,7 +2464,7 @@ export function AdminWorkbench() {
               return (
                 <article
                   key={rule._id}
-                  className="rounded-[22px] border border-white/10 bg-[#11161D] p-4"
+                  className="rounded-[22px] border border-line-secondary bg-panel p-4"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <FlagPill label={rule.actionType} tone="cyan" />
@@ -2480,7 +2480,7 @@ export function AdminWorkbench() {
                             [rule._id]: { ...draft, label: event.target.value },
                           }))
                         }
-                        className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                        className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                       />
                     </Field>
                     <Field label="Credit Cost">
@@ -2494,7 +2494,7 @@ export function AdminWorkbench() {
                             [rule._id]: { ...draft, creditCost: event.target.value },
                           }))
                         }
-                        className="border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                        className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                       />
                     </Field>
                     <Field label="Description">
@@ -2506,7 +2506,7 @@ export function AdminWorkbench() {
                             [rule._id]: { ...draft, description: event.target.value },
                           }))
                         }
-                        className="min-h-[110px] border-white/10 bg-[#0D1117] text-[#E6EDF3] focus-visible:ring-[#3DD9FF]"
+                        className="min-h-[110px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
                       />
                     </Field>
                   </div>
@@ -2542,7 +2542,7 @@ export function AdminWorkbench() {
                           [rule._id]: { ...draft, isActive: !draft.isActive },
                         }))
                       }
-                      className="rounded-[16px] border border-white/10 px-4 py-2 text-sm text-[#9BA7B4] transition-colors hover:bg-white/5 hover:text-[#E6EDF3]"
+                      className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
                     >
                       {draft.isActive ? "Disable Rule" : "Enable Rule"}
                     </button>
@@ -2595,17 +2595,17 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <article className="rounded-[24px] border border-white/10 bg-[#161B22] p-5">
-      <p className="text-[11px] uppercase tracking-[0.26em] text-[#6E7A88]">{label}</p>
-      <p className="mt-3 text-4xl font-semibold text-[#E6EDF3]">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-[#9BA7B4]">{detail}</p>
+    <article className="rounded-[24px] border border-line-secondary bg-surface p-5">
+      <p className="text-[11px] uppercase tracking-[0.26em] text-ink-muted">{label}</p>
+      <p className="mt-3 text-4xl font-semibold text-ink-primary">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-ink-secondary">{detail}</p>
     </article>
   );
 }
 
 function CatalogLoading({ label }: { label: string }) {
   return (
-    <div className="rounded-[18px] border border-white/10 bg-[#0D1117] p-4 text-sm text-[#9BA7B4]">
+    <div className="rounded-[18px] border border-line-secondary bg-main p-4 text-sm text-ink-secondary">
       {label}
     </div>
   );
@@ -2614,7 +2614,7 @@ function CatalogLoading({ label }: { label: string }) {
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="block">
-      <span className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</span>
       <div className="mt-2">{children}</div>
     </label>
   );
@@ -2622,9 +2622,9 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/6 pb-2">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-[#6E7A88]">{label}</span>
-      <span className="text-sm text-[#E6EDF3]">{value}</span>
+    <div className="flex items-center justify-between gap-3 border-b border-dashed border-line-guide pb-2">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{label}</span>
+      <span className="text-sm text-ink-primary">{value}</span>
     </div>
   );
 }
@@ -2639,9 +2639,9 @@ function DiagnosticRow({
   value: string;
 }) {
   return (
-    <div className="rounded-[18px] border border-white/10 bg-[#11161D] p-4">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-[#6E7A88]">{label}</p>
-      <p className={cn("mt-2 text-sm text-[#E6EDF3]", mono && "break-all font-mono text-[12px]")}>
+    <div className="rounded-[18px] border border-line-secondary bg-panel p-4">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</p>
+      <p className={cn("mt-2 text-sm text-ink-primary", mono && "break-all font-mono text-[12px]")}>
         {value}
       </p>
     </div>
@@ -2834,11 +2834,11 @@ function FlagPill({
     <span
       className={cn(
         "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "neutral" && "border-white/10 text-[#9BA7B4]",
+        tone === "neutral" && "border-line-secondary text-ink-secondary",
         tone === "cyan" && "border-[#3DD9FF]/30 bg-[#3DD9FF]/10 text-[#8FEAFF]",
-        tone === "green" && "border-[#58FFB2]/30 bg-[#58FFB2]/10 text-[#A6FFD5]",
+        tone === "green" && "border-[#58FFB2]/30 bg-accent-teal/10 text-[#A6FFD5]",
         tone === "amber" && "border-[#FFB84D]/30 bg-[#FFB84D]/10 text-[#FFD59A]",
-        tone === "red" && "border-[#FF5F5F]/30 bg-[#FF5F5F]/10 text-[#FFD2D2]"
+        tone === "red" && "border-[#FF5F5F]/30 bg-accent-red/10 text-[#FFD2D2]"
       )}
     >
       {label}
@@ -2856,18 +2856,18 @@ function CommerceStat({
   value: string;
 }) {
   return (
-    <div className="rounded-[18px] border border-white/10 bg-[#0D1117] p-4">
+    <div className="rounded-[18px] border border-line-secondary bg-main p-4">
       <p
         className={cn(
           "text-[11px] uppercase tracking-[0.18em]",
-          tone === "green" && "text-[#58FFB2]",
-          tone === "cyan" && "text-[#3DD9FF]",
-          tone === "amber" && "text-[#FFB84D]"
+          tone === "green" && "text-accent-teal",
+          tone === "cyan" && "text-accent-blue",
+          tone === "amber" && "text-accent-orange"
         )}
       >
         {label}
       </p>
-      <p className="mt-3 text-2xl font-semibold text-[#E6EDF3]">{value}</p>
+      <p className="mt-3 text-2xl font-semibold text-ink-primary">{value}</p>
     </div>
   );
 }
@@ -2918,7 +2918,7 @@ function ActionButton({
       disabled={disabled || busy}
       className={cn(
         "h-10 rounded-[16px] border px-4 text-sm",
-        tone === "default" && "border-white/10 bg-[#0D1117] text-[#E6EDF3] hover:bg-[#151C25]",
+        tone === "default" && "border-line-secondary bg-main text-ink-primary hover:bg-[#151C25]",
         tone === "danger" && "border-[#FF5F5F]/25 bg-[#311515] text-[#FFDADA] hover:bg-[#3F1A1A]"
       )}
     >

@@ -152,7 +152,7 @@ export function CreatorPackPageView({
                   <Link
                     key={variant.id}
                     href={buildCreateHref(pack, variant)}
-                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                   >
                     {variant.label}
                   </Link>
@@ -160,7 +160,7 @@ export function CreatorPackPageView({
                 {pack.concepts[0] ? (
                   <Link
                     href={buildRemixHref(pack, pack.concepts[0]._id)}
-                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                    className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                   >
                     Remix Featured Concept
                   </Link>
@@ -173,7 +173,7 @@ export function CreatorPackPageView({
             )}
             <Link
               href={`/creator/${pack.creator.handle}`}
-              className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+              className="inline-flex h-11 items-center justify-center rounded-[18px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
             >
               View Creator Hub
             </Link>
@@ -214,7 +214,7 @@ export function CreatorPackPageView({
                   </p>
                   <Link
                     href={`/showcase?style=${style.slug}`}
-                    className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                   >
                     Filter Showcase
                   </Link>
@@ -270,7 +270,7 @@ export function CreatorPackPageView({
                         {access.allowed ? (
                           <Link
                             href={buildRemixHref(pack, concept._id)}
-                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                           >
                             Remix In Create
                           </Link>
@@ -282,7 +282,7 @@ export function CreatorPackPageView({
                         {concept.baseModel?.slug && concept.stylePreset?.slug ? (
                           <Link
                             href={`/${concept.baseModel.slug}/${concept.stylePreset.slug}`}
-                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                           >
                             Open Style Landing
                           </Link>

@@ -87,13 +87,13 @@ export function CreatorRankingCard({ creator }: CreatorRankingCardProps) {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href={`/creator/${creator.handle}`}
-            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Open Hub
           </Link>
           <Link
             href={`/showcase?creator=${creator.handle}`}
-            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Filter Showcase
           </Link>

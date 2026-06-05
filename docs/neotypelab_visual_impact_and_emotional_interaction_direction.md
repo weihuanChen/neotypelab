@@ -1,520 +1,468 @@
 # NeotypeLab Visual Impact & Emotional Interaction Direction
 
-# Purpose
+# V2 Bright Retro-Futurist Line-Art Adaptation
 
-This document defines the emotional experience and visual interaction philosophy for NeotypeLab.
+## Purpose
 
-It exists to prevent the platform from becoming:
+This document defines the emotional experience and visual interaction direction for the V2 NeotypeLab redesign.
 
-- A static dashboard
-- A generic AI tool
-- A configuration-heavy backend
-- A visually flat terminal
+The main visual system is now:
 
-This document should be used together with:
+> Bright retro-futurism, technical line-art, mecha blueprint sketch, clean hobby lab, analog control panels, cream / warm white surfaces, muted orange / teal accents, thin technical strokes, printed manual aesthetic, and spray-planning workstation atmosphere.
 
-- PRD documents
-- UI Direction System
-- Frontend Skill System
-- Product Interaction System
-- Open Design workflows
+This replaces the previous dark prototype-chamber emphasis.
+
+The product interaction system remains unchanged:
+
+- structured prototype creation
+- guest-friendly exploration
+- mobile-first workflow
+- Style DNA, material, weathering, mood, credit, remix, showcase, and share loops
 
 ---
 
 # Core Problem Statement
 
-A technically correct interface is not enough.
+A technically correct redesign is not enough.
 
-NeotypeLab currently risks becoming:
+NeotypeLab must not become:
 
-> A highly polished tactical dashboard.
+- a generic light SaaS dashboard
+- a pretty image gallery
+- an anime catalog
+- a toy-like hobby site
+- a static documentation page
 
-Instead of:
+It should become:
 
-> A future mecha prototype laboratory.
-
-The difference is emotional.
+> An interactive mecha repaint planning manual and retro-futurist spray workstation.
 
 ---
 
 # Core Emotional Goal
 
-When users open NeotypeLab, they should feel:
+Users should feel:
 
-> “I am testing and evolving a future experimental machine before committing paint to plastic.”
+> I am planning a future mecha repaint on a precision drafting desk where every color choice becomes a usable spray plan.
 
 The interface should create:
 
-- Curiosity
-- Imagination
-- Ownership
-- Experimentation
-- Discovery
-- Cinematic anticipation
+- clarity
+- curiosity
+- practical confidence
+- ownership over the color scheme
+- experimentation
+- collectible documentation
+- fast iteration
 
 ---
 
 # Fundamental Product Truth
 
-NeotypeLab is NOT fundamentally a dashboard.
+NeotypeLab is not fundamentally a dashboard.
 
 It is:
 
-> A fantasy-driven creative system.
+> A structured creative planning system for repaint concepts.
 
-Users are not here to fill forms.
+V1 leaned toward generated previews as the emotional anchor.
 
-Users are here to:
+V2 changes the anchor:
 
-> Experience transformation.
+> The color scheme is the main character.
 
----
+Generated previews support the scheme, but the user should emotionally focus on:
 
-# Current Problem Diagnosis
-
-# Problem 1 — Too Static
-
-Current layouts feel:
-
-- Structured
-- Functional
-- Stable
-
-But also:
-
-- Flat
-- Rigid
-- Passive
-- Emotionally quiet
-
-The interface behaves like:
-
-> A tactical control panel.
-
-Instead of:
-
-> A living prototype chamber.
+- color blocks
+- palette logic
+- panel-line assignment
+- material finish
+- spray feasibility
+- paint mapping
+- the ability to reuse and remix the plan
 
 ---
 
-# Problem 2 — UI Dominates the Experience
+# Current Risk Diagnosis
 
-Too much attention is currently placed on:
+## Risk 1 — Bright But Generic
 
-- Cards
-- Selections
-- Form structures
-- System layout
+Moving to light UI can accidentally become:
 
-Instead of:
+- white SaaS panels
+- beige dashboard cards
+- generic portfolio layout
+- soft gradient startup page
 
-- The machine
-- The repaint transformation
-- The evolving prototype
+V2 must stay technical, manual-like, and hobby-specific.
 
-Users should emotionally focus on:
+## Risk 2 — Image-Only Experience
 
-> “What the machine becomes.”
+If generated preview images remain the only hero, the product can still feel like:
 
-Not:
+> A themed AI image generator.
 
-> “Which card is selected.”
+Instead, V2 must make the repaint plan visible:
 
----
+- swatches
+- color roles
+- finish mapping
+- feasibility
+- masking/spray cues
+- variant comparisons
 
-# Problem 3 — Lack of Visual Spectacle
+## Risk 3 — Decorative Line-Art Without Function
 
-The interface currently lacks:
+Line-art can become noise.
 
-# A visual anchor.
+Every line system should support:
 
-Death Stranding succeeds because:
+- hierarchy
+- grouping
+- annotation
+- color mapping
+- action clarity
+- product atmosphere
 
-- UI restraint is balanced by strong cinematic focal points
-- There is always a powerful visual object
-- Atmosphere and scale exist simultaneously
-
-NeotypeLab needs:
-
-> A Prototype Chamber.
+Decorations must not reduce readability.
 
 ---
 
 # Product Transformation Direction
 
-# Move From:
+Move from:
 
 ```text
-Dashboard Form Interface
+Dark terminal dashboard with generated preview as hero
 ```
 
-# Move Toward:
+Toward:
 
 ```text
-Interactive Mecha Prototype Laboratory
+Bright technical repaint manual with color scheme as hero
 ```
 
 ---
 
 # Core Visual Philosophy
 
-# Preview Is the Main Character
+# Color Scheme Is the Main Character
 
-The machine preview must dominate the experience.
+The dominant visual focus should be:
 
-The UI exists to support the machine.
+- palette blocks
+- role-based swatches
+- color separation
+- spray feasibility
+- material and finish treatment
+- repaint instructions and annotations
 
-Current systems over-prioritize:
+The generated preview should be framed as:
 
-- Selection grids
-- Input structure
-- Data presentation
+- simulation evidence
+- concept reference
+- applied example
+- shareable visual output
 
-Future systems should prioritize:
-
-- Real-time visual evolution
-- Machine transformation
-- Material response
-- Experimental atmosphere
+It should not absorb all visual importance.
 
 ---
 
 # Layout Transformation Rules
 
-# OLD STRUCTURE
+## Old Structure
 
 ```text
-Large configuration dashboard
-Small preview support
+Configuration panels
+Small or large generated preview
+Supporting paint data
 ```
 
-# NEW STRUCTURE
+## New Structure
 
 ```text
-Large live prototype stage
-Compact tactical controls
+Large color scheme / spray-plan sheet
+Generated preview as applied reference
+Compact retro-futurist controls
+Technical annotation rail
 ```
 
----
+Recommended ratio:
 
-# Recommended Layout Ratio
+- 40-50% color scheme, swatches, and paint planning
+- 25-35% generated preview or visual reference
+- 20-30% controls, metadata, and actions
 
-## Preview Stage
-
-60–70%
-
-## Tactical Control Layer
-
-30–40%
-
-The preview should feel:
-
-- Immersive
-- Large-scale
-- Cinematic
-- Reactive
+This can vary by page, but the repaint plan must be visible.
 
 ---
 
-# The Prototype Chamber Concept
+# Spray-Planning Workstation Concept
 
-The machine preview area should NOT feel like:
+The primary workspace should feel like:
 
-- A thumbnail
-- A render output box
-- A gallery image
+> A clean hobby lab desk where a mecha repaint scheme is being drafted, checked, and prepared for spraying.
 
-It should feel like:
+It should include:
 
-> A suspended experimental machine inside a future industrial simulation chamber.
-
----
-
-# Required Prototype Chamber Elements
-
-## Environmental Atmosphere
-
-Add:
-
-- Ambient haze
-- Cold blue fog
-- Volumetric light
-- Reactor glow
-- Tactical scanning layers
-- Blueprint overlays
-- Depth gradients
+- cream paper-like surface
+- blueprint sketch marks
+- color swatch modules
+- panel-line drawings
+- material labels
+- feasibility marks
+- manual-style annotations
+- analog controls for actions and steps
 
 Avoid:
 
-- Flat backgrounds
-- Pure black emptiness
-- Static image framing
+- dark chamber framing
+- neon scan effects
+- cockpit overload
+- generic card dashboards
+- image-only galleries
 
 ---
 
-# Real-Time Transformation Feeling
+# Required Visual Elements
 
-The system should feel alive.
+## Color Planning Elements
 
-When users change:
+Use:
 
-- Style DNA
-- Paint finish
-- Weathering
-- Color logic
+- dominant palette strip
+- role-based swatches
+- primary / secondary / accent / frame / inner-frame labels
+- weathering cue marks
+- material finish indicators
+- spray feasibility status
+- paint mapping rows
+- masking or panel-line hints when available
 
-The machine should visibly react.
+## Technical Manual Elements
+
+Use:
+
+- thin engineering strokes
+- measured margins
+- ruled dividers
+- stamp-like labels
+- callout leader lines
+- reference numbers
+- small diagnostic captions
+- dotted cut lines or assembly-like separators
+
+## Retro-Futurist Console Elements
+
+Use:
+
+- segmented controls
+- analog tab bars
+- physical-feeling command buttons
+- compact command strips
+- small status plates
+- tactile hover/press feedback
 
 ---
 
 # Required Interaction Behavior
 
-# Every Selection Must Trigger Transformation
+Every important selection should visibly update the planning sheet.
 
-Avoid:
+When users change:
+
+- base model
+- Style DNA
+- material profile
+- weathering
+- mood vector
+- visibility
+- remix source
+
+The interface should respond with:
 
 ```text
-Click card
-Card becomes highlighted
-Nothing emotional happens
-```
-
-Instead:
-
-```text
-Style changes
-→ scan sweep
-→ armor recolor
-→ material recalibration
-→ reactor sync pulse
-→ final stabilized machine
+selection changes
+-> color/swatch area updates
+-> panel-line or role labels redraw
+-> feasibility/cost summary refreshes
+-> technical stamp settles
 ```
 
 Target duration:
 
-0.4–0.8 seconds.
+```text
+0.2-0.6 seconds
+```
 
-The experience should feel:
-
-> Like reconfiguring an experimental weapon platform.
-
----
-
-# Cinematic Interaction Philosophy
-
-# Calm Idle State
-
-Default UI should remain:
-
-- Restrained
-- Quiet
-- Functional
-- Controlled
+Keep motion fast and practical.
 
 ---
 
-# Active Simulation State
+# Generation State Direction
 
-During generation or transformation:
+Do not use reactor startup or cockpit activation language.
 
-Introduce:
+Generation should feel like a drawing and spray plan being prepared.
 
-- HUD activation
-- Tactical overlays
-- Reactor synchronization
-- Material scans
-- Progress sweeps
-- System diagnostics
+Canonical sequence:
 
-This creates:
+```text
+LOADING BASE SILHOUETTE
+DRAWING PANEL LINES
+ASSIGNING COLOR BLOCKS
+CHECKING SPRAY FEASIBILITY
+MAPPING PAINT FINISH
+PROTOTYPE READY
+```
 
-> Emotional contrast.
+Visual behavior:
+
+- line draw-on
+- swatch fill
+- color block assignment
+- feasibility check mark
+- paint finish mapping row
+- final technical stamp
+
+Avoid:
+
+- reactor pulses
+- neon scanlines
+- chaotic particles
+- dramatic cockpit overlays
+- long loading theater
 
 ---
 
 # Emotional Rhythm System
 
-The interface must have:
-
-# Emotional pacing.
-
-Avoid:
-
-- Constant intensity
-- Constant silence
-
-Instead:
+V2 should have calm, practical rhythm.
 
 ## Idle
 
-Quiet industrial terminal.
+Printed manual surface.
 
-## Interaction
+Clear, bright, quiet.
 
-Subtle machine response.
+## Selection
 
-## Simulation Start
+Swatch recalibration.
 
-HUD activation.
+Panel lines or labels adjust.
 
-## Render Complete
+## Generation
 
-Cinematic reveal.
+Drawing/spray-plan assembly sequence.
 
-This rhythm creates:
+## Completion
 
-- Anticipation
-- Reward
-- Memorability
+Prototype ready stamp, palette settled, practical data visible.
+
+The emotional reward should come from:
+
+- seeing the scheme become coherent
+- understanding how it can be sprayed
+- having a shareable, remixable record
 
 ---
 
 # Preview Interaction Rules
 
-# Preview Must Always Be Present
+The generated preview should always remain discoverable, but it should not hide the planning system.
 
-Users should always see:
+Users should always see or quickly access:
 
-- The current machine
-- Current style DNA
-- Current atmosphere
+- current color scheme
+- current Style DNA
+- current material / paint finish
+- weathering level
+- cost or credit context before paid actions
+- preview or output status
 
-Avoid hiding the machine behind forms.
-
----
-
-# Live Machine Evolution
-
-The machine should behave like:
-
-> A configurable platform.
-
-Not:
-
-> A static image.
-
-Possible future systems:
-
-- Real-time shader transitions
-- Dynamic material overlays
-- Tactical decals appearing
-- Controlled panel recolor sweeps
-- Weathering accumulation effects
+Avoid hiding the repaint plan behind a large image-only stage.
 
 ---
 
-# Control System Transformation
+# Control System Direction
 
-# Move From:
+Move from:
 
 ```text
-Form inputs
+form inputs
 ```
 
-# Toward:
+toward:
 
 ```text
-Garage-style configuration
+retro-futurist spray-planning controls
 ```
 
 Inspired by:
 
-- Armored Core Garage
-- Destiny Shader system
-- Racing paint shops
-- Mecha loadout systems
+- model kit instruction sheets
+- drafting desks
+- analog control panels
+- technical binders
+- paint swatch books
+- workshop planning boards
 
----
+Controls should remain obvious and accessible.
 
-# Configuration UX Rules
-
-Avoid exposing all options simultaneously.
-
-Use:
-
-- Progressive reveal
-- Expandable selection layers
-- Horizontal browsing
-- Focused configuration states
-
-The experience should feel:
-
-> Like configuring a machine.
-
-Not:
-
-> Filling enterprise software forms.
+Do not make them decorative-only.
 
 ---
 
 # Visual Density Rules
 
-Current designs risk becoming:
-
-> Overly tactical.
+The V2 UI should have more daylight and air than V1, but still feel engineered.
 
 Reduce:
 
-- Excessive rigid grid feeling
-- Overly dense panels
-- Uniform darkness
-- Constant border visibility
+- uniform dark panels
+- permanent heavy borders
+- neon glow
+- overly dense dashboard grouping
+- generic equal-height card grids
 
 Increase:
 
-- Air
-- Glow depth
-- Layer separation
-- Environmental atmosphere
-- Visual breathing room
+- warm negative space
+- line-art hierarchy
+- paper/manual texture
+- swatch prominence
+- annotation margins
+- useful grouping
 
 ---
 
 # Depth System
 
-The interface should have:
+The interface should use layers without becoming noisy.
 
 ## Background Layer
 
-- Industrial grid
-- Fog
-- Reactor haze
-- Ambient gradients
+- warm paper surface
+- subtle ruled grid
+- faint registration marks
+- low-contrast manual texture
 
 ## Midground Layer
 
-- Tactical overlays
-- HUD systems
-- Data diagnostics
+- technical panels
+- control surfaces
+- annotation rails
+- swatch strips
 
 ## Foreground Layer
 
-- The machine
-- Active interactions
-- Cinematic focus
+- active color scheme
+- generated preview
+- primary action
+- current cost/status
+- important warnings
 
-Avoid fully flat compositions.
-
----
-
-# Visual Identity Rules
-
-NeotypeLab should feel:
-
-- Industrial
-- Experimental
-- Tactical
-- Premium
-- Cinematic
-- Futuristic
-
-But NOT:
-
-- Web3
-- Hacker terminal
-- Generic sci-fi dashboard
-- Anime portal
-- Cheap cyberpunk clone
+Avoid flat beige pages with no hierarchy.
 
 ---
 
@@ -522,175 +470,136 @@ But NOT:
 
 The platform should feel like:
 
-> A real system existing inside a future mecha universe.
+> A real repaint planning system from a future hobby lab.
 
-This requires:
+Use terms consistently:
 
-- Consistent terminology
-- System-like language
-- Functional atmosphere
-- Controlled cinematic moments
-
----
-
-# Terminology Direction
-
-Use:
-
-- Prototype Chamber
+- Prototype
 - Style DNA
+- Material Profile
 - Paint Finish
 - Weathering
-- Reactor Output
-- Simulation
+- Mood Vector
+- Paint Mapping
+- Credit Capacity
+- Spray Feasibility
+- Palette Plan
 - Variant Fork
 - Saved Hangar
-- Tactical Overlay
-- Paint Mapping
+- Public Showcase
 
 Avoid:
 
 - AI art generation
-- Prompt engineering
-- Image creator
-- Generic SaaS wording
+- prompt engineering
+- magic image creation
+- generic SaaS wording
 
 ---
 
 # Homepage Evolution Direction
 
-# Current Problem
+The homepage should behave like:
 
-Homepage currently behaves too much like:
+> A bright mecha repaint planning desk.
 
-```text
-A premium dashboard
-```
+Recommended first-screen behavior:
 
-# Future Goal
+- large palette / scheme board
+- mecha blueprint sketch or line-art silhouette
+- visible prototype entry
+- public concept references as technical sheets
+- light filters or style discovery controls
 
-Homepage should behave like:
+Users should immediately understand:
 
-```text
-A living mecha prototype stage
-```
-
----
-
-# Recommended Homepage Behavior
-
-When users open the homepage:
-
-- A large prototype machine is already present
-- Different style DNA configurations cycle slowly
-- Tactical overlays subtly animate
-- Material scans move softly across armor
-- Atmosphere feels alive
-
-Users should pause and watch.
+- this is for repaint planning
+- the product is structured
+- the color scheme matters
+- they can start prototyping quickly
 
 ---
 
-# “Wow” Moment Requirements
+# Wow Moment Requirements
 
-NeotypeLab requires:
+The "wow" should come from:
 
-# A visual emotional hook.
-
-The “wow” should come from:
-
-- The machine
-- Transformation
-- Atmosphere
-- Simulation behavior
-- Scale
-- Motion restraint + payoff
+- beautiful scheme presentation
+- clear color-role mapping
+- technical line-art polish
+- practical spray planning
+- quick transformation from selection to coherent palette
+- shareable manual-like output
 
 Not from:
 
-- Complex panels
-- Excessive UI density
-- Loud effects
+- neon effects
+- cockpit UI overload
+- giant generated images alone
+- complex panels
+- generic gradients
 
 ---
 
 # Motion Design Direction
 
-# Idle Motion
+## Idle Motion
 
-Very subtle.
+Very subtle:
 
-Examples:
+- paper grain stillness
+- faint line hover
+- soft tab response
+- small swatch shimmer
 
-- Slow reactor pulse
-- Ambient scan drift
-- Tactical line movement
-- Material shimmer
+## Active Motion
 
----
+Controlled and useful:
 
-# Active Motion
+- line draw-on
+- swatch fill
+- panel label update
+- technical stamp
+- sheet reveal
 
-More intense, but controlled.
-
-Examples:
-
-- Reconfiguration sweep
-- Material synchronization
-- Panel recolor animation
-- HUD activation
-
----
-
-# Forbidden Motion
+## Forbidden Motion
 
 Avoid:
 
-- Constant flashing
-- Chaotic particles
-- Hyperactive sci-fi motion
-- Overly game-like FX spam
+- constant flashing
+- chaotic particles
+- heavy cyberpunk scanlines
+- over-game-like FX
+- long animated intros
 
 The atmosphere should remain:
 
-> Controlled and premium.
-
----
-
-# Long-Term Interaction Goal
-
-The ultimate user feeling should be:
-
-> “I am standing inside a future mecha research terminal, evolving experimental machine variants in real time.”
-
-NOT:
-
-> “I am configuring parameters in a dark SaaS dashboard.”
+> Calm, bright, technical, and premium.
 
 ---
 
 # Final Product Experience Target
 
-NeotypeLab should ultimately feel like:
+NeotypeLab V2 should ultimately feel like:
 
-- A future mecha laboratory
-- A cinematic prototype terminal
-- A live machine simulation system
-- A remix-driven creative ecosystem
-- A premium industrial design tool
+- a bright mecha repaint planning manual
+- a retro-futurist prototype console
+- a clean hobby lab workstation
+- a technical color scheme archive
+- a remix-driven creative ecosystem
 
 The product should create:
 
-- Emotional attachment
-- Creative curiosity
-- Endless experimentation
-- Visual anticipation
-- Social sharing desire
+- creative confidence
+- practical repaint clarity
+- color-scheme ownership
+- visual memorability
+- social sharing desire
 
-The interface should never feel:
+The interface should never feel like:
 
-- Flat
-- Passive
-- Static
-- Administrative
-- Purely functional
+- a dark cyberpunk dashboard
+- a generic SaaS app
+- an AI image generator skin
+- an anime portal
+- a toy catalog

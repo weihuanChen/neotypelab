@@ -115,7 +115,7 @@ export function CreatorPackCard({ pack, compact = false }: CreatorPackCardProps)
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href={`/creator-pack/${pack.slug}`}
-            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Open Pack
           </Link>
@@ -126,14 +126,14 @@ export function CreatorPackCard({ pack, compact = false }: CreatorPackCardProps)
           ) : pack.previewConcept ? (
             <Link
               href={`/t/create?remix=${pack.previewConcept._id}&creatorPack=${pack.slug}&creatorPackVariant=remix-seed`}
-              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#382C13]"
+              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
             >
               Remix Entry
             </Link>
           ) : (
             <Link
               href={`/t/create?creatorPack=${pack.slug}`}
-              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
             >
               Open In Create
             </Link>

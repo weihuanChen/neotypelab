@@ -1,777 +1,505 @@
 # NeotypeLab UI Direction Document
 
-# Visual Direction
+# V2 Adaptation Notice
 
-## Core Style
+This file keeps its historical filename for continuity, but the visual direction has changed.
 
-NeotypeLab should use:
+The old dark Death Stranding industrial terminal and Hathaway cockpit HUD direction is no longer the primary visual system.
 
-> Death Stranding-inspired industrial terminal UI as the primary design language, with Hathaway cockpit HUD elements as controlled accents.
+The current main visual system is:
 
-The interface should feel like:
+> Bright retro-futurism + technical line-art + mecha blueprint sketch + spray-planning workstation.
 
-> A future mecha R&D terminal for testing repaint concepts before real spraying.
+For the full V2 source of truth, use:
+
+```text
+docs/neotypelab_ui_direction_bright_retro_futurism_lineart.md
+```
+
+This document is now adapted to the V2 direction and should not be used to reintroduce dark cyberpunk, neon glow, cockpit overload, or reactor-style generation language.
+
+---
+
+# Core Style
+
+NeotypeLab should feel like:
+
+> A bright future mecha repaint planning manual combined with an interactive retro-futurist prototype console.
+
+The interface should combine:
+
+- Bright retro-futurism
+- Technical line-art
+- Mecha blueprint sketch
+- Clean hobby lab
+- Analog control panels
+- Cream / warm white surfaces
+- Muted orange / teal accents
+- Thin technical strokes
+- Printed manual aesthetic
+- Spray-planning workstation
 
 It should NOT feel like:
 
-- A generic AI image generator
-- An anime fan site
-- A web3 dashboard
-- A colorful SaaS landing page
-- A toy catalog
-
----
-
-# Brand Atmosphere
-
-## Core Keywords
-
-- Industrial
-- Terminal
-- Prototype
-- Tactical
-- Laboratory
-- Post-collapse technology
-- Mecha R&D
-- Controlled energy
-- Spray-ready planning
-- Experimental system
-
----
-
-# Design Ratio
-
-## 70% Death Stranding
-
-Used for:
-
-- Layout
-- Dashboard
-- Navigation
-- Data panels
-- Typography
-- Empty states
-- Admin panel
-- Mobile usability
-- Long-session comfort
-
-## 30% Hathaway Cockpit HUD
-
-Used for:
-
-- Generation state
-- Loading animation
-- Simulation overlay
-- Reactor-style status indicators
-- High-value preview moments
-- Hero section accent
-- Warning and cost confirmation states
+- a dark cyberpunk terminal
+- a neon cockpit simulator
+- a generic SaaS white dashboard
+- an anime portal
+- a toy catalog
+- a generic AI image generator
 
 ---
 
 # Design Principle
 
-## UI Is the Container, User Work Is the Visual Focus
+## Color Scheme Is the Main Visual
 
-The user-generated repaint images and color schemes should be the most colorful elements on the page.
+The previous direction treated generated images as the dominant visual asset.
 
-The UI should be restrained, dark, modular, and functional.
+V2 changes the hierarchy:
 
-Do not let interface colors compete with generated works.
+> The color scheme, swatch logic, color-role mapping, material finish, and spray feasibility are now the primary visual story.
+
+Generated images remain important as simulation evidence, but the UI should make the repaint plan itself feel visually valuable.
+
+Prioritize:
+
+- palette blocks
+- color swatches
+- color role assignments
+- paint finish mapping
+- spray feasibility cues
+- technical line-art previews
+- practical repaint annotations
+
+Do not reduce a concept page to only a generated image and title.
 
 ---
 
 # Color System
 
-## Background Colors
+Use warm engineering-paper surfaces, graphite text, thin technical strokes, and muted technical accents.
 
-Use dark industrial colors.
+```ts
+export const colors = {
+  bgMain: "#F4F0E6",
+  bgSurface: "#FBF7ED",
+  bgPanel: "#E8E0D0",
+  bgElevated: "#FFFDF6",
 
-```css
---bg-main: #0D1117;
---bg-surface: #11161D;
---bg-panel: #161B22;
---bg-elevated: #1B222C;
+  lineSubtle: "rgba(35, 40, 45, 0.10)",
+  lineMuted: "#C9BFAE",
+  lineActive: "#2F3A3D",
+
+  textPrimary: "#202426",
+  textSecondary: "#5E625F",
+  textMuted: "#8A8377",
+
+  accentOrange: "#E46F2D",
+  accentTeal: "#2A8C8C",
+  accentBlue: "#3B6D8C",
+  accentRed: "#B84A3A",
+};
 ```
 
-## Border / Line Colors
+Recommended usage:
 
-```css
---line-muted: #2B3440;
---line-active: #3A4654;
---line-subtle: rgba(255,255,255,0.08);
-```
+- `bgMain`: app background, broad page canvas
+- `bgSurface`: main content sheets and large surfaces
+- `bgPanel`: recessed panels, controls, table headers, annotation blocks
+- `bgElevated`: active sheets, overlays, dialogs, important summaries
+- `lineSubtle`: grid lines, ruled marks, low-emphasis dividers
+- `lineMuted`: default panel borders
+- `lineActive`: selected outlines and high-emphasis engineering strokes
+- `textPrimary`: main text and headings
+- `textSecondary`: body copy and metadata
+- `textMuted`: helper text and low-emphasis labels
+- `accentOrange`: primary action, cost, confirmation, warning
+- `accentTeal`: selected state, success, Style DNA, active technical sync
+- `accentBlue`: navigation, public discovery, neutral status
+- `accentRed`: destructive, failed, blocked, or irreversible states
 
-## Text Colors
+Avoid:
 
-```css
---text-primary: #E6EDF3;
---text-secondary: #9BA7B4;
---text-muted: #6E7A88;
-```
-
-## Accent Colors
-
-Primary accent should be Reactor Cyan.
-
-```css
---accent-cyan: #3DD9FF;
---accent-cyan-soft: rgba(61,217,255,0.16);
-```
-
-Secondary accent can be Reactor Green.
-
-```css
---accent-green: #58FFB2;
---accent-green-soft: rgba(88,255,178,0.14);
-```
-
-Warning / cost / irreversible action color:
-
-```css
---accent-amber: #FFB84D;
---accent-red: #FF5F5F;
-```
-
-## Avoid
-
-Do not use classic Gundam blue-white-red-yellow as the main UI palette.
-
-Those colors may appear inside generated content, but not as the brand UI system.
+- dark surfaces as the default
+- neon cyan or green glow
+- cyberpunk purple
+- large SaaS gradients
+- rainbow accent systems
+- low-contrast cream-on-cream text
 
 ---
 
 # Typography
 
-## Recommended Fonts
+Use a technical manual hierarchy.
 
-Primary:
+Recommended:
 
-- Inter
-- Sora
-- Space Grotesk
+- clean sans for primary UI
+- mono font for IDs, counts, cost, timestamps, status, and technical labels
+- optional restrained serif only for manual-style display moments
 
-Technical accent font:
+Typography should feel:
 
-- JetBrains Mono
-- IBM Plex Mono
-- Space Mono
+- precise
+- readable
+- documented
+- diagrammatic
+- practical
 
-Optional display font:
+Avoid:
 
-- Orbitron, used very sparingly
-
-## Typography Rules
-
-Use clean, readable fonts for most UI.
-
-Use mono fonts for:
-
-- Status labels
-- Model IDs
-- Generation logs
-- Credit costs
-- Prompt/debug-style panels
-
-Avoid overly decorative anime fonts.
+- giant startup hero typography
+- sci-fi display fonts everywhere
+- anime fonts
+- tiny low-contrast annotation text
+- all-caps overload
 
 ---
 
 # Layout System
 
-## Desktop Layout
+The V2 layout should feel like a technical workstation or printed manual spread.
 
-Use a modular terminal layout.
-
-Recommended structure:
+Recommended desktop structures:
 
 ```text
-Left Rail Navigation
-Main Workspace
-Right Context Panel
-```
-
-### Left Rail
-
-Contains:
-
-- Dashboard
-- Prototype
-- Library
-- Showcase
-- Feedback
-- Credits
-- Admin, if applicable
-
-### Main Workspace
-
-Contains:
-
-- Builder flow
-- Preview area
-- Scheme cards
-- Community content
-
-### Right Context Panel
-
-Contains:
-
-- Current credit cost
-- Selected style DNA
-- Paint finish
-- Weathering level
-- Paint mapping
-- Output status
-
----
-
-# Mobile Layout
-
-Mobile is critical.
-
-Users may get repaint inspiration while browsing Reddit, Facebook, YouTube, or hobby forums.
-
-The mobile experience must allow users to create quickly without feeling like they need a desktop.
-
-## Mobile Design Goal
-
-> Capture inspiration and create a repaint concept in under 60 seconds.
-
----
-
-# Mobile Navigation
-
-Use bottom navigation instead of desktop side rail.
-
-Recommended tabs:
-
-1. Create
-2. Explore
-3. Library
-4. Feedback
-5. Account
-
-Keep the main action always accessible.
-
-Primary CTA:
-
-```text
-Prototype
+Top Command Strip
+Primary Workspace Sheet
+Side Annotation Rail
+Prototype / Scheme Record
+Bottom Action Deck
 ```
 
 or:
 
 ```text
-Run Simulation
+Manual Header
+Step Index
+Large Color Scheme / Prototype Sheet
+Technical Notes Panel
+Sticky Cost / Action Bar
 ```
 
-Avoid using only:
+Allowed:
 
-```text
-Generate
-```
+- top navigation
+- compact command strip
+- side annotation rail
+- drafting-board grids
+- technical tabs
+- responsive bottom action controls
 
----
-
-# Mobile Creation Flow
-
-The mobile flow should be step-based and thumb-friendly.
-
-## Step 1 — Select Base Model
-
-Use large cards.
-
-Each card contains:
-
-- Model image
-- Name
-- Series
-- Difficulty indicator
-
-## Step 2 — Select Style DNA
-
-Use horizontal scroll cards.
-
-Examples:
-
-- EVA-inspired
-- Military Prototype
-- Cyberpunk
-- Stealth Black
-- Desert Ops
-- Industrial Mecha
-
-## Step 3 — Select Paint Finish
-
-Use chips or compact cards.
-
-Examples:
-
-- Matte Finish
-- Semi-gloss Finish
-- Gloss Finish
-- Metallic Finish
-- Pearl Finish
-- Candy Coat
-
-## Step 4 — Select Weathering
-
-Use a 3-option control with optional effect chips:
-
-- Clean
-- Light
-- Heavy
-
-Optional effects:
-
-- Dry Brushing
-- Chipping
-- Wash
-- Rust Effects
-- Dust Effects
-- Burn Marks
-
-## Step 5 — Optional Note
-
-Small text input.
-
-Limit:
-
-- 50–100 characters
-
-Placeholder:
-
-```text
-Add a small direction, e.g. orange warning decals
-```
-
-## Step 6 — Review Cost
-
-Show credit cost clearly before running.
-
-Example:
-
-```text
-Palette Plan: 2 credits
-HD Preview: +5 credits optional
-```
-
-## Step 7 — Result
-
-Show:
-
-- Preview image
-- Color breakdown
-- Paint mapping
-- Save button
-- Remix button
-- Share button
-
----
-
-# Mobile Interaction Rules
-
-## Must-Have
-
-- One-handed use
-- Sticky bottom CTA
-- Large touch targets
-- Fast style browsing
-- Save draft automatically
-- Allow generation without long typing
-
-## Avoid
-
-- Large prompt textareas
-- Desktop-style tables
-- Tiny controls
-- Multi-column forms
-- Complex sliders
-- Hidden credit cost
+Do not preserve the old left rail if it makes the bright system feel like a reskinned dark terminal.
 
 ---
 
 # Component Design
 
-# 1. Cards
+## Panels
 
-Cards should feel like industrial data modules.
+Panels should feel like technical sheets or control plates:
 
-Style:
+- warm paper surface
+- thin black/gray engineering strokes
+- subtle ruled/grid details
+- square or lightly rounded corners
+- small labels and registration marks
 
-- Dark panel background
-- Thin border
-- Subtle glow only on active state
-- Small technical label
+Avoid:
 
-Example:
+- dark cards
+- glow effects
+- glassmorphism
+- generic SaaS cards
+- decorative frames that reduce readability
 
-```text
-STYLE DNA / EVA-INSPIRED
-High contrast · Experimental · Neon accent
-```
+## Cards
 
----
+Cards should feel like catalog records or specimen sheets.
 
-# 2. Buttons
+Use cards for:
 
-Primary CTA:
+- base models
+- Style DNA
+- material profiles
+- public concepts
+- library concepts
+- creator packs
 
-- Dark fill
-- Cyan border or glow
-- Strong label
+Each card should preserve:
 
-Suggested labels:
+- preview or scheme area
+- technical label
+- title
+- metadata
+- status / visibility
+- action controls
+
+Active state:
+
+- strong line outline
+- muted teal or orange accent
+- selected stamp or corner mark
+
+## Buttons
+
+Buttons should feel like analog controls or manual command tabs.
+
+Primary actions:
+
+- ink or orange border
+- warm fill
+- clear label
+- visible focus state
+- slight press response
+
+Recommended labels remain:
 
 - Initialize Prototype
-- Run Simulation
 - Build Concept
+- Generate Palette Plan
 - Save to Hangar
 - Remix Scheme
+- Open Share Surface
 
-Secondary buttons:
+Avoid:
 
-- Outline style
-- Minimal glow
+- Generate AI Art
+- Create Image
+- Magic AI wording
 
-Danger / cost buttons:
+## Inputs
 
-- Amber confirmation
+Inputs should feel like worksheet fields:
 
----
+- ruled-line treatment
+- precise borders
+- clear labels
+- helper copy
+- visible counters
+- strong focus state
 
-# 3. Status Indicators
-
-Use system-style labels.
-
-Examples:
-
-```text
-STYLE DNA LOADED
-PAINT FINISH ACTIVE
-WEATHERING EFFECTS READY
-PAINT MAPPING ONLINE
-REACTOR OUTPUT READY
-```
-
-Use these sparingly.
-
-They should create atmosphere without reducing usability.
+Do not turn controlled notes into a freeform prompt system.
 
 ---
 
-# 4. Loading / Generation State
+# Loading / Generation State
 
-This is where Hathaway HUD accents can appear.
+Do not use reactor startup language.
 
-Recommended sequence:
+The generation sequence should feel like a technical drawing and spray plan being assembled.
+
+Use:
 
 ```text
-INITIALIZING STYLE DNA
-SYNCING PAINT FINISH
-CALCULATING WEATHERING TIPS
-COMPOSING SPRAY PLAN
-RENDERING PREVIEW
-OUTPUT STABILIZED
+LOADING BASE SILHOUETTE
+DRAWING PANEL LINES
+ASSIGNING COLOR BLOCKS
+CHECKING SPRAY FEASIBILITY
+MAPPING PAINT FINISH
+PROTOTYPE READY
 ```
 
 Visual effects:
 
-- Thin scan lines
-- Subtle radar arcs
-- Cyan pulse
-- Panel flicker
-- Tactical grid overlay
+- line drawing
+- panel outline sweep
+- swatch assignment
+- color block fill
+- feasibility check mark
+- manual stamp transition
 
 Avoid:
 
-- Overly long loading theater
-- Loud animations
-- Flashing effects
-- Full-screen chaos
-
----
-
-# 5. Credit Display
-
-Credits should feel like system energy or capacity, but remain understandable.
-
-Recommended label:
-
-```text
-Reactor Credits
-```
-
-or:
-
-```text
-Credit Capacity
-```
-
-Do not make payment language too obscure.
-
-Best compromise:
-
-```text
-Credits / Reactor Capacity
-```
-
-Example display:
-
-```text
-Available Credits: 84
-HD Preview Cost: 5 credits
-```
-
----
-
-# 6. Feedback System UI
-
-Feedback should feel like sending a lab report.
-
-Categories:
-
-- Request New Model
-- Request New Style
-- Report Bad Output
-- Paint Mapping Issue
-- Other
-
-Suggested label:
-
-```text
-Submit Lab Report
-```
-
-Mobile feedback should be very easy.
-
-After a result, show:
-
-```text
-Was this output useful?
-[Yes] [Needs Improvement]
-```
-
-If improvement is selected:
-
-- Bad color separation
-- Unrealistic finish
-- Wrong model silhouette
-- Poor paint mapping
-- Too complex to spray
-- Other
+- reactor pulse
+- cockpit HUD activation
+- neon scanlines
+- long cinematic loading theater
+- flashing effects
 
 ---
 
 # Page-Level Direction
 
-# 1. Landing Page
+## Landing / Home
 
-## Goal
+Goal:
 
-Communicate that NeotypeLab is a spray-ready mecha repaint planning platform.
+- communicate NeotypeLab as a spray-ready mecha repaint planning platform
+- show a bright technical manual / prototype console feel
+- expose public inspiration and prototype entry quickly
 
-## Hero Feel
+Hero should use:
 
-Industrial terminal + mecha preview.
+- cream surfaces
+- mecha blueprint sketch
+- color swatch callouts
+- spray-planning annotations
+- action controls
 
-## Suggested Hero Copy
+Suggested headline can remain:
 
 ```text
 Prototype your next repaint before you spray.
 ```
 
-Subcopy:
+## Create Page
 
-```text
-Build spray-ready mecha color concepts with structured style DNA, paint finishes, weathering effects, and realistic paint planning.
-```
+Goal:
 
-Primary CTA:
-
-```text
-Initialize Prototype
-```
-
-Secondary CTA:
-
-```text
-Explore Community Schemes
-```
-
----
-
-# 2. Create Page
-
-## Goal
-
-Fast concept creation.
+- fast structured concept creation
+- visual emphasis on color scheme and spray plan
+- preserve all current creation steps
 
 Desktop:
 
-- Left: selection controls
-- Center: preview
-- Right: system summary / credit cost
+- large color scheme / prototype sheet
+- compact step controls
+- right or side annotation rail for credit, selected configuration, remix source, and warnings
 
 Mobile:
 
-- Step-based wizard
-- Sticky CTA
-- Autosave selections
+- step wizard
+- sticky primary CTA
+- quick preview access
+- minimal typing
 
----
+## Result / Public Prototype Page
 
-# 3. Result Page
+Goal:
 
-## Goal
-
-Turn output into a useful repaint decision asset.
+- turn output into a useful repaint decision asset
 
 Must include:
 
-- Preview image
-- Color role breakdown
-- Paint finish
-- Weathering tips
-- Paint mapping
-- Difficulty estimate
-- Save
-- Remix
-- Share
-- Feedback
+- generated preview
+- dominant palette
+- color role breakdown
+- material / paint finish
+- weathering
+- paint mapping
+- feasibility
+- shopping / procurement support where available
+- save
+- remix
+- share
+- feedback
+- lineage
 
----
+## Library
 
-# 4. Library Page
+Goal:
 
-## Goal
+- store, revisit, publish, repair, render, and branch concepts
 
-Help users store and revisit concepts.
+V2 feel:
 
-Use terms like:
+- archive binder
+- technical logbook
+- prototype registry
 
-- Hangar
-- Saved Prototypes
-- Build Library
+Do not remove:
 
-Avoid making it feel like a generic image gallery.
+- saved public concepts
+- visibility controls
+- publish review
+- preview stabilization
+- advanced render actions
+- lineage
+- render history
 
----
+## Showcase
 
-# 5. Showcase Page
+Goal:
 
-## Goal
+- community inspiration and SEO discovery
 
-Community inspiration and SEO.
+V2 feel:
 
-Each showcase card should include:
+- public concept archive
+- technical gallery board
+- repaint reference catalog
 
-- Preview image
-- Base model
-- Style DNA
-- Paint finish
-- Weathering level
-- Like/save/remix
+Cards should remain image/scheme-first and preserve filters, sort modes, engagement, and remix actions.
 
-Grid should be clean and image-first.
+## Admin
 
-UI should not overpower the cards.
+Goal:
 
----
+- operational clarity
 
-# 6. Admin Panel
+V2 feel:
 
-Admin should be more functional than cinematic.
+- technical operations ledger
+- maintenance binder
+- clear data control surface
 
-Use the same design system, but reduce HUD effects.
+Reduce decoration.
 
-Admin priorities:
-
-- Speed
-- Clarity
-- Filtering
-- Batch editing
-- Feedback triage
-- Cost monitoring
+Do not remove dense controls, diagnostics, validation, permissions, or editing workflows.
 
 ---
 
 # Motion Design
 
-## Recommended Motion
+Recommended:
 
-- Panel fade-in
-- Soft scan activation
-- Small HUD pulse
-- Progress line sweep
-- Card hover lift
+- line draw-on
+- paper sheet reveal
+- tab slide
+- control press
+- underline sweep
+- swatch recalibration
+- technical stamp transition
 
-## Avoid
+Avoid:
 
-- Heavy 3D animations
-- Excessive particles
-- Long cinematic intros
-- Motion that blocks workflow
-
----
-
-# Iconography
-
-Use clean technical icons.
-
-Recommended style:
-
-- Thin line icons
-- Industrial symbols
-- System status icons
-
-Icon categories:
-
-- Model
-- Style
-- Paint finish
-- Weathering
-- Credits
-- Feedback
-- Save
-- Remix
-- Share
-- Warning
+- neon glow
+- cockpit overlays
+- chaotic particles
+- heavy 3D animation
+- motion that blocks workflow
 
 ---
 
 # Imagery Direction
 
-## Generated Preview Images
+Generated preview images are no longer the only hero.
 
-Should be treated as hero assets.
+V2 hero hierarchy:
 
-Use:
+1. Color scheme and swatch logic
+2. Color role mapping and spray feasibility
+3. Material finish and weathering plan
+4. Generated preview as simulation evidence
 
-- Large preview area
-- Dark background
-- Minimal UI interference
-- Optional blueprint overlay
+Use generated images inside technical reference sheets with annotations, not as isolated poster art.
 
-## Avoid
+Avoid:
 
-- Too many UI decorations over images
-- Classic anime poster layout
-- Colorful background gradients
+- covering images with heavy overlays
+- shrinking all practical paint data below the image
+- anime poster composition
+- generic stock visuals
 
 ---
 
 # Accessibility
 
-Must support:
+The bright redesign must support:
 
-- Strong contrast
-- Readable text on dark background
-- Clear active states
-- Mobile-friendly touch targets
-- Reduced motion option
+- strong contrast
+- readable text on warm light surfaces
+- clear active states
+- visible focus rings
+- keyboard navigation
+- mobile-friendly touch targets
+- reduced motion support
+- non-color-only status communication
 
-Avoid relying only on color to communicate status.
+Line-art, grid, texture, and manual marks must never reduce readability.
 
 ---
 
@@ -779,23 +507,28 @@ Avoid relying only on color to communicate status.
 
 ## Do
 
-- Make the site feel like a future mecha lab
-- Keep UI dark, restrained, and modular
-- Let user creations provide color
-- Use Death Stranding-like terminal logic
-- Use Hathaway cockpit HUD only for emotional moments
-- Make mobile creation fast and thumb-friendly
-- Show credit cost before paid actions
+- use bright retro-futurism
+- use technical line-art
+- use mecha blueprint sketch language
+- use cream / warm white surfaces
+- use muted orange / teal / blue accents
+- use thin technical strokes
+- make color schemes the main visual
+- preserve all structured product flows
+- show costs clearly before paid actions
+- keep mobile fast and usable
 
 ## Don't
 
-- Use classic Gundam blue-white-red as the main UI system
-- Build a generic AI image generator interface
-- Overuse neon effects
-- Make users write long prompts
-- Hide costs
-- Overload mobile screens
-- Make the whole site feel like a cockpit simulator
+- use dark cyberpunk UI
+- use neon glow
+- use cockpit overload
+- use generic SaaS gradients
+- use anime portal styling
+- make the product feel like a toy catalog
+- reduce NeotypeLab to generic image generation
+- remove business controls for visual simplicity
+- hide statuses, costs, visibility, or lineage
 
 ---
 
@@ -803,12 +536,4 @@ Avoid relying only on color to communicate status.
 
 When users open NeotypeLab, they should feel:
 
-> I am operating a future mecha R&D terminal to test the next repaint concept before committing paint to plastic.
-
-The experience should be:
-
-- Fast enough for mobile inspiration
-- Serious enough for hobby builders
-- Stylish enough for sharing
-- Structured enough for SEO and data expansion
-- Controlled enough to manage AI cost and output quality
+> I am reading and operating a bright future mecha repaint planning manual that lets me prototype, compare, document, save, remix, and share spray-ready color schemes.

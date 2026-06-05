@@ -34,7 +34,7 @@ export function PilotPublicView({ handle }: { handle: string }) {
         </p>
         <Link
           href="/showcase"
-          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+          className="mt-6 inline-flex h-11 items-center justify-center rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
         >
           Back to Showcase
         </Link>
@@ -101,7 +101,7 @@ export function PilotPublicView({ handle }: { handle: string }) {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href={`/creator/${profile.pilot.handle}`}
-            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#193021]"
+            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
           >
             Open Creator Hub
           </Link>
@@ -163,13 +163,13 @@ export function PilotPublicView({ handle }: { handle: string }) {
                       <div className="mt-4 flex flex-wrap gap-3">
                         <Link
                           href={`/${style.leadBaseModel.slug}/${style.slug}`}
-                          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+                          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                         >
                           Open Landing
                         </Link>
                         <Link
                           href={`/showcase?style=${style.slug}`}
-                          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+                          className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                         >
                           Filter Showcase
                         </Link>
@@ -177,7 +177,7 @@ export function PilotPublicView({ handle }: { handle: string }) {
                     ) : (
                       <Link
                         href={`/showcase?style=${style.slug}`}
-                        className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+                        className="mt-4 inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
                       >
                         Filter Showcase
                       </Link>

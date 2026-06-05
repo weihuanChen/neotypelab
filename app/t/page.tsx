@@ -5,14 +5,14 @@ export default function TerminalOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-white/10 bg-[#161B22] p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#3DD9FF]">
+      <section className="rounded-3xl border border-line-secondary bg-surface p-6">
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">
           Overview
         </p>
-        <h2 className="mt-3 text-3xl font-semibold text-[#E6EDF3]">
+        <h2 className="mt-3 text-3xl font-semibold text-ink-primary">
           NeotypeLab P1 foundation is now running on the product domain model.
         </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
           This shell is intentionally product-oriented: create flow, saved concepts,
           feedback intake, admin operations, and a future generation pipeline. The
           old team/members/invites starter topology has been removed from the app
@@ -22,11 +22,11 @@ export default function TerminalOverviewPage() {
       {hasClerk ? (
         <DashboardOverview />
       ) : (
-        <section className="rounded-3xl border border-white/10 bg-[#11161D] p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">
+        <section className="rounded-3xl border border-line-secondary bg-panel p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">
             Preview Mode
           </p>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#9BA7B4]">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
             Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and the matching Clerk server
             variables to activate authenticated dashboard data, Convex-backed viewer
             bootstrap, and live credit/state queries.

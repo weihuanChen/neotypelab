@@ -46,24 +46,24 @@ export default function ShowcasePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0D1117] px-4 py-10">
+    <div className="min-h-screen bg-main px-4 py-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <ShowcaseStructuredData structuredDataPromise={structuredDataPromise} />
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-white/10 bg-[#11161D]/95 px-6 py-4 text-[#E6EDF3] backdrop-blur">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-2 border-line-primary bg-panel/95 px-6 py-4 text-ink-primary backdrop-blur">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#58FFB2]">NeotypeLab Public</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">NeotypeLab Public</p>
             <h1 className="mt-2 text-lg font-semibold">Published prototype showcase</h1>
           </div>
           <div className="flex gap-3">
             <Link
               href="/"
-              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-white/10 px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/5"
+              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-line-secondary px-4 text-sm text-ink-primary transition-colors hover:bg-hover-subtle"
             >
               Home
             </Link>
             <Link
               href="/t/showcase"
-              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-[#123342]"
+              className="inline-flex h-10 items-center justify-center rounded-[16px] border border-accent-blue bg-surface shadow-sm px-4 text-sm text-ink-primary transition-colors hover:bg-hover-panel"
             >
               Open Terminal
             </Link>
@@ -88,7 +88,7 @@ async function ShowcaseStructuredData({
 
 function ShowcaseFeedFallback() {
   return (
-    <section className="rounded-[28px] border border-white/10 bg-[#11161D] p-6 text-sm text-[#9BA7B4]">
+    <section className="border-2 border-line-primary bg-panel p-6 text-sm text-ink-secondary">
       Loading showcase feed.
     </section>
   );
