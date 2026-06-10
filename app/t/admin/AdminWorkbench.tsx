@@ -129,6 +129,18 @@ type CreatorPackDraft = {
   isActive: boolean;
 };
 
+type FlagTone = "neutral" | "cyan" | "green" | "amber" | "red";
+type AdminSectionId = "templates" | "ops" | "access" | "commerce" | "catalog";
+
+type AdminSection = {
+  id: AdminSectionId;
+  label: string;
+  eyebrow: string;
+  description: string;
+  metric: string;
+  tone: FlagTone;
+};
+
 export function AdminWorkbench() {
   const { getToken, isLoaded: isClerkLoaded, isSignedIn, sessionId } = useAuth();
   const { user } = useUser();
@@ -175,6 +187,7 @@ export function AdminWorkbench() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [clerkTokenStatus, setClerkTokenStatus] = useState<string>("Not checked");
+  const [activeAdminSection, setActiveAdminSection] = useState<AdminSectionId>("templates");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [templateDraft, setTemplateDraft] = useState<TemplateDraft | null>(null);
   const [priceRuleDrafts, setPriceRuleDrafts] = useState<Record<string, PriceRuleDraft>>({});
@@ -193,6 +206,49 @@ export function AdminWorkbench() {
     __new__: defaultCreatorPackDraft(),
   });
   const newCreatorPackDraft = creatorPackDrafts.__new__;
+
+  const adminSections: AdminSection[] = [
+    {
+      id: "templates",
+      label: "Templates",
+      eyebrow: "Prompt workbench",
+      description: "Edit prompt composition, versions, activation state, and policy text.",
+      metric: `${overview?.activePromptTemplateCount ?? 0}/${overview?.promptTemplateCount ?? 0}`,
+      tone: "green",
+    },
+    {
+      id: "ops",
+      label: "Ops Queue",
+      eyebrow: "Triage",
+      description: "Route feedback reports, assign ownership, and resolve generation issues.",
+      metric: `${overview?.openFeedbackCount ?? feedbackPipeline?.length ?? 0}`,
+      tone: "cyan",
+    },
+    {
+      id: "access",
+      label: "Access",
+      eyebrow: "Users",
+      description: "Manage admins, plans, credits, and creator verification states.",
+      metric: `${overview?.adminCount ?? 0}`,
+      tone: "amber",
+    },
+    {
+      id: "commerce",
+      label: "Commerce",
+      eyebrow: "Credits",
+      description: "Tune credit campaigns, activation codes, and charge rules.",
+      metric: `${creditCampaigns?.length ?? 0}`,
+      tone: "red",
+    },
+    {
+      id: "catalog",
+      label: "Catalog",
+      eyebrow: "Content ops",
+      description: "Maintain base models, Style DNA, materials, paint maps, and creator packs.",
+      metric: `${catalogData?.baseModels.length ?? 0}`,
+      tone: "neutral",
+    },
+  ];
 
   const selectedTemplate = useMemo(() => {
     if (!promptTemplates || promptTemplates.length === 0) {
@@ -398,6 +454,13 @@ export function AdminWorkbench() {
         />
       </section>
 
+      <AdminSectionNav
+        activeSection={activeAdminSection}
+        onSectionChange={setActiveAdminSection}
+        sections={adminSections}
+      />
+
+      {activeAdminSection === "ops" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -614,7 +677,9 @@ export function AdminWorkbench() {
           )}
         </div>
       </section>
+      ) : null}
 
+      {activeAdminSection === "access" ? (
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
         <section className="border-2 border-line-primary bg-surface p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -890,7 +955,9 @@ export function AdminWorkbench() {
           </section>
         </aside>
       </div>
+      ) : null}
 
+      {activeAdminSection === "commerce" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -1483,7 +1550,9 @@ export function AdminWorkbench() {
           )}
         </div>
       </section>
+      ) : null}
 
+      {activeAdminSection === "templates" ? (
       <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <section className="border-2 border-line-primary bg-surface p-6">
           <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Prompt templates</p>
@@ -1642,7 +1711,9 @@ export function AdminWorkbench() {
           )}
         </section>
       </div>
+      ) : null}
 
+      {activeAdminSection === "catalog" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -2445,7 +2516,9 @@ export function AdminWorkbench() {
           </section>
         </div>
       </section>
+      ) : null}
 
+      {activeAdminSection === "commerce" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Charge rules</p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -2553,6 +2626,7 @@ export function AdminWorkbench() {
           )}
         </div>
       </section>
+      ) : null}
     </div>
   );
 }
@@ -2583,6 +2657,72 @@ async function runAdminAction({
   } finally {
     setBusyKey(null);
   }
+}
+
+function AdminSectionNav({
+  activeSection,
+  onSectionChange,
+  sections,
+}: {
+  activeSection: AdminSectionId;
+  onSectionChange: (section: AdminSectionId) => void;
+  sections: AdminSection[];
+}) {
+  const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0];
+
+  return (
+    <section className="border-2 border-line-primary bg-surface p-3">
+      <div className="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="border border-line-secondary bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-accent-orange">
+            Admin map
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-ink-primary">{activeMeta.label}</h3>
+          <p className="mt-3 text-sm leading-6 text-ink-secondary">
+            {activeMeta.description}
+          </p>
+        </div>
+        <nav
+          aria-label="Admin secondary menu"
+          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5"
+        >
+          {sections.map((section) => {
+            const isActive = section.id === activeSection;
+            return (
+              <button
+                key={section.id}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => onSectionChange(section.id)}
+                className={cn(
+                  "group border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:ring-offset-2 focus-visible:ring-offset-main",
+                  isActive
+                    ? "border-line-primary bg-main shadow-[inset_4px_0_0_0_var(--accent-blue)]"
+                    : "border-line-secondary bg-panel hover:border-line-primary hover:bg-hover-surface"
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p
+                    className={cn(
+                      "text-[11px] uppercase tracking-[0.22em]",
+                      isActive ? "text-ink-primary" : "text-ink-muted"
+                    )}
+                  >
+                    {section.eyebrow}
+                  </p>
+                  <FlagPill label={section.metric} tone={section.tone} />
+                </div>
+                <p className="mt-3 text-base font-semibold text-ink-primary">{section.label}</p>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-ink-secondary">
+                  {section.description}
+                </p>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </section>
+  );
 }
 
 function MetricCard({
@@ -2767,7 +2907,7 @@ function formatDateTime(timestamp: number) {
 
 function getCampaignState(campaign: { endsAt: number; isActive: boolean; startsAt: number }): {
   label: string;
-  tone: "neutral" | "cyan" | "green" | "amber" | "red";
+  tone: FlagTone;
 } {
   const now = Date.now();
   if (!campaign.isActive) {
@@ -2789,7 +2929,7 @@ function getActivationCodeState(code: {
   redemptionCount: number;
 }): {
   label: string;
-  tone: "neutral" | "cyan" | "green" | "amber" | "red";
+  tone: FlagTone;
 } {
   if (code.redemptionCount >= code.maxRedemptions) {
     return { label: "exhausted", tone: "neutral" };
@@ -2828,17 +2968,17 @@ function FlagPill({
   tone,
 }: {
   label: string;
-  tone: "neutral" | "cyan" | "green" | "amber" | "red";
+  tone: FlagTone;
 }) {
   return (
     <span
       className={cn(
-        "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "neutral" && "border-line-secondary text-ink-secondary",
-        tone === "cyan" && "border-[#3DD9FF]/30 bg-[#3DD9FF]/10 text-[#8FEAFF]",
-        tone === "green" && "border-[#58FFB2]/30 bg-accent-teal/10 text-[#A6FFD5]",
-        tone === "amber" && "border-[#FFB84D]/30 bg-[#FFB84D]/10 text-[#FFD59A]",
-        tone === "red" && "border-[#FF5F5F]/30 bg-accent-red/10 text-[#FFD2D2]"
+        "inline-flex min-h-[28px] items-center border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] shadow-[inset_0_-1px_0_rgba(255,255,255,0.55)]",
+        tone === "neutral" && "border-[#5F625B] bg-[#ECE4D4] text-[#252B28]",
+        tone === "cyan" && "border-[#1F6F89] bg-[#BCEAF3] text-[#0D3F50]",
+        tone === "green" && "border-[#24794F] bg-[#C3F0D6] text-[#11462E]",
+        tone === "amber" && "border-[#9B5A12] bg-[#F5D28D] text-[#573407]",
+        tone === "red" && "border-[#9E3528] bg-[#F3BEB3] text-[#611C15]"
       )}
     >
       {label}
@@ -2872,7 +3012,7 @@ function CommerceStat({
   );
 }
 
-function feedbackStatusTone(status: string): "cyan" | "green" | "amber" | "red" {
+function feedbackStatusTone(status: string): FlagTone {
   if (status === "open") {
     return "cyan";
   }
@@ -2885,7 +3025,7 @@ function feedbackStatusTone(status: string): "cyan" | "green" | "amber" | "red" 
   return "red";
 }
 
-function queueStatusTone(status?: string): "cyan" | "green" | "amber" | "red" {
+function queueStatusTone(status?: string): FlagTone {
   if (status === "open") {
     return "cyan";
   }
@@ -2917,9 +3057,9 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || busy}
       className={cn(
-        "h-10 rounded-[16px] border px-4 text-sm",
-        tone === "default" && "border-line-secondary bg-main text-ink-primary hover:bg-[#151C25]",
-        tone === "danger" && "border-[#FF5F5F]/25 bg-[#311515] text-[#FFDADA] hover:bg-[#3F1A1A]"
+        "h-10 rounded-[16px] border px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55",
+        tone === "default" && "border-line-primary bg-ink-primary text-surface hover:bg-accent-blue hover:text-white",
+        tone === "danger" && "border-[#9E3528] bg-[#F3BEB3] text-[#611C15] hover:bg-[#E9A092]"
       )}
     >
       {busy ? "Processing" : children}
