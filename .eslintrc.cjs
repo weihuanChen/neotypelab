@@ -7,8 +7,18 @@ module.exports = {
   ignorePatterns: [
     ".eslintrc.cjs",
     "convex/_generated",
+    "src/routeTree.gen.ts",
     // There are currently ESLint errors in shadcn/ui
     "components/ui",
+  ],
+  overrides: [
+    {
+      files: ["src/**/*.{ts,tsx}"],
+      rules: {
+        "@next/next/no-head-element": "off",
+        "@next/next/no-img-element": "off",
+      },
+    },
   ],
   parserOptions: {
     project: true,
