@@ -272,6 +272,62 @@ select {
   padding: 0.8rem;
 }
 
+.auth-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-hero {
+  min-height: 18rem;
+}
+
+.auth-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.auth-grid--signed-in {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.auth-panel {
+  min-height: 16rem;
+}
+
+.auth-panel--primary {
+  border-color: rgba(94, 240, 180, 0.46);
+  background:
+    linear-gradient(135deg, rgba(94, 240, 180, 0.11), transparent 48%),
+    var(--spike-panel);
+}
+
+.auth-user-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
+  border: 1px solid var(--spike-line);
+  background: rgba(7, 9, 13, 0.45);
+  padding: 0.8rem;
+}
+
+.auth-user-row strong,
+.auth-user-row span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.auth-user-row span {
+  margin-top: 0.25rem;
+  color: var(--spike-muted);
+}
+
 .showcase-page {
   width: min(1440px, calc(100vw - 2rem));
   margin: 0 auto;
@@ -1322,7 +1378,9 @@ button.showcase-chip:disabled {
 
   .spike-grid,
   .spike-card-grid,
-  .spike-card {
+  .spike-card,
+  .auth-grid,
+  .auth-grid--signed-in {
     grid-template-columns: 1fr;
   }
 

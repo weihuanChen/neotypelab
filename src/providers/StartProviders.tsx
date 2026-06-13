@@ -1,20 +1,28 @@
-import { ClerkProvider, useAuth } from "@clerk/tanstack-react-start";
-import { ConvexReactClient } from "convex/react";
+import { ClerkProvider, useAuth, useUser } from "@clerk/tanstack-react-start";
+import {
+  Authenticated,
+  ConvexReactClient,
+  useMutation,
+} from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useMemo,
 } from "react";
+import { api } from "@/convex/_generated/api";
 
 type ProviderStatus = {
   hasClerkProvider: boolean;
+  hasConvexAuthBridge: boolean;
   hasConvexClient: boolean;
 };
 
 const ProviderStatusContext = createContext<ProviderStatus>({
   hasClerkProvider: false,
+  hasConvexAuthBridge: false,
   hasConvexClient: false,
 });
 
@@ -31,6 +39,7 @@ export function StartProviders({ children }: { children: ReactNode }) {
   const status = useMemo(
     () => ({
       hasClerkProvider: Boolean(clerkPublishableKey),
+      hasConvexAuthBridge: Boolean(clerkPublishableKey && convex),
       hasConvexClient: Boolean(convex),
     }),
     []
@@ -49,6 +58,9 @@ export function StartProviders({ children }: { children: ReactNode }) {
       <ClerkProvider publishableKey={clerkPublishableKey}>
         {convex ? (
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <Authenticated>
+              <StoreUserInDatabase />
+            </Authenticated>
             {children}
           </ConvexProviderWithClerk>
         ) : (
@@ -61,4 +73,15 @@ export function StartProviders({ children }: { children: ReactNode }) {
 
 export function useStartProviderStatus() {
   return useContext(ProviderStatusContext);
+}
+
+function StoreUserInDatabase() {
+  const { user } = useUser();
+  const storeUser = useMutation(api.users.store);
+
+  useEffect(() => {
+    void storeUser();
+  }, [storeUser, user?.id]);
+
+  return null;
 }
