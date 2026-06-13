@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
@@ -21,9 +23,19 @@ const TRoute = TRouteImport.update({
   path: '/t',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShowcaseRoute = ShowcaseRouteImport.update({
   id: '/showcase',
   path: '/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,7 +61,9 @@ const PilotHandleRoute = PilotHandleRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -57,7 +71,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -66,7 +82,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -76,7 +94,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/robots.txt'
     | '/showcase'
+    | '/sitemap.xml'
     | '/t'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -84,7 +104,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/robots.txt'
     | '/showcase'
+    | '/sitemap.xml'
     | '/t'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -92,7 +114,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/robots.txt'
     | '/showcase'
+    | '/sitemap.xml'
     | '/t'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -101,7 +125,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   ShowcaseRoute: typeof ShowcaseRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TRoute: typeof TRoute
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
@@ -117,11 +143,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/showcase': {
       id: '/showcase'
       path: '/showcase'
       fullPath: '/showcase'
       preLoaderRoute: typeof ShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,7 +197,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   ShowcaseRoute: ShowcaseRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TRoute: TRoute,
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
