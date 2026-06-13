@@ -13,6 +13,7 @@ import { Route as TRouteImport } from './routes/t'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
+import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
 
 const TRoute = TRouteImport.update({
   id: '/t',
@@ -34,17 +35,24 @@ const PrototypeConceptIdRoute = PrototypeConceptIdRouteImport.update({
   path: '/prototype/$conceptId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PilotHandleRoute = PilotHandleRouteImport.update({
+  id: '/pilot/$handle',
+  path: '/pilot/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/showcase' | '/t' | '/prototype/$conceptId'
+  fullPaths:
+    | '/'
+    | '/showcase'
+    | '/t'
+    | '/pilot/$handle'
+    | '/prototype/$conceptId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/showcase' | '/t' | '/prototype/$conceptId'
-  id: '__root__' | '/' | '/showcase' | '/t' | '/prototype/$conceptId'
+  to: '/' | '/showcase' | '/t' | '/pilot/$handle' | '/prototype/$conceptId'
+  id:
+    | '__root__'
+    | '/'
+    | '/showcase'
+    | '/t'
+    | '/pilot/$handle'
+    | '/prototype/$conceptId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShowcaseRoute: typeof ShowcaseRoute
   TRoute: typeof TRoute
+  PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
 }
 
@@ -99,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrototypeConceptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pilot/$handle': {
+      id: '/pilot/$handle'
+      path: '/pilot/$handle'
+      fullPath: '/pilot/$handle'
+      preLoaderRoute: typeof PilotHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,6 +134,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShowcaseRoute: ShowcaseRoute,
   TRoute: TRoute,
+  PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
 }
 export const routeTree = rootRouteImport
