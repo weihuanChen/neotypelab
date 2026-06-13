@@ -87,9 +87,18 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
   }
 
   try {
-    const [publicConcepts, publicProfiles] = await Promise.all([
+    const [
+      publicConcepts,
+      publicProfiles,
+      seoLandingPages,
+      creatorPacks,
+      creatorHubs,
+    ] = await Promise.all([
       convex.query(api.showcase.listPublicConceptsForSitemap, {}),
       convex.query(api.showcase.listPublicProfilesForSitemap, {}),
+      convex.query(api.showcase.listSeoLandingPagesForSitemap, {}),
+      convex.query(api.showcase.listCreatorPacksForSitemap, {}),
+      convex.query(api.showcase.listCreatorHubsForSitemap, {}),
     ]);
 
     return [
@@ -105,6 +114,27 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
         lastModified: new Date(profile.lastModified),
         changeFrequency: "weekly" as const,
         priority: 0.75,
+      })),
+      ...seoLandingPages.map((page) => ({
+        url: new URL(
+          `/${page.baseModelSlug}/${page.stylePresetSlug}`,
+          siteUrl
+        ).toString(),
+        lastModified: new Date(page.lastModified),
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      })),
+      ...creatorPacks.map((pack) => ({
+        url: new URL(`/creator-pack/${pack.slug}`, siteUrl).toString(),
+        lastModified: new Date(pack.lastModified),
+        changeFrequency: "weekly" as const,
+        priority: 0.72,
+      })),
+      ...creatorHubs.map((hub) => ({
+        url: new URL(`/creator/${hub.handle}`, siteUrl).toString(),
+        lastModified: new Date(hub.lastModified),
+        changeFrequency: "weekly" as const,
+        priority: 0.78,
       })),
     ];
   } catch {
