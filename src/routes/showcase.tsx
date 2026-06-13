@@ -1,47 +1,56 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { api } from "@/convex/_generated/api";
+import { ShowcaseFeed } from "@/src/components/showcase/ShowcaseFeed";
+import {
+  defaultShowcaseSort,
+  parseOptionalSearchValue,
+  parseShowcaseSort,
+} from "@/src/components/showcase/showcaseUtils";
+import type {
+  ShowcaseData,
+  ShowcaseSearch,
+  ShowcaseSnapshot,
+} from "@/src/components/showcase/types";
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 
+const emptyShowcaseData: ShowcaseData = {
+  concepts: [],
+  creatorPacks: [],
+  rankedCreators: [],
+};
+
 const getShowcaseSnapshot = createServerFn({ method: "GET" }).handler(
-  async () => {
+  async (): Promise<ShowcaseSnapshot> => {
     const convex = createConvexHttpClient();
 
     if (!convex) {
       return {
-        status: "missing-env" as const,
-        conceptCount: 0,
-        concepts: [],
+        status: "missing-env",
+        ...emptyShowcaseData,
         message:
           "NEXT_PUBLIC_CONVEX_URL or VITE_CONVEX_URL is required for SSR Convex reads.",
       };
     }
 
     try {
-      const concepts = await convex.query(api.showcase.listPublicConcepts, {});
+      const [concepts, creatorPacks, rankedCreators] = await Promise.all([
+        convex.query(api.showcase.listPublicConcepts, {}),
+        convex.query(api.showcase.listPublicCreatorPacks, {}),
+        convex.query(api.showcase.listRankedPublicCreators, {}),
+      ]);
 
       return {
-        status: "ok" as const,
-        conceptCount: concepts.length,
-        concepts: concepts.slice(0, 6).map((concept) => ({
-          id: concept._id,
-          title: concept.title,
-          owner: concept.owner?.handle ?? "anonymous",
-          baseModel: concept.baseModel?.name ?? "Unknown base model",
-          stylePreset: concept.stylePreset?.name ?? "Unknown Style DNA",
-          material: concept.materialPreset?.name ?? "Unknown material",
-          previewUrl: concept.previewAsset?.publicUrl ?? null,
-          likeCount: concept.engagement.likeCount,
-          saveCount: concept.engagement.saveCount,
-          remixCount: concept.remixCount,
-        })),
-        fetchedAt: new Date().toISOString(),
+        status: "ok",
+        concepts,
+        creatorPacks,
+        rankedCreators,
+        generatedAt: new Date().toISOString(),
       };
     } catch (error) {
       return {
-        status: "error" as const,
-        conceptCount: 0,
-        concepts: [],
+        status: "error",
+        ...emptyShowcaseData,
         message: error instanceof Error ? error.message : String(error),
       };
     }
@@ -49,75 +58,92 @@ const getShowcaseSnapshot = createServerFn({ method: "GET" }).handler(
 );
 
 export const Route = createFileRoute("/showcase")({
+  validateSearch: (search): ShowcaseSearch => {
+    const sort = parseShowcaseSort(search.sort);
+
+    return {
+      sort: sort === defaultShowcaseSort ? undefined : sort,
+      baseModel: parseOptionalSearchValue(search.baseModel),
+      style: parseOptionalSearchValue(search.style),
+      category: parseOptionalSearchValue(search.category),
+      creator: parseOptionalSearchValue(search.creator),
+    };
+  },
   loader: () => getShowcaseSnapshot(),
   head: () => ({
     meta: [
-      { title: "Showcase SSR | NeotypeLab TanStack Spike" },
+      { title: "NeotypeLab Showcase" },
       {
         name: "description",
         content:
-          "Public Convex showcase data rendered through TanStack Start on the spike branch.",
+          "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
       },
+      { property: "og:title", content: "NeotypeLab Showcase" },
+      {
+        property: "og:description",
+        content:
+          "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ShowcaseSpike,
+  component: ShowcaseRoute,
 });
 
-function ShowcaseSpike() {
+function ShowcaseRoute() {
   const snapshot = Route.useLoaderData();
+  const search = Route.useSearch();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "NeotypeLab Showcase",
+    description:
+      "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
+    url: "/showcase",
+    about: [
+      {
+        "@type": "Thing",
+        name: "Mecha repaint ideas",
+      },
+      {
+        "@type": "Thing",
+        name: "Style DNA discovery",
+      },
+    ],
+    keywords: "trending, recent, most saved, most remixed",
+    interactionStatistic: [
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/ViewAction",
+        userInteractionCount: snapshot.concepts.length,
+      },
+    ],
+  };
 
   return (
-    <main className="spike-page">
-      <section className="spike-hero spike-hero--short">
-        <p className="spike-kicker">Convex SSR probe</p>
-        <h1>Showcase data is loaded by a TanStack Start server function.</h1>
-        <p>
-          Status: <strong>{snapshot.status}</strong>
-          {" conceptCount" in snapshot ? ` / ${snapshot.conceptCount} public items` : ""}
-        </p>
+    <main className="showcase-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData),
+        }}
+      />
+      <section className="showcase-topbar">
+        <div>
+          <p className="showcase-kicker">NeotypeLab Public</p>
+          <h1>Published prototype showcase</h1>
+        </div>
+        <div className="showcase-topbar__actions">
+          <a className="showcase-button is-ghost" href="/">
+            Home
+          </a>
+          <a className="showcase-button" href="/t/showcase">
+            Open Terminal
+          </a>
+        </div>
       </section>
-
-      {snapshot.status !== "ok" ? (
-        <section className="spike-panel">
-          <p className="spike-kicker">Probe output</p>
-          <h2>Convex read not available yet</h2>
-          <p>{snapshot.message}</p>
-        </section>
-      ) : (
-        <section className="spike-card-grid">
-          {snapshot.concepts.map((concept) => (
-            <article className="spike-card" key={concept.id}>
-              {concept.previewUrl ? (
-                <img src={concept.previewUrl} alt="" />
-              ) : (
-                <div className="spike-card__placeholder">No preview</div>
-              )}
-              <div>
-                <p className="spike-kicker">@{concept.owner}</p>
-                <h2>{concept.title}</h2>
-                <dl className="spike-facts">
-                  <div>
-                    <dt>Base</dt>
-                    <dd>{concept.baseModel}</dd>
-                  </div>
-                  <div>
-                    <dt>Style</dt>
-                    <dd>{concept.stylePreset}</dd>
-                  </div>
-                  <div>
-                    <dt>Material</dt>
-                    <dd>{concept.material}</dd>
-                  </div>
-                </dl>
-                <p className="spike-card__meta">
-                  {concept.likeCount} likes / {concept.saveCount} saves /{" "}
-                  {concept.remixCount} remixes
-                </p>
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
+      <ShowcaseFeed search={search} snapshot={snapshot} />
     </main>
   );
 }

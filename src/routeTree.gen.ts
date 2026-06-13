@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 
 const TRoute = TRouteImport.update({
   id: '/t',
@@ -28,35 +29,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeConceptIdRoute = PrototypeConceptIdRouteImport.update({
+  id: '/prototype/$conceptId',
+  path: '/prototype/$conceptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/showcase': typeof ShowcaseRoute
   '/t': typeof TRoute
+  '/prototype/$conceptId': typeof PrototypeConceptIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/showcase' | '/t'
+  fullPaths: '/' | '/showcase' | '/t' | '/prototype/$conceptId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/showcase' | '/t'
-  id: '__root__' | '/' | '/showcase' | '/t'
+  to: '/' | '/showcase' | '/t' | '/prototype/$conceptId'
+  id: '__root__' | '/' | '/showcase' | '/t' | '/prototype/$conceptId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ShowcaseRoute: typeof ShowcaseRoute
   TRoute: typeof TRoute
+  PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/$conceptId': {
+      id: '/prototype/$conceptId'
+      path: '/prototype/$conceptId'
+      fullPath: '/prototype/$conceptId'
+      preLoaderRoute: typeof PrototypeConceptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ShowcaseRoute: ShowcaseRoute,
   TRoute: TRoute,
+  PrototypeConceptIdRoute: PrototypeConceptIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

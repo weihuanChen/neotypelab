@@ -27,7 +27,7 @@ function Home() {
         </p>
         <div className="spike-actions">
           <Link className="spike-button" to="/showcase">
-            Check Convex SSR
+            Open showcase
           </Link>
           <Link className="spike-button spike-button--ghost" to="/t">
             Check auth shell
