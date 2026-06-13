@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
 
@@ -28,6 +29,11 @@ const ShowcaseRoute = ShowcaseRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TLibraryRoute = TLibraryRouteImport.update({
+  id: '/t_/library',
+  path: '/t/library',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrototypeConceptIdRoute = PrototypeConceptIdRouteImport.update({
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/t/library': typeof TLibraryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/t/library': typeof TLibraryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   '/t': typeof TRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/t_/library': typeof TLibraryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +80,15 @@ export interface FileRouteTypes {
     | '/t'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
+    | '/t/library'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/showcase' | '/t' | '/pilot/$handle' | '/prototype/$conceptId'
+  to:
+    | '/'
+    | '/showcase'
+    | '/t'
+    | '/pilot/$handle'
+    | '/prototype/$conceptId'
+    | '/t/library'
   id:
     | '__root__'
     | '/'
@@ -80,6 +96,7 @@ export interface FileRouteTypes {
     | '/t'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
+    | '/t_/library'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +105,7 @@ export interface RootRouteChildren {
   TRoute: typeof TRoute
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
+  TLibraryRoute: typeof TLibraryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -113,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/t_/library': {
+      id: '/t_/library'
+      path: '/t/library'
+      fullPath: '/t/library'
+      preLoaderRoute: typeof TLibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype/$conceptId': {
       id: '/prototype/$conceptId'
       path: '/prototype/$conceptId'
@@ -136,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   TRoute: TRoute,
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
+  TLibraryRoute: TLibraryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

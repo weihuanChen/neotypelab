@@ -61,7 +61,10 @@ function RootDocument({ children }: { children: ReactNode }) {
                   Home
                 </Link>
                 <Link to="/showcase">Showcase</Link>
-                <Link to="/t">Terminal Auth</Link>
+                <Link to="/t" activeOptions={{ exact: true }}>
+                  Terminal Auth
+                </Link>
+                <Link to="/t/library">Library</Link>
               </nav>
             </header>
             {children}
