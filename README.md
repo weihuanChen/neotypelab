@@ -1,53 +1,110 @@
-# SaaS Starter: Convex + TypeScript + Next.js + Clerk + Tailwind + shadcn/ui
+# NeotypeLab
 
-Build your SaaS website in no time! Included:
+NeotypeLab is a TanStack Start frontend deployed on Cloudflare Workers with
+Convex as the canonical backend. The app exposes public prototype discovery
+routes, OG/social cards, sitemap/robots output, and an authenticated terminal for
+create and library workflows.
 
-- Realtime database for implementing your product with
-  [Convex](https://convex.dev)
-  - Team/organization management
-  - Configurable roles and permissions
-- Member invite emails using [Resend](https://resend.com)
-- User sign-in and sign-up with [Clerk](https://clerk.com)
-- Website router with [Next.js](https://nextjs.org/)
-- Slick UX with [shadcn/ui](https://ui.shadcn.com/)
+## Stack
 
-Check out [Convex docs](https://docs.convex.dev/home), and
-[Convex Ents docs](https://labs.convex.dev/convex-ents)
+- TanStack Start and TanStack Router in `src/`
+- Cloudflare Workers deployment through `wrangler.jsonc`
+- Convex queries, mutations, actions, and schema in `convex/`
+- Clerk authentication bridged into Convex auth
+- Tailwind/shadcn UI primitives shared from `components/`
+- Legacy Next App Router files retained in `app/` during migration fallback
 
-## Screenshots
+## Local Development
 
-<img alt="Personal Account and Teams" src="https://cdn.sanity.io/images/ts10onj4/production/574eeb5fd38aa598e2068b765390e0dc8b220075-1890x742.png" width="400">
+1. Install dependencies.
 
-<img alt="Members management" src="https://cdn.sanity.io/images/ts10onj4/production/2a0334dddfdc3a52bb7ffb5c74b58edf8a7b9e03-1894x1130.png" width="400">
+   ```bash
+   npm install
+   ```
 
-<img alt="Invites management" src="https://cdn.sanity.io/images/ts10onj4/production/ee70ea18510494e3b67eb58639fc8f11344a4a83-1512x398.png" width="330">
+2. Create `.env.local` from `.env.example` and fill the Convex, Clerk, site URL,
+   R2, and generation keys that your environment needs.
 
-<img alt="Invite accept flow" src="https://cdn.sanity.io/images/ts10onj4/production/afbf9daf190f992af8eadfba6daaf175b7bea679-1864x1070.png" width="400">
+3. Start the TanStack frontend and Convex backend together.
 
-## Setting up
+   ```bash
+   npm run dev
+   ```
 
+   Useful targeted commands:
+
+   ```bash
+   npm run dev:tanstack
+   npm run dev:backend
+   npm run dev:next
+   ```
+
+4. Seed the Convex deployment after first-time setup.
+
+   ```bash
+   npx convex run init:init
+   ```
+
+## Production Build
+
+The default production path is TanStack Start on Cloudflare Workers.
+
+```bash
+npm run build
+npm run deploy
 ```
-npm create convex@latest -- -t xixixao/saas-starter
+
+Equivalent explicit commands are:
+
+```bash
+npm run build:tanstack
+npm run deploy:tanstack
 ```
 
-Then:
+The retained Next build is available only as a migration fallback:
 
-1. Run `npm run dev`
-   - It will ask you to set up `CLERK_JWT_ISSUER_DOMAIN`, Follow steps 1 to 3 in
-     the
-     [Convex Clerk onboarding guide](https://docs.convex.dev/auth/clerk#get-started)
-2. Follow step 3 from the
-   [Clerk Next.js quickstart](https://clerk.com/docs/quickstarts/nextjs#set-environment-keys),
-   setting up both `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in
-   your `.env.local` file
-3. Add `SUPER_ADMIN_EMAILS` to `.env.local` and your Convex deployment if you need a
-   default platform operator. Use a comma-separated list such as
-   `SUPER_ADMIN_EMAILS=admin@example.com,ops@example.com`
-4. Configure public asset delivery for generated previews.
-   - Preferred: set `R2_PUBLIC_BASE_URL` in `.env.local` to the public bucket or CDN base URL.
-   - Fallback: enable the bucket's managed Cloudflare R2 domain so preview URLs can be resolved automatically.
-5. Run `npx convex run init:init` to initialize the permissions and roles in the
-   database
+```bash
+npm run build:next
+npm run start:next
+```
 
-If you want to sync Clerk user data via webhooks, check out this
-[example repo](https://github.com/thomasballinger/convex-clerk-users-table/).
+## Cloudflare Environment
+
+Set non-secret public values for both the build environment and Worker runtime:
+
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_CONVEX_URL`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+
+Set secrets in Wrangler or the Cloudflare dashboard:
+
+- `CLERK_SECRET_KEY`
+- `CLERK_JWT_ISSUER_DOMAIN`
+- `SUPER_ADMIN_EMAILS`
+- `OPENAI_API_KEY`
+- R2 credentials used by generation and asset stabilization
+
+Convex stays deployed separately:
+
+```bash
+npx convex deploy
+```
+
+## Verification
+
+Before shipping a migration batch, run:
+
+```bash
+npm run build
+npm run lint
+```
+
+Suggested smoke checks:
+
+- `/`
+- `/showcase`
+- `/t`
+- `/t/create`
+- `/t/library`
+- `/robots.txt`
+- `/sitemap.xml`

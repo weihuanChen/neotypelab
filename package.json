@@ -4,16 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
-    "dev:frontend": "next dev",
+    "dev:frontend": "vite dev",
+    "dev:next": "next dev",
     "dev:backend": "convex dev --typecheck=disable",
     "dev:tanstack": "vite dev",
     "predev": "convex dev --until-success && convex dashboard",
-    "build": "next build",
+    "build": "vite build",
+    "build:next": "next build",
     "build:tanstack": "vite build",
     "preview:tanstack": "vite preview",
+    "deploy": "npm run deploy:tanstack",
     "deploy:tanstack": "npm run build:tanstack && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "start": "next start",
+    "start": "vite preview",
+    "start:next": "next start",
     "lint": "tsc && next lint"
   },
   "dependencies": {

@@ -328,6 +328,55 @@ select {
   color: var(--spike-muted);
 }
 
+.terminal-page {
+  width: min(1440px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem) 0 clamp(3rem, 6vw, 6rem);
+}
+
+.terminal-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.terminal-hero {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--spike-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015)),
+    rgba(16, 21, 27, 0.94);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.terminal-hero h1 {
+  max-width: 920px;
+  margin: 0;
+  font-size: clamp(2.2rem, 5.6vw, 4.8rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.terminal-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--spike-muted);
+  line-height: 1.65;
+}
+
+.terminal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.terminal-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
 .showcase-page {
   width: min(1440px, calc(100vw - 2rem));
   margin: 0 auto;

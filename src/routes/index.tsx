@@ -3,11 +3,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "NeotypeLab TanStack Spike" },
+      { title: "NeotypeLab" },
       {
         name: "description",
         content:
-          "TanStack Start spike for validating Cloudflare Workers rendering with Convex.",
+          "Discover public repaint prototypes and open the authenticated NeotypeLab creation terminal.",
       },
     ],
   }),
@@ -18,38 +18,40 @@ function Home() {
   return (
     <main className="spike-page">
       <section className="spike-hero">
-        <p className="spike-kicker">Migration spike</p>
-        <h1>Front-end rendering moves here first. Convex stays canonical.</h1>
+        <p className="spike-kicker">NeotypeLab</p>
+        <h1>Structured repaint concepts, public surfaces, and operator tools.</h1>
         <p>
-          This branch validates the smallest useful slice: TanStack Start route
-          rendering, Cloudflare Workers configuration, Convex SSR reads, and a
-          Clerk-backed terminal entry.
+          Explore creator-ready prototype surfaces, fork public builds into the
+          create workflow, and keep generated concepts backed by Convex.
         </p>
         <div className="spike-actions">
           <Link className="spike-button" to="/showcase">
             Open showcase
           </Link>
-          <Link className="spike-button spike-button--ghost" to="/t">
-            Check auth shell
+          <Link className="spike-button" to="/t/create">
+            Start creating
+          </Link>
+          <Link className="spike-button spike-button--ghost" to="/t/library">
+            Open library
           </Link>
         </div>
       </section>
 
-      <section className="spike-grid" aria-label="Spike acceptance checks">
+      <section className="spike-grid" aria-label="Production surfaces">
         <article className="spike-panel">
           <p className="spike-kicker">01</p>
-          <h2>TanStack Start</h2>
-          <p>File routes under `src/routes` render independently from Next.</p>
+          <h2>Public Showcase</h2>
+          <p>SEO-ready prototype, pilot, creator, and pack surfaces render on Workers.</p>
         </article>
         <article className="spike-panel">
           <p className="spike-kicker">02</p>
-          <h2>Cloudflare Worker</h2>
-          <p>`wrangler.jsonc` targets the Start server entry with Node compat.</p>
+          <h2>Create Terminal</h2>
+          <p>Authenticated create sessions write concepts, jobs, and recommendations to Convex.</p>
         </article>
         <article className="spike-panel">
           <p className="spike-kicker">03</p>
-          <h2>Convex Boundary</h2>
-          <p>Server rendering reads public Convex data without moving backend logic.</p>
+          <h2>Operator Library</h2>
+          <p>Private concepts, saved public builds, and generation ledgers stay in sync.</p>
         </article>
       </section>
     </main>

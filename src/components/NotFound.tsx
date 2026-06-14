@@ -5,9 +5,9 @@ export function NotFound() {
     <main className="spike-page spike-page--compact">
       <section className="spike-panel">
         <p className="spike-kicker">404</p>
-        <h1>This spike route does not exist.</h1>
+        <h1>This NeotypeLab route does not exist.</h1>
         <Link className="spike-button" to="/">
-          Back to spike home
+          Back to home
         </Link>
       </section>
     </main>

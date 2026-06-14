@@ -6,13 +6,20 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
 import { StartProviders } from "@/src/providers/StartProviders";
 import legacyGlobalsCss from "@/app/globals.css?url";
 import appCss from "@/src/styles/app.css?url";
+
+const RouterDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import("@tanstack/react-router-devtools").then((module) => ({
+        default: module.TanStackRouterDevtools,
+      }))
+    )
+  : null;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -20,12 +27,12 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       {
-        title: "NeotypeLab TanStack Spike",
+        title: "NeotypeLab",
       },
       {
         name: "description",
         content:
-          "Cloudflare Workers rendering spike for NeotypeLab using TanStack Start and Convex.",
+          "NeotypeLab public showcase and authenticated repaint creation terminal.",
       },
     ],
     links: [
@@ -58,15 +65,15 @@ function RootDocument({ children }: { children: ReactNode }) {
             <header className="spike-header">
               <Link className="spike-brand" to="/">
                 <span>NeotypeLab</span>
-                <strong>TanStack Spike</strong>
+                <strong>Terminal</strong>
               </Link>
-              <nav className="spike-nav" aria-label="Spike routes">
+              <nav className="spike-nav" aria-label="Primary routes">
                 <Link to="/" activeOptions={{ exact: true }}>
                   Home
                 </Link>
                 <Link to="/showcase">Showcase</Link>
                 <Link to="/t" activeOptions={{ exact: true }}>
-                  Terminal Auth
+                  Terminal
                 </Link>
                 <Link to="/t/create">Create</Link>
                 <Link to="/t/library">Library</Link>
@@ -75,7 +82,11 @@ function RootDocument({ children }: { children: ReactNode }) {
             {children}
           </div>
         </StartProviders>
-        <TanStackRouterDevtools position="bottom-right" />
+        {RouterDevtools ? (
+          <Suspense fallback={null}>
+            <RouterDevtools position="bottom-right" />
+          </Suspense>
+        ) : null}
         <Scripts />
       </body>
     </html>

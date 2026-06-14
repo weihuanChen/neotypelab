@@ -1,135 +1,86 @@
-import {
-  SignInButton,
-  UserButton,
-  useUser,
-} from "@clerk/tanstack-react-start";
-import { auth } from "@clerk/tanstack-react-start/server";
+import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import {
-  AuthLoading,
-  Authenticated,
-  Unauthenticated,
-  useMutation,
-  useQuery,
-} from "convex/react";
-import { useEffect } from "react";
-import { api } from "@/convex/_generated/api";
+import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
+import { DashboardOverview } from "@/src/components/terminal/DashboardOverview";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 
-type AuthSnapshot =
-  | {
-      status: "ok";
-      sessionId: string | null;
-      signedIn: boolean;
-      userId: string | null;
-    }
-  | {
-      status: "missing-env" | "error";
-      message: string;
-      userId: null;
-    };
-
-const getAuthSnapshot = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AuthSnapshot> => {
-    const hasClerkEnv = Boolean(
-      (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-        process.env.CLERK_PUBLISHABLE_KEY ??
-        process.env.VITE_CLERK_PUBLISHABLE_KEY) &&
-        process.env.CLERK_SECRET_KEY
-    );
-
-    if (!hasClerkEnv) {
-      return {
-        status: "missing-env",
-        userId: null,
-        message:
-          "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are required for protected SSR auth.",
-      };
-    }
-
-    try {
-      const authState = await auth();
-
-      return {
-        status: "ok",
-        userId: authState.userId,
-        sessionId: authState.sessionId,
-        signedIn: Boolean(authState.userId),
-      };
-    } catch {
-      return {
-        status: "error",
-        userId: null,
-        message:
-          "Clerk server auth could not be resolved for this TanStack route.",
-      };
-    }
-  }
-);
-
 export const Route = createFileRoute("/t")({
-  loader: () => getAuthSnapshot(),
   head: () => ({
     meta: [
-      { title: "Terminal Auth | NeotypeLab TanStack Spike" },
+      { title: "Terminal | NeotypeLab" },
       {
         name: "description",
         content:
-          "Clerk and Convex authenticated app-shell probe for the TanStack Start migration.",
+          "Authenticated NeotypeLab operator terminal for create, library, credits, and generation state.",
       },
     ],
   }),
-  component: TerminalAuthRoute,
+  component: TerminalRoute,
 });
 
-function TerminalAuthRoute() {
-  const authSnapshot = Route.useLoaderData();
+function TerminalRoute() {
   const providerStatus = useStartProviderStatus();
 
   return (
-    <main className="spike-page auth-page">
-      <section className="spike-hero spike-hero--short auth-hero">
-        <p className="spike-kicker">Authenticated shell</p>
-        <h1>Clerk React and Convex auth are wired into TanStack Start.</h1>
+    <main className="terminal-page">
+      <section className="terminal-hero">
+        <p className="showcase-kicker">NeotypeLab Terminal</p>
+        <h1>Operate the repaint pipeline.</h1>
         <p>
-          Server auth status: <strong>{authSnapshot.status}</strong>
-          {"signedIn" in authSnapshot
-            ? ` / ${authSnapshot.signedIn ? "signed in" : "signed out"}`
-            : ""}
+          Create structured concepts, manage generated surfaces, review credits,
+          and keep public-ready builds synchronized with Convex.
         </p>
+        <div className="terminal-actions">
+          <a className="showcase-button" href="/t/create">
+            Create
+          </a>
+          <a className="showcase-button is-ghost" href="/t/library">
+            Library
+          </a>
+          <a className="showcase-button is-ghost" href="/showcase">
+            Showcase
+          </a>
+        </div>
       </section>
 
       {!providerStatus.hasClerkProvider || !providerStatus.hasConvexClient ? (
         <MissingAuthConfiguration providerStatus={providerStatus} />
       ) : (
-        <TerminalAuthGate authSnapshot={authSnapshot} />
+        <TerminalAuthGate />
       )}
     </main>
   );
 }
 
-function TerminalAuthGate({
-  authSnapshot,
-}: {
-  authSnapshot: AuthSnapshot;
-}) {
+function TerminalAuthGate() {
   return (
-    <div className="auth-stack">
+    <div className="terminal-stack">
       <AuthLoading>
-        <AuthStatePanel
-          copy="Clerk is present and Convex is negotiating an authenticated websocket token."
-          status="Syncing"
-          title="Waiting for Convex auth"
+        <TerminalStatePanel
+          copy="Clerk is present and Convex is negotiating the authenticated viewer token."
+          kicker="Session sync"
+          title="Opening operator terminal"
         />
       </AuthLoading>
 
       <Unauthenticated>
-        <SignedOutPanel authSnapshot={authSnapshot} />
+        <section className="library-empty">
+          <p className="showcase-kicker is-orange">Signed out</p>
+          <h1>Sign in to open the operator terminal.</h1>
+          <p>
+            Terminal data is scoped to your Clerk identity and private Convex
+            viewer record.
+          </p>
+          <SignInButton mode="modal">
+            <button className="showcase-button" type="button">
+              Sign in
+            </button>
+          </SignInButton>
+        </section>
       </Unauthenticated>
 
       <Authenticated>
-        <SignedInPanel authSnapshot={authSnapshot} />
+        <DashboardOverview />
       </Authenticated>
     </div>
   );
@@ -142,162 +93,45 @@ function MissingAuthConfiguration({
 }) {
   return (
     <section className="auth-grid">
-      <AuthStatePanel
+      <TerminalStatePanel
         copy={
           providerStatus.hasClerkProvider
             ? "Clerk publishable key is available."
             : "Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY or VITE_CLERK_PUBLISHABLE_KEY for client auth."
         }
-        status={providerStatus.hasClerkProvider ? "Ready" : "Missing"}
+        kicker={providerStatus.hasClerkProvider ? "Ready" : "Missing"}
         title="Clerk provider"
       />
-      <AuthStatePanel
+      <TerminalStatePanel
         copy={
           providerStatus.hasConvexClient
             ? "Convex client URL is available."
             : "Set NEXT_PUBLIC_CONVEX_URL or VITE_CONVEX_URL for realtime Convex access."
         }
-        status={providerStatus.hasConvexClient ? "Ready" : "Missing"}
+        kicker={providerStatus.hasConvexClient ? "Ready" : "Missing"}
         title="Convex client"
       />
-      <AuthStatePanel
-        copy="Both providers are required before authenticated terminal routes can query api.users.viewer."
-        status={providerStatus.hasConvexAuthBridge ? "Ready" : "Blocked"}
+      <TerminalStatePanel
+        copy="Both providers are required before authenticated terminal routes can query private viewer state."
+        kicker={providerStatus.hasConvexAuthBridge ? "Ready" : "Blocked"}
         title="Convex auth bridge"
       />
     </section>
   );
 }
 
-function SignedOutPanel({ authSnapshot }: { authSnapshot: AuthSnapshot }) {
-  return (
-    <section className="auth-grid">
-      <article className="spike-panel auth-panel auth-panel--primary">
-        <p className="spike-kicker">Signed out</p>
-        <h2>Sign in to open the operator surface.</h2>
-        <p>
-          Clerk controls are mounted, but Convex queries will stay unauthenticated
-          until a session token is available.
-        </p>
-        <div className="spike-auth-actions">
-          <SignInButton mode="modal">
-            <button className="spike-button" type="button">
-              Sign in
-            </button>
-          </SignInButton>
-        </div>
-      </article>
-      <ServerSnapshotPanel authSnapshot={authSnapshot} />
-    </section>
-  );
-}
-
-function SignedInPanel({ authSnapshot }: { authSnapshot: AuthSnapshot }) {
-  const { user } = useUser();
-
-  return (
-    <section className="auth-grid auth-grid--signed-in">
-      <article className="spike-panel auth-panel auth-panel--primary">
-        <p className="spike-kicker">Clerk session</p>
-        <h2>{user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? "Signed in"}</h2>
-        <div className="auth-user-row">
-          <UserButton />
-          <div>
-            <strong>{user?.username ? `@${user.username}` : "Client session active"}</strong>
-            <span>{user?.primaryEmailAddress?.emailAddress ?? "Email unavailable"}</span>
-          </div>
-        </div>
-      </article>
-      <ViewerProbe />
-      <ServerSnapshotPanel authSnapshot={authSnapshot} />
-    </section>
-  );
-}
-
-function ViewerProbe() {
-  const viewer = useQuery(api.users.viewer);
-  const storeUser = useMutation(api.users.store);
-
-  useEffect(() => {
-    if (viewer === null) {
-      void storeUser();
-    }
-  }, [storeUser, viewer]);
-
-  if (viewer === undefined) {
-    return (
-      <AuthStatePanel
-        copy="Waiting for api.users.viewer after Clerk issued the Convex JWT."
-        status="Loading"
-        title="Convex viewer"
-      />
-    );
-  }
-
-  if (viewer === null) {
-    return (
-      <AuthStatePanel
-        copy="The provider is creating or refreshing the user record through api.users.store."
-        status="Creating"
-        title="Convex viewer"
-      />
-    );
-  }
-
-  return (
-    <article className="spike-panel auth-panel">
-      <p className="spike-kicker">Convex viewer</p>
-      <h2>{viewer.fullName}</h2>
-      <dl className="spike-facts">
-        <div>
-          <dt>Handle</dt>
-          <dd>{viewer.handle}</dd>
-        </div>
-        <div>
-          <dt>Email</dt>
-          <dd>{viewer.email}</dd>
-        </div>
-        <div>
-          <dt>Plan</dt>
-          <dd>{viewer.planType}</dd>
-        </div>
-        <div>
-          <dt>Credits</dt>
-          <dd>{viewer.credits.balance}</dd>
-        </div>
-        <div>
-          <dt>Admin</dt>
-          <dd>{viewer.canManagePlatform ? "enabled" : "standard"}</dd>
-        </div>
-      </dl>
-    </article>
-  );
-}
-
-function ServerSnapshotPanel({ authSnapshot }: { authSnapshot: AuthSnapshot }) {
-  return (
-    <article className="spike-panel auth-panel">
-      <p className="spike-kicker">Server snapshot</p>
-      <h2>Route loader output</h2>
-      <pre className="spike-code">
-        {JSON.stringify(authSnapshot, null, 2)}
-      </pre>
-    </article>
-  );
-}
-
-function AuthStatePanel({
+function TerminalStatePanel({
   copy,
-  status,
+  kicker,
   title,
 }: {
   copy: string;
-  status: string;
+  kicker: string;
   title: string;
 }) {
   return (
-    <article className="spike-panel auth-panel">
-      <p className="spike-kicker">{status}</p>
+    <article className="library-panel terminal-panel">
+      <p className="showcase-kicker">{kicker}</p>
       <h2>{title}</h2>
       <p>{copy}</p>
     </article>
