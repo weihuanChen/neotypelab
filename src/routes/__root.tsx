@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
 import { StartProviders } from "@/src/providers/StartProviders";
+import legacyGlobalsCss from "@/app/globals.css?url";
 import appCss from "@/src/styles/app.css?url";
 
 export const Route = createRootRoute({
@@ -27,7 +28,10 @@ export const Route = createRootRoute({
           "Cloudflare Workers rendering spike for NeotypeLab using TanStack Start and Convex.",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: legacyGlobalsCss },
+      { rel: "stylesheet", href: appCss },
+    ],
   }),
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
@@ -64,6 +68,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                 <Link to="/t" activeOptions={{ exact: true }}>
                   Terminal Auth
                 </Link>
+                <Link to="/t/create">Create</Link>
                 <Link to="/t/library">Library</Link>
               </nav>
             </header>

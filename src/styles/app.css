@@ -1695,6 +1695,17 @@ button.showcase-chip:disabled {
   padding: clamp(1rem, 3vw, 2rem) 0 clamp(3rem, 6vw, 6rem);
 }
 
+.create-page {
+  width: min(1440px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem) 0 clamp(3rem, 6vw, 6rem);
+}
+
+.create-frame {
+  display: grid;
+  gap: 1rem;
+}
+
 .library-shell {
   display: grid;
   gap: 1rem;

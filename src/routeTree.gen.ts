@@ -15,6 +15,7 @@ import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TLibraryRouteImport } from './routes/t_.library'
+import { Route as TCreateRouteImport } from './routes/t_.create'
 import { Route as ShowcaseOpengraphImageRouteImport } from './routes/showcase_.opengraph-image'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const TLibraryRoute = TLibraryRouteImport.update({
   id: '/t_/library',
   path: '/t/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TCreateRoute = TCreateRouteImport.update({
+  id: '/t_/create',
+  path: '/t/create',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShowcaseOpengraphImageRoute = ShowcaseOpengraphImageRouteImport.update({
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/t/create': typeof TCreateRoute
   '/t/library': typeof TLibraryRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/t/create': typeof TCreateRoute
   '/t/library': typeof TLibraryRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase_/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/t_/create': typeof TCreateRoute
   '/t_/library': typeof TLibraryRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack_/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/opengraph-image'
+    | '/t/create'
     | '/t/library'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/opengraph-image'
+    | '/t/create'
     | '/t/library'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase_/opengraph-image'
+    | '/t_/create'
     | '/t_/library'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack_/$slug/opengraph-image'
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
   ShowcaseOpengraphImageRoute: typeof ShowcaseOpengraphImageRoute
+  TCreateRoute: typeof TCreateRoute
   TLibraryRoute: typeof TLibraryRoute
   CreatorPackSlugOpengraphImageRoute: typeof CreatorPackSlugOpengraphImageRoute
   CreatorHandleOpengraphImageRoute: typeof CreatorHandleOpengraphImageRoute
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/t/library'
       fullPath: '/t/library'
       preLoaderRoute: typeof TLibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/t_/create': {
+      id: '/t_/create'
+      path: '/t/create'
+      fullPath: '/t/create'
+      preLoaderRoute: typeof TCreateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/showcase_/opengraph-image': {
@@ -408,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
   ShowcaseOpengraphImageRoute: ShowcaseOpengraphImageRoute,
+  TCreateRoute: TCreateRoute,
   TLibraryRoute: TLibraryRoute,
   CreatorPackSlugOpengraphImageRoute: CreatorPackSlugOpengraphImageRoute,
   CreatorHandleOpengraphImageRoute: CreatorHandleOpengraphImageRoute,
