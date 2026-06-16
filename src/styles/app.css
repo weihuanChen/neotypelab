@@ -2168,3 +2168,351 @@ button.showcase-chip:disabled {
     border-top: 1px solid var(--spike-line);
   }
 }
+
+/* Legacy visual compatibility layer
+   Keeps migrated TanStack routes aligned with the pre-migration bright V2 theme. */
+:root {
+  color-scheme: light;
+  --background: 43 39% 93%;
+  --foreground: 200 9% 14%;
+  --card: 43 64% 96%;
+  --card-foreground: 200 9% 14%;
+  --popover: 43 64% 96%;
+  --popover-foreground: 200 9% 14%;
+  --primary: 200 9% 14%;
+  --primary-foreground: 43 64% 96%;
+  --secondary: 40 34% 86%;
+  --secondary-foreground: 200 9% 14%;
+  --muted: 40 34% 86%;
+  --muted-foreground: 144 4% 24%;
+  --accent: 180 54% 36%;
+  --accent-foreground: 43 64% 96%;
+  --border: 39 13% 61%;
+  --input: 39 13% 61%;
+  --ring: 180 54% 36%;
+
+  --spike-bg: var(--bg-main);
+  --spike-surface: var(--bg-surface);
+  --spike-panel: var(--bg-panel);
+  --spike-line: var(--line-secondary);
+  --spike-line-strong: var(--line-primary);
+  --spike-text: var(--text-primary);
+  --spike-muted: var(--text-secondary);
+  --spike-accent: var(--accent-teal);
+  --spike-blue: var(--accent-blue);
+  --spike-orange: var(--accent-orange);
+  --compat-panel-bg: linear-gradient(
+      180deg,
+      rgba(255, 253, 246, 0.78),
+      rgba(232, 224, 208, 0.62)
+    ),
+    var(--bg-panel);
+  --compat-surface-bg: linear-gradient(
+      180deg,
+      rgba(255, 253, 246, 0.72),
+      rgba(251, 247, 237, 0.86)
+    ),
+    var(--bg-surface);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  background:
+    linear-gradient(rgba(47, 53, 51, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 53, 51, 0.05) 1px, transparent 1px),
+    var(--bg-main);
+  background-size: 20px 20px, 20px 20px, auto;
+  color: var(--text-primary);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+.spike-header {
+  border-bottom-color: var(--line-secondary);
+  background: rgba(244, 240, 230, 0.92);
+}
+
+.spike-brand span,
+.spike-hero p,
+.spike-panel p,
+.spike-card p,
+.showcase-control-panel p,
+.showcase-section-header p,
+.showcase-empty p,
+.showcase-card__copy,
+.showcase-card__lede,
+.showcase-card__mood,
+.public-empty p,
+.public-hero p,
+.public-card p,
+.public-text-card p,
+.prototype-empty p,
+.prototype-hero-panel p,
+.prototype-card p,
+.pilot-empty p,
+.pilot-hero-panel p,
+.pilot-card p,
+.library-empty p,
+.library-hero p,
+.library-card p,
+.library-job-row p,
+.library-panel > p,
+.terminal-hero p {
+  color: var(--text-secondary);
+}
+
+.spike-brand strong,
+.spike-facts dd,
+.showcase-card__title,
+.showcase-meta dd,
+.public-text-card h3,
+.public-card__title,
+.prototype-card__title,
+.pilot-card__title,
+.library-card h3,
+.library-job-row h3 {
+  color: var(--text-primary);
+}
+
+.spike-nav a,
+.spike-button,
+.showcase-button,
+.showcase-filter,
+.showcase-chip {
+  border-color: var(--line-secondary);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.spike-nav a:hover,
+.spike-button:hover,
+.spike-nav a[data-status="active"],
+.showcase-button:hover,
+.showcase-filter:hover,
+.showcase-chip.is-button:hover,
+.showcase-filter.is-active {
+  border-color: var(--accent-teal);
+  background: var(--bg-hover-panel);
+  color: var(--accent-teal);
+}
+
+.showcase-button.is-warm {
+  border-color: color-mix(in srgb, var(--accent-orange) 48%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-orange) 13%, var(--bg-surface));
+}
+
+.showcase-button.is-accent {
+  border-color: color-mix(in srgb, var(--accent-teal) 50%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-teal) 12%, var(--bg-surface));
+}
+
+.spike-panel,
+.spike-card,
+.showcase-topbar,
+.showcase-control-panel,
+.showcase-section,
+.showcase-empty,
+.public-empty,
+.public-hero,
+.public-section,
+.public-card,
+.public-text-card,
+.prototype-empty,
+.prototype-hero-panel,
+.prototype-section,
+.prototype-card,
+.pilot-empty,
+.pilot-hero-panel,
+.pilot-section,
+.pilot-card,
+.library-empty,
+.library-hero,
+.library-panel,
+.library-card,
+.library-job-row,
+.terminal-hero,
+.terminal-panel {
+  border-color: var(--line-secondary);
+  background: var(--compat-panel-bg);
+  color: var(--text-primary);
+}
+
+.showcase-filter-group,
+.showcase-card,
+.showcase-card__placeholder,
+.public-feature__body,
+.public-card__body,
+.prototype-hero-panel__copy,
+.prototype-hero-panel__media,
+.pilot-hero-panel__main,
+.pilot-hero-panel__side,
+.library-mini-list a,
+.library-stat,
+.library-action-card {
+  border-color: var(--line-secondary);
+  background: var(--compat-surface-bg);
+  color: var(--text-primary);
+}
+
+.showcase-card__media,
+.public-hero__media,
+.prototype-hero-panel__media,
+.pilot-avatar,
+.spike-card__placeholder {
+  background:
+    linear-gradient(135deg, rgba(59, 109, 140, 0.09), transparent 46%),
+    var(--bg-main);
+}
+
+.showcase-meta div,
+.prototype-meta div,
+.pilot-meta div,
+.library-meta div,
+.spike-facts div {
+  border-color: color-mix(in srgb, var(--line-secondary) 62%, transparent);
+}
+
+.showcase-status-row,
+.showcase-section-note,
+.showcase-meta dt,
+.prototype-meta dt,
+.pilot-meta dt,
+.library-meta dt {
+  color: var(--text-muted);
+}
+
+.showcase-pill,
+.library-pill,
+.prototype-pill,
+.pilot-pill {
+  border-color: var(--line-secondary);
+  background: rgba(255, 253, 246, 0.42);
+  color: var(--text-secondary);
+}
+
+.showcase-pill.is-blue,
+.library-pill.is-blue,
+.prototype-pill.is-blue,
+.pilot-pill.is-blue {
+  border-color: color-mix(in srgb, var(--accent-blue) 50%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-blue) 11%, var(--bg-surface));
+  color: var(--accent-blue);
+}
+
+.showcase-pill.is-warm,
+.library-pill.is-warm,
+.prototype-pill.is-warm,
+.pilot-pill.is-warm {
+  border-color: color-mix(in srgb, var(--accent-orange) 48%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-orange) 12%, var(--bg-surface));
+  color: var(--accent-orange);
+}
+
+.showcase-pill.is-teal,
+.library-pill.is-teal,
+.prototype-pill.is-teal,
+.pilot-pill.is-teal {
+  border-color: color-mix(in srgb, var(--accent-teal) 50%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-teal) 11%, var(--bg-surface));
+  color: var(--accent-teal);
+}
+
+.spike-hero h1 {
+  font-size: clamp(1.9rem, 4vw, 3.3rem);
+}
+
+.terminal-hero h1,
+.public-empty h1,
+.public-hero h1,
+.prototype-empty h1,
+.prototype-hero-panel h1,
+.pilot-empty h1,
+.pilot-hero-panel h1,
+.library-empty h1,
+.library-hero h1 {
+  font-size: clamp(1.9rem, 4vw, 3.5rem);
+}
+
+.showcase-control-panel h1,
+.public-section-header h2,
+.prototype-section-header h2,
+.pilot-section-header h2,
+.library-panel h2,
+.library-card h3,
+.library-job-row h3 {
+  font-size: clamp(1.35rem, 2.5vw, 2.25rem);
+}
+
+.showcase-card__title,
+.public-card__title,
+.prototype-card__title,
+.pilot-card__title {
+  font-size: clamp(1.08rem, 1.55vw, 1.35rem);
+}
+
+.bg-\[\#0E2430\],
+.bg-\[\#102632\],
+.bg-\[\#113042\],
+.bg-\[\#13241B\],
+.bg-\[\#241A0E\],
+.bg-\[\#2A210F\],
+.bg-\[\#2B1F16\],
+.bg-\[\#2C2211\] {
+  background-color: var(--bg-elevated) !important;
+}
+
+.hover\:bg-\[\#131A22\]:hover,
+.hover\:bg-\[\#163126\]:hover,
+.hover\:bg-\[\#173444\]:hover,
+.hover\:bg-\[\#174155\]:hover,
+.hover\:bg-\[\#302313\]:hover,
+.hover\:bg-\[\#38301A\]:hover,
+.hover\:bg-\[\#3A2B1D\]:hover,
+.hover\:bg-\[\#3A2C15\]:hover {
+  background-color: var(--bg-hover-panel) !important;
+}
+
+.text-\[\#E6EDF3\],
+.text-\[\#FFE0AD\],
+.text-\[\#FFD9A0\],
+.text-\[\#FFD2D2\] {
+  color: var(--text-primary) !important;
+}
+
+.text-\[\#9BA7B4\],
+.text-\[\#C7D0DA\],
+.text-\[\#6E7A88\] {
+  color: var(--text-secondary) !important;
+}
+
+.text-\[\#3DD9FF\],
+.text-\[\#8FEAFF\] {
+  color: var(--accent-blue) !important;
+}
+
+.text-\[\#58FFB2\],
+.text-\[\#A6FFD5\] {
+  color: var(--accent-teal) !important;
+}
+
+.text-\[\#FFB84D\] {
+  color: var(--accent-orange) !important;
+}
+
+.border-\[\#3DD9FF\] {
+  border-color: var(--accent-blue) !important;
+}
+
+.border-\[\#58FFB2\] {
+  border-color: var(--accent-teal) !important;
+}
+
+.border-\[\#FFB84D\] {
+  border-color: var(--accent-orange) !important;
+}
