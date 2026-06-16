@@ -48,7 +48,7 @@ polish that is migration-adjacent but not blocking.
   - Completed:
   - Commit:
 
-- [ ] `M-P0-02` Resolve the missing `/t/showcase` terminal route.
+- [x] `M-P0-02` Resolve the missing `/t/showcase` terminal route.
   - Source fallback: `app/t/showcase/page.tsx`
   - TanStack target: `src/routes/t_.showcase.tsx` or a deliberate redirect/link
     change to `/showcase`
@@ -57,8 +57,11 @@ polish that is migration-adjacent but not blocking.
     - decide whether terminal-mode showcase should stay separate or redirect to
       the public `/showcase`
     - keep terminal navigation consistent after the decision
-  - Completed:
-  - Commit:
+  - Completed: 2026-06-16
+  - Commit: `a229969`
+  - Notes: Added `src/routes/t_.showcase.tsx`, shared the showcase SSR
+    snapshot/search helpers through `src/lib/showcaseRouteData.ts`, and kept
+    terminal showcase filters scoped to `/t/showcase`.
 
 ## P1
 
