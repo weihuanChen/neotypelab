@@ -25,7 +25,11 @@ import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
 import { Route as CreatorPackSlugRouteImport } from './routes/creator-pack.$slug'
 import { Route as BaseModelSlugStylePresetSlugRouteImport } from './routes/$baseModelSlug.$stylePresetSlug'
+import { Route as PrototypeConceptIdWatermarkedImageRouteImport } from './routes/prototype_.$conceptId.watermarked-image'
+import { Route as PrototypeConceptIdRedditImageRouteImport } from './routes/prototype_.$conceptId.reddit-image'
+import { Route as PrototypeConceptIdPinterestImageRouteImport } from './routes/prototype_.$conceptId.pinterest-image'
 import { Route as PrototypeConceptIdOpengraphImageRouteImport } from './routes/prototype_.$conceptId.opengraph-image'
+import { Route as PrototypeConceptIdInstagramImageRouteImport } from './routes/prototype_.$conceptId.instagram-image'
 import { Route as PilotHandleOpengraphImageRouteImport } from './routes/pilot_.$handle.opengraph-image'
 import { Route as CreatorHandleOpengraphImageRouteImport } from './routes/creator_.$handle.opengraph-image'
 import { Route as CreatorPackSlugOpengraphImageRouteImport } from './routes/creator-pack_.$slug.opengraph-image'
@@ -112,10 +116,34 @@ const BaseModelSlugStylePresetSlugRoute =
     path: '/$baseModelSlug/$stylePresetSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
+const PrototypeConceptIdWatermarkedImageRoute =
+  PrototypeConceptIdWatermarkedImageRouteImport.update({
+    id: '/prototype_/$conceptId/watermarked-image',
+    path: '/prototype/$conceptId/watermarked-image',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PrototypeConceptIdRedditImageRoute =
+  PrototypeConceptIdRedditImageRouteImport.update({
+    id: '/prototype_/$conceptId/reddit-image',
+    path: '/prototype/$conceptId/reddit-image',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PrototypeConceptIdPinterestImageRoute =
+  PrototypeConceptIdPinterestImageRouteImport.update({
+    id: '/prototype_/$conceptId/pinterest-image',
+    path: '/prototype/$conceptId/pinterest-image',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PrototypeConceptIdOpengraphImageRoute =
   PrototypeConceptIdOpengraphImageRouteImport.update({
     id: '/prototype_/$conceptId/opengraph-image',
     path: '/prototype/$conceptId/opengraph-image',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PrototypeConceptIdInstagramImageRoute =
+  PrototypeConceptIdInstagramImageRouteImport.update({
+    id: '/prototype_/$conceptId/instagram-image',
+    path: '/prototype/$conceptId/instagram-image',
     getParentRoute: () => rootRouteImport,
   } as any)
 const PilotHandleOpengraphImageRoute =
@@ -164,7 +192,11 @@ export interface FileRoutesByFullPath {
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
   '/pilot/$handle/opengraph-image': typeof PilotHandleOpengraphImageRoute
+  '/prototype/$conceptId/instagram-image': typeof PrototypeConceptIdInstagramImageRoute
   '/prototype/$conceptId/opengraph-image': typeof PrototypeConceptIdOpengraphImageRoute
+  '/prototype/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
+  '/prototype/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
+  '/prototype/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -187,7 +219,11 @@ export interface FileRoutesByTo {
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
   '/pilot/$handle/opengraph-image': typeof PilotHandleOpengraphImageRoute
+  '/prototype/$conceptId/instagram-image': typeof PrototypeConceptIdInstagramImageRoute
   '/prototype/$conceptId/opengraph-image': typeof PrototypeConceptIdOpengraphImageRoute
+  '/prototype/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
+  '/prototype/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
+  '/prototype/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -211,7 +247,11 @@ export interface FileRoutesById {
   '/creator-pack_/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator_/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
   '/pilot_/$handle/opengraph-image': typeof PilotHandleOpengraphImageRoute
+  '/prototype_/$conceptId/instagram-image': typeof PrototypeConceptIdInstagramImageRoute
   '/prototype_/$conceptId/opengraph-image': typeof PrototypeConceptIdOpengraphImageRoute
+  '/prototype_/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
+  '/prototype_/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
+  '/prototype_/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -236,7 +276,11 @@ export interface FileRouteTypes {
     | '/creator-pack/$slug/opengraph-image'
     | '/creator/$handle/opengraph-image'
     | '/pilot/$handle/opengraph-image'
+    | '/prototype/$conceptId/instagram-image'
     | '/prototype/$conceptId/opengraph-image'
+    | '/prototype/$conceptId/pinterest-image'
+    | '/prototype/$conceptId/reddit-image'
+    | '/prototype/$conceptId/watermarked-image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -259,7 +303,11 @@ export interface FileRouteTypes {
     | '/creator-pack/$slug/opengraph-image'
     | '/creator/$handle/opengraph-image'
     | '/pilot/$handle/opengraph-image'
+    | '/prototype/$conceptId/instagram-image'
     | '/prototype/$conceptId/opengraph-image'
+    | '/prototype/$conceptId/pinterest-image'
+    | '/prototype/$conceptId/reddit-image'
+    | '/prototype/$conceptId/watermarked-image'
   id:
     | '__root__'
     | '/'
@@ -282,7 +330,11 @@ export interface FileRouteTypes {
     | '/creator-pack_/$slug/opengraph-image'
     | '/creator_/$handle/opengraph-image'
     | '/pilot_/$handle/opengraph-image'
+    | '/prototype_/$conceptId/instagram-image'
     | '/prototype_/$conceptId/opengraph-image'
+    | '/prototype_/$conceptId/pinterest-image'
+    | '/prototype_/$conceptId/reddit-image'
+    | '/prototype_/$conceptId/watermarked-image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -305,7 +357,11 @@ export interface RootRouteChildren {
   CreatorPackSlugOpengraphImageRoute: typeof CreatorPackSlugOpengraphImageRoute
   CreatorHandleOpengraphImageRoute: typeof CreatorHandleOpengraphImageRoute
   PilotHandleOpengraphImageRoute: typeof PilotHandleOpengraphImageRoute
+  PrototypeConceptIdInstagramImageRoute: typeof PrototypeConceptIdInstagramImageRoute
   PrototypeConceptIdOpengraphImageRoute: typeof PrototypeConceptIdOpengraphImageRoute
+  PrototypeConceptIdPinterestImageRoute: typeof PrototypeConceptIdPinterestImageRoute
+  PrototypeConceptIdRedditImageRoute: typeof PrototypeConceptIdRedditImageRoute
+  PrototypeConceptIdWatermarkedImageRoute: typeof PrototypeConceptIdWatermarkedImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -422,11 +478,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BaseModelSlugStylePresetSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype_/$conceptId/watermarked-image': {
+      id: '/prototype_/$conceptId/watermarked-image'
+      path: '/prototype/$conceptId/watermarked-image'
+      fullPath: '/prototype/$conceptId/watermarked-image'
+      preLoaderRoute: typeof PrototypeConceptIdWatermarkedImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype_/$conceptId/reddit-image': {
+      id: '/prototype_/$conceptId/reddit-image'
+      path: '/prototype/$conceptId/reddit-image'
+      fullPath: '/prototype/$conceptId/reddit-image'
+      preLoaderRoute: typeof PrototypeConceptIdRedditImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype_/$conceptId/pinterest-image': {
+      id: '/prototype_/$conceptId/pinterest-image'
+      path: '/prototype/$conceptId/pinterest-image'
+      fullPath: '/prototype/$conceptId/pinterest-image'
+      preLoaderRoute: typeof PrototypeConceptIdPinterestImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype_/$conceptId/opengraph-image': {
       id: '/prototype_/$conceptId/opengraph-image'
       path: '/prototype/$conceptId/opengraph-image'
       fullPath: '/prototype/$conceptId/opengraph-image'
       preLoaderRoute: typeof PrototypeConceptIdOpengraphImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype_/$conceptId/instagram-image': {
+      id: '/prototype_/$conceptId/instagram-image'
+      path: '/prototype/$conceptId/instagram-image'
+      fullPath: '/prototype/$conceptId/instagram-image'
+      preLoaderRoute: typeof PrototypeConceptIdInstagramImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pilot_/$handle/opengraph-image': {
@@ -496,7 +580,12 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorPackSlugOpengraphImageRoute: CreatorPackSlugOpengraphImageRoute,
   CreatorHandleOpengraphImageRoute: CreatorHandleOpengraphImageRoute,
   PilotHandleOpengraphImageRoute: PilotHandleOpengraphImageRoute,
+  PrototypeConceptIdInstagramImageRoute: PrototypeConceptIdInstagramImageRoute,
   PrototypeConceptIdOpengraphImageRoute: PrototypeConceptIdOpengraphImageRoute,
+  PrototypeConceptIdPinterestImageRoute: PrototypeConceptIdPinterestImageRoute,
+  PrototypeConceptIdRedditImageRoute: PrototypeConceptIdRedditImageRoute,
+  PrototypeConceptIdWatermarkedImageRoute:
+    PrototypeConceptIdWatermarkedImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

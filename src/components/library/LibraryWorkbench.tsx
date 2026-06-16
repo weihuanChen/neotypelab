@@ -25,7 +25,7 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 
 type PublishVisibility = "private" | "unlisted" | "public";
 type BuildStage = "primer-pass" | "decal-pass" | "weathering-pass";
@@ -35,71 +35,37 @@ type LibrarySearch = {
 
 export function LibraryWorkbench({ search: _search }: { search: LibrarySearch }) {
   return (
-    <main className="library-page">
+    <div className="library-page">
       <AuthLoading>
-        <LibraryFrame>
-          <section className="library-empty">
-            <p className="showcase-kicker is-teal">Hangar sync</p>
-            <h1>Opening operator library.</h1>
-            <p>
-              Clerk is present and Convex is negotiating the authenticated viewer
-              token.
-            </p>
-          </section>
-        </LibraryFrame>
+        <section className="library-empty">
+          <p className="showcase-kicker is-teal">Hangar sync</p>
+          <h1>Opening operator library.</h1>
+          <p>
+            Clerk is present and Convex is negotiating the authenticated viewer
+            token.
+          </p>
+        </section>
       </AuthLoading>
 
       <Unauthenticated>
-        <LibraryFrame>
-          <section className="library-empty">
-            <p className="showcase-kicker is-orange">Signed out</p>
-            <h1>Sign in to open your prototype library.</h1>
-            <p>
-              The library is backed by your private concepts, saved public builds,
-              render tools, and generation job ledger.
-            </p>
-            <SignInButton mode="modal">
-              <button className="showcase-button" type="button">
-                Sign in
-              </button>
-            </SignInButton>
-          </section>
-        </LibraryFrame>
+        <section className="library-empty">
+          <p className="showcase-kicker is-orange">Signed out</p>
+          <h1>Sign in to open your prototype library.</h1>
+          <p>
+            The library is backed by your private concepts, saved public builds,
+            render tools, and generation job ledger.
+          </p>
+          <SignInButton mode="modal">
+            <button className="showcase-button" type="button">
+              Sign in
+            </button>
+          </SignInButton>
+        </section>
       </Unauthenticated>
 
       <Authenticated>
-        <LibraryFrame>
-          <AuthenticatedLibraryWorkbench />
-        </LibraryFrame>
+        <AuthenticatedLibraryWorkbench />
       </Authenticated>
-    </main>
-  );
-}
-
-function LibraryFrame({ children }: { children: ReactNode }) {
-  return (
-    <div className="library-shell">
-      <section className="showcase-topbar">
-        <div>
-          <p className="showcase-kicker">NeotypeLab Terminal</p>
-          <h1>Library</h1>
-        </div>
-        <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/t">
-            Terminal
-          </a>
-          <a className="showcase-button is-ghost" href="/t/create">
-            Create
-          </a>
-          <a className="showcase-button is-ghost" href="/t/showcase">
-            Showcase
-          </a>
-          <a className="showcase-button is-ghost" href="/t/feedback">
-            Feedback
-          </a>
-        </div>
-      </section>
-      {children}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { DashboardOverview } from "@/src/components/terminal/DashboardOverview";
+import { TerminalShell } from "@/src/components/terminal/TerminalShell";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 
 export const Route = createFileRoute("/t")({
@@ -22,7 +23,11 @@ function TerminalRoute() {
   const providerStatus = useStartProviderStatus();
 
   return (
-    <main className="terminal-page">
+    <TerminalShell
+      activePath="/t"
+      description="Create structured concepts, manage generated surfaces, review credits, and keep public-ready builds synchronized with Convex."
+      title="Overview"
+    >
       <section className="terminal-hero">
         <p className="showcase-kicker">NeotypeLab Terminal</p>
         <h1>Operate the repaint pipeline.</h1>
@@ -51,7 +56,7 @@ function TerminalRoute() {
       ) : (
         <TerminalAuthGate />
       )}
-    </main>
+    </TerminalShell>
   );
 }
 

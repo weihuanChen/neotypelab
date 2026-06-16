@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
-import { useState } from "react";
 import { api } from "@/convex/_generated/api";
+import { PublicShareActions } from "@/src/components/public/PublicShareActions";
 import { ConceptEngagementBar, PackEngagementBar } from "@/src/components/showcase/EngagementBars";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import type {
@@ -143,7 +143,17 @@ function PilotPublicViewBody({
         </div>
 
         <div className="pilot-hero-panel__actions">
-          <PilotShareButton profile={profile} />
+          <PublicShareActions
+            className="prototype-action-row"
+            exportImageLabel="Profile Image"
+            exportImageUrl={`/pilot/${profile.pilot.handle}/opengraph-image`}
+            sharePath={`/pilot/${profile.pilot.handle}`}
+            text={
+              profile.pilot.creatorTagline ??
+              `${profile.totals.publicConcepts} public concepts from ${profile.pilot.fullName}`
+            }
+            title={`${profile.pilot.fullName} | NeotypeLab`}
+          />
           <a className="showcase-button is-accent" href={`/showcase?creator=${profile.pilot.handle}`}>
             Filter Showcase
           </a>
@@ -214,38 +224,6 @@ function PilotAvatar({ profile }: { profile: PublicPilotProfile }) {
     <div className="pilot-avatar pilot-avatar--fallback">
       {profile.pilot.handle.slice(0, 2).toUpperCase()}
     </div>
-  );
-}
-
-function PilotShareButton({ profile }: { profile: PublicPilotProfile }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copyShareLink() {
-    const sharePath = `/pilot/${profile.pilot.handle}`;
-    const shareUrl =
-      typeof window === "undefined"
-        ? sharePath
-        : new URL(sharePath, window.location.origin).toString();
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  return (
-    <button
-      className="showcase-button"
-      type="button"
-      onClick={() => {
-        void copyShareLink();
-      }}
-    >
-      {copied ? "Copied" : "Copy Profile Link"}
-    </button>
   );
 }
 

@@ -2,66 +2,72 @@
 
 ## 1. Document Purpose
 
-This document defines the current technical baseline and target architecture for NeotypeLab.
+This document describes the current technical baseline for NeotypeLab after the
+TanStack migration work.
 
 NeotypeLab is built with:
 
-- `Next.js` for frontend and application shell
-- `Convex` for backend data, realtime queries, and server logic
-- `Clerk` for authentication
+- `TanStack Start` and `TanStack Router` for the frontend and application shell
+- `Cloudflare Workers` for the default frontend deployment target
+- `Convex` for backend data, realtime queries, mutations, actions, and server
+  orchestration
+- `Clerk` for authentication, bridged into Convex auth
+- `R2` for generated assets and public preview delivery
 
-Deployment is not locked yet. The frontend may be deployed to `Vercel` or `Cloudflare`, while `Convex` remains the hosted backend.
+The old Next App Router tree under `app/` is retained only as a migration
+fallback/reference snapshot.
+
+P3 isolation keeps that fallback available without making the TanStack runtime
+depend on it. Global runtime styles used by TanStack live in
+`src/styles/globals.css`; `app/globals.css` belongs to the retained Next
+fallback.
 
 ---
 
 ## 2. Current Baseline
 
-The current repository is still based on a Convex SaaS starter template.
+The active product implementation now lives in `src/`.
 
-Already implemented:
+Implemented production surfaces include:
 
-- `Next.js 14 App Router`
-- `Convex` client/server integration
-- `Clerk` authentication middleware
-- team, member, invite, role, and message data models
-- a starter dashboard flow under `app/t/*`
+- public showcase and discovery routes
+- public prototype pages with SSR snapshots and live Convex hydration
+- public pilot, creator hub, creator pack, and SEO landing routes
+- Open Graph, social/export SVG routes, sitemap, and robots output
+- authenticated terminal routes for overview, create, library, showcase,
+  feedback, and admin
+- shared terminal navigation/readout shell for TanStack routes
+- Convex domain modules for product catalog, concepts, generation jobs, credits,
+  feedback, public engagement, recommendations, shopping, and feasibility
 
-Current technical reality:
-
-- `app/page.tsx` is still starter marketing content
-- `app/t/*` is still team-space starter logic, not NeotypeLab domain logic
-- `convex/schema.ts` currently models SaaS collaboration entities, not product entities like base models, style DNA, paint finishes, weathering effects, or paint mappings
-
-This means the project has a usable infrastructure base, but the product domain still needs to be rebuilt around the PRD.
+The retained `app/` tree is not the production source of truth.
 
 ---
 
-## 3. Target System Boundary
+## 3. System Boundary
 
-NeotypeLab should be split into four layers:
-
-### 3.1 Frontend Layer: Next.js
+### 3.1 Frontend Layer: TanStack Start
 
 Responsibilities:
 
-- App Router pages and layouts
-- mobile-first product flows
-- marketing, dashboard, create, result, library, showcase, admin UI
-- SSR/streaming where useful
-- client-side interaction state
-- integration with Clerk and Convex
+- file routes in `src/routes`
+- SSR data snapshots through TanStack loaders/server functions
+- public route metadata, canonical tags, social cards, sitemap, and robots
+- authenticated terminal UI
+- client interaction state
+- integration with Clerk and Convex client providers
 
 ### 3.2 Application/Data Layer: Convex
 
 Responsibilities:
 
 - canonical product data model
-- authenticated queries and mutations
+- authenticated and public queries/mutations
 - realtime updates
 - credits and usage logic
-- feedback pipeline
-- admin operations
-- generation-job orchestration hooks for later phases
+- feedback and admin operations
+- generation job orchestration hooks
+- recommendation, feasibility, shopping, and render-support data
 
 ### 3.3 Auth Layer: Clerk
 
@@ -70,200 +76,180 @@ Responsibilities:
 - sign in / sign up
 - session management
 - identity token generation for Convex
-- route protection via `middleware.ts`
+- TanStack Start middleware and client provider integration
 
 ### 3.4 External Services
 
 Expected integrations:
 
-- `Resend` for transactional email
 - `R2` for generated assets, references, and derived previews
-- model/image generation providers in later phases
+- generation providers for image/render workflows
+- `Resend` if transactional email returns to active scope
 
 ---
 
-## 4. Recommended Product Module Architecture
+## 4. Frontend Module Architecture
 
-Target Convex domain modules should move from the current team model to NeotypeLab product modules:
+Canonical frontend ownership:
 
-- `baseModels`
-- `stylePresets`
-- `paintFinishes`
-- `weatheringEffects`
-- `colorRoles`
-- `paintMappings`
-- `generationJobs`
-- `savedConcepts`
-- `feedbackReports`
-- `creditAccounts`
-- `creditLedger`
-- `adminAuditLogs`
+- `src/routes` for TanStack routes and route metadata
+- `src/components/create` for authenticated creation workflow
+- `src/components/library` for authenticated library and render tools
+- `src/components/feedback` for authenticated feedback relay
+- `src/components/admin` for admin operations
+- `src/components/prototype` for public prototype pages
+- `src/components/public` for creator, creator pack, SEO landing, and shared
+  public actions
+- `src/components/pilot` for public pilot profiles
+- `src/components/showcase` for public and terminal showcase feed components
+- `src/components/terminal` for shared authenticated terminal shell
+- `src/lib` for TanStack-safe server/client helpers
+- `components/ui` for shared low-level UI primitives
 
-Recommended frontend route groups:
-
-- `app/(marketing)` for landing and public pages
-- `app/(app)` for authenticated product flows
-- `app/(app)/create`
-- `app/(app)/library`
-- `app/(app)/showcase`
-- `app/(app)/feedback`
-- `app/(app)/admin`
-
-The current `app/t/*` structure can be treated as temporary starter code and should not become the long-term product IA.
-
----
-
-## 4.1 Paint Finish and Weathering Boundary
-
-User-facing creation should expose:
-
-```text
-Base Model + Style DNA + Paint Finish + Weathering
-```
-
-`Paint Finish` is a real spray decision. It affects surface state, paint compatibility, finish feasibility, paint library matching, and generated spray plans.
-
-`Weathering` is a finishing effect layer. It represents time, use, and damage marks such as dry brushing, chipping, wash, rust effects, dust effects, and burn marks. It should affect preview rendering, estimated effort, skill level, and small user tips, but it should not change base paint product matching.
-
-Backend resolution should keep internal fields like `material_prompt`, `surface_reflection`, `finish_type`, and `spray_technique` available for prompt composition and spray-plan generation. These fields should not be surfaced as primary user-facing controls.
+The `app/layouts/*` directory is a retained Next-only layout demo/scaffold area.
+It is not product IA and is not being migrated into TanStack.
 
 ---
 
 ## 5. Auth and Request Flow
 
-Current auth path is sound and can be retained:
+Current auth path:
 
 1. Clerk authenticates the user.
-2. `ConvexProviderWithClerk` passes auth to the Convex client.
-3. Server-side Next.js calls can fetch a Clerk token with the `convex` template.
-4. Convex resolves the authenticated identity and maps it to an internal user record.
+2. `StartProviders` installs Clerk and Convex client providers when environment
+   variables are available.
+3. `ConvexProviderWithClerk` passes auth to Convex.
+4. Convex resolves the authenticated identity and maps it to an internal user
+   record.
+5. Public routes can render from server-side Convex HTTP snapshots and hydrate
+   live client data when providers are available.
 
 Current relevant files:
 
-- `app/ConvexClientProvider.tsx`
-- `app/t/auth.ts`
-- `middleware.ts`
+- `src/providers/StartProviders.tsx`
+- `src/start.ts`
 - `convex/auth.config.js`
 - `convex/users.ts`
-
-This integration should stay, but the user bootstrap logic should eventually provision NeotypeLab user records instead of starter team records.
+- `src/lib/convexServer.ts`
 
 ---
 
-## 6. Frontend Architecture Direction
+## 6. Product Domain Modules
 
-Frontend implementation must follow the existing design documents:
+The Convex backend now owns the product domain. Important modules include:
 
-- industrial terminal UI
-- restrained dark surfaces
-- mobile-first workflow
-- structured input instead of prompt-heavy UX
+- base models, style presets, material presets, color roles, and paint mappings
+- concepts, saved public concepts, public engagement, and remix lineage
+- generation jobs, render history, and prototype tools
+- feasibility, shopping lists, recommendations, and recommendation feedback
+- feedback reports and admin triage
+- credit accounts, credit ledger, campaigns, and activation codes
 
-Engineering rules:
+User-facing creation exposes:
 
-- use centralized design tokens
-- heavily customize `shadcn/ui`
-- avoid hardcoded one-off visual values
-- keep generated content as the visual hero
+```text
+Base Model + Style DNA + Paint Finish + Weathering
+```
 
-Recommended shared frontend layers:
+`Paint Finish` is a spray decision that affects surface state, compatibility,
+finish feasibility, paint matching, and generated spray plans.
 
-- `components/ui` for low-level primitives
-- `components/system` for NeotypeLab-specific terminal/HUD components
-- `components/domain` for product components like style cards, paint finish selectors, weathering controls, credit summaries
-- `lib` for helpers, formatting, and shared client utilities
+`Weathering` is a finishing effect layer. It affects preview/render guidance,
+effort estimation, skill level, and user tips, but should not be treated as a
+base paint product selector.
 
 ---
 
 ## 7. Environment and Configuration
 
-Current or expected environment variables:
+Common environment variables:
 
+- `NEXT_PUBLIC_SITE_URL`
 - `NEXT_PUBLIC_CONVEX_URL`
+- `VITE_CONVEX_URL` when using Vite-only local naming
 - `CONVEX_DEPLOYMENT`
-- `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `VITE_CLERK_PUBLISHABLE_KEY` when using Vite-only local naming
+- `CLERK_SECRET_KEY`
 - `CLERK_JWT_ISSUER_DOMAIN`
-- `RESEND_API_KEY` if invite or notification email is enabled
-- `HOSTED_URL` for email links
-- `R2_*` variables for the selected object storage layer
-- `R2_PUBLIC_BASE_URL` when public previews should resolve against a fixed CDN or bucket domain
+- `SUPER_ADMIN_EMAILS`
+- `R2_BUCKET`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_ENDPOINT`
+- `R2_PUBLIC_BASE_URL`
+- generation provider keys such as `OPENAI_API_KEY`
 
 Rules:
 
 - keep local secrets in `.env.local`
 - keep server-only keys out of client bundles
-- treat storage and generation-provider credentials as server-only
-
-Object storage decision:
-
-> `R2` is the selected object storage backend.
+- configure public `NEXT_PUBLIC_*` values for both build and Worker runtime
+- set Worker secrets through Wrangler or the Cloudflare dashboard
 
 ---
 
-## 8. Deployment Decision Frame
+## 8. Deployment
 
-Deployment status: `TBD`
+Default frontend deployment:
 
-### Option A: Vercel
+```bash
+npm run build
+npm run deploy
+```
 
-Strengths:
+Equivalent explicit path:
 
-- lowest-friction fit for `Next.js`
-- simple App Router deployment path
-- better default alignment for SSR and preview workflows
+```bash
+npm run build:tanstack
+npm run deploy:tanstack
+```
 
-Recommended use:
+Convex deploys separately:
 
-- default frontend hosting candidate for the first stable release
+```bash
+npx convex deploy
+```
 
-### Option B: Cloudflare
+The retained Next build is fallback-only:
 
-Strengths:
-
-- global edge distribution
-- possible long-term fit if the product later needs edge-heavy delivery
-
-Tradeoff:
-
-- requires a separate compatibility spike before lock-in
-- should be evaluated only after the core product flow is stable
-
-Current recommendation:
-
-> Build the application so deployment remains platform-neutral, but optimize the first release path around `Next.js + Convex` with Vercel as the simpler default candidate.
-
-This is a recommendation, not a final platform decision.
+```bash
+npm run build:next
+npm run start:next
+```
 
 ---
 
-## 9. Implementation Priorities
+## 9. Verification
 
-### Phase 1
+Minimum migration checks:
 
-- replace starter landing page
-- replace starter team schema with product schema
-- build create flow, saved concepts, feedback, and basic admin
-- implement credits logic and generation pipeline shell
+```bash
+npx tsc --noEmit
+npm run build
+```
 
-### Phase 2
+Recommended smoke routes:
 
-- add showcase, remix, public SEO pages, profiles, and sharing
-
-### Phase 3
-
-- add spray-feasibility tooling, advanced recommendations, and commerce/supporting ecosystem modules
+- `/`
+- `/showcase`
+- `/prototype/:conceptId`
+- `/prototype/:conceptId/opengraph-image`
+- `/prototype/:conceptId/watermarked-image`
+- `/t`
+- `/t/create`
+- `/t/library`
+- `/t/showcase`
+- `/t/feedback`
+- `/robots.txt`
+- `/sitemap.xml`
 
 ---
 
-## 10. Immediate Technical Gaps
+## 10. Migration Notes
 
-Current gaps between codebase and target product:
+Do not add new product behavior only in `app/`. If a useful fallback fix lands
+there, port the behavior into `src/` and document the migration state.
 
-- starter schema does not match PRD entities
-- starter routes do not match NeotypeLab information architecture
-- no product-grade design token layer yet
-- no test suite or deployment pipeline committed yet
-- storage/generation pipeline is not implemented yet
-
-The next engineering step should be a schema and route refactor plan, not cosmetic UI polishing.
+See `docs/tanstack_migration_backlog.md` for task tracking and
+`docs/tanstack_migration_state.md` for ownership rules.

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ShowcaseFeed } from "@/src/components/showcase/ShowcaseFeed";
+import { TerminalShell } from "@/src/components/terminal/TerminalShell";
 import {
   getShowcaseSnapshot,
   parseShowcaseSearch,
@@ -26,31 +27,17 @@ function TerminalShowcaseRoute() {
   const search = Route.useSearch();
 
   return (
-    <main className="showcase-page">
-      <section className="showcase-topbar">
-        <div>
-          <p className="showcase-kicker">NeotypeLab Terminal</p>
-          <h1>Showcase</h1>
-        </div>
-        <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/t">
-            Terminal
-          </a>
-          <a className="showcase-button is-ghost" href="/t/create">
-            Create
-          </a>
-          <a className="showcase-button is-ghost" href="/t/library">
-            Library
-          </a>
-          <a className="showcase-button is-ghost" href="/t/feedback">
-            Feedback
-          </a>
-          <a className="showcase-button" href="/showcase">
-            Public Showcase
-          </a>
-        </div>
-      </section>
+    <TerminalShell
+      activePath="/t/showcase"
+      description="Terminal view of published prototypes, creator packs, and discovery filters."
+      title="Showcase"
+    >
+      <div className="prototype-action-row">
+        <a className="showcase-button" href="/showcase">
+          Public Showcase
+        </a>
+      </div>
       <ShowcaseFeed basePath="/t/showcase" search={search} snapshot={snapshot} />
-    </main>
+    </TerminalShell>
   );
 }

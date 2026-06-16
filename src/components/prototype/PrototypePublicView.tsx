@@ -1,15 +1,29 @@
-import { useQuery } from "convex/react";
+import {
+  SignInButton,
+  useAuth,
+} from "@clerk/tanstack-react-start";
+import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { PublicShareActions } from "@/src/components/public/PublicShareActions";
+import { ShoppingListActions } from "@/src/components/public/ShoppingListActions";
 import { ConceptEngagementBar } from "@/src/components/showcase/EngagementBars";
 import { formatMoodTagLabel } from "@/src/components/showcase/showcaseUtils";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import type {
   PrototypeMetaRowValue,
   PrototypeSnapshot,
+  PublicPrototypeFeasibility,
+  PublicPrototypeRecommendations,
+  PublicPrototypeShoppingList,
   SharedPrototype,
 } from "./types";
+
+type ShoppingBundleItem =
+  PublicPrototypeShoppingList["bundles"]["core"][number] |
+  PublicPrototypeShoppingList["bundles"]["support"][number] |
+  PublicPrototypeShoppingList["bundles"]["backup"][number];
 
 export function PrototypePublicView({
   conceptId,
@@ -54,16 +68,35 @@ function LivePrototypePublicView({
   const liveConcept = useQuery(api.showcase.getSharedConcept, {
     conceptId: conceptId as Id<"concepts">,
   });
+  const feasibility = useQuery(api.feasibility.getPublicConceptFeasibility, {
+    conceptId: conceptId as Id<"concepts">,
+  });
+  const shoppingList = useQuery(api.shopping.getPublicConceptShoppingList, {
+    conceptId: conceptId as Id<"concepts">,
+  });
+  const recommendations = useQuery(
+    api.recommendations.getPublicConceptRecommendations,
+    {
+      conceptId: conceptId as Id<"concepts">,
+    }
+  );
+  const setRecommendationFeedback = useMutation(
+    api.recommendationFeedback.setRecommendationFeedback
+  );
   const concept =
     liveConcept === undefined ? snapshot.concept : liveConcept;
 
   return (
     <PrototypePublicViewBody
       concept={concept}
+      feasibility={feasibility}
       interactive={interactive}
       isLivePending={liveConcept === undefined}
       message={snapshot.status === "ok" ? undefined : snapshot.message}
       providerReady={providerReady}
+      recommendations={recommendations}
+      setRecommendationFeedback={setRecommendationFeedback}
+      shoppingList={shoppingList}
       status={snapshot.status}
     />
   );
@@ -71,17 +104,27 @@ function LivePrototypePublicView({
 
 function PrototypePublicViewBody({
   concept,
+  feasibility = null,
   interactive,
   isLivePending = false,
   message,
   providerReady,
+  recommendations = null,
+  setRecommendationFeedback,
+  shoppingList = null,
   status,
 }: {
   concept: SharedPrototype | null;
+  feasibility?: PublicPrototypeFeasibility | null;
   interactive: boolean;
   isLivePending?: boolean;
   message?: string;
   providerReady: boolean;
+  recommendations?: PublicPrototypeRecommendations | null;
+  setRecommendationFeedback?: ReturnType<
+    typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
+  >;
+  shoppingList?: PublicPrototypeShoppingList | null;
   status: PrototypeSnapshot["status"];
 }) {
   if (concept === null) {
@@ -174,6 +217,15 @@ function PrototypePublicViewBody({
       <div className="prototype-content-grid">
         <div className="prototype-main-column">
           <PaintPlanPanel concept={concept} />
+          <FeasibilityPanel feasibility={feasibility} providerReady={providerReady} />
+          <ShoppingListPanel providerReady={providerReady} shoppingList={shoppingList} />
+          <RecommendationsPanel
+            conceptId={concept._id}
+            interactive={interactive}
+            providerReady={providerReady}
+            recommendations={recommendations}
+            setRecommendationFeedback={setRecommendationFeedback}
+          />
           <RemixesPanel concept={concept} />
         </div>
         <aside className="prototype-side-column">
@@ -188,51 +240,43 @@ function PrototypePublicViewBody({
 }
 
 function PrototypeActions({ concept }: { concept: SharedPrototype }) {
-  const [copied, setCopied] = useState(false);
   const styleLandingHref =
     concept.baseModel?.slug && concept.stylePreset?.slug
       ? `/${concept.baseModel.slug}/${concept.stylePreset.slug}`
       : null;
 
-  async function copyShareLink() {
-    const sharePath = `/prototype/${concept._id}`;
-    const shareUrl =
-      typeof window === "undefined"
-        ? sharePath
-        : new URL(sharePath, window.location.origin).toString();
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
-    }
-  }
-
   return (
-    <div className="prototype-action-row">
-      <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
-        Remix This Prototype
-      </a>
-      {styleLandingHref ? (
-        <a className="showcase-button is-accent" href={styleLandingHref}>
-          Open Style Landing
+    <>
+      <PublicShareActions
+        className="prototype-action-row"
+        exportImageUrl={`/prototype/${concept._id}/watermarked-image`}
+        extraExportLinks={[
+          {
+            href: `/prototype/${concept._id}/instagram-image`,
+            label: "Instagram Card",
+            tone: "warm",
+          },
+        ]}
+        pinterestImageUrl={`/prototype/${concept._id}/pinterest-image`}
+        redditImageUrl={`/prototype/${concept._id}/reddit-image`}
+        sharePath={`/prototype/${concept._id}`}
+        text={buildPrototypeDescription(concept)}
+        title={concept.title}
+      />
+      <div className="prototype-action-row">
+        <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
+          Remix This Prototype
         </a>
-      ) : null}
-      <button
-        className="showcase-button"
-        type="button"
-        onClick={() => {
-          void copyShareLink();
-        }}
-      >
-        {copied ? "Copied" : "Copy Share Link"}
-      </button>
-      <a className="showcase-button is-ghost" href="/showcase">
-        Back to Showcase
-      </a>
-    </div>
+        {styleLandingHref ? (
+          <a className="showcase-button is-accent" href={styleLandingHref}>
+            Open Style Landing
+          </a>
+        ) : null}
+        <a className="showcase-button is-ghost" href="/showcase">
+          Back to Showcase
+        </a>
+      </div>
+    </>
   );
 }
 
@@ -328,6 +372,620 @@ function PaintPlanPanel({ concept }: { concept: SharedPrototype }) {
       )}
     </section>
   );
+}
+
+function FeasibilityPanel({
+  feasibility,
+  providerReady,
+}: {
+  feasibility?: PublicPrototypeFeasibility | null;
+  providerReady: boolean;
+}) {
+  if (feasibility === undefined) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker is-orange">Spray Feasibility</p>
+        <h2>Hydrating feasibility telemetry</h2>
+        <p className="prototype-muted">
+          Convex is loading the public workflow snapshot for this prototype.
+        </p>
+      </section>
+    );
+  }
+
+  if (feasibility === null) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker is-orange">Spray Feasibility</p>
+        <h2>{providerReady ? "Feasibility not published" : "Live feasibility unavailable"}</h2>
+        <p className="prototype-muted">
+          {providerReady
+            ? "This share surface does not currently expose a public feasibility snapshot."
+            : "Set the Convex client environment before this public page can hydrate live feasibility data."}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="prototype-panel">
+      <div className="prototype-section-header">
+        <div>
+          <p className="showcase-kicker is-orange">Spray Feasibility</p>
+          <h2>
+            {feasibility.beginnerDifficulty === "advanced"
+              ? "Advanced workflow"
+              : feasibility.beginnerDifficulty === "moderate"
+                ? "Moderate workflow"
+                : "Beginner-friendly workflow"}
+          </h2>
+        </div>
+        <p>
+          Masking {feasibility.maskingComplexity}/100 /{" "}
+          {feasibility.estimatedLayerCount} estimated layers /{" "}
+          {feasibility.paintCostBand} paint cost
+        </p>
+      </div>
+      <p className="prototype-muted">{feasibility.summary}</p>
+      <div className="prototype-stat-grid">
+        <MetricMiniCard
+          label="Beginner difficulty"
+          value={feasibility.beginnerDifficulty}
+        />
+        <MetricMiniCard
+          label="Surface compatibility"
+          value={feasibility.surfaceCompatibility}
+        />
+        <MetricMiniCard
+          label="Estimated layers"
+          value={`${feasibility.estimatedLayerCount}`}
+        />
+        <MetricMiniCard label="Paint cost" value={feasibility.paintCostBand} />
+      </div>
+      <div className="prototype-mini-list">
+        {feasibility.signals.map((signal) => (
+          <article className="prototype-mini-row" key={signal.label}>
+            <div>
+              <h3>{signal.label}</h3>
+              <p>{signal.note}</p>
+            </div>
+            <span>+{signal.impact}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ShoppingListPanel({
+  providerReady,
+  shoppingList,
+}: {
+  providerReady: boolean;
+  shoppingList?: PublicPrototypeShoppingList | null;
+}) {
+  if (shoppingList === undefined) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker">Shopping List</p>
+        <h2>Hydrating procurement plan</h2>
+        <p className="prototype-muted">
+          Convex is loading paint bundles and purchase paths for this prototype.
+        </p>
+      </section>
+    );
+  }
+
+  if (shoppingList === null) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker">Shopping List</p>
+        <h2>{providerReady ? "Shopping list not published" : "Live shopping list unavailable"}</h2>
+        <p className="prototype-muted">
+          {providerReady
+            ? "This share surface does not currently expose a public shopping list."
+            : "Set the Convex client environment before this public page can hydrate procurement data."}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="prototype-panel">
+      <div className="prototype-section-header">
+        <div>
+          <p className="showcase-kicker">Shopping List</p>
+          <h2>
+            {shoppingList.estimatedItemCount} recommended paint item
+            {shoppingList.estimatedItemCount === 1 ? "" : "s"}
+          </h2>
+        </div>
+        <p>
+          {shoppingList.baseModelName} / {shoppingList.stylePresetName}
+        </p>
+      </div>
+      <div className="prototype-stat-grid">
+        <MetricMiniCard
+          label="Affiliate-ready"
+          tone="teal"
+          value={`${shoppingList.purchaseSummary.affiliateReadyCount}`}
+        />
+        <MetricMiniCard
+          label="Search-ready"
+          tone="blue"
+          value={`${shoppingList.purchaseSummary.searchReadyCount}`}
+        />
+        <MetricMiniCard
+          label="Region-limited"
+          tone="warm"
+          value={`${shoppingList.purchaseSummary.regionLimitedCount}`}
+        />
+      </div>
+      <div className="prototype-mini-row prototype-mini-row--stacked">
+        <div>
+          <h3>Procurement confidence</h3>
+          <p>{shoppingList.procurementConfidence}</p>
+        </div>
+        <p>
+          {shoppingList.procurementConfidence === "strong"
+            ? "Most core items already have robust sourcing paths or search-ready global availability."
+            : shoppingList.procurementConfidence === "moderate"
+              ? "The concept is generally sourceable, but some items may still require manual search or substitution."
+              : "This concept has multiple constrained sourcing points, so procurement should be reviewed before execution."}
+        </p>
+      </div>
+      {shoppingList.featuredPurchasePath ? (
+        <div className="prototype-mini-row prototype-mini-row--stacked">
+          <div>
+            <h3>Best purchase path</h3>
+            <p>{shoppingList.featuredPurchasePath.label}</p>
+          </div>
+          <a
+            className={
+              shoppingList.featuredPurchasePath.type === "affiliate"
+                ? "showcase-button is-accent"
+                : "showcase-button"
+            }
+            href={shoppingList.featuredPurchasePath.url}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {shoppingList.featuredPurchasePath.type === "affiliate"
+              ? "Open Best Purchase Link"
+              : "Search Best Purchase Path"}
+          </a>
+        </div>
+      ) : null}
+      <ShoppingListActions
+        className="prototype-action-row"
+        data={{
+          baseModelName: shoppingList.baseModelName,
+          bundles: shoppingList.bundles,
+          conceptTitle: shoppingList.conceptTitle,
+          materialPresetName: shoppingList.materialPresetName,
+          notes: shoppingList.notes,
+          stylePresetName: shoppingList.stylePresetName,
+        }}
+      />
+      <ShoppingBundlePanel items={shoppingList.bundles.core} title="Core Bundle" />
+      {shoppingList.bundles.support.length > 0 ? (
+        <ShoppingBundlePanel
+          items={shoppingList.bundles.support}
+          title="Support Bundle"
+        />
+      ) : null}
+      {shoppingList.bundles.backup.length > 0 ? (
+        <ShoppingBundlePanel
+          items={shoppingList.bundles.backup}
+          title="Backup Bundle"
+        />
+      ) : null}
+      <div className="prototype-note-stack">
+        {shoppingList.notes.map((note) => (
+          <p key={note}>{note}</p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ShoppingBundlePanel({
+  items,
+  title,
+}: {
+  items: ShoppingBundleItem[];
+  title: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="prototype-subsection">
+      <p className="showcase-kicker is-teal">{title}</p>
+      <div className="prototype-mini-list">
+        {items.map((item) => (
+          <ShoppingListItem item={item} key={item.mappingKey} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ShoppingListItem({
+  item,
+}: {
+  item: ShoppingBundleItem;
+}) {
+  return (
+    <article className="prototype-shopping-item">
+      <div className="prototype-shopping-item__head">
+        <div>
+          <h3>
+            {item.brand} {item.code}
+          </h3>
+          <p>
+            {item.colorName}
+            {item.line ? ` / ${item.line}` : ""}
+            {item.finishType ? ` / ${item.finishType}` : ""}
+          </p>
+        </div>
+        <div className="prototype-shopping-item__badges">
+          {item.hexPreview ? (
+            <span
+              className="prototype-swatch"
+              style={{ backgroundColor: item.hexPreview }}
+            />
+          ) : null}
+          <Pill tone={getProcurementTone(item.procurementStatus)}>
+            {item.procurementStatus}
+          </Pill>
+        </div>
+      </div>
+      <p className="prototype-row-copy">
+        Roles: {item.recommendedRoles.join(", ")}
+      </p>
+      <p className="prototype-muted">Areas: {item.roleAreas.join(", ")}</p>
+      <div className="prototype-action-row">
+        {item.affiliateUrl ? (
+          <a
+            className="showcase-button is-accent"
+            href={item.affiliateUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Open Purchase Link
+          </a>
+        ) : null}
+        <a
+          className="showcase-button"
+          href={item.purchaseSearchUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Search This Paint
+        </a>
+      </div>
+      <p className="prototype-muted">{item.sourcingAdvice}</p>
+      {item.brandAlternatives.length > 0 ? (
+        <div className="prototype-alternative-list">
+          <p className="showcase-kicker">Brand alternatives</p>
+          {item.brandAlternatives.map((alternative) => (
+            <div className="prototype-alternative-row" key={alternative.mappingKey}>
+              <div>
+                <strong>
+                  {alternative.brand} {alternative.code}
+                </strong>
+                <span>
+                  {alternative.colorName}
+                  {alternative.line ? ` / ${alternative.line}` : ""}
+                </span>
+              </div>
+              <div className="prototype-action-row">
+                {alternative.affiliateUrl ? (
+                  <a
+                    className="showcase-button is-accent"
+                    href={alternative.affiliateUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Buy Alternative
+                  </a>
+                ) : null}
+                <a
+                  className="showcase-button"
+                  href={alternative.purchaseSearchUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Search Alternative
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function RecommendationsPanel({
+  conceptId,
+  interactive,
+  providerReady,
+  recommendations,
+  setRecommendationFeedback,
+}: {
+  conceptId: string;
+  interactive: boolean;
+  providerReady: boolean;
+  recommendations?: PublicPrototypeRecommendations | null;
+  setRecommendationFeedback?: ReturnType<
+    typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
+  >;
+}) {
+  if (recommendations === undefined) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker is-teal">Smart Recommendations</p>
+        <h2>Hydrating recommendation graph</h2>
+        <p className="prototype-muted">
+          Convex is loading adjacent styles, easier materials, and sourcing
+          alternatives.
+        </p>
+      </section>
+    );
+  }
+
+  if (recommendations === null) {
+    return (
+      <section className="prototype-panel">
+        <p className="showcase-kicker is-teal">Smart Recommendations</p>
+        <h2>{providerReady ? "Recommendations not published" : "Live recommendations unavailable"}</h2>
+        <p className="prototype-muted">
+          {providerReady
+            ? "This share surface does not currently expose public recommendations."
+            : "Set the Convex client environment before this public page can hydrate recommendations."}
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="prototype-panel">
+      <div className="prototype-section-header">
+        <div>
+          <p className="showcase-kicker is-teal">Smart Recommendations</p>
+          <h2>
+            {recommendations.feasibilityBias === "practical"
+              ? "Practical-first alternatives"
+              : "Alternative paths"}
+          </h2>
+        </div>
+        <p>
+          {recommendations.currentStyle?.name ?? "Unknown Style DNA"} /{" "}
+          {recommendations.currentMaterial?.name ?? "Unknown material"} /{" "}
+          {recommendations.feasibilityBias} bias
+        </p>
+      </div>
+      <RecommendationGroup
+        conceptId={conceptId}
+        interactive={interactive}
+        items={recommendations.alternativeStyles}
+        setRecommendationFeedback={setRecommendationFeedback}
+        title="Adjacent Style DNA"
+      />
+      <RecommendationGroup
+        conceptId={conceptId}
+        interactive={interactive}
+        items={recommendations.easierMaterials}
+        setRecommendationFeedback={setRecommendationFeedback}
+        title="Easier Finish Alternatives"
+      />
+      <RecommendationGroup
+        conceptId={conceptId}
+        interactive={interactive}
+        items={recommendations.beginnerAlternatives}
+        setRecommendationFeedback={setRecommendationFeedback}
+        title="Beginner Workflow Alternatives"
+      />
+      <RecommendationGroup
+        conceptId={conceptId}
+        interactive={interactive}
+        items={recommendations.sourcingAlternatives}
+        setRecommendationFeedback={setRecommendationFeedback}
+        title="Sourcing Alternatives"
+      />
+    </section>
+  );
+}
+
+function RecommendationGroup({
+  conceptId,
+  interactive,
+  items,
+  setRecommendationFeedback,
+  title,
+}: {
+  conceptId: string;
+  interactive: boolean;
+  items: PublicPrototypeRecommendations["alternativeStyles"];
+  setRecommendationFeedback?: ReturnType<
+    typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
+  >;
+  title: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="prototype-subsection">
+      <p className="showcase-kicker">{title}</p>
+      <div className="prototype-mini-list">
+        {items.map((item) => (
+          <article className="prototype-mini-row prototype-mini-row--stacked" key={`${item.type}-${item.value}`}>
+            <div>
+              <h3>{item.label}</h3>
+              <p>{item.type}</p>
+            </div>
+            <p>{item.rationale}</p>
+            <div className="prototype-action-row">
+              <RecommendationFeedbackButton
+                active={item.feedback.helpful}
+                conceptId={conceptId}
+                interactive={interactive}
+                kind="helpful"
+                label="Helpful"
+                recommendationType={item.type}
+                recommendationValue={item.value}
+                setRecommendationFeedback={setRecommendationFeedback}
+              />
+              <RecommendationFeedbackButton
+                active={item.feedback.notHelpful}
+                conceptId={conceptId}
+                interactive={interactive}
+                kind="not-helpful"
+                label="Not Useful"
+                recommendationType={item.type}
+                recommendationValue={item.value}
+                setRecommendationFeedback={setRecommendationFeedback}
+              />
+              <RecommendationFeedbackButton
+                active={item.feedback.try}
+                conceptId={conceptId}
+                interactive={interactive}
+                kind="try"
+                label="Try This"
+                recommendationType={item.type}
+                recommendationValue={item.value}
+                setRecommendationFeedback={setRecommendationFeedback}
+              />
+              <a
+                className="showcase-button"
+                href={buildCreateRecommendationHref(conceptId, item)}
+              >
+                Open In Create
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecommendationFeedbackButton({
+  active,
+  conceptId,
+  interactive,
+  kind,
+  label,
+  recommendationType,
+  recommendationValue,
+  setRecommendationFeedback,
+}: {
+  active: boolean;
+  conceptId: string;
+  interactive: boolean;
+  kind: "helpful" | "not-helpful" | "try";
+  label: string;
+  recommendationType: string;
+  recommendationValue: string;
+  setRecommendationFeedback?: ReturnType<
+    typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
+  >;
+}) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [pending, setPending] = useState(false);
+  const className = active ? "showcase-chip is-active" : "showcase-chip is-button";
+  const disabled =
+    !interactive || !setRecommendationFeedback || !isLoaded || pending;
+
+  const button = (
+    <button
+      className={className}
+      disabled={disabled}
+      type="button"
+      onClick={
+        isSignedIn
+          ? () => {
+              if (!setRecommendationFeedback) {
+                return;
+              }
+
+              setPending(true);
+              void setRecommendationFeedback({
+                conceptId: conceptId as Id<"concepts">,
+                kind,
+                recommendationType,
+                recommendationValue,
+              }).finally(() => setPending(false));
+            }
+          : undefined
+      }
+    >
+      {pending ? `${label}...` : label}
+    </button>
+  );
+
+  if (!interactive || !setRecommendationFeedback || isSignedIn) {
+    return button;
+  }
+
+  return <SignInButton mode="modal">{button}</SignInButton>;
+}
+
+function MetricMiniCard({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone?: "blue" | "teal" | "warm";
+  value: string;
+}) {
+  return (
+    <div className={tone ? `prototype-stat is-${tone}` : "prototype-stat"}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function getProcurementTone(
+  status: "affiliate-ready" | "search-ready" | "region-limited"
+) {
+  if (status === "affiliate-ready") {
+    return "warm";
+  }
+  if (status === "search-ready") {
+    return "blue";
+  }
+  return undefined;
+}
+
+function buildCreateRecommendationHref(
+  conceptId: string,
+  item: {
+    type: string;
+    value: string;
+  }
+) {
+  const params = new URLSearchParams();
+  params.set("remix", conceptId);
+
+  if (item.type === "style") {
+    params.set("recommendedStyle", item.value);
+  }
+  if (item.type === "material") {
+    params.set("recommendedMaterial", item.value);
+  }
+  if (item.type === "workflow") {
+    params.set("recommendedWorkflow", item.value);
+  }
+
+  return `/t/create?${params.toString()}`;
 }
 
 function RemixesPanel({ concept }: { concept: SharedPrototype }) {

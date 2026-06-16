@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 import {
   HeadContent,
-  Link,
   Outlet,
   Scripts,
   createRootRoute,
@@ -10,8 +9,8 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
 import { StartProviders } from "@/src/providers/StartProviders";
-import legacyGlobalsCss from "@/app/globals.css?url";
 import appCss from "@/src/styles/app.css?url";
+import globalsCss from "@/src/styles/globals.css?url";
 
 const RouterDevtools = import.meta.env.DEV
   ? lazy(() =>
@@ -36,7 +35,7 @@ export const Route = createRootRoute({
       },
     ],
     links: [
-      { rel: "stylesheet", href: legacyGlobalsCss },
+      { rel: "stylesheet", href: globalsCss },
       { rel: "stylesheet", href: appCss },
     ],
   }),
@@ -61,27 +60,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <StartProviders>
-          <div className="spike-shell">
-            <header className="spike-header">
-              <Link className="spike-brand" to="/">
-                <span>NeotypeLab</span>
-                <strong>Terminal</strong>
-              </Link>
-              <nav className="spike-nav" aria-label="Primary routes">
-                <Link to="/" activeOptions={{ exact: true }}>
-                  Home
-                </Link>
-                <Link to="/showcase">Showcase</Link>
-                <Link to="/t" activeOptions={{ exact: true }}>
-                  Terminal
-                </Link>
-                <Link to="/t/create">Create</Link>
-                <Link to="/t/library">Library</Link>
-                <Link to="/t/feedback">Feedback</Link>
-              </nav>
-            </header>
-            {children}
-          </div>
+          <div className="spike-shell">{children}</div>
         </StartProviders>
         {RouterDevtools ? (
           <Suspense fallback={null}>

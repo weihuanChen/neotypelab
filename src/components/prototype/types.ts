@@ -7,6 +7,18 @@ export type SharedPrototype = NonNullable<
   FunctionReturnType<typeof api.showcase.getSharedConcept>
 >;
 
+export type PublicPrototypeFeasibility = NonNullable<
+  FunctionReturnType<typeof api.feasibility.getPublicConceptFeasibility>
+>;
+
+export type PublicPrototypeRecommendations = NonNullable<
+  FunctionReturnType<typeof api.recommendations.getPublicConceptRecommendations>
+>;
+
+export type PublicPrototypeShoppingList = NonNullable<
+  FunctionReturnType<typeof api.shopping.getPublicConceptShoppingList>
+>;
+
 export type PrototypeStructuredData = ReturnType<
   typeof buildPrototypeStructuredData
 >;

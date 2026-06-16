@@ -68,6 +68,24 @@ npm run build:next
 npm run start:next
 ```
 
+## Migration Ownership
+
+TanStack Start under `src/` is the active implementation. Treat `app/` as a
+fallback/reference snapshot during migration:
+
+- do not add new product behavior only in `app/`
+- port useful fallback fixes into `src/`
+- keep Next-specific hooks/components out of TanStack files
+- keep `app/layouts/*` out of migration scope unless a future product task
+  explicitly revives those layout demos
+
+See `docs/tanstack_migration_state.md` for the current migration ownership
+rules.
+
+P3 migration status: the Next fallback is retained but isolated. The TanStack
+runtime loads its global styles from `src/styles/globals.css`; avoid importing
+fallback runtime assets from `app/` into `src/`.
+
 ## Cloudflare Environment
 
 Set non-secret public values for both the build environment and Worker runtime:

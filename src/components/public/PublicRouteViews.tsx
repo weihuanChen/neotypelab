@@ -1,4 +1,5 @@
 import { ConceptEngagementBar, PackEngagementBar } from "@/src/components/showcase/EngagementBars";
+import { PublicShareActions } from "./PublicShareActions";
 import type {
   CreatorHubData,
   CreatorPackData,
@@ -68,6 +69,17 @@ export function SeoLandingView({ landing }: { landing: SeoLandingData }) {
               Browse Showcase
             </a>
           </div>
+          <PublicShareActions
+            className="prototype-action-row"
+            exportImageLabel="Landing Image"
+            exportImageUrl={`/${landing.baseModel.slug}/${landing.stylePreset.slug}/opengraph-image`}
+            sharePath={`/${landing.baseModel.slug}/${landing.stylePreset.slug}`}
+            text={
+              landing.stylePreset.shortDescription ??
+              `${landing.baseModel.name} in ${landing.stylePreset.name}`
+            }
+            title={`${landing.baseModel.name} in ${landing.stylePreset.name}`}
+          />
         </div>
         <PreviewMedia
           alt={featured.title}
@@ -185,6 +197,18 @@ export function CreatorPackView({ pack }: { pack: CreatorPackData }) {
               Pilot Profile
             </a>
           </div>
+          <PublicShareActions
+            className="prototype-action-row"
+            exportImageLabel="Pack Image"
+            exportImageUrl={`/creator-pack/${pack.slug}/opengraph-image`}
+            sharePath={`/creator-pack/${pack.slug}`}
+            text={
+              pack.tagline ??
+              pack.description ??
+              `${pack.name} creator pack by ${pack.creator.fullName}`
+            }
+            title={`${pack.name} | NeotypeLab`}
+          />
         </div>
         <PreviewMedia
           alt={pack.name}
@@ -327,6 +351,17 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
               Filter Showcase
             </a>
           </div>
+          <PublicShareActions
+            className="prototype-action-row"
+            exportImageLabel="Hub Image"
+            exportImageUrl={`/creator/${profile.pilot.handle}/opengraph-image`}
+            sharePath={`/creator/${profile.pilot.handle}`}
+            text={
+              profile.pilot.creatorTagline ??
+              `${profile.totals.publicConcepts} public concepts from ${profile.pilot.fullName}`
+            }
+            title={`${profile.pilot.fullName} Creator Hub | NeotypeLab`}
+          />
         </div>
         <div className="public-hero__stats">
           <Metric label="Concepts" value={`${profile.totals.publicConcepts}`} tone="teal" />
