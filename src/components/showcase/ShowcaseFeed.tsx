@@ -20,9 +20,11 @@ import type {
 } from "./types";
 
 export function ShowcaseFeed({
+  basePath = "/showcase",
   search,
   snapshot,
 }: {
+  basePath?: string;
   search: ShowcaseSearch;
   snapshot: ShowcaseSnapshot;
 }) {
@@ -33,6 +35,7 @@ export function ShowcaseFeed({
 
   return canUseLiveData ? (
     <LiveShowcaseFeed
+      basePath={basePath}
       canInteract={canInteract}
       search={search}
       snapshot={snapshot}
@@ -41,6 +44,7 @@ export function ShowcaseFeed({
     <ShowcaseFeedView
       canInteract={canInteract}
       data={snapshot}
+      basePath={basePath}
       providerReady={providerStatus.hasConvexClient}
       search={search}
       status={snapshot.status}
@@ -52,10 +56,12 @@ export function ShowcaseFeed({
 }
 
 function LiveShowcaseFeed({
+  basePath,
   canInteract,
   search,
   snapshot,
 }: {
+  basePath: string;
   canInteract: boolean;
   search: ShowcaseSearch;
   snapshot: ShowcaseSnapshot;
@@ -71,6 +77,7 @@ function LiveShowcaseFeed({
 
   return (
     <ShowcaseFeedView
+      basePath={basePath}
       canInteract={canInteract}
       data={data}
       providerReady
@@ -84,6 +91,7 @@ function LiveShowcaseFeed({
 }
 
 function ShowcaseFeedView({
+  basePath,
   canInteract,
   data,
   providerReady,
@@ -91,6 +99,7 @@ function ShowcaseFeedView({
   status,
   statusMessage,
 }: {
+  basePath: string;
   canInteract: boolean;
   data: ShowcaseData;
   providerReady: boolean;
@@ -171,7 +180,7 @@ function ShowcaseFeedView({
                   ? "showcase-filter is-active"
                   : "showcase-filter"
               }
-              href={buildShowcaseHref(search, { sort: option.id })}
+              href={buildShowcaseHref(search, { sort: option.id }, basePath)}
               key={option.id}
             >
               {option.label}
@@ -187,6 +196,7 @@ function ShowcaseFeedView({
             label="Base Model"
             options={filterOptions.baseModels}
             paramName="baseModel"
+            basePath={basePath}
             search={search}
           />
           <FilterGroup
@@ -194,6 +204,7 @@ function ShowcaseFeedView({
             label="Style DNA"
             options={filterOptions.styles}
             paramName="style"
+            basePath={basePath}
             search={search}
           />
           <FilterGroup
@@ -201,6 +212,7 @@ function ShowcaseFeedView({
             label="Category"
             options={filterOptions.categories}
             paramName="category"
+            basePath={basePath}
             search={search}
           />
           <FilterGroup
@@ -208,6 +220,7 @@ function ShowcaseFeedView({
             label="Creator"
             options={filterOptions.creators}
             paramName="creator"
+            basePath={basePath}
             search={search}
           />
         </div>
@@ -278,12 +291,16 @@ function ShowcaseFeedView({
           {hasActiveFilters ? (
             <a
               className="showcase-button"
-              href={buildShowcaseHref(search, {
-                baseModel: null,
-                category: null,
-                creator: null,
-                style: null,
-              })}
+              href={buildShowcaseHref(
+                search,
+                {
+                  baseModel: null,
+                  category: null,
+                  creator: null,
+                  style: null,
+                },
+                basePath
+              )}
             >
               Clear Filters
             </a>
@@ -380,12 +397,14 @@ function ShowcaseFeedView({
 
 function FilterGroup({
   activeValue,
+  basePath,
   label,
   options,
   paramName,
   search,
 }: {
   activeValue?: string;
+  basePath: string;
   label: string;
   options: Array<{ value: string; label: string }>;
   paramName: "baseModel" | "style" | "category" | "creator";
@@ -397,7 +416,7 @@ function FilterGroup({
       <div>
         <a
           className={!activeValue ? "showcase-filter is-active" : "showcase-filter"}
-          href={buildShowcaseHref(search, { [paramName]: null })}
+          href={buildShowcaseHref(search, { [paramName]: null }, basePath)}
         >
           All
         </a>
@@ -408,7 +427,7 @@ function FilterGroup({
                 ? "showcase-filter is-active"
                 : "showcase-filter"
             }
-            href={buildShowcaseHref(search, { [paramName]: option.value })}
+            href={buildShowcaseHref(search, { [paramName]: option.value }, basePath)}
             key={option.value}
           >
             {option.label}

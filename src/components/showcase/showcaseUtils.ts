@@ -52,7 +52,8 @@ export function parseOptionalSearchValue(value: unknown) {
 
 export function buildShowcaseHref(
   search: ShowcaseSearch,
-  updates: Partial<Record<keyof ShowcaseSearch, string | null>>
+  updates: Partial<Record<keyof ShowcaseSearch, string | null>>,
+  basePath = "/showcase"
 ) {
   const params = new URLSearchParams();
   const nextSearch: ShowcaseSearch = { ...search };
@@ -82,7 +83,7 @@ export function buildShowcaseHref(
   }
 
   const query = params.toString();
-  return query ? `/showcase?${query}` : "/showcase";
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 export function uniqueOptions(
