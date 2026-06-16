@@ -77,6 +77,7 @@ function RootDocument({ children }: { children: ReactNode }) {
                 </Link>
                 <Link to="/t/create">Create</Link>
                 <Link to="/t/library">Library</Link>
+                <Link to="/t/feedback">Feedback</Link>
               </nav>
             </header>
             {children}

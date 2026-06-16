@@ -37,6 +37,9 @@ function TerminalRoute() {
           <a className="showcase-button is-ghost" href="/t/library">
             Library
           </a>
+          <a className="showcase-button is-ghost" href="/t/feedback">
+            Feedback
+          </a>
           <a className="showcase-button is-ghost" href="/showcase">
             Showcase
           </a>

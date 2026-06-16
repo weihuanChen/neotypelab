@@ -296,6 +296,9 @@ function LibraryShell({ children }: { children: ReactNode }) {
           <a className="showcase-button is-ghost" href="/t">
             Auth
           </a>
+          <a className="showcase-button is-ghost" href="/t/feedback">
+            Feedback
+          </a>
           <a className="showcase-button" href="/showcase">
             Showcase
           </a>

@@ -2,52 +2,46 @@ import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { ReactNode, Suspense } from "react";
-import {
-  CreateWorkbench,
-  parseCreateSearch,
-} from "@/src/components/create/CreateWorkbench";
+import { FeedbackWorkbench } from "@/src/components/feedback/FeedbackWorkbench";
 
-export const Route = createFileRoute("/t_/create")({
-  validateSearch: parseCreateSearch,
+export const Route = createFileRoute("/t_/feedback")({
   head: () => ({
     meta: [
-      { title: "Create | NeotypeLab Terminal" },
+      { title: "Feedback | NeotypeLab Terminal" },
       {
         name: "description",
         content:
-          "Authenticated repaint prototype creation workflow for NeotypeLab Terminal.",
+          "Authenticated feedback relay for model requests, generation quality reports, and paint mapping issues.",
       },
     ],
   }),
-  component: CreateRoute,
+  component: FeedbackRoute,
 });
 
-function CreateRoute() {
-  const search = Route.useSearch();
-
+function FeedbackRoute() {
   return (
     <main className="create-page">
       <AuthLoading>
-        <CreateFrame>
+        <FeedbackFrame>
           <section className="library-empty">
-            <p className="showcase-kicker is-teal">Terminal sync</p>
-            <h1>Opening create console.</h1>
+            <p className="showcase-kicker is-teal">Feedback sync</p>
+            <h1>Opening feedback relay.</h1>
             <p>
               Clerk is present and Convex is negotiating the authenticated viewer
               token.
             </p>
           </section>
-        </CreateFrame>
+        </FeedbackFrame>
       </AuthLoading>
 
       <Unauthenticated>
-        <CreateFrame>
+        <FeedbackFrame>
           <section className="library-empty">
             <p className="showcase-kicker is-orange">Signed out</p>
-            <h1>Sign in to open the create workflow.</h1>
+            <h1>Sign in to route feedback.</h1>
             <p>
-              Create uses your private catalog defaults, credit balance, and
-              prototype generation ledger.
+              Feedback reports are tied to your operator profile and routed into
+              the admin triage queue.
             </p>
             <SignInButton mode="modal">
               <button className="showcase-button" type="button">
@@ -55,44 +49,44 @@ function CreateRoute() {
               </button>
             </SignInButton>
           </section>
-        </CreateFrame>
+        </FeedbackFrame>
       </Unauthenticated>
 
       <Authenticated>
-        <Suspense
-          fallback={
-            <CreateFrame>
+        <FeedbackFrame>
+          <Suspense
+            fallback={
               <section className="library-empty">
-                <p className="showcase-kicker is-teal">Create</p>
-                <h1>Loading creation workbench.</h1>
+                <p className="showcase-kicker is-teal">Feedback</p>
+                <h1>Loading feedback workbench.</h1>
               </section>
-            </CreateFrame>
-          }
-        >
-          <CreateWorkbench search={search} />
-        </Suspense>
+            }
+          >
+            <FeedbackWorkbench />
+          </Suspense>
+        </FeedbackFrame>
       </Authenticated>
     </main>
   );
 }
 
-function CreateFrame({ children }: { children: ReactNode }) {
+function FeedbackFrame({ children }: { children: ReactNode }) {
   return (
     <div className="create-frame">
       <section className="showcase-topbar">
         <div>
           <p className="showcase-kicker">NeotypeLab Terminal</p>
-          <h1>Create</h1>
+          <h1>Feedback</h1>
         </div>
         <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/t/library">
+          <a className="showcase-button is-ghost" href="/t">
+            Terminal
+          </a>
+          <a className="showcase-button is-ghost" href="/t/create">
+            Create
+          </a>
+          <a className="showcase-button" href="/t/library">
             Library
-          </a>
-          <a className="showcase-button is-ghost" href="/t/feedback">
-            Feedback
-          </a>
-          <a className="showcase-button" href="/showcase">
-            Showcase
           </a>
         </div>
       </section>

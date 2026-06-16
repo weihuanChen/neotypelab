@@ -54,6 +54,22 @@ export function DashboardOverview() {
           concept records, feedback reports, and R2-backed asset metadata in one
           authenticated workspace.
         </p>
+        <div className="terminal-actions mt-5">
+          <a className="showcase-button" href="/t/create">
+            Create
+          </a>
+          <a className="showcase-button is-ghost" href="/t/library">
+            Library
+          </a>
+          <a className="showcase-button is-ghost" href="/t/feedback">
+            Feedback
+          </a>
+          {viewer?.canManagePlatform ? (
+            <a className="showcase-button is-accent" href="/t/admin">
+              Admin
+            </a>
+          ) : null}
+        </div>
       </section>
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <article className="rounded-3xl border border-line-secondary bg-surface p-6">
