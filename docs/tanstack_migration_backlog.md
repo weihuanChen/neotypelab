@@ -1,0 +1,177 @@
+# TanStack Migration Backlog
+
+Last updated: 2026-06-16
+
+This document tracks the remaining migration work from the retained Next App
+Router fallback in `app/` into the TanStack Start production path in `src/`.
+
+## How To Update
+
+When a migration item is complete:
+
+1. Change `[ ]` to `[x]`.
+2. Fill in `Completed:` with the date.
+3. Fill in `Commit:` with the git commit hash.
+4. Add a short note if the scope changed during implementation.
+
+Use P0 for broken production behavior or major feature parity gaps, P1 for
+user-visible parity gaps, P2 for cleanup and de-risking, and P3 for follow-on
+polish that is migration-adjacent but not blocking.
+
+## Recently Completed
+
+- [x] `M-DONE-01` Migrate `/t/feedback` to TanStack.
+  - Completed: 2026-06-16
+  - Commit: `b48c5db`
+  - Notes: Added `src/routes/t_.feedback.tsx` and
+    `src/components/feedback/FeedbackWorkbench.tsx`.
+- [x] `M-DONE-02` Migrate `/t/admin` to TanStack.
+  - Completed: 2026-06-16
+  - Commit: `b48c5db`
+  - Notes: Added `src/routes/t_.admin.tsx`, moved admin workbench into
+    `src/components/admin`, and replaced Clerk Next hooks with TanStack Clerk
+    hooks.
+
+## P0
+
+- [ ] `M-P0-01` Restore full `/t/library` feature parity.
+  - Source fallback: `app/t/library/LibraryWorkbench.tsx`
+  - TanStack target: `src/components/library/LibraryWorkbench.tsx`
+  - Scope:
+    - restore publish review dialog and blocking checks for shareable states
+    - block public/unlisted publishing when the concept lacks a public preview URL
+    - restore advanced render actions: HD render, multi-angle contact sheet,
+      high-fidelity render, build-stage visualization, weathering simulation,
+      weathering split preview, and material finish comparison
+    - restore paint plan, feasibility, shopping readiness, recommendation bias,
+      render history, copy shopping list, and purchase path panels
+  - Completed:
+  - Commit:
+
+- [ ] `M-P0-02` Resolve the missing `/t/showcase` terminal route.
+  - Source fallback: `app/t/showcase/page.tsx`
+  - TanStack target: `src/routes/t_.showcase.tsx` or a deliberate redirect/link
+    change to `/showcase`
+  - Scope:
+    - remove the current broken link from TanStack `/showcase`
+    - decide whether terminal-mode showcase should stay separate or redirect to
+      the public `/showcase`
+    - keep terminal navigation consistent after the decision
+  - Completed:
+  - Commit:
+
+## P1
+
+- [ ] `M-P1-01` Restore prototype public page parity.
+  - Source fallback: `app/prototype/[conceptId]/PrototypePublicView.tsx`
+  - TanStack target: `src/components/prototype/PrototypePublicView.tsx`
+  - Scope:
+    - restore public feasibility query and Spray Feasibility panel
+    - restore public shopping list query, Shopping List panel, copy action, and
+      best purchase path link
+    - restore public recommendations query, recommendation groups, feedback
+      mutation, and recommendation-to-create links
+    - preserve current TanStack SSR snapshot and live Convex hydration behavior
+  - Completed:
+  - Commit:
+
+- [ ] `M-P1-02` Migrate prototype export image routes.
+  - Source fallback:
+    - `app/prototype/[conceptId]/watermarked-image.tsx`
+    - `app/prototype/[conceptId]/pinterest-image.tsx`
+    - `app/prototype/[conceptId]/reddit-image.tsx`
+  - TanStack target:
+    - `src/routes/prototype_.$conceptId.watermarked-image.ts`
+    - `src/routes/prototype_.$conceptId.pinterest-image.ts`
+    - `src/routes/prototype_.$conceptId.reddit-image.ts`
+  - Scope:
+    - verify the image rendering approach works on Cloudflare Workers
+    - reconnect export links from the TanStack prototype page
+    - keep existing `/prototype/$conceptId/opengraph-image` behavior intact
+  - Completed:
+  - Commit:
+
+- [ ] `M-P1-03` Restore public share actions across public routes.
+  - Source fallback:
+    - `components/public/PublicShareActions.tsx`
+    - `app/pilot/[handle]/PilotPublicView.tsx`
+    - `app/creator/[handle]/CreatorHubView.tsx`
+    - `app/creator-pack/[slug]/CreatorPackPageView.tsx`
+    - `app/[baseModelSlug]/[stylePresetSlug]/SeoLandingPageView.tsx`
+  - TanStack target:
+    - `src/components/pilot/PilotPublicView.tsx`
+    - `src/components/public/PublicRouteViews.tsx`
+    - shared TanStack-safe public share component
+  - Scope:
+    - restore copy/share actions consistently
+    - avoid importing Next-specific public components into TanStack
+    - wire export image links where the target route exists
+  - Completed:
+  - Commit:
+
+- [ ] `M-P1-04` Rebuild a unified terminal navigation shell for TanStack.
+  - Source fallback: `app/t/TerminalShell.tsx`
+  - TanStack target: shared component under `src/components/terminal/`
+  - Scope:
+    - centralize `/t`, `/t/create`, `/t/library`, `/t/feedback`, `/t/showcase`
+      or redirect, and conditional `/t/admin`
+    - restore operator readout, credit balance, and auth controls where
+      supported by TanStack Clerk
+    - remove duplicated per-route topbar drift
+  - Completed:
+  - Commit:
+
+## P2
+
+- [ ] `M-P2-01` Decide the fate of `app/layouts/*`.
+  - Source fallback: `app/layouts/`
+  - TanStack target: delete, archive, or migrate intentionally
+  - Scope:
+    - confirm whether these routes are still useful demos
+    - if not production, remove from migration scope and document why
+    - if still useful, migrate them into TanStack or docs
+  - Completed:
+  - Commit:
+
+- [ ] `M-P2-02` Remove legacy-only drift after parity is restored.
+  - Source fallback: `app/`
+  - TanStack target: `src/`
+  - Scope:
+    - audit changes that landed only in `app/t/create` or other Next fallback
+      files after the TanStack copy was created
+    - port useful changes into `src/`
+    - stop treating fallback files as active implementation targets
+  - Completed:
+  - Commit:
+
+- [ ] `M-P2-03` Update migration docs and README after remaining parity work.
+  - Source fallback: `README.md`, existing docs under `docs/`
+  - TanStack target: current documentation
+  - Scope:
+    - replace stale Next-first architecture language
+    - document which `app/` files are retained only as fallback
+    - document Cloudflare/TanStack deployment as the canonical path
+  - Completed:
+  - Commit:
+
+## P3
+
+- [ ] `M-P3-01` Retire or isolate the Next App Router fallback.
+  - Source fallback: `app/`
+  - TanStack target: repository cleanup plan
+  - Scope:
+    - after all P0/P1 parity gaps are closed, decide whether to keep
+      `build:next` as a fallback
+    - if retained, define ownership and freeze rules
+    - if removed, delete stale routes and dependencies safely
+  - Completed:
+  - Commit:
+
+- [ ] `M-P3-02` Expand social/export formats beyond the migrated baseline.
+  - Source fallback: first-generation prototype export routes
+  - TanStack target: future public share/export surfaces
+  - Scope:
+    - add extra platform-specific layouts only after current exports are stable
+    - keep this separate from parity migration unless needed by launch
+  - Completed:
+  - Commit:
