@@ -34,7 +34,7 @@ polish that is migration-adjacent but not blocking.
 
 ## P0
 
-- [ ] `M-P0-01` Restore full `/t/library` feature parity.
+- [x] `M-P0-01` Restore full `/t/library` feature parity.
   - Source fallback: `app/t/library/LibraryWorkbench.tsx`
   - TanStack target: `src/components/library/LibraryWorkbench.tsx`
   - Scope:
@@ -45,8 +45,12 @@ polish that is migration-adjacent but not blocking.
       weathering split preview, and material finish comparison
     - restore paint plan, feasibility, shopping readiness, recommendation bias,
       render history, copy shopping list, and purchase path panels
-  - Completed:
-  - Commit:
+  - Completed: 2026-06-16
+  - Commit: `444ceba`
+  - Notes: Restored the authenticated terminal library workbench with publish
+    review gates, public preview blocking, advanced render actions, saved public
+    builds, paint/feasibility/shopping/recommendation panels, render history,
+    shopping copy actions, and queue retry controls.
 
 - [x] `M-P0-02` Resolve the missing `/t/showcase` terminal route.
   - Source fallback: `app/t/showcase/page.tsx`
