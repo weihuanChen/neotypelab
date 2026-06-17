@@ -1,16 +1,24 @@
 import { v } from "convex/values";
 import { canManagePlatform, isSuperAdminEmail, requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
+import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
+import { buildPaintPlan } from "./paintMappingEngine";
+import { buildOptionalModelPromptContext } from "./modelPromptContext";
+import { Doc, Id } from "./_generated/dataModel";
 import {
   CreditActionType,
+  MoodTag,
   PromptTemplateKind,
   UserAccountStatus,
   UserPlan,
   vCreditActionType,
+  vMoodTag,
   vPromptTemplateKind,
   vUserAccountStatus,
   vUserPlan,
+  vWeatheringLevel,
 } from "./domain";
 import { mutation, query } from "./functions";
+import { MutationCtx, QueryCtx } from "./types";
 import { normalizeStringForSearch, slugify } from "./utils";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
 
@@ -106,6 +114,7 @@ export const listUsers = query({
       .map((user) => {
         const credits = accountByUserId.get(user._id);
         const isSuperAdmin = isSuperAdminEmail(user.email);
+
         return {
           _id: user._id,
           _creationTime: user._creationTime,
@@ -176,6 +185,286 @@ export const listPriceRules = query({
   },
 });
 
+export const composePromptLabPreview = mutation({
+  args: {
+    promptTemplateId: v.id("promptTemplates"),
+    baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
+    stylePresetId: v.optional(v.id("stylePresets")),
+    materialPresetId: v.optional(v.id("materialPresets")),
+    moodTags: v.optional(v.array(vMoodTag)),
+    weatheringLevel: vWeatheringLevel,
+    notes: v.optional(v.string()),
+    conceptId: v.optional(v.string()),
+    remixSource: v.optional(v.string()),
+  },
+  async handler(ctx, args) {
+    requireSuperAdmin(ctx);
+    return await composePromptLabPayload(ctx, args);
+  },
+});
+
+export const listPromptExperimentRuns = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+
+    const runs = await ctx.db.query("promptExperimentRuns").collect();
+    const users = await ctx.db.query("users").collect();
+    const userById = new Map(users.map((user) => [user._id, user]));
+
+    return runs
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 40)
+      .map((run) => {
+        const inputSnapshot = safeParseJson(run.inputSnapshotJson);
+        const templateSnapshot = safeParseJson(run.templateSnapshotJson);
+        const actor = userById.get(run.userId);
+
+        return {
+          _id: run._id,
+          _creationTime: run._creationTime,
+          templateKind: run.templateKind,
+          templateName: run.templateName,
+          templateVersion: run.templateVersion,
+          promptTemplateId: run.promptTemplateId,
+          composedPrompt: run.composedPrompt,
+          negativePrompt: run.negativePrompt,
+          source: run.source,
+          status: run.status,
+          providerLabel: run.providerLabel,
+          modelLabel: run.modelLabel,
+          vendorUrl: run.vendorUrl,
+          parameterNotes: run.parameterNotes,
+          outputImageUrl: run.outputImageUrl,
+          outputNotes: run.outputNotes,
+          failureTags: run.failureTags,
+          styleHitScore: run.styleHitScore,
+          silhouetteScore: run.silhouetteScore,
+          paintabilityScore: run.paintabilityScore,
+          promptAdherenceScore: run.promptAdherenceScore,
+          visualImpactScore: run.visualImpactScore,
+          overallScore: run.overallScore,
+          selectedAsWinner: run.selectedAsWinner,
+          inputSnapshot,
+          templateSnapshot,
+          actor: actor
+            ? {
+                _id: actor._id,
+                fullName: actor.fullName,
+                email: actor.email,
+                handle: actor.handle,
+              }
+            : null,
+        };
+      });
+  },
+});
+
+export const savePromptExperimentRun = mutation({
+  args: {
+    promptTemplateId: v.id("promptTemplates"),
+    baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
+    stylePresetId: v.optional(v.id("stylePresets")),
+    materialPresetId: v.optional(v.id("materialPresets")),
+    moodTags: v.optional(v.array(vMoodTag)),
+    weatheringLevel: vWeatheringLevel,
+    notes: v.optional(v.string()),
+    conceptId: v.optional(v.string()),
+    remixSource: v.optional(v.string()),
+    providerLabel: v.optional(v.string()),
+    modelLabel: v.optional(v.string()),
+    vendorUrl: v.optional(v.string()),
+    parameterNotes: v.optional(v.string()),
+    outputImageUrl: v.optional(v.string()),
+    outputNotes: v.optional(v.string()),
+    failureTags: v.optional(v.array(v.string())),
+    styleHitScore: v.optional(v.number()),
+    silhouetteScore: v.optional(v.number()),
+    paintabilityScore: v.optional(v.number()),
+    promptAdherenceScore: v.optional(v.number()),
+    visualImpactScore: v.optional(v.number()),
+    overallScore: v.optional(v.number()),
+    selectedAsWinner: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const payload = await composePromptLabPayload(ctx, args);
+    const selectedAsWinner = args.selectedAsWinner ?? false;
+    const runId = await ctx.db.insert("promptExperimentRuns", {
+      userId: viewer._id,
+      promptTemplateId: payload.template._id,
+      templateKind: payload.template.kind,
+      templateName: payload.template.name,
+      templateVersion: payload.template.version,
+      templateSnapshotJson: JSON.stringify(payload.templateSnapshot),
+      inputSnapshotJson: JSON.stringify(payload.inputSnapshot),
+      composedPrompt: payload.composedPrompt,
+      negativePrompt: payload.negativePrompt,
+      source: "manual-web",
+      status: selectedAsWinner
+        ? "selected"
+        : hasExperimentEvidence(args)
+          ? "tested"
+          : "ready-for-web",
+      providerLabel: cleanOptionalString(args.providerLabel),
+      modelLabel: cleanOptionalString(args.modelLabel),
+      vendorUrl: cleanOptionalString(args.vendorUrl),
+      parameterNotes: cleanOptionalString(args.parameterNotes),
+      outputImageUrl: cleanOptionalString(args.outputImageUrl),
+      outputNotes: cleanOptionalString(args.outputNotes),
+      failureTags: compactStringArray(args.failureTags ?? []),
+      styleHitScore: args.styleHitScore,
+      silhouetteScore: args.silhouetteScore,
+      paintabilityScore: args.paintabilityScore,
+      promptAdherenceScore: args.promptAdherenceScore,
+      visualImpactScore: args.visualImpactScore,
+      overallScore: args.overallScore,
+      selectedAsWinner,
+    });
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "save-prompt-experiment-run",
+      entityType: "promptExperimentRun",
+      entityId: runId,
+      detailsJson: JSON.stringify({
+        runId,
+        promptTemplateId: payload.template._id,
+        templateKind: payload.template.kind,
+        templateVersion: payload.template.version,
+        providerLabel: args.providerLabel,
+        modelLabel: args.modelLabel,
+        selectedAsWinner,
+      }),
+    });
+
+    return {
+      runId,
+      composedPrompt: payload.composedPrompt,
+      warnings: payload.warnings,
+    };
+  },
+});
+
+export const updatePromptExperimentRun = mutation({
+  args: {
+    runId: v.id("promptExperimentRuns"),
+    status: v.optional(
+      v.union(
+        v.literal("ready-for-web"),
+        v.literal("tested"),
+        v.literal("selected"),
+        v.literal("rejected"),
+        v.literal("archived")
+      )
+    ),
+    providerLabel: v.optional(v.string()),
+    modelLabel: v.optional(v.string()),
+    vendorUrl: v.optional(v.string()),
+    parameterNotes: v.optional(v.string()),
+    outputImageUrl: v.optional(v.string()),
+    outputNotes: v.optional(v.string()),
+    failureTags: v.optional(v.array(v.string())),
+    styleHitScore: v.optional(v.number()),
+    silhouetteScore: v.optional(v.number()),
+    paintabilityScore: v.optional(v.number()),
+    promptAdherenceScore: v.optional(v.number()),
+    visualImpactScore: v.optional(v.number()),
+    overallScore: v.optional(v.number()),
+    selectedAsWinner: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const run = await ctx.db.get(args.runId);
+    if (run === null) {
+      throw new Error("Prompt experiment run not found");
+    }
+
+    const selectedAsWinner = args.selectedAsWinner ?? run.selectedAsWinner;
+    const patch: {
+      failureTags?: string[];
+      modelLabel?: string;
+      outputImageUrl?: string;
+      outputNotes?: string;
+      overallScore?: number;
+      paintabilityScore?: number;
+      parameterNotes?: string;
+      providerLabel?: string;
+      promptAdherenceScore?: number;
+      selectedAsWinner?: boolean;
+      silhouetteScore?: number;
+      status?: "ready-for-web" | "tested" | "selected" | "rejected" | "archived";
+      styleHitScore?: number;
+      vendorUrl?: string;
+      visualImpactScore?: number;
+    } = {
+      status:
+        args.status ??
+        (selectedAsWinner
+          ? "selected"
+          : hasExperimentEvidence({ ...run, ...args })
+            ? "tested"
+            : run.status),
+      selectedAsWinner,
+    };
+    if (args.providerLabel !== undefined) {
+      patch.providerLabel = cleanOptionalString(args.providerLabel);
+    }
+    if (args.modelLabel !== undefined) {
+      patch.modelLabel = cleanOptionalString(args.modelLabel);
+    }
+    if (args.vendorUrl !== undefined) {
+      patch.vendorUrl = cleanOptionalString(args.vendorUrl);
+    }
+    if (args.parameterNotes !== undefined) {
+      patch.parameterNotes = cleanOptionalString(args.parameterNotes);
+    }
+    if (args.outputImageUrl !== undefined) {
+      patch.outputImageUrl = cleanOptionalString(args.outputImageUrl);
+    }
+    if (args.outputNotes !== undefined) {
+      patch.outputNotes = cleanOptionalString(args.outputNotes);
+    }
+    if (args.failureTags !== undefined) {
+      patch.failureTags = compactStringArray(args.failureTags);
+    }
+    if (args.styleHitScore !== undefined) {
+      patch.styleHitScore = args.styleHitScore;
+    }
+    if (args.silhouetteScore !== undefined) {
+      patch.silhouetteScore = args.silhouetteScore;
+    }
+    if (args.paintabilityScore !== undefined) {
+      patch.paintabilityScore = args.paintabilityScore;
+    }
+    if (args.promptAdherenceScore !== undefined) {
+      patch.promptAdherenceScore = args.promptAdherenceScore;
+    }
+    if (args.visualImpactScore !== undefined) {
+      patch.visualImpactScore = args.visualImpactScore;
+    }
+    if (args.overallScore !== undefined) {
+      patch.overallScore = args.overallScore;
+    }
+
+    await ctx.db.patch(args.runId, patch);
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-prompt-experiment-run",
+      entityType: "promptExperimentRun",
+      entityId: args.runId,
+      detailsJson: JSON.stringify({
+        runId: args.runId,
+        status: patch.status,
+        selectedAsWinner,
+      }),
+    });
+  },
+});
+
 export const listAuditLog = query({
   args: {},
   async handler(ctx) {
@@ -232,7 +521,9 @@ export const listFeedbackPipeline = query({
               q.eq("itemType", "feedback").eq("itemId", report._id)
             )
             .unique(),
-        ]);
+          ]);
+
+        const kitVariantSummary = await summarizeBaseModelWithHierarchy(ctx, baseModel);
 
         return {
           _id: report._id,
@@ -250,12 +541,8 @@ export const listFeedbackPipeline = query({
                 handle: userById.get(report.userId)!.handle,
               }
             : null,
-          baseModel: baseModel
-            ? {
-                _id: baseModel._id,
-                name: baseModel.name,
-              }
-            : null,
+          kitVariant: kitVariantSummary,
+          baseModel: kitVariantSummary,
           stylePreset: stylePreset
             ? {
                 _id: stylePreset._id,
@@ -310,7 +597,7 @@ export const listCatalogData = query({
   async handler(ctx) {
     requireSuperAdmin(ctx);
 
-    const [baseModels, stylePresets, materialPresets, paintMappings, creatorPacks] = await Promise.all([
+    const [kitVariantsRaw, stylePresets, materialPresets, paintMappings, creatorPacks] = await Promise.all([
       ctx.db.query("baseModels").collect(),
       ctx.db.query("stylePresets").collect(),
       ctx.db.query("materialPresets").collect(),
@@ -318,24 +605,15 @@ export const listCatalogData = query({
       ctx.db.query("creatorPacks").collect(),
     ]);
 
-    return {
-      baseModels: baseModels
+    const kitVariants = await Promise.all(
+      kitVariantsRaw
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((model) => ({
-          _id: model._id,
-          name: model.name,
-          slug: model.slug,
-          series: model.series,
-          manufacturer: model.manufacturer,
-          grade: model.grade,
-          silhouetteType: model.silhouetteType,
-          complexityLevel: model.complexityLevel,
-          aliases: model.aliases,
-          tags: model.tags,
-          thumbnailAssetKey: model.thumbnailAssetKey,
-          defaultMaterialPresetId: model.defaultMaterialPresetId,
-          isActive: model.isActive,
-        })),
+        .map((model) => summarizeBaseModelWithHierarchy(ctx, model))
+    ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
+
+    return {
+      kitVariants,
+      baseModels: kitVariants,
       stylePresets: stylePresets
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((preset) => ({
@@ -415,6 +693,7 @@ export const listCatalogData = query({
               description: pack.description,
               tagline: pack.tagline,
               stylePresetIds: pack.stylePresetIds,
+              kitVariantIds: pack.baseModelIds,
               baseModelIds: pack.baseModelIds,
               materialPresetIds: pack.materialPresetIds,
               packType: pack.packType,
@@ -440,7 +719,8 @@ export const upsertCreatorPack = mutation({
     description: v.optional(v.string()),
     tagline: v.optional(v.string()),
     stylePresetIds: v.array(v.id("stylePresets")),
-    baseModelIds: v.array(v.id("baseModels")),
+    baseModelIds: v.optional(v.array(v.id("baseModels"))),
+    kitVariantIds: v.optional(v.array(v.id("baseModels"))),
     materialPresetIds: v.array(v.id("materialPresets")),
     packType: v.union(v.literal("free"), v.literal("premium")),
     isFeatured: v.boolean(),
@@ -455,6 +735,7 @@ export const upsertCreatorPack = mutation({
     }
 
     const slug = slugify(name);
+    const selectedKitVariantIds = args.kitVariantIds ?? args.baseModelIds ?? [];
     const patch = {
       name,
       slug,
@@ -462,7 +743,7 @@ export const upsertCreatorPack = mutation({
       description: args.description || undefined,
       tagline: args.tagline || undefined,
       stylePresetIds: args.stylePresetIds,
-      baseModelIds: args.baseModelIds,
+      baseModelIds: selectedKitVariantIds,
       materialPresetIds: args.materialPresetIds,
       packType: args.packType,
       isFeatured: args.isFeatured,
@@ -656,74 +937,52 @@ export const updateBaseModel = mutation({
     series: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
     grade: v.optional(v.string()),
+    scale: v.optional(v.string()),
+    releaseVersion: v.optional(v.string()),
     silhouetteType: v.optional(v.string()),
     complexityLevel: v.optional(v.string()),
+    panelDensity: v.optional(v.string()),
     aliases: v.optional(v.array(v.string())),
     tags: v.optional(v.array(v.string())),
     thumbnailAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
+    promptAnchor: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
   },
   async handler(ctx, args) {
-    const { viewer } = requireSuperAdmin(ctx);
-    const model = await ctx.db.get(args.baseModelId);
-    if (model === null) {
-      throw new Error("Base model not found");
-    }
-
-    const patch: Partial<typeof model> = {};
-    if (args.name !== undefined) {
-      patch.name = args.name;
-    }
-    if (args.series !== undefined) {
-      patch.series = args.series;
-    }
-    if (args.manufacturer !== undefined) {
-      patch.manufacturer = args.manufacturer;
-    }
-    if (args.grade !== undefined) {
-      patch.grade = args.grade;
-    }
-    if (args.silhouetteType !== undefined) {
-      patch.silhouetteType = args.silhouetteType;
-    }
-    if (args.complexityLevel !== undefined) {
-      patch.complexityLevel = args.complexityLevel;
-    }
-    if (args.aliases !== undefined) {
-      patch.aliases = compactStringArray(args.aliases);
-    }
-    if (args.tags !== undefined) {
-      patch.tags = compactStringArray(args.tags);
-    }
-    if (args.thumbnailAssetKey !== undefined) {
-      patch.thumbnailAssetKey = args.thumbnailAssetKey || undefined;
-    }
-    if (args.defaultMaterialPresetId !== undefined) {
-      patch.defaultMaterialPresetId = args.defaultMaterialPresetId;
-    }
-    if (args.isActive !== undefined) {
-      patch.isActive = args.isActive;
-    }
-
-    patch.searchText = buildBaseModelSearchText({
-      name: patch.name ?? model.name,
-      series: patch.series ?? model.series,
-      manufacturer: patch.manufacturer ?? model.manufacturer,
-      grade: patch.grade ?? model.grade,
-      silhouetteType: patch.silhouetteType ?? model.silhouetteType,
-      complexityLevel: patch.complexityLevel ?? model.complexityLevel,
-      aliases: patch.aliases ?? model.aliases,
-      tags: patch.tags ?? model.tags,
+    await updateKitVariantFields(ctx, {
+      ...args,
+      kitVariantId: args.baseModelId,
+      auditAction: "update-base-model",
+      auditEntityType: "baseModel",
     });
+  },
+});
 
-    await ctx.db.patch(args.baseModelId, patch);
-    await writeAdminAuditLog(ctx, {
-      actorUserId: viewer._id,
-      action: "update-base-model",
-      entityType: "baseModel",
-      entityId: args.baseModelId,
-      detailsJson: JSON.stringify({ baseModelId: args.baseModelId, isActive: patch.isActive }),
+export const updateKitVariant = mutation({
+  args: {
+    kitVariantId: v.id("baseModels"),
+    name: v.optional(v.string()),
+    series: v.optional(v.string()),
+    manufacturer: v.optional(v.string()),
+    grade: v.optional(v.string()),
+    scale: v.optional(v.string()),
+    releaseVersion: v.optional(v.string()),
+    silhouetteType: v.optional(v.string()),
+    complexityLevel: v.optional(v.string()),
+    panelDensity: v.optional(v.string()),
+    aliases: v.optional(v.array(v.string())),
+    tags: v.optional(v.array(v.string())),
+    thumbnailAssetKey: v.optional(v.string()),
+    defaultMaterialPresetId: v.optional(v.id("materialPresets")),
+    promptAnchor: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    await updateKitVariantFields(ctx, {
+      ...args,
+      auditAction: "update-kit-variant",
+      auditEntityType: "kitVariant",
     });
   },
 });
@@ -1196,23 +1455,136 @@ function buildBaseModelSearchText(input: {
   series?: string;
   manufacturer?: string;
   grade?: string;
+  scale?: string;
+  releaseVersion?: string;
   silhouetteType?: string;
   complexityLevel?: string;
+  panelDensity?: string;
   aliases: string[];
   tags: string[];
+  promptAnchor?: string;
 }) {
   return [
     input.name,
     input.series,
     input.manufacturer,
     input.grade,
+    input.scale,
+    input.releaseVersion,
     input.silhouetteType,
     input.complexityLevel,
+    input.panelDensity,
+    input.promptAnchor,
     ...input.aliases,
     ...input.tags,
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+async function updateKitVariantFields(
+  ctx: MutationCtx,
+  args: {
+    kitVariantId: Id<"baseModels">;
+    name?: string;
+    series?: string;
+    manufacturer?: string;
+    grade?: string;
+    scale?: string;
+    releaseVersion?: string;
+    silhouetteType?: string;
+    complexityLevel?: string;
+    panelDensity?: string;
+    aliases?: string[];
+    tags?: string[];
+    thumbnailAssetKey?: string;
+    defaultMaterialPresetId?: Id<"materialPresets">;
+    promptAnchor?: string;
+    isActive?: boolean;
+    auditAction: string;
+    auditEntityType: string;
+  }
+) {
+  const { viewer } = requireSuperAdmin(ctx);
+  const variant = await ctx.db.get(args.kitVariantId);
+  if (variant === null) {
+    throw new Error("Kit variant not found");
+  }
+
+  const patch: Partial<typeof variant> = {};
+  if (args.name !== undefined) {
+    patch.name = args.name;
+  }
+  if (args.series !== undefined) {
+    patch.series = args.series;
+  }
+  if (args.manufacturer !== undefined) {
+    patch.manufacturer = args.manufacturer;
+  }
+  if (args.grade !== undefined) {
+    patch.grade = args.grade;
+  }
+  if (args.scale !== undefined) {
+    patch.scale = args.scale || undefined;
+  }
+  if (args.releaseVersion !== undefined) {
+    patch.releaseVersion = args.releaseVersion || undefined;
+  }
+  if (args.silhouetteType !== undefined) {
+    patch.silhouetteType = args.silhouetteType;
+  }
+  if (args.complexityLevel !== undefined) {
+    patch.complexityLevel = args.complexityLevel;
+  }
+  if (args.panelDensity !== undefined) {
+    patch.panelDensity = args.panelDensity || undefined;
+  }
+  if (args.aliases !== undefined) {
+    patch.aliases = compactStringArray(args.aliases);
+  }
+  if (args.tags !== undefined) {
+    patch.tags = compactStringArray(args.tags);
+  }
+  if (args.thumbnailAssetKey !== undefined) {
+    patch.thumbnailAssetKey = args.thumbnailAssetKey || undefined;
+  }
+  if (args.defaultMaterialPresetId !== undefined) {
+    patch.defaultMaterialPresetId = args.defaultMaterialPresetId;
+  }
+  if (args.promptAnchor !== undefined) {
+    patch.promptAnchor = args.promptAnchor || undefined;
+  }
+  if (args.isActive !== undefined) {
+    patch.isActive = args.isActive;
+  }
+
+  patch.searchText = buildBaseModelSearchText({
+    name: patch.name ?? variant.name,
+    series: patch.series ?? variant.series,
+    manufacturer: patch.manufacturer ?? variant.manufacturer,
+    grade: patch.grade ?? variant.grade,
+    scale: patch.scale ?? variant.scale,
+    releaseVersion: patch.releaseVersion ?? variant.releaseVersion,
+    silhouetteType: patch.silhouetteType ?? variant.silhouetteType,
+    complexityLevel: patch.complexityLevel ?? variant.complexityLevel,
+    panelDensity: patch.panelDensity ?? variant.panelDensity,
+    aliases: patch.aliases ?? variant.aliases,
+    tags: patch.tags ?? variant.tags,
+    promptAnchor: patch.promptAnchor ?? variant.promptAnchor,
+  });
+
+  await ctx.db.patch(args.kitVariantId, patch);
+  await writeAdminAuditLog(ctx, {
+    actorUserId: viewer._id,
+    action: args.auditAction,
+    entityType: args.auditEntityType,
+    entityId: args.kitVariantId,
+    detailsJson: JSON.stringify({
+      kitVariantId: args.kitVariantId,
+      baseModelId: args.kitVariantId,
+      isActive: patch.isActive,
+    }),
+  });
 }
 
 function buildStylePresetSearchText(input: {
@@ -1251,4 +1623,251 @@ function buildCreatorPackSearchText(input: {
   description?: string;
 }) {
   return [input.name, input.tagline, input.description].filter(Boolean).join(" ");
+}
+
+async function composePromptLabPayload(
+  ctx: MutationCtx | QueryCtx,
+  input: {
+    promptTemplateId: Id<"promptTemplates">;
+    baseModelId?: Id<"baseModels">;
+    kitVariantId?: Id<"baseModels">;
+    stylePresetId?: Id<"stylePresets">;
+    materialPresetId?: Id<"materialPresets">;
+    moodTags?: MoodTag[];
+    weatheringLevel: "clean" | "light" | "heavy";
+    notes?: string;
+    conceptId?: string;
+    remixSource?: string;
+  }
+) {
+  const selectedKitVariantId = input.kitVariantId ?? input.baseModelId;
+  const [
+    template,
+    kitVariant,
+    stylePreset,
+    materialPreset,
+    colorRoles,
+    paintMappings,
+  ] = await Promise.all([
+    ctx.db.get(input.promptTemplateId),
+    selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
+    input.stylePresetId ? ctx.db.get(input.stylePresetId) : null,
+    input.materialPresetId ? ctx.db.get(input.materialPresetId) : null,
+    ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
+    ctx.db.query("paintMappings").collect(),
+  ]);
+
+  if (template === null) {
+    throw new Error("Prompt template not found");
+  }
+
+  const sanitizedMoodTags = Array.from(new Set(input.moodTags ?? []));
+  const sanitizedNotes = cleanOptionalString(input.notes);
+  const modelPromptContext = await buildOptionalModelPromptContext(ctx, kitVariant);
+  const conceptTitle = `${kitVariant?.name ?? "Unselected kit variant"} / ${
+    stylePreset?.name ?? "Unselected Style DNA"
+  } prompt lab`;
+  const paintPlan =
+    kitVariant && stylePreset && materialPreset
+      ? buildPaintPlan({
+          conceptTitle,
+          baseModelName: kitVariant.name,
+          stylePresetName: stylePreset.name,
+          styleSlug: stylePreset.slug,
+          materialPresetName: materialPreset.name,
+          materialSlug: materialPreset.slug,
+          moodTags: sanitizedMoodTags,
+          weatheringLevel: input.weatheringLevel,
+          colorRoles,
+          paintMappings,
+        })
+      : null;
+  const topPalette =
+    paintPlan?.entries
+      .slice(0, 6)
+      .map((entry) =>
+        entry.suggestedPaint
+          ? `${entry.roleName}: ${entry.suggestedPaint.brand} ${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}`
+          : `${entry.roleName}: no active mapping`
+      )
+      .join(" | ") ?? "No palette lock available.";
+  const availableStyles = await ctx.db
+    .query("stylePresets")
+    .collect()
+    .then((items) =>
+      items
+        .filter((preset) => preset.isActive)
+        .map((preset) => preset.name)
+        .sort((a, b) => a.localeCompare(b))
+        .join(", ")
+    );
+  const values = {
+    availableStyles,
+    baseModel: modelPromptContext?.promptText ?? "Unselected kit variant",
+    colorRoles: colorRoles.map((role) => role.name).join(", "),
+    conceptId: input.conceptId?.trim() || "prompt-lab-manual-web",
+    kitVariant: modelPromptContext?.promptText ?? "Unselected kit variant",
+    materialPreset: materialPreset?.name ?? "Unselected material profile",
+    mood: formatMoodTagsForPrompt(sanitizedMoodTags),
+    notes: sanitizedNotes ?? "No extra notes.",
+    remixSource: input.remixSource?.trim() || "",
+    stylePreset: stylePreset?.name ?? "Unselected Style DNA",
+    topPalette,
+    weatheringLevel: input.weatheringLevel,
+  };
+  const composedPrompt = appendPromptFallbackLines(
+    applyTemplate(template.userPromptTemplate, values),
+    template.userPromptTemplate,
+    {
+      stylePreset: `Style DNA: ${values.stylePreset}`,
+      materialPreset: `Material Profile: ${values.materialPreset}`,
+      mood: `Mood Vector: ${values.mood}`,
+      weatheringLevel: `Weathering: ${values.weatheringLevel}`,
+      notes: `Operator notes: ${values.notes}`,
+      topPalette: `Palette Lock: ${values.topPalette}`,
+      colorRoles: `Priority color roles: ${values.colorRoles}`,
+      remixSource: values.remixSource ? `Remix Source: ${values.remixSource}` : "",
+    }
+  );
+  const negativePrompt = template.negativePromptTemplate;
+  const usedVariables = extractTemplateVariables(template.userPromptTemplate);
+  const availableVariables = Object.keys(values).sort();
+  const unresolvedVariables = usedVariables.filter((variable) => !(variable in values));
+  const emptySelectionWarnings = [
+    kitVariant === null ? "Kit variant is not selected; prompt uses a placeholder value." : null,
+    stylePreset === null ? "Style DNA is not selected; prompt uses a placeholder value." : null,
+    materialPreset === null
+      ? "Material profile is not selected; prompt uses a placeholder value."
+      : null,
+  ].filter((warning): warning is string => warning !== null);
+  const warnings = [
+    ...emptySelectionWarnings,
+    ...unresolvedVariables.map((variable) => `Template variable {{${variable}}} is not supported by Prompt Lab.`),
+  ];
+  const inputSnapshot = {
+    baseModel: modelPromptContext?.snapshot ?? null,
+    kitVariant: modelPromptContext?.snapshot ?? null,
+    stylePreset: stylePreset
+      ? {
+          id: stylePreset._id,
+          name: stylePreset.name,
+          slug: stylePreset.slug,
+          category: stylePreset.category,
+          promptKeywords: stylePreset.promptKeywords,
+          negativeKeywords: stylePreset.negativeKeywords,
+          systemPromptFragment: stylePreset.systemPromptFragment,
+          promptVersion: stylePreset.promptVersion,
+        }
+      : null,
+    materialPreset: materialPreset
+      ? {
+          id: materialPreset._id,
+          name: materialPreset.name,
+          slug: materialPreset.slug,
+          finishType: materialPreset.finishType,
+          promptKeywords: materialPreset.promptKeywords,
+        }
+      : null,
+    moodTags: sanitizedMoodTags,
+    weatheringLevel: input.weatheringLevel,
+    notes: sanitizedNotes,
+    conceptId: values.conceptId,
+    remixSource: values.remixSource || undefined,
+    paintPlan,
+    values,
+    usedVariables,
+    availableVariables,
+    warnings,
+  };
+  const templateSnapshot = {
+    id: template._id,
+    name: template.name,
+    slug: template.slug,
+    kind: template.kind,
+    version: template.version,
+    systemPrompt: template.systemPrompt,
+    userPromptTemplate: template.userPromptTemplate,
+    negativePromptTemplate: template.negativePromptTemplate,
+    notePolicy: template.notePolicy,
+    isActive: template.isActive,
+  };
+
+  return {
+    template,
+    templateSnapshot,
+    inputSnapshot,
+    composedPrompt,
+    negativePrompt,
+    warnings,
+    usedVariables,
+    availableVariables,
+    copyBlocks: {
+      systemPrompt: template.systemPrompt,
+      userPrompt: composedPrompt,
+      negativePrompt: negativePrompt ?? "",
+    },
+  };
+}
+
+function applyTemplate(template: string, values: Record<string, string>) {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
+}
+
+function appendPromptFallbackLines(
+  prompt: string,
+  template: string,
+  fallbackLinesByVariable: Record<string, string>
+) {
+  const appendedLines = Object.entries(fallbackLinesByVariable)
+    .filter(([variable, line]) => !template.includes(`{{${variable}}}`) && line.trim().length > 0)
+    .map(([, line]) => line);
+
+  if (appendedLines.length === 0) {
+    return prompt;
+  }
+
+  return `${prompt}\n${appendedLines.join("\n")}`;
+}
+
+function extractTemplateVariables(template: string) {
+  return Array.from(template.matchAll(/\{\{(\w+)\}\}/g))
+    .map((match) => match[1])
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function formatMoodTagsForPrompt(moodTags: MoodTag[]) {
+  if (moodTags.length === 0) {
+    return "No mood vector selected.";
+  }
+  return moodTags.join(", ");
+}
+
+function cleanOptionalString(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+function safeParseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function hasExperimentEvidence(input: {
+  modelLabel?: string;
+  outputImageUrl?: string;
+  outputNotes?: string;
+  overallScore?: number;
+  providerLabel?: string;
+}) {
+  return Boolean(
+    cleanOptionalString(input.providerLabel) ||
+      cleanOptionalString(input.modelLabel) ||
+      cleanOptionalString(input.outputImageUrl) ||
+      cleanOptionalString(input.outputNotes) ||
+      input.overallScore !== undefined
+  );
 }

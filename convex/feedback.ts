@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { vFeedbackCategory } from "./domain";
 import { mutation, query } from "./functions";
 
@@ -50,6 +51,8 @@ export const listMine = query({
             .then((items) => items.find((item) => item.itemType === "feedback" && item.itemId === report._id)),
         ]);
 
+        const kitVariantSummary = await summarizeBaseModelWithHierarchy(ctx, baseModel);
+
         return {
           _id: report._id,
           _creationTime: report._creationTime,
@@ -58,12 +61,8 @@ export const listMine = query({
           message: report.message,
           sourcePage: report.sourcePage,
           adminNotes: report.adminNotes,
-          baseModel: baseModel
-            ? {
-                _id: baseModel._id,
-                name: baseModel.name,
-              }
-            : null,
+          kitVariant: kitVariantSummary,
+          baseModel: kitVariantSummary,
           stylePreset: stylePreset
             ? {
                 _id: stylePreset._id,
@@ -95,13 +94,18 @@ export const create = mutation({
     category: vFeedbackCategory,
     message: v.string(),
     baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
     stylePresetId: v.optional(v.id("stylePresets")),
     conceptId: v.optional(v.id("concepts")),
     sourcePage: v.optional(v.string()),
   },
-  async handler(ctx, { category, message, baseModelId, stylePresetId, conceptId, sourcePage }) {
+  async handler(
+    ctx,
+    { category, message, baseModelId, kitVariantId, stylePresetId, conceptId, sourcePage }
+  ) {
     const viewer = ctx.viewerX();
     const normalizedMessage = message.trim();
+    const selectedKitVariantId = kitVariantId ?? baseModelId;
 
     if (normalizedMessage.length < MIN_FEEDBACK_LENGTH) {
       throw new Error(`Feedback must be at least ${MIN_FEEDBACK_LENGTH} characters`);
@@ -120,7 +124,7 @@ export const create = mutation({
       category,
       status: "open",
       message: normalizedMessage,
-      baseModelId,
+      baseModelId: selectedKitVariantId,
       stylePresetId,
       conceptId,
       relatedGenerationJobId: concept?.generationJobId,

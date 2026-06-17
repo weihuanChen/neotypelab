@@ -123,7 +123,7 @@ export function CreateWorkbench() {
   const generatePalettePlan = useMutation(api.prototypeTools.generatePalettePlan);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
 
-  const [selectedBaseModelId, setSelectedBaseModelId] = useState<Id<"baseModels"> | null>(
+  const [selectedKitVariantId, setSelectedKitVariantId] = useState<Id<"baseModels"> | null>(
     null
   );
   const [selectedStylePresetId, setSelectedStylePresetId] = useState<
@@ -223,8 +223,8 @@ export function CreateWorkbench() {
     result ? { conceptId: result.conceptId } : "skip"
   );
 
-  const selectedBaseModel =
-    catalog?.baseModels.find((item) => item._id === selectedBaseModelId) ?? null;
+  const selectedKitVariant =
+    catalog?.kitVariants.find((item) => item._id === selectedKitVariantId) ?? null;
   const selectedStylePreset =
     catalog?.stylePresets.find((item) => item._id === selectedStylePresetId) ?? null;
   const selectedMaterialPreset =
@@ -256,7 +256,7 @@ export function CreateWorkbench() {
       !creatorPackAccess.allowed
   );
   const canSubmit =
-    selectedBaseModel !== null &&
+    selectedKitVariant !== null &&
     selectedStylePreset !== null &&
     selectedMaterialPreset !== null &&
     notesRemaining >= 0 &&
@@ -267,9 +267,9 @@ export function CreateWorkbench() {
   const livePhaseLabel = liveJob?.outputSummary?.label ?? statusDisplayLabel(liveJob?.status);
   const livePhase = liveJob?.outputSummary?.phase ?? liveJob?.status ?? "idle";
   const liveTone = statusTone(liveJob?.status);
-  const canGenerateStyleSuggestion = selectedBaseModel !== null && !isGeneratingStyleSuggestion;
+  const canGenerateStyleSuggestion = selectedKitVariant !== null && !isGeneratingStyleSuggestion;
   const canGeneratePalettePlan =
-    selectedBaseModel !== null &&
+    selectedKitVariant !== null &&
     selectedStylePreset !== null &&
     selectedMaterialPreset !== null &&
     !isGeneratingPalettePlan;
@@ -279,7 +279,7 @@ export function CreateWorkbench() {
       return;
     }
 
-    setSelectedBaseModelId(remixSource.baseModelId);
+    setSelectedKitVariantId(remixSource.kitVariantId);
     setSelectedStylePresetId(remixSource.stylePresetId);
     setSelectedMaterialPresetId(remixSource.materialPresetId);
     setSelectedMoodTags(remixSource.moodTags);
@@ -314,9 +314,9 @@ export function CreateWorkbench() {
     }
 
     if (recommendedBaseModelSlug) {
-      const baseModel = catalog.baseModels.find((item) => item.slug === recommendedBaseModelSlug);
-      if (baseModel) {
-        setSelectedBaseModelId(baseModel._id);
+      const kitVariant = catalog.kitVariants.find((item) => item.slug === recommendedBaseModelSlug);
+      if (kitVariant) {
+        setSelectedKitVariantId(kitVariant._id);
       }
     }
 
@@ -389,7 +389,7 @@ export function CreateWorkbench() {
     try {
       const response = await initializePrototype({
         sourceConceptId: remixSource?._id,
-        baseModelId: selectedBaseModelId!,
+        kitVariantId: selectedKitVariantId!,
         stylePresetId: selectedStylePresetId!,
         materialPresetId: selectedMaterialPresetId!,
         moodTags: selectedMoodTags,
@@ -417,7 +417,7 @@ export function CreateWorkbench() {
   }
 
   async function onGenerateStyleSuggestion() {
-    if (!selectedBaseModelId || !canGenerateStyleSuggestion) {
+    if (!selectedKitVariantId || !canGenerateStyleSuggestion) {
       return;
     }
 
@@ -426,7 +426,7 @@ export function CreateWorkbench() {
 
     try {
       const response = await generateStyleSuggestion({
-        baseModelId: selectedBaseModelId,
+        kitVariantId: selectedKitVariantId,
         moodTags: selectedMoodTags,
         notes: notes.trim() === "" ? undefined : notes.trim(),
       });
@@ -442,7 +442,7 @@ export function CreateWorkbench() {
 
   async function onGeneratePalettePlan() {
     if (
-      !selectedBaseModelId ||
+      !selectedKitVariantId ||
       !selectedStylePresetId ||
       !selectedMaterialPresetId ||
       !canGeneratePalettePlan
@@ -455,7 +455,7 @@ export function CreateWorkbench() {
 
     try {
       const response = await generatePalettePlan({
-        baseModelId: selectedBaseModelId,
+        kitVariantId: selectedKitVariantId,
         stylePresetId: selectedStylePresetId,
         materialPresetId: selectedMaterialPresetId,
         moodTags: selectedMoodTags,
@@ -519,7 +519,7 @@ export function CreateWorkbench() {
           </p>
           <h2 className="mt-4 text-3xl font-semibold">Structured repaint initialization</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
-            Build the concept through base model, Style DNA, material profile,
+            Build the concept through kit variant, Style DNA, material profile,
             weathering, and a tightly controlled note field. No raw prompt engineering,
             no hidden credit cost.
           </p>
@@ -548,7 +548,7 @@ export function CreateWorkbench() {
                 <div>
                   <h2 className="mt-4 text-2xl font-semibold">{remixSource.title}</h2>
                   <p className="mt-3 text-sm leading-6 text-ink-secondary">
-                    Remix seed from {remixSource.baseModel.name} · {remixSource.stylePreset.name} ·{" "}
+                    Remix seed from {remixSource.kitVariant.name} · {remixSource.stylePreset.name} ·{" "}
                     {remixSource.materialPreset.name}. Dispatching from this page will write
                     `sourceConceptId` into the new concept and keep the branch trace intact.
                   </p>
@@ -591,54 +591,79 @@ export function CreateWorkbench() {
 
         <StepPanel
           step="01"
-          title="Select Base Model"
+          title="Select Kit Variant"
           description="Choose the silhouette and mechanical complexity first. This anchors every downstream prompt and paint decision."
         >
           <div className="grid gap-3 md:grid-cols-2">
-            {catalog.baseModels.map((baseModel) => {
-              const active = selectedBaseModelId === baseModel._id;
+            {catalog.kitVariants.map((kitVariant) => {
+              const active = selectedKitVariantId === kitVariant._id;
               return (
                 <button
-                  key={baseModel._id}
+                  key={kitVariant._id}
                   type="button"
-                  onClick={() => setSelectedBaseModelId(baseModel._id)}
+                  onClick={() => setSelectedKitVariantId(kitVariant._id)}
                   className={cn(
-                    "rounded-[22px] border p-4 text-left transition-all relative overflow-hidden",
+                    "border p-4 text-left transition-all relative overflow-hidden",
                     active
-                      ? "border-accent-blue bg-accent-blue/10 shadow-[0_0_0_1px_rgba(61,217,255,0.18)]"
+                      ? "border-2 border-accent-blue bg-surface shadow-[0_0_20px_rgba(59,109,140,0.1)]"
                       : "border-line-secondary bg-surface hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
                   {active && <PsychoFrameBorder color="#58FFB2" particleCount={80} />}
-                  <div className="flex items-start justify-between gap-3 relative z-10">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.28em] text-accent-teal">
-                        Base Model
-                      </p>
-                      <h3 className="mt-2 text-lg font-semibold text-ink-primary">
-                        {baseModel.name}
-                      </h3>
+                  {active ? (
+                    <div className="flex flex-col h-full relative z-10">
+                      <div className="flex items-center justify-between border-b-2 border-accent-blue pb-3 mb-4">
+                        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent-blue">
+                          Technical Dossier
+                        </span>
+                        <span className="bg-accent-blue text-white px-2 py-1 text-[10px] font-bold tracking-widest">
+                          ACTIVE
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted">Type:</p>
+                          <p className="mt-1 text-sm font-bold text-ink-primary uppercase tracking-widest">{kitVariant.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted">Sync:</p>
+                          <p className="mt-1 font-mono text-sm font-bold text-accent-blue tracking-widest">32%</p>
+                        </div>
+                      </div>
+                      <div className="border-l-2 border-accent-blue/30 pl-3 mb-4">
+                        <p className="text-sm leading-6 text-ink-secondary">
+                          {kitVariant.silhouetteType?.replace("-", " ") ?? "Unclassified silhouette"}. Complexity: <span className="font-semibold text-ink-primary">{kitVariant.complexityLevel ?? "Unknown"}</span>.
+                        </p>
+                      </div>
+                      <div className="mt-auto flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-ink-muted">
+                        <span className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{kitVariant.series ?? "N/A"}</span>
+                        <span className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{kitVariant.grade ?? "N/A"}</span>
+                        {kitVariant.tags.map((tag) => (
+                          <span key={tag} className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{tag}</span>
+                        ))}
+                      </div>
                     </div>
-                    <span className="rounded-full border border-line-secondary px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
-                      {baseModel.grade ?? "Grade N/A"}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm text-ink-secondary">
-                    {baseModel.series ?? "Series unknown"} · {baseModel.silhouetteType ?? "Unclassified silhouette"}
-                  </p>
-                  <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                    Complexity {baseModel.complexityLevel ?? "Unknown"}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {baseModel.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-line-secondary px-2 py-1 text-[11px] text-ink-secondary"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  ) : (
+                    <div className="flex flex-col h-full relative z-10 opacity-70">
+                      <div className="flex items-center justify-between border-b border-line-secondary pb-3 mb-4">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-muted">
+                          DRAFT
+                        </span>
+                        <span className="text-[10px] font-mono tracking-widest text-ink-muted uppercase">
+                          {kitVariant.series ?? "N/A"} / {kitVariant.grade ?? "N/A"}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-ink-primary uppercase tracking-widest">{kitVariant.name}</h3>
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-secondary line-clamp-2">
+                        {kitVariant.silhouetteType?.replace("-", " ") ?? "Unclassified silhouette"}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-ink-muted">
+                        {kitVariant.tags.map((tag) => (
+                          <span key={tag} className="border border-line-secondary px-2 py-1">{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -953,8 +978,8 @@ export function CreateWorkbench() {
           </p>
           <div className="mt-5 space-y-4">
             <SummaryRow
-              label="Base Model"
-              value={selectedBaseModel?.name ?? "Select base silhouette"}
+              label="Kit Variant"
+              value={selectedKitVariant?.name ?? "Select base silhouette"}
             />
             <SummaryRow
               label="Style DNA"
@@ -1006,7 +1031,7 @@ export function CreateWorkbench() {
                     {" "}using variant starter <span className="font-semibold text-ink-primary">{formatCreatorPackVariantLabel(creatorPackVariant)}</span>
                   </>
                 ) : null}
-                . Review the loaded base model, Style DNA, and material profile before dispatching.
+                . Review the loaded kit variant, Style DNA, and material profile before dispatching.
               </p>
             </div>
           ) : null}
@@ -1204,7 +1229,7 @@ export function CreateWorkbench() {
                   />
                 ) : null}
                 {recommendedBaseModelSlug ? (
-                  <SummaryRow label="Recommended Base Model" value={recommendedBaseModelSlug} />
+                  <SummaryRow label="Recommended Kit Variant" value={recommendedBaseModelSlug} />
                 ) : null}
                 {recommendedStyleSlug ? (
                   <SummaryRow label="Recommended Style" value={recommendedStyleSlug} />

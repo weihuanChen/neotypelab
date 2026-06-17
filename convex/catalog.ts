@@ -1,10 +1,11 @@
+import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { query } from "./functions";
 
 export const listCreateOptions = query({
   args: {},
   async handler(ctx) {
     const [
-      baseModelsRaw,
+      kitVariantsRaw,
       stylePresetsRaw,
       materialPresetsRaw,
       colorRolesRaw,
@@ -17,19 +18,11 @@ export const listCreateOptions = query({
       ctx.db.query("creditPriceRules").withIndex("by_sortOrder").collect(),
     ]);
 
-    const baseModels = baseModelsRaw
-      .filter((baseModel) => baseModel.isActive)
-      .map((baseModel) => ({
-        _id: baseModel._id,
-        name: baseModel.name,
-        slug: baseModel.slug,
-        series: baseModel.series,
-        grade: baseModel.grade,
-        complexityLevel: baseModel.complexityLevel,
-        silhouetteType: baseModel.silhouetteType,
-        aliases: baseModel.aliases,
-        tags: baseModel.tags,
-      }));
+    const kitVariants = await Promise.all(
+      kitVariantsRaw
+        .filter((kitVariant) => kitVariant.isActive)
+        .map((kitVariant) => summarizeBaseModelWithHierarchy(ctx, kitVariant))
+    ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
     const stylePresets = stylePresetsRaw
       .filter((preset) => preset.isActive)
       .map((preset) => ({
@@ -72,7 +65,14 @@ export const listCreateOptions = query({
         generationKind: rule.generationKind,
       }));
 
-    return { baseModels, stylePresets, materialPresets, colorRoles, priceRules };
+    return {
+      kitVariants,
+      baseModels: kitVariants,
+      stylePresets,
+      materialPresets,
+      colorRoles,
+      priceRules,
+    };
   },
 });
 

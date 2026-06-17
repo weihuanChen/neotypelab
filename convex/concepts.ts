@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { Id } from "./_generated/dataModel";
 import { getConceptEngagementSnapshot } from "./engagement";
 import {
@@ -92,6 +93,8 @@ export const listLibrary = query({
               .then((items) => items.length),
           ]);
 
+        const kitVariantSummary = await summarizeBaseModelWithHierarchy(ctx, baseModel);
+
         return {
           _id: concept._id,
           _creationTime: concept._creationTime,
@@ -102,20 +105,14 @@ export const listLibrary = query({
           moodTags: concept.moodTags ?? [],
           weatheringLevel: concept.weatheringLevel,
           sourceConceptId: concept.sourceConceptId,
+          kitVariantId: concept.baseModelId,
           baseModelId: concept.baseModelId,
           stylePresetId: concept.stylePresetId,
           materialPresetId: concept.materialPresetId,
           sourceConcept,
           remixCount,
-          baseModel: baseModel
-            ? {
-                _id: baseModel._id,
-                name: baseModel.name,
-                slug: baseModel.slug,
-                grade: baseModel.grade,
-                series: baseModel.series,
-              }
-            : null,
+          kitVariant: kitVariantSummary,
+          baseModel: kitVariantSummary,
           stylePreset: stylePreset
             ? {
                 _id: stylePreset._id,
@@ -230,13 +227,7 @@ export const listSavedPublicConcepts = query({
                 fullName: owner.fullName,
               }
             : null,
-          baseModel: baseModel
-            ? {
-                name: baseModel.name,
-                slug: baseModel.slug,
-                grade: baseModel.grade,
-              }
-            : null,
+          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
           stylePreset: stylePreset
             ? {
                 name: stylePreset.name,
@@ -455,12 +446,7 @@ async function getConceptSourceSummary(
     title: concept.title,
     visibility: concept.visibility,
     status: concept.status,
-    baseModel: baseModel
-      ? {
-          name: baseModel.name,
-          slug: baseModel.slug,
-        }
-      : null,
+    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
     stylePreset: stylePreset
       ? {
           name: stylePreset.name,

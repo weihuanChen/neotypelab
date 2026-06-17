@@ -18,6 +18,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 
 type TemplateDraft = {
+  promptTemplateId: string;
   name: string;
   version: string;
   notePolicy: string;
@@ -26,6 +27,59 @@ type TemplateDraft = {
   negativePromptTemplate: string;
   isActive: boolean;
 };
+
+type PromptLabDraft = {
+  kitVariantId: string;
+  stylePresetId: string;
+  materialPresetId: string;
+  moodTags: MoodTag[];
+  weatheringLevel: WeatheringLevel;
+  notes: string;
+  conceptId: string;
+  remixSource: string;
+};
+
+type PromptLabResult = {
+  composedPrompt: string;
+  negativePrompt?: string;
+  warnings: string[];
+  usedVariables: string[];
+  availableVariables: string[];
+  copyBlocks: {
+    systemPrompt: string;
+    userPrompt: string;
+    negativePrompt: string;
+  };
+  inputSnapshot: unknown;
+  templateSnapshot: unknown;
+};
+
+type PromptLabExperimentDraft = {
+  providerLabel: string;
+  modelLabel: string;
+  vendorUrl: string;
+  parameterNotes: string;
+  outputImageUrl: string;
+  outputNotes: string;
+  failureTags: string;
+  styleHitScore: string;
+  silhouetteScore: string;
+  paintabilityScore: string;
+  promptAdherenceScore: string;
+  visualImpactScore: string;
+  overallScore: string;
+  selectedAsWinner: boolean;
+};
+
+type MoodTag =
+  | "command-presence"
+  | "stealth-tension"
+  | "industrial-hazard"
+  | "reactor-glow"
+  | "field-fatigue"
+  | "ceremonial-clean";
+
+type WeatheringLevel = "clean" | "light" | "heavy";
 
 type PriceRuleDraft = {
   label: string;
@@ -60,7 +114,7 @@ type FeedbackDraft = {
   status: "open" | "triaged" | "resolved";
 };
 
-type BaseModelDraft = {
+type KitVariantDraft = {
   name: string;
   series: string;
   manufacturer: string;
@@ -122,7 +176,7 @@ type CreatorPackDraft = {
   description: string;
   tagline: string;
   stylePresetIds: string;
-  baseModelIds: string;
+  kitVariantIds: string;
   materialPresetIds: string;
   packType: "free" | "premium";
   isFeatured: boolean;
@@ -130,7 +184,7 @@ type CreatorPackDraft = {
 };
 
 type FlagTone = "neutral" | "cyan" | "green" | "amber" | "red";
-type AdminSectionId = "templates" | "ops" | "access" | "commerce" | "catalog";
+type AdminSectionId = "templates" | "prompt-lab" | "ops" | "access" | "commerce" | "catalog";
 
 type AdminSection = {
   id: AdminSectionId;
@@ -140,6 +194,59 @@ type AdminSection = {
   metric: string;
   tone: FlagTone;
 };
+
+const promptLabMoodOptions: Array<{
+  value: MoodTag;
+  label: string;
+}> = [
+  { value: "command-presence", label: "Command" },
+  { value: "stealth-tension", label: "Stealth" },
+  { value: "industrial-hazard", label: "Hazard" },
+  { value: "reactor-glow", label: "Reactor" },
+  { value: "field-fatigue", label: "Fatigue" },
+  { value: "ceremonial-clean", label: "Ceremonial" },
+];
+
+const promptLabWeatheringOptions: Array<{
+  value: WeatheringLevel;
+  label: string;
+}> = [
+  { value: "clean", label: "Clean" },
+  { value: "light", label: "Light" },
+  { value: "heavy", label: "Heavy" },
+];
+
+const defaultPromptLabDraft: PromptLabDraft = {
+  kitVariantId: "none",
+  stylePresetId: "none",
+  materialPresetId: "none",
+  moodTags: [],
+  weatheringLevel: "clean",
+  notes: "",
+  conceptId: "",
+  remixSource: "",
+};
+
+const defaultPromptLabExperimentDraft: PromptLabExperimentDraft = {
+  providerLabel: "",
+  modelLabel: "",
+  vendorUrl: "",
+  parameterNotes: "",
+  outputImageUrl: "",
+  outputNotes: "",
+  failureTags: "",
+  styleHitScore: "",
+  silhouetteScore: "",
+  paintabilityScore: "",
+  promptAdherenceScore: "",
+  visualImpactScore: "",
+  overallScore: "",
+  selectedAsWinner: false,
+};
+
+const adminSelectedTemplateStorageKey = "neotypelab.admin.selectedTemplateId";
+const promptLabDraftStorageKey = "neotypelab.admin.promptLabDraft";
+const promptLabExperimentDraftStorageKey = "neotypelab.admin.promptLabExperimentDraft";
 
 export function AdminWorkbench() {
   const { getToken, isLoaded: isClerkLoaded, isSignedIn, sessionId } = useAuth();
@@ -161,6 +268,10 @@ export function AdminWorkbench() {
     canManagePlatform ? { search: userSearch.trim() || undefined } : "skip"
   );
   const promptTemplates = useQuery(api.admin.listPromptTemplates, canManagePlatform ? {} : "skip");
+  const promptExperimentRuns = useQuery(
+    api.admin.listPromptExperimentRuns,
+    canManagePlatform ? {} : "skip"
+  );
   const priceRules = useQuery(api.admin.listPriceRules, canManagePlatform ? {} : "skip");
   const creditCampaigns = useQuery(
     api.creditCampaigns.listAdminCampaigns,
@@ -174,9 +285,12 @@ export function AdminWorkbench() {
   const setActivationCodeActive = useMutation(api.creditCampaigns.setActivationCodeActive);
   const updateUserAccess = useMutation(api.admin.updateUserAccess);
   const updatePromptTemplate = useMutation(api.admin.updatePromptTemplate);
+  const composePromptLabPreview = useMutation(api.admin.composePromptLabPreview);
+  const savePromptExperimentRun = useMutation(api.admin.savePromptExperimentRun);
+  const updatePromptExperimentRun = useMutation(api.admin.updatePromptExperimentRun);
   const updatePriceRule = useMutation(api.admin.updatePriceRule);
   const reviewFeedback = useMutation(api.admin.reviewFeedback);
-  const updateBaseModel = useMutation(api.admin.updateBaseModel);
+  const updateKitVariant = useMutation(api.admin.updateKitVariant);
   const updateStylePreset = useMutation(api.admin.updateStylePreset);
   const updateMaterialPreset = useMutation(api.admin.updateMaterialPreset);
   const updatePaintMapping = useMutation(api.admin.updatePaintMapping);
@@ -187,9 +301,20 @@ export function AdminWorkbench() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [clerkTokenStatus, setClerkTokenStatus] = useState<string>("Not checked");
-  const [activeAdminSection, setActiveAdminSection] = useState<AdminSectionId>("templates");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [activeAdminSection, setActiveAdminSection] = useState<AdminSectionId>(() =>
+    readInitialAdminSection()
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() =>
+    readStoredString(adminSelectedTemplateStorageKey)
+  );
   const [templateDraft, setTemplateDraft] = useState<TemplateDraft | null>(null);
+  const [promptLabDraft, setPromptLabDraft] = useState<PromptLabDraft>(() =>
+    readStoredPromptLabDraft()
+  );
+  const [promptLabExperimentDraft, setPromptLabExperimentDraft] =
+    useState<PromptLabExperimentDraft>(() => readStoredPromptLabExperimentDraft());
+  const [promptLabResult, setPromptLabResult] = useState<PromptLabResult | null>(null);
+  const [copiedPromptKey, setCopiedPromptKey] = useState<string | null>(null);
   const [priceRuleDrafts, setPriceRuleDrafts] = useState<Record<string, PriceRuleDraft>>({});
   const [newCreditCampaignDraft, setNewCreditCampaignDraft] = useState<CreditCampaignDraft>(
     defaultCreditCampaignDraft
@@ -198,7 +323,7 @@ export function AdminWorkbench() {
   const [codeBatchDrafts, setCodeBatchDrafts] = useState<Record<string, CodeBatchDraft>>({});
   const [generatedCodeBatches, setGeneratedCodeBatches] = useState<Record<string, string[]>>({});
   const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, FeedbackDraft>>({});
-  const [baseModelDrafts, setBaseModelDrafts] = useState<Record<string, BaseModelDraft>>({});
+  const [kitVariantDrafts, setKitVariantDrafts] = useState<Record<string, KitVariantDraft>>({});
   const [stylePresetDrafts, setStylePresetDrafts] = useState<Record<string, StylePresetDraft>>({});
   const [materialPresetDrafts, setMaterialPresetDrafts] = useState<Record<string, MaterialPresetDraft>>({});
   const [paintMappingDrafts, setPaintMappingDrafts] = useState<Record<string, PaintMappingDraft>>({});
@@ -215,6 +340,14 @@ export function AdminWorkbench() {
       description: "Edit prompt composition, versions, activation state, and policy text.",
       metric: `${overview?.activePromptTemplateCount ?? 0}/${overview?.promptTemplateCount ?? 0}`,
       tone: "green",
+    },
+    {
+      id: "prompt-lab",
+      label: "Prompt Lab",
+      eyebrow: "Manual tests",
+      description: "Compose project prompts, copy them to vendor web tools, and log A/B results.",
+      metric: `${promptExperimentRuns?.length ?? 0}`,
+      tone: "amber",
     },
     {
       id: "ops",
@@ -244,11 +377,16 @@ export function AdminWorkbench() {
       id: "catalog",
       label: "Catalog",
       eyebrow: "Content ops",
-      description: "Maintain base models, Style DNA, materials, paint maps, and creator packs.",
-      metric: `${catalogData?.baseModels.length ?? 0}`,
+      description: "Maintain kit variants, Style DNA, materials, paint maps, and creator packs.",
+      metric: `${catalogData?.kitVariants.length ?? 0}`,
       tone: "neutral",
     },
   ];
+
+  const handleAdminSectionChange = (section: AdminSectionId) => {
+    setActiveAdminSection(section);
+    writeAdminSectionHash(section);
+  };
 
   const selectedTemplate = useMemo(() => {
     if (!promptTemplates || promptTemplates.length === 0) {
@@ -260,22 +398,51 @@ export function AdminWorkbench() {
     );
   }, [promptTemplates, selectedTemplateId]);
 
+  const activeTemplateDraft = useMemo(() => {
+    if (!selectedTemplate) {
+      return null;
+    }
+    if (templateDraft?.promptTemplateId === selectedTemplate._id) {
+      return templateDraft;
+    }
+    return createTemplateDraft(selectedTemplate);
+  }, [selectedTemplate, templateDraft]);
+
   useEffect(() => {
     if (!selectedTemplate) {
       setTemplateDraft(null);
       return;
     }
     setSelectedTemplateId(selectedTemplate._id);
-    setTemplateDraft({
-      name: selectedTemplate.name,
-      version: selectedTemplate.version,
-      notePolicy: selectedTemplate.notePolicy ?? "",
-      systemPrompt: selectedTemplate.systemPrompt,
-      userPromptTemplate: selectedTemplate.userPromptTemplate,
-      negativePromptTemplate: selectedTemplate.negativePromptTemplate ?? "",
-      isActive: selectedTemplate.isActive,
-    });
+    setTemplateDraft((current) =>
+      current?.promptTemplateId === selectedTemplate._id
+        ? current
+        : createTemplateDraft(selectedTemplate)
+    );
   }, [selectedTemplate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handleHashChange = () => {
+      setActiveAdminSection(readInitialAdminSection());
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    writeStoredString(adminSelectedTemplateStorageKey, selectedTemplateId);
+  }, [selectedTemplateId]);
+
+  useEffect(() => {
+    writeStoredJson(promptLabDraftStorageKey, promptLabDraft);
+  }, [promptLabDraft]);
+
+  useEffect(() => {
+    writeStoredJson(promptLabExperimentDraftStorageKey, promptLabExperimentDraft);
+  }, [promptLabExperimentDraft]);
 
   useEffect(() => {
     if (!isClerkLoaded || !isSignedIn || clerkTokenStatus !== "Not checked") {
@@ -456,7 +623,7 @@ export function AdminWorkbench() {
 
       <AdminSectionNav
         activeSection={activeAdminSection}
-        onSectionChange={setActiveAdminSection}
+        onSectionChange={handleAdminSectionChange}
         sections={adminSections}
       />
 
@@ -519,7 +686,7 @@ export function AdminWorkbench() {
                         {report.message}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-4 text-xs text-ink-secondary">
-                        {report.baseModel ? <span>Base Model: {report.baseModel.name}</span> : null}
+                        {report.kitVariant ? <span>Kit Variant: {report.kitVariant.name}</span> : null}
                         {report.stylePreset ? <span>Style DNA: {report.stylePreset.name}</span> : null}
                         {report.concept ? <span>Concept: {report.concept.title}</span> : null}
                         {report.generationJob ? (
@@ -1553,164 +1720,223 @@ export function AdminWorkbench() {
       ) : null}
 
       {activeAdminSection === "templates" ? (
-      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="border-2 border-line-primary bg-surface p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Prompt templates</p>
-          <div className="mt-4 space-y-2">
-            {promptTemplates === undefined ? (
-              <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
-                Loading prompt templates.
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="border-2 border-line-primary bg-surface p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Template editor</p>
+            {activeTemplateDraft && selectedTemplate ? (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Template Name">
+                    <Input
+                      value={activeTemplateDraft.name}
+                      onChange={(event) =>
+                        setTemplateDraft((current) =>
+                          patchTemplateDraft(current, selectedTemplate, {
+                            name: event.target.value,
+                          })
+                        )
+                      }
+                      className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                    />
+                  </Field>
+                  <Field label="Version">
+                    <Input
+                      value={activeTemplateDraft.version}
+                      onChange={(event) =>
+                        setTemplateDraft((current) =>
+                          patchTemplateDraft(current, selectedTemplate, {
+                            version: event.target.value,
+                          })
+                        )
+                      }
+                      className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                    />
+                  </Field>
+                </div>
+                <Field label="Note Policy">
+                  <Input
+                    value={activeTemplateDraft.notePolicy}
+                    onChange={(event) =>
+                      setTemplateDraft((current) =>
+                        patchTemplateDraft(current, selectedTemplate, {
+                          notePolicy: event.target.value,
+                        })
+                      )
+                    }
+                    className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                  />
+                </Field>
+                <Field label="System Prompt">
+                  <Textarea
+                    value={activeTemplateDraft.systemPrompt}
+                    onChange={(event) =>
+                      setTemplateDraft((current) =>
+                        patchTemplateDraft(current, selectedTemplate, {
+                          systemPrompt: event.target.value,
+                        })
+                      )
+                    }
+                    className="min-h-[150px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                  />
+                </Field>
+                <Field label="User Prompt Template">
+                  <Textarea
+                    value={activeTemplateDraft.userPromptTemplate}
+                    onChange={(event) =>
+                      setTemplateDraft((current) =>
+                        patchTemplateDraft(current, selectedTemplate, {
+                          userPromptTemplate: event.target.value,
+                        })
+                      )
+                    }
+                    className="min-h-[180px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                  />
+                </Field>
+                <Field label="Negative Prompt Template">
+                  <Textarea
+                    value={activeTemplateDraft.negativePromptTemplate}
+                    onChange={(event) =>
+                      setTemplateDraft((current) =>
+                        patchTemplateDraft(current, selectedTemplate, {
+                          negativePromptTemplate: event.target.value,
+                        })
+                      )
+                    }
+                    className="min-h-[120px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center gap-3">
+                  <ActionButton
+                    onClick={() =>
+                      void runAdminAction({
+                        key: `template-${selectedTemplate._id}`,
+                        action: async () => {
+                          await updatePromptTemplate({
+                            promptTemplateId: selectedTemplate._id,
+                            name: activeTemplateDraft.name.trim(),
+                            version: activeTemplateDraft.version.trim(),
+                            notePolicy: activeTemplateDraft.notePolicy.trim() || undefined,
+                            systemPrompt: activeTemplateDraft.systemPrompt,
+                            userPromptTemplate: activeTemplateDraft.userPromptTemplate,
+                            negativePromptTemplate: activeTemplateDraft.negativePromptTemplate.trim() || undefined,
+                            isActive: activeTemplateDraft.isActive,
+                          });
+                        },
+                        success: `Saved template ${activeTemplateDraft.name}.`,
+                        setBusyKey,
+                        setErrorMessage,
+                        setStatusMessage,
+                      })
+                    }
+                    busy={busyKey === `template-${selectedTemplate._id}`}
+                  >
+                    Save Template
+                  </ActionButton>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTemplateDraft((current) =>
+                        patchTemplateDraft(current, selectedTemplate, {
+                          isActive: !activeTemplateDraft.isActive,
+                        })
+                      )
+                    }
+                    className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
+                  >
+                    {activeTemplateDraft.isActive ? "Mark Inactive" : "Mark Active"}
+                  </button>
+                </div>
+              </div>
+            ) : promptTemplates === undefined ? (
+              <div className="mt-4 rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+                Loading prompt template editor.
               </div>
             ) : (
-              promptTemplates.map((template) => (
-                <button
-                  key={template._id}
-                  type="button"
-                  onClick={() => setSelectedTemplateId(template._id)}
-                  className={cn(
-                    "w-full rounded-[18px] border p-4 text-left transition-colors",
-                    selectedTemplate?._id === template._id
-                      ? "border-[#58FFB2]/35 bg-accent-teal/10"
-                      : "border-line-secondary bg-panel hover:border-line-active"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
-                        {template.kind}
-                      </p>
-                      <h4 className="mt-2 text-base font-semibold text-ink-primary">
-                        {template.name}
-                      </h4>
-                    </div>
-                    <FlagPill label={template.isActive ? "active" : "inactive"} tone={template.isActive ? "green" : "red"} />
-                  </div>
-                  <p className="mt-2 text-xs text-ink-secondary">Version {template.version}</p>
-                </button>
-              ))
+              <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
+                No editable prompt template is available. Check the promptTemplates seed data.
+              </div>
             )}
-          </div>
-        </section>
+          </section>
 
-        <section className="border-2 border-line-primary bg-surface p-6">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Template editor</p>
-          {templateDraft && selectedTemplate ? (
-            <div className="mt-4 space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Template Name">
-                  <Input
-                    value={templateDraft.name}
-                    onChange={(event) =>
-                      setTemplateDraft((current) =>
-                        current ? { ...current, name: event.target.value } : current
-                      )
-                    }
-                    className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                  />
-                </Field>
-                <Field label="Version">
-                  <Input
-                    value={templateDraft.version}
-                    onChange={(event) =>
-                      setTemplateDraft((current) =>
-                        current ? { ...current, version: event.target.value } : current
-                      )
-                    }
-                    className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                  />
-                </Field>
+          <section className="border-2 border-line-primary bg-surface p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">
+                  Prompt templates
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-ink-primary">
+                  Template editor
+                </h3>
               </div>
-              <Field label="Note Policy">
-                <Input
-                  value={templateDraft.notePolicy}
-                  onChange={(event) =>
-                    setTemplateDraft((current) =>
-                      current ? { ...current, notePolicy: event.target.value } : current
-                    )
-                  }
-                  className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                />
-              </Field>
-              <Field label="System Prompt">
-                <Textarea
-                  value={templateDraft.systemPrompt}
-                  onChange={(event) =>
-                    setTemplateDraft((current) =>
-                      current ? { ...current, systemPrompt: event.target.value } : current
-                    )
-                  }
-                  className="min-h-[150px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                />
-              </Field>
-              <Field label="User Prompt Template">
-                <Textarea
-                  value={templateDraft.userPromptTemplate}
-                  onChange={(event) =>
-                    setTemplateDraft((current) =>
-                      current ? { ...current, userPromptTemplate: event.target.value } : current
-                    )
-                  }
-                  className="min-h-[180px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                />
-              </Field>
-              <Field label="Negative Prompt Template">
-                <Textarea
-                  value={templateDraft.negativePromptTemplate}
-                  onChange={(event) =>
-                    setTemplateDraft((current) =>
-                      current ? { ...current, negativePromptTemplate: event.target.value } : current
-                    )
-                  }
-                  className="min-h-[120px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
-                />
-              </Field>
-              <div className="flex flex-wrap items-center gap-3">
-                <ActionButton
-                  onClick={() =>
-                    void runAdminAction({
-                      key: `template-${selectedTemplate._id}`,
-                      action: async () => {
-                        await updatePromptTemplate({
-                          promptTemplateId: selectedTemplate._id,
-                          name: templateDraft.name.trim(),
-                          version: templateDraft.version.trim(),
-                          notePolicy: templateDraft.notePolicy.trim() || undefined,
-                          systemPrompt: templateDraft.systemPrompt,
-                          userPromptTemplate: templateDraft.userPromptTemplate,
-                          negativePromptTemplate: templateDraft.negativePromptTemplate.trim() || undefined,
-                          isActive: templateDraft.isActive,
-                        });
-                      },
-                      success: `Saved template ${templateDraft.name}.`,
-                      setBusyKey,
-                      setErrorMessage,
-                      setStatusMessage,
-                    })
-                  }
-                  busy={busyKey === `template-${selectedTemplate._id}`}
-                >
-                  Save Template
-                </ActionButton>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setTemplateDraft((current) =>
-                      current ? { ...current, isActive: !current.isActive } : current
-                    )
-                  }
-                  className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
-                >
-                  {templateDraft.isActive ? "Mark Inactive" : "Mark Active"}
-                </button>
-              </div>
+              <FlagPill label={`${promptTemplates?.length ?? 0} records`} tone="cyan" />
             </div>
-          ) : (
-            <div className="mt-4 rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
-              Select a prompt template to edit its composition rules.
+            <div className="mt-4 space-y-2">
+              {promptTemplates === undefined ? (
+                <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+                  Loading prompt templates.
+                </div>
+              ) : promptTemplates.length === 0 ? (
+                <div className="rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
+                  No prompt templates were returned. Run the seed flow or check Convex promptTemplates.
+                </div>
+              ) : (
+                promptTemplates.map((template) => (
+                  <button
+                    key={template._id}
+                    type="button"
+                    onClick={() => setSelectedTemplateId(template._id)}
+                    className={cn(
+                      "w-full rounded-[18px] border p-4 text-left transition-colors",
+                      selectedTemplate?._id === template._id
+                        ? "border-[#58FFB2]/35 bg-accent-teal/10"
+                        : "border-line-secondary bg-panel hover:border-line-active"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
+                          {template.kind}
+                        </p>
+                        <h4 className="mt-2 text-base font-semibold text-ink-primary">
+                          {template.name}
+                        </h4>
+                      </div>
+                      <FlagPill label={template.isActive ? "active" : "inactive"} tone={template.isActive ? "green" : "red"} />
+                    </div>
+                    <p className="mt-2 text-xs text-ink-secondary">Version {template.version}</p>
+                  </button>
+                ))
+              )}
             </div>
-          )}
-        </section>
+          </section>
       </div>
+      ) : null}
+
+      {activeAdminSection === "prompt-lab" ? (
+        <PromptLabPanel
+          busyKey={busyKey}
+          catalogData={catalogData}
+          composePromptLabPreview={composePromptLabPreview}
+          copiedPromptKey={copiedPromptKey}
+          draft={promptLabDraft}
+          experimentDraft={promptLabExperimentDraft}
+          promptExperimentRuns={promptExperimentRuns}
+          promptTemplates={promptTemplates}
+          result={promptLabResult}
+          onOpenTemplateEditor={() => handleAdminSectionChange("templates")}
+          savePromptExperimentRun={savePromptExperimentRun}
+          selectedTemplateId={selectedTemplateId}
+          selectedTemplate={selectedTemplate}
+          setBusyKey={setBusyKey}
+          setCopiedPromptKey={setCopiedPromptKey}
+          setDraft={setPromptLabDraft}
+          setErrorMessage={setErrorMessage}
+          setExperimentDraft={setPromptLabExperimentDraft}
+          setResult={setPromptLabResult}
+          setSelectedTemplateId={setSelectedTemplateId}
+          setStatusMessage={setStatusMessage}
+          updatePromptExperimentRun={updatePromptExperimentRun}
+        />
       ) : null}
 
       {activeAdminSection === "catalog" ? (
@@ -1728,57 +1954,57 @@ export function AdminWorkbench() {
 
         <div className="mt-5 grid gap-6 xl:grid-cols-2">
           <section className="border-2 border-line-primary bg-panel p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Base Models</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Kit Variants</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
-                <CatalogLoading label="Loading base models." />
+                <CatalogLoading label="Loading kit variants." />
               ) : (
-                catalogData.baseModels.map((model) => {
-                  const draft = baseModelDrafts[model._id] ?? {
-                    name: model.name,
-                    series: model.series ?? "",
-                    manufacturer: model.manufacturer ?? "",
-                    grade: model.grade ?? "",
-                    silhouetteType: model.silhouetteType ?? "",
-                    complexityLevel: model.complexityLevel ?? "",
-                    aliases: joinCsv(model.aliases),
-                    tags: joinCsv(model.tags),
-                    defaultMaterialPresetId: model.defaultMaterialPresetId ?? "none",
-                    isActive: model.isActive,
+                catalogData.kitVariants.map((kitVariant) => {
+                  const draft = kitVariantDrafts[kitVariant._id] ?? {
+                    name: kitVariant.name,
+                    series: kitVariant.series ?? "",
+                    manufacturer: kitVariant.manufacturer ?? "",
+                    grade: kitVariant.grade ?? "",
+                    silhouetteType: kitVariant.silhouetteType ?? "",
+                    complexityLevel: kitVariant.complexityLevel ?? "",
+                    aliases: joinCsv(kitVariant.aliases),
+                    tags: joinCsv(kitVariant.tags),
+                    defaultMaterialPresetId: kitVariant.defaultMaterialPresetId ?? "none",
+                    isActive: kitVariant.isActive,
                   };
                   return (
-                    <article key={model._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
+                    <article key={kitVariant._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
                       <div className="flex flex-wrap items-center gap-2">
-                        <FlagPill label={model.slug} tone="cyan" />
+                        <FlagPill label={kitVariant.slug} tone="cyan" />
                         <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
                       </div>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Field label="Name">
-                          <Input value={draft.name} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.name} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Series">
-                          <Input value={draft.series} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, series: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.series} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, series: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Manufacturer">
-                          <Input value={draft.manufacturer} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, manufacturer: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.manufacturer} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, manufacturer: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Grade">
-                          <Input value={draft.grade} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, grade: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.grade} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, grade: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Silhouette">
-                          <Input value={draft.silhouetteType} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, silhouetteType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.silhouetteType} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, silhouetteType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Complexity">
-                          <Input value={draft.complexityLevel} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, complexityLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.complexityLevel} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, complexityLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Aliases CSV">
-                          <Input value={draft.aliases} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, aliases: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.aliases} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, aliases: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Tags CSV">
-                          <Input value={draft.tags} onChange={(event) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, tags: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                          <Input value={draft.tags} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, tags: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                         <Field label="Default Material">
-                          <Select value={draft.defaultMaterialPresetId} onValueChange={(value) => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, defaultMaterialPresetId: value } }))}>
+                          <Select value={draft.defaultMaterialPresetId} onValueChange={(value) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, defaultMaterialPresetId: value } }))}>
                             <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
                               <SelectValue />
                             </SelectTrigger>
@@ -1795,10 +2021,10 @@ export function AdminWorkbench() {
                         <ActionButton
                           onClick={() =>
                             void runAdminAction({
-                              key: `base-model-${model._id}`,
+                              key: `kit-variant-${kitVariant._id}`,
                               action: async () => {
-                                await updateBaseModel({
-                                  baseModelId: model._id,
+                                await updateKitVariant({
+                                  kitVariantId: kitVariant._id,
                                   name: draft.name.trim(),
                                   series: emptyToUndefined(draft.series),
                                   manufacturer: emptyToUndefined(draft.manufacturer),
@@ -1811,17 +2037,17 @@ export function AdminWorkbench() {
                                   isActive: draft.isActive,
                                 });
                               },
-                              success: `Saved base model ${draft.name}.`,
+                              success: `Saved kit variant ${draft.name}.`,
                               setBusyKey,
                               setErrorMessage,
                               setStatusMessage,
                             })
                           }
-                          busy={busyKey === `base-model-${model._id}`}
+                          busy={busyKey === `kit-variant-${kitVariant._id}`}
                         >
-                          Save Base Model
+                          Save Kit Variant
                         </ActionButton>
-                        <button type="button" onClick={() => setBaseModelDrafts((current) => ({ ...current, [model._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
+                        <button type="button" onClick={() => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
                           {draft.isActive ? "Disable" : "Enable"}
                         </button>
                       </div>
@@ -2066,7 +2292,7 @@ export function AdminWorkbench() {
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Creator Packs</p>
                 <p className="mt-2 text-sm leading-6 text-ink-secondary">
-                  Bundle creator-owned Style DNA, base models, and material presets into shareable starter packs.
+                  Bundle creator-owned Style DNA, kit variants, and material presets into shareable starter packs.
                 </p>
               </div>
               <ActionButton
@@ -2084,7 +2310,7 @@ export function AdminWorkbench() {
                         description: emptyToUndefined(draft.description),
                         tagline: emptyToUndefined(draft.tagline),
                         stylePresetIds: parseCsv(draft.stylePresetIds) as Id<"stylePresets">[],
-                        baseModelIds: parseCsv(draft.baseModelIds) as Id<"baseModels">[],
+                        kitVariantIds: parseCsv(draft.kitVariantIds) as Id<"baseModels">[],
                         materialPresetIds: parseCsv(draft.materialPresetIds) as Id<"materialPresets">[],
                         packType: draft.packType,
                         isFeatured: draft.isFeatured,
@@ -2142,8 +2368,8 @@ export function AdminWorkbench() {
                       <Field label="Style Preset IDs CSV">
                         <Input value={newCreatorPackDraft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
-                      <Field label="Base Model IDs CSV">
-                        <Input value={newCreatorPackDraft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
+                      <Field label="Kit Variant IDs CSV">
+                        <Input value={newCreatorPackDraft.kitVariantIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, kitVariantIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                       </Field>
                       <Field label="Material Preset IDs CSV">
                         <Input value={newCreatorPackDraft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, __new__: { ...newCreatorPackDraft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
@@ -2157,7 +2383,7 @@ export function AdminWorkbench() {
                       description: pack.description ?? "",
                       tagline: pack.tagline ?? "",
                       stylePresetIds: joinCsv(pack.stylePresetIds),
-                      baseModelIds: joinCsv(pack.baseModelIds),
+                      kitVariantIds: joinCsv(pack.kitVariantIds),
                       materialPresetIds: joinCsv(pack.materialPresetIds),
                       packType: pack.packType,
                       isFeatured: pack.isFeatured,
@@ -2200,8 +2426,8 @@ export function AdminWorkbench() {
                           <Field label="Style Preset IDs CSV">
                             <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
-                          <Field label="Base Model IDs CSV">
-                            <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
+                          <Field label="Kit Variant IDs CSV">
+                            <Input value={draft.kitVariantIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, kitVariantIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                           </Field>
                           <Field label="Material Preset IDs CSV">
                             <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
@@ -2220,7 +2446,7 @@ export function AdminWorkbench() {
                                     description: emptyToUndefined(draft.description),
                                     tagline: emptyToUndefined(draft.tagline),
                                     stylePresetIds: parseCsv(draft.stylePresetIds) as Id<"stylePresets">[],
-                                    baseModelIds: parseCsv(draft.baseModelIds) as Id<"baseModels">[],
+                                    kitVariantIds: parseCsv(draft.kitVariantIds) as Id<"baseModels">[],
                                     materialPresetIds: parseCsv(draft.materialPresetIds) as Id<"materialPresets">[],
                                     packType: draft.packType,
                                     isFeatured: draft.isFeatured,
@@ -2413,7 +2639,7 @@ export function AdminWorkbench() {
                     description: pack.description ?? "",
                     tagline: pack.tagline ?? "",
                     stylePresetIds: joinCsv(pack.stylePresetIds),
-                    baseModelIds: joinCsv(pack.baseModelIds),
+                    kitVariantIds: joinCsv(pack.kitVariantIds),
                     materialPresetIds: joinCsv(pack.materialPresetIds),
                     packType: pack.packType,
                     isFeatured: pack.isFeatured,
@@ -2461,8 +2687,8 @@ export function AdminWorkbench() {
                         <Field label="Style Preset IDs CSV">
                           <Input value={draft.stylePresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, stylePresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
-                        <Field label="Base Model IDs CSV">
-                          <Input value={draft.baseModelIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, baseModelIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
+                        <Field label="Kit Variant IDs CSV">
+                          <Input value={draft.kitVariantIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, kitVariantIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
                         </Field>
                         <Field label="Material Preset IDs CSV">
                           <Input value={draft.materialPresetIds} onChange={(event) => setCreatorPackDrafts((current) => ({ ...current, [pack._id]: { ...draft, materialPresetIds: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue" />
@@ -2481,7 +2707,7 @@ export function AdminWorkbench() {
                                   description: emptyToUndefined(draft.description),
                                   tagline: emptyToUndefined(draft.tagline),
                                   stylePresetIds: parseCsv(draft.stylePresetIds) as Id<"stylePresets">[],
-                                  baseModelIds: parseCsv(draft.baseModelIds) as Id<"baseModels">[],
+                                  kitVariantIds: parseCsv(draft.kitVariantIds) as Id<"baseModels">[],
                                   materialPresetIds: parseCsv(draft.materialPresetIds) as Id<"materialPresets">[],
                                   packType: draft.packType,
                                   isFeatured: draft.isFeatured,
@@ -2684,7 +2910,7 @@ function AdminSectionNav({
         </div>
         <nav
           aria-label="Admin secondary menu"
-          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5"
+          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6"
         >
           {sections.map((section) => {
             const isActive = section.id === activeSection;
@@ -2740,6 +2966,872 @@ function MetricCard({
       <p className="mt-3 text-4xl font-semibold text-ink-primary">{value}</p>
       <p className="mt-2 text-sm leading-6 text-ink-secondary">{detail}</p>
     </article>
+  );
+}
+
+function PromptLabPanel({
+  busyKey,
+  catalogData,
+  composePromptLabPreview,
+  copiedPromptKey,
+  draft,
+  experimentDraft,
+  promptExperimentRuns,
+  promptTemplates,
+  result,
+  onOpenTemplateEditor,
+  savePromptExperimentRun,
+  selectedTemplateId,
+  selectedTemplate,
+  setBusyKey,
+  setCopiedPromptKey,
+  setDraft,
+  setErrorMessage,
+  setExperimentDraft,
+  setResult,
+  setSelectedTemplateId,
+  setStatusMessage,
+  updatePromptExperimentRun,
+}: {
+  busyKey: string | null;
+  catalogData:
+    | {
+        kitVariants: Array<{ _id: Id<"baseModels">; name: string; slug: string }>;
+        materialPresets: Array<{ _id: Id<"materialPresets">; name: string; slug: string }>;
+        stylePresets: Array<{ _id: Id<"stylePresets">; name: string; slug: string }>;
+      }
+    | undefined;
+  composePromptLabPreview: ReturnType<typeof useMutation<typeof api.admin.composePromptLabPreview>>;
+  copiedPromptKey: string | null;
+  draft: PromptLabDraft;
+  experimentDraft: PromptLabExperimentDraft;
+  promptExperimentRuns:
+    | Array<{
+        _id: Id<"promptExperimentRuns">;
+        _creationTime: number;
+        templateKind: string;
+        templateName: string;
+        templateVersion: string;
+        status: "ready-for-web" | "tested" | "selected" | "rejected" | "archived";
+        providerLabel?: string;
+        modelLabel?: string;
+        outputImageUrl?: string;
+        outputNotes?: string;
+        overallScore?: number;
+        selectedAsWinner: boolean;
+      }>
+    | undefined;
+  promptTemplates:
+    | Array<{
+        _id: Id<"promptTemplates">;
+        kind: string;
+        name: string;
+        version: string;
+        isActive: boolean;
+      }>
+    | undefined;
+  result: PromptLabResult | null;
+  onOpenTemplateEditor: () => void;
+  savePromptExperimentRun: ReturnType<typeof useMutation<typeof api.admin.savePromptExperimentRun>>;
+  selectedTemplateId: string | null;
+  selectedTemplate: { _id: Id<"promptTemplates">; kind: string; name: string; version: string } | null;
+  setBusyKey: (key: string | null) => void;
+  setCopiedPromptKey: (key: string | null) => void;
+  setDraft: (updater: PromptLabDraft | ((current: PromptLabDraft) => PromptLabDraft)) => void;
+  setErrorMessage: (message: string | null) => void;
+  setExperimentDraft: (
+    updater:
+      | PromptLabExperimentDraft
+      | ((current: PromptLabExperimentDraft) => PromptLabExperimentDraft)
+  ) => void;
+  setResult: React.Dispatch<React.SetStateAction<PromptLabResult | null>>;
+  setSelectedTemplateId: (templateId: string | null) => void;
+  setStatusMessage: (message: string | null) => void;
+  updatePromptExperimentRun: ReturnType<typeof useMutation<typeof api.admin.updatePromptExperimentRun>>;
+}) {
+  const promptLength = result?.composedPrompt.length ?? 0;
+  const visibleRuns =
+    promptExperimentRuns?.filter((run) => run.status !== "archived").slice(0, 10) ?? [];
+  const promptLabArgs = selectedTemplate ? buildPromptLabArgs(selectedTemplate._id, draft) : null;
+
+  return (
+    <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Prompt Lab</p>
+          <h3 className="mt-2 text-2xl font-semibold">Manual web experiment bench</h3>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
+            Compose the exact project prompt, copy it into vendor web tools, then save
+            the observed model, image, notes, and scores as an admin-only experiment run.
+          </p>
+        </div>
+        <div className="min-w-[240px] space-y-3">
+          <button
+            type="button"
+            onClick={onOpenTemplateEditor}
+            className="w-full rounded-[16px] border border-line-secondary bg-panel px-4 py-2 text-sm text-ink-secondary transition-colors hover:border-line-active hover:text-ink-primary"
+          >
+            Open Template Editor
+          </button>
+          <div className="grid gap-2 rounded-[18px] border border-line-secondary bg-main p-4 text-sm">
+            <MetaRow label="Template" value={selectedTemplate?.name ?? "None"} />
+            <MetaRow label="Version" value={selectedTemplate?.version ?? "N/A"} />
+            <MetaRow label="Prompt chars" value={`${promptLength}`} />
+          </div>
+        </div>
+      </div>
+
+      <section className="mt-6 rounded-[20px] border border-line-secondary bg-panel p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
+              Test template
+            </p>
+            <p className="mt-2 text-sm leading-6 text-ink-secondary">
+              Pick one of the configured base prompt templates before composing a manual web test.
+            </p>
+          </div>
+          <FlagPill label={`${promptTemplates?.length ?? 0} templates`} tone="cyan" />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {promptTemplates === undefined ? (
+            <div className="rounded-[16px] border border-line-secondary bg-main p-4 text-sm text-ink-secondary md:col-span-2 xl:col-span-4">
+              Loading prompt templates.
+            </div>
+          ) : promptTemplates.length === 0 ? (
+            <div className="rounded-[16px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red md:col-span-2 xl:col-span-4">
+              No prompt templates were returned for this admin session. Check seed data and admin access.
+            </div>
+          ) : (
+            promptTemplates.map((template) => {
+              const active = selectedTemplateId === template._id;
+              return (
+                <button
+                  key={template._id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplateId(template._id);
+                    setResult(null);
+                  }}
+                  className={cn(
+                    "min-h-[132px] rounded-[18px] border p-4 text-left transition-colors",
+                    active
+                      ? "border-accent-orange bg-accent-orange/10 shadow-[inset_4px_0_0_0_var(--accent-orange)]"
+                      : "border-line-secondary bg-main hover:border-line-active hover:bg-hover-surface"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-ink-muted">
+                      {template.kind}
+                    </p>
+                    <FlagPill
+                      label={template.isActive ? "active" : "inactive"}
+                      tone={template.isActive ? "green" : "red"}
+                    />
+                  </div>
+                  <h4 className="mt-4 text-base font-semibold text-ink-primary">
+                    {template.name}
+                  </h4>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-ink-secondary">
+                    Version {template.version}
+                  </p>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="space-y-4">
+          <div className="rounded-[20px] border border-line-secondary bg-panel p-4">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">Test inputs</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <PromptLabSelect
+                label="Kit Variant"
+                options={catalogData?.kitVariants ?? []}
+                value={draft.kitVariantId}
+                onChange={(value) => setDraft((current) => ({ ...current, kitVariantId: value }))}
+              />
+              <PromptLabSelect
+                label="Style DNA"
+                options={catalogData?.stylePresets ?? []}
+                value={draft.stylePresetId}
+                onChange={(value) => setDraft((current) => ({ ...current, stylePresetId: value }))}
+              />
+              <PromptLabSelect
+                label="Material"
+                options={catalogData?.materialPresets ?? []}
+                value={draft.materialPresetId}
+                onChange={(value) =>
+                  setDraft((current) => ({ ...current, materialPresetId: value }))
+                }
+              />
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+              <Field label="Mood Vector">
+                <div className="flex flex-wrap gap-2">
+                  {promptLabMoodOptions.map((option) => {
+                    const active = draft.moodTags.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          setDraft((current) => ({
+                            ...current,
+                            moodTags: active
+                              ? current.moodTags.filter((tag) => tag !== option.value)
+                              : [...current.moodTags, option.value],
+                          }))
+                        }
+                        className={cn(
+                          "rounded-[14px] border px-3 py-2 text-xs uppercase tracking-[0.16em] transition-colors",
+                          active
+                            ? "border-accent-teal bg-accent-teal/15 text-[#A6FFD5]"
+                            : "border-line-secondary bg-main text-ink-secondary hover:border-line-active hover:text-ink-primary"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              <Field label="Weathering">
+                <Select
+                  value={draft.weatheringLevel}
+                  onValueChange={(value: WeatheringLevel) =>
+                    setDraft((current) => ({ ...current, weatheringLevel: value }))
+                  }
+                >
+                  <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+                    {promptLabWeatheringOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field label="Manual Concept ID">
+                <Input
+                  value={draft.conceptId}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, conceptId: event.target.value }))
+                  }
+                  placeholder="Optional stable label"
+                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                />
+              </Field>
+              <Field label="Remix Source">
+                <Input
+                  value={draft.remixSource}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, remixSource: event.target.value }))
+                  }
+                  placeholder="Optional source title"
+                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                />
+              </Field>
+            </div>
+            <Field label="Notes">
+              <Textarea
+                value={draft.notes}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, notes: event.target.value }))
+                }
+                className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+              />
+            </Field>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <ActionButton
+                onClick={() =>
+                  void runAdminAction({
+                    key: "prompt-lab-compose",
+                    action: async () => {
+                      if (!promptLabArgs) {
+                        throw new Error("Select a prompt template before composing.");
+                      }
+                      const response = await composePromptLabPreview(promptLabArgs);
+                      setResult(response as PromptLabResult);
+                    },
+                    success: "Composed prompt lab preview.",
+                    setBusyKey,
+                    setErrorMessage,
+                    setStatusMessage,
+                  })
+                }
+                busy={busyKey === "prompt-lab-compose"}
+                disabled={!selectedTemplate}
+              >
+                Compose Prompt
+              </ActionButton>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft(defaultPromptLabDraft);
+                  setResult(null);
+                  setExperimentDraft(defaultPromptLabExperimentDraft);
+                }}
+                className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
+              >
+                Reset Lab
+              </button>
+            </div>
+          </div>
+
+          <PromptLabExperimentForm
+            busyKey={busyKey}
+            draft={experimentDraft}
+            onSave={() =>
+              void runAdminAction({
+                key: "prompt-lab-save-run",
+                action: async () => {
+                  if (!promptLabArgs) {
+                    throw new Error("Select a prompt template before saving.");
+                  }
+                  const response = await savePromptExperimentRun({
+                    ...promptLabArgs,
+                    providerLabel: emptyToUndefined(experimentDraft.providerLabel),
+                    modelLabel: emptyToUndefined(experimentDraft.modelLabel),
+                    vendorUrl: emptyToUndefined(experimentDraft.vendorUrl),
+                    parameterNotes: emptyToUndefined(experimentDraft.parameterNotes),
+                    outputImageUrl: emptyToUndefined(experimentDraft.outputImageUrl),
+                    outputNotes: emptyToUndefined(experimentDraft.outputNotes),
+                    failureTags: parseCsv(experimentDraft.failureTags),
+                    styleHitScore: parseOptionalScore(experimentDraft.styleHitScore),
+                    silhouetteScore: parseOptionalScore(experimentDraft.silhouetteScore),
+                    paintabilityScore: parseOptionalScore(experimentDraft.paintabilityScore),
+                    promptAdherenceScore: parseOptionalScore(
+                      experimentDraft.promptAdherenceScore
+                    ),
+                    visualImpactScore: parseOptionalScore(experimentDraft.visualImpactScore),
+                    overallScore: parseOptionalScore(experimentDraft.overallScore),
+                    selectedAsWinner: experimentDraft.selectedAsWinner,
+                  });
+                  setResult((current) =>
+                    current ? { ...current, warnings: response.warnings } : current
+                  );
+                  setExperimentDraft(defaultPromptLabExperimentDraft);
+                },
+                success: "Saved manual prompt experiment run.",
+                setBusyKey,
+                setErrorMessage,
+                setStatusMessage,
+              })
+            }
+            setDraft={setExperimentDraft}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <PromptLabPreview
+            copiedPromptKey={copiedPromptKey}
+            result={result}
+            setCopiedPromptKey={setCopiedPromptKey}
+            setErrorMessage={setErrorMessage}
+          />
+          <PromptLabRunList
+            busyKey={busyKey}
+            runs={visibleRuns}
+            setBusyKey={setBusyKey}
+            setErrorMessage={setErrorMessage}
+            setStatusMessage={setStatusMessage}
+            updatePromptExperimentRun={updatePromptExperimentRun}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PromptLabSelect({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: Array<{ _id: string; name: string; slug: string }>;
+  value: string;
+}) {
+  return (
+    <Field label={label}>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+          <SelectItem value="none">None</SelectItem>
+          {options.map((option) => (
+            <SelectItem key={option._id} value={option._id}>
+              {option.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+}
+
+function PromptLabExperimentForm({
+  busyKey,
+  draft,
+  onSave,
+  setDraft,
+}: {
+  busyKey: string | null;
+  draft: PromptLabExperimentDraft;
+  onSave: () => void;
+  setDraft: (
+    updater:
+      | PromptLabExperimentDraft
+      | ((current: PromptLabExperimentDraft) => PromptLabExperimentDraft)
+  ) => void;
+}) {
+  return (
+    <div className="rounded-[20px] border border-line-secondary bg-panel p-4">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">Manual web result</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Field label="Provider">
+          <Input
+            value={draft.providerLabel}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, providerLabel: event.target.value }))
+            }
+            placeholder="OpenAI / Midjourney / Ideogram"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <Field label="Model Label">
+          <Input
+            value={draft.modelLabel}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, modelLabel: event.target.value }))
+            }
+            placeholder="Web model name or UI preset"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <Field label="Vendor URL">
+          <Input
+            value={draft.vendorUrl}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, vendorUrl: event.target.value }))
+            }
+            placeholder="Optional web session link"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <Field label="Output Image URL">
+          <Input
+            value={draft.outputImageUrl}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, outputImageUrl: event.target.value }))
+            }
+            placeholder="External image URL"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+          />
+        </Field>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Field label="Parameter Notes">
+          <Textarea
+            value={draft.parameterNotes}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, parameterNotes: event.target.value }))
+            }
+            className="min-h-[96px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <Field label="Output Notes">
+          <Textarea
+            value={draft.outputNotes}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, outputNotes: event.target.value }))
+            }
+            className="min-h-[96px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
+          />
+        </Field>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          ["Style", "styleHitScore"],
+          ["Silhouette", "silhouetteScore"],
+          ["Paint", "paintabilityScore"],
+          ["Adherence", "promptAdherenceScore"],
+          ["Impact", "visualImpactScore"],
+          ["Overall", "overallScore"],
+        ].map(([label, key]) => (
+          <ScoreInput
+            key={key}
+            label={label}
+            value={draft[key as keyof PromptLabExperimentDraft] as string}
+            onChange={(value) =>
+              setDraft((current) => ({
+                ...current,
+                [key]: value,
+              }))
+            }
+          />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_190px]">
+        <Field label="Failure Tags CSV">
+          <Input
+            value={draft.failureTags}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, failureTags: event.target.value }))
+            }
+            placeholder="bad-hands, weak-style, off-model"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <label className="flex items-center gap-3 rounded-[16px] border border-line-secondary bg-main px-4 py-3 text-sm text-ink-secondary">
+          <input
+            type="checkbox"
+            checked={draft.selectedAsWinner}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                selectedAsWinner: event.target.checked,
+              }))
+            }
+            className="h-4 w-4 accent-[#58FFB2]"
+          />
+          Winner candidate
+        </label>
+      </div>
+      <div className="mt-4">
+        <ActionButton
+          onClick={onSave}
+          busy={busyKey === "prompt-lab-save-run"}
+        >
+          Save Experiment Run
+        </ActionButton>
+      </div>
+    </div>
+  );
+}
+
+function ScoreInput({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <Field label={label}>
+      <Input
+        type="number"
+        min="0"
+        max="10"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
+      />
+    </Field>
+  );
+}
+
+function PromptLabPreview({
+  copiedPromptKey,
+  result,
+  setCopiedPromptKey,
+  setErrorMessage,
+}: {
+  copiedPromptKey: string | null;
+  result: PromptLabResult | null;
+  setCopiedPromptKey: (key: string | null) => void;
+  setErrorMessage: (message: string | null) => void;
+}) {
+  return (
+    <div className="rounded-[20px] border border-line-secondary bg-panel p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">Composed prompt</p>
+        {result ? (
+          <div className="flex flex-wrap gap-2">
+            <CopyButton
+              copied={copiedPromptKey === "system"}
+              label="Copy System"
+              onCopy={() =>
+                copyPromptBlock({
+                  key: "system",
+                  value: result.copyBlocks.systemPrompt,
+                  setCopiedPromptKey,
+                  setErrorMessage,
+                })
+              }
+            />
+            <CopyButton
+              copied={copiedPromptKey === "user"}
+              label="Copy User"
+              onCopy={() =>
+                copyPromptBlock({
+                  key: "user",
+                  value: result.copyBlocks.userPrompt,
+                  setCopiedPromptKey,
+                  setErrorMessage,
+                })
+              }
+            />
+            <CopyButton
+              copied={copiedPromptKey === "negative"}
+              label="Copy Negative"
+              onCopy={() =>
+                copyPromptBlock({
+                  key: "negative",
+                  value: result.copyBlocks.negativePrompt,
+                  setCopiedPromptKey,
+                  setErrorMessage,
+                })
+              }
+            />
+          </div>
+        ) : null}
+      </div>
+      {result ? (
+        <div className="mt-4 space-y-4">
+          {result.warnings.length > 0 ? (
+            <div className="rounded-[16px] border border-accent-orange bg-accent-orange/10 p-3 text-sm text-[#FFD499]">
+              {result.warnings.join(" ")}
+            </div>
+          ) : null}
+          <pre className="max-h-[440px] overflow-auto whitespace-pre-wrap rounded-[18px] border border-line-secondary bg-black/25 p-4 font-mono text-xs leading-6 text-ink-primary">
+            {result.composedPrompt}
+          </pre>
+          {result.negativePrompt ? (
+            <div className="rounded-[18px] border border-line-secondary bg-main p-4">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">
+                Negative prompt
+              </p>
+              <p className="mt-3 font-mono text-xs leading-6 text-ink-secondary">
+                {result.negativePrompt}
+              </p>
+            </div>
+          ) : null}
+          <div className="grid gap-3 md:grid-cols-2">
+            <VariableList label="Used Variables" values={result.usedVariables} />
+            <VariableList label="Available Variables" values={result.availableVariables} />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-secondary">
+          Compose a preview to generate a vendor-ready prompt snapshot.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CopyButton({
+  copied,
+  label,
+  onCopy,
+}: {
+  copied: boolean;
+  label: string;
+  onCopy: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className={cn(
+        "rounded-[14px] border px-3 py-2 text-xs uppercase tracking-[0.16em] transition-colors",
+        copied
+          ? "border-accent-teal bg-accent-teal/15 text-[#A6FFD5]"
+          : "border-line-secondary bg-main text-ink-secondary hover:border-line-active hover:text-ink-primary"
+      )}
+    >
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
+function VariableList({ label, values }: { label: string; values: string[] }) {
+  return (
+    <div className="rounded-[18px] border border-line-secondary bg-main p-4">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {values.length === 0 ? (
+          <span className="text-sm text-ink-secondary">None</span>
+        ) : (
+          values.map((value) => (
+            <code
+              key={value}
+              className="rounded-[10px] border border-line-secondary bg-black/20 px-2 py-1 text-xs text-ink-secondary"
+            >
+              {`{{${value}}}`}
+            </code>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PromptLabRunList({
+  busyKey,
+  runs,
+  setBusyKey,
+  setErrorMessage,
+  setStatusMessage,
+  updatePromptExperimentRun,
+}: {
+  busyKey: string | null;
+  runs: Array<{
+    _id: Id<"promptExperimentRuns">;
+    _creationTime: number;
+    templateKind: string;
+    templateName: string;
+    templateVersion: string;
+    status: "ready-for-web" | "tested" | "selected" | "rejected" | "archived";
+    providerLabel?: string;
+    modelLabel?: string;
+    outputImageUrl?: string;
+    outputNotes?: string;
+    overallScore?: number;
+    selectedAsWinner: boolean;
+  }>;
+  setBusyKey: (key: string | null) => void;
+  setErrorMessage: (message: string | null) => void;
+  setStatusMessage: (message: string | null) => void;
+  updatePromptExperimentRun: ReturnType<typeof useMutation<typeof api.admin.updatePromptExperimentRun>>;
+}) {
+  return (
+    <div className="rounded-[20px] border border-line-secondary bg-panel p-4">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-ink-muted">
+        Recent experiment runs
+      </p>
+      <div className="mt-4 space-y-3">
+        {runs.length === 0 ? (
+          <div className="rounded-[16px] border border-line-secondary bg-main p-4 text-sm leading-6 text-ink-secondary">
+            No prompt experiments have been saved yet. Use the test template cards above,
+            compose a prompt, then save a manual web result to create the first record.
+          </div>
+        ) : (
+          runs.map((run) => (
+            <article key={run._id} className="rounded-[18px] border border-line-secondary bg-main p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-2">
+                    <FlagPill label={run.status} tone={promptRunStatusTone(run.status)} />
+                    <FlagPill label={run.templateKind} tone="cyan" />
+                    {run.selectedAsWinner ? <FlagPill label="winner" tone="amber" /> : null}
+                  </div>
+                  <h4 className="mt-3 text-base font-semibold text-ink-primary">
+                    {run.providerLabel || "Manual web"} / {run.modelLabel || "model unlabeled"}
+                  </h4>
+                  <p className="mt-1 text-xs text-ink-secondary">
+                    {run.templateName} v{run.templateVersion} / {formatDateTime(run._creationTime)}
+                  </p>
+                  {run.outputNotes ? (
+                    <p className="mt-3 text-sm leading-6 text-ink-muted">{run.outputNotes}</p>
+                  ) : null}
+                </div>
+                <div className="grid min-w-[150px] gap-2 text-sm">
+                  <MetaRow
+                    label="Overall"
+                    value={run.overallScore === undefined ? "N/A" : `${run.overallScore}/10`}
+                  />
+                  {run.outputImageUrl ? (
+                    <a
+                      href={run.outputImageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-[14px] border border-accent-blue px-3 py-2 text-center text-xs text-ink-primary transition-colors hover:bg-accent-blue/15"
+                    >
+                      Open Image
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <ActionButton
+                  onClick={() =>
+                    void runAdminAction({
+                      key: `prompt-run-select-${run._id}`,
+                      action: async () => {
+                        await updatePromptExperimentRun({
+                          runId: run._id,
+                          status: "selected",
+                          selectedAsWinner: true,
+                        });
+                      },
+                      success: "Marked prompt experiment as selected.",
+                      setBusyKey,
+                      setErrorMessage,
+                      setStatusMessage,
+                    })
+                  }
+                  busy={busyKey === `prompt-run-select-${run._id}`}
+                >
+                  Select
+                </ActionButton>
+                <ActionButton
+                  onClick={() =>
+                    void runAdminAction({
+                      key: `prompt-run-reject-${run._id}`,
+                      action: async () => {
+                        await updatePromptExperimentRun({
+                          runId: run._id,
+                          status: "rejected",
+                          selectedAsWinner: false,
+                        });
+                      },
+                      success: "Marked prompt experiment as rejected.",
+                      setBusyKey,
+                      setErrorMessage,
+                      setStatusMessage,
+                    })
+                  }
+                  busy={busyKey === `prompt-run-reject-${run._id}`}
+                  tone="danger"
+                >
+                  Reject
+                </ActionButton>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void runAdminAction({
+                      key: `prompt-run-archive-${run._id}`,
+                      action: async () => {
+                        await updatePromptExperimentRun({
+                          runId: run._id,
+                          status: "archived",
+                          selectedAsWinner: false,
+                        });
+                      },
+                      success: "Archived prompt experiment.",
+                      setBusyKey,
+                      setErrorMessage,
+                      setStatusMessage,
+                    })
+                  }
+                  className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
+                >
+                  Archive
+                </button>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2822,11 +3914,266 @@ function joinCsv(values: string[]) {
   return values.join(", ");
 }
 
+function isBrowserStorageAvailable() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readStoredString(key: string) {
+  if (!isBrowserStorageAvailable()) {
+    return null;
+  }
+  return window.localStorage.getItem(key);
+}
+
+function writeStoredString(key: string, value: string | null) {
+  if (!isBrowserStorageAvailable()) {
+    return;
+  }
+  if (value === null) {
+    window.localStorage.removeItem(key);
+    return;
+  }
+  window.localStorage.setItem(key, value);
+}
+
+function writeStoredJson(key: string, value: unknown) {
+  if (!isBrowserStorageAvailable()) {
+    return;
+  }
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function isAdminSectionId(value: string | null): value is AdminSectionId {
+  return (
+    value === "templates" ||
+    value === "prompt-lab" ||
+    value === "ops" ||
+    value === "access" ||
+    value === "commerce" ||
+    value === "catalog"
+  );
+}
+
+function readInitialAdminSection(): AdminSectionId {
+  if (typeof window === "undefined") {
+    return "templates";
+  }
+  return parseAdminSectionHash(window.location.hash) ?? "templates";
+}
+
+function parseAdminSectionHash(hash: string) {
+  const value = hash.replace(/^#/, "");
+  return isAdminSectionId(value) ? value : null;
+}
+
+function writeAdminSectionHash(section: AdminSectionId) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const hash = section === "templates" ? "" : `#${section}`;
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+}
+
+function createTemplateDraft(
+  template: {
+    _id: Id<"promptTemplates">;
+    name: string;
+    version: string;
+    notePolicy?: string;
+    systemPrompt: string;
+    userPromptTemplate: string;
+    negativePromptTemplate?: string;
+    isActive: boolean;
+  }
+): TemplateDraft {
+  return {
+    promptTemplateId: template._id,
+    name: template.name,
+    version: template.version,
+    notePolicy: template.notePolicy ?? "",
+    systemPrompt: template.systemPrompt,
+    userPromptTemplate: template.userPromptTemplate,
+    negativePromptTemplate: template.negativePromptTemplate ?? "",
+    isActive: template.isActive,
+  };
+}
+
+function patchTemplateDraft(
+  current: TemplateDraft | null,
+  selectedTemplate: {
+    _id: Id<"promptTemplates">;
+    name: string;
+    version: string;
+    notePolicy?: string;
+    systemPrompt: string;
+    userPromptTemplate: string;
+    negativePromptTemplate?: string;
+    isActive: boolean;
+  },
+  patch: Partial<Omit<TemplateDraft, "promptTemplateId">>
+) {
+  const base =
+    current?.promptTemplateId === selectedTemplate._id
+      ? current
+      : createTemplateDraft(selectedTemplate);
+  return { ...base, ...patch };
+}
+
+function readStoredPromptLabDraft() {
+  return readStoredObject(promptLabDraftStorageKey, defaultPromptLabDraft, isPromptLabDraft);
+}
+
+function readStoredPromptLabExperimentDraft() {
+  return readStoredObject(
+    promptLabExperimentDraftStorageKey,
+    defaultPromptLabExperimentDraft,
+    isPromptLabExperimentDraft
+  );
+}
+
+function readStoredObject<T>(key: string, fallback: T, guard: (value: unknown) => value is T) {
+  const raw = readStoredString(key);
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return guard(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function isPromptLabDraft(value: unknown): value is PromptLabDraft {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const draft = value as Partial<PromptLabDraft>;
+  return (
+    typeof draft.kitVariantId === "string" &&
+    typeof draft.stylePresetId === "string" &&
+    typeof draft.materialPresetId === "string" &&
+    Array.isArray(draft.moodTags) &&
+    draft.moodTags.every(isMoodTag) &&
+    isWeatheringLevel(draft.weatheringLevel) &&
+    typeof draft.notes === "string" &&
+    typeof draft.conceptId === "string" &&
+    typeof draft.remixSource === "string"
+  );
+}
+
+function isPromptLabExperimentDraft(value: unknown): value is PromptLabExperimentDraft {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const draft = value as Partial<PromptLabExperimentDraft>;
+  return (
+    typeof draft.providerLabel === "string" &&
+    typeof draft.modelLabel === "string" &&
+    typeof draft.vendorUrl === "string" &&
+    typeof draft.parameterNotes === "string" &&
+    typeof draft.outputImageUrl === "string" &&
+    typeof draft.outputNotes === "string" &&
+    typeof draft.failureTags === "string" &&
+    typeof draft.styleHitScore === "string" &&
+    typeof draft.silhouetteScore === "string" &&
+    typeof draft.paintabilityScore === "string" &&
+    typeof draft.promptAdherenceScore === "string" &&
+    typeof draft.visualImpactScore === "string" &&
+    typeof draft.overallScore === "string" &&
+    typeof draft.selectedAsWinner === "boolean"
+  );
+}
+
+function isMoodTag(value: unknown): value is MoodTag {
+  return promptLabMoodOptions.some((option) => option.value === value);
+}
+
+function isWeatheringLevel(value: unknown): value is WeatheringLevel {
+  return promptLabWeatheringOptions.some((option) => option.value === value);
+}
+
 function parseCsv(value: string) {
   return value
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function buildPromptLabArgs(promptTemplateId: Id<"promptTemplates">, draft: PromptLabDraft) {
+  return {
+    promptTemplateId,
+    kitVariantId:
+      draft.kitVariantId === "none" ? undefined : (draft.kitVariantId as Id<"baseModels">),
+    stylePresetId:
+      draft.stylePresetId === "none" ? undefined : (draft.stylePresetId as Id<"stylePresets">),
+    materialPresetId:
+      draft.materialPresetId === "none"
+        ? undefined
+        : (draft.materialPresetId as Id<"materialPresets">),
+    moodTags: draft.moodTags,
+    weatheringLevel: draft.weatheringLevel,
+    notes: emptyToUndefined(draft.notes),
+    conceptId: emptyToUndefined(draft.conceptId),
+    remixSource: emptyToUndefined(draft.remixSource),
+  };
+}
+
+function parseOptionalScore(value: string) {
+  if (value.trim() === "") {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10) {
+    throw new Error("Scores must be between 0 and 10");
+  }
+  return parsed;
+}
+
+function promptRunStatusTone(status: "ready-for-web" | "tested" | "selected" | "rejected" | "archived"): FlagTone {
+  if (status === "selected") {
+    return "amber";
+  }
+  if (status === "tested") {
+    return "green";
+  }
+  if (status === "rejected") {
+    return "red";
+  }
+  if (status === "archived") {
+    return "neutral";
+  }
+  return "cyan";
+}
+
+function copyPromptBlock({
+  key,
+  setCopiedPromptKey,
+  setErrorMessage,
+  value,
+}: {
+  key: string;
+  setCopiedPromptKey: (key: string | null) => void;
+  setErrorMessage: (message: string | null) => void;
+  value: string;
+}) {
+  if (!value.trim()) {
+    setErrorMessage("This prompt block is empty.");
+    return;
+  }
+  if (typeof navigator.clipboard.writeText !== "function") {
+    setErrorMessage("Clipboard API is not available in this browser context.");
+    return;
+  }
+  void navigator.clipboard
+    .writeText(value)
+    .then(() => {
+      setCopiedPromptKey(key);
+      window.setTimeout(() => setCopiedPromptKey(null), 1400);
+    })
+    .catch((error) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to copy prompt block");
+    });
 }
 
 function defaultCreditCampaignDraft(): CreditCampaignDraft {
@@ -2950,7 +4297,7 @@ function defaultCreatorPackDraft(): CreatorPackDraft {
     description: "",
     tagline: "",
     stylePresetIds: "",
-    baseModelIds: "",
+    kitVariantIds: "",
     materialPresetIds: "",
     packType: "free",
     isFeatured: false,

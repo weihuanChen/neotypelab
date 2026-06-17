@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { buildPaintPlan } from "./paintMappingEngine";
 import { MoodTag, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
+import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
 
 const MAX_NOTES_LENGTH = 100;
@@ -31,17 +32,19 @@ type MaterialComparisonVariant = {
 
 export const generateStyleSuggestion = mutation({
   args: {
-    baseModelId: v.id("baseModels"),
+    baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
     moodTags: v.optional(v.array(vMoodTag)),
     notes: v.optional(v.string()),
   },
-  async handler(ctx, { baseModelId, moodTags, notes }) {
+  async handler(ctx, { baseModelId, kitVariantId, moodTags, notes }) {
     const viewer = ctx.viewerX();
     const sanitizedNotes = sanitizeNotes(notes);
     const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
+    const selectedKitVariantId = kitVariantId ?? baseModelId;
 
     const [baseModel, stylePresets, account, priceRule] = await Promise.all([
-      ctx.db.get(baseModelId),
+      selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
       ctx.db.query("stylePresets").collect(),
       ctx.db
         .query("creditAccounts")
@@ -55,7 +58,7 @@ export const generateStyleSuggestion = mutation({
     ]);
 
     if (baseModel === null || !baseModel.isActive) {
-      throw new Error("Selected base model is unavailable");
+      throw new Error("Selected kit variant is unavailable");
     }
     if (account === null) {
       throw new Error("Credit account is not initialized");
@@ -79,12 +82,14 @@ export const generateStyleSuggestion = mutation({
       throw new Error("No active Style DNA presets are available");
     }
 
+    const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
     const suggestions = buildStyleSuggestions({
       baseModel: {
         name: baseModel.name,
         slug: baseModel.slug,
         silhouetteType: baseModel.silhouetteType,
         tags: baseModel.tags,
+        baseUnit: modelPromptContext.snapshot.baseUnit,
       },
       moodTags: sanitizedMoodTags,
       notes: sanitizedNotes,
@@ -93,7 +98,7 @@ export const generateStyleSuggestion = mutation({
 
     const promptPreview = composePrompt(template.userPromptTemplate, {
       availableStyles: activeStylePresets.map((preset) => preset.name).join(", "),
-      baseModel: baseModel.name,
+      baseModel: modelPromptContext.promptText,
       mood: formatMoodTags(sanitizedMoodTags),
       notes: sanitizedNotes ?? "No extra notes.",
       topSuggestions: suggestions.map((item) => item.name).join(", "),
@@ -107,12 +112,7 @@ export const generateStyleSuggestion = mutation({
       negativePrompt: template.negativePromptTemplate,
       additionalNotes: sanitizedNotes,
       inputSnapshotJson: JSON.stringify({
-        baseModel: {
-          id: baseModel._id,
-          name: baseModel.name,
-          slug: baseModel.slug,
-          tags: baseModel.tags,
-        },
+        baseModel: modelPromptContext.snapshot,
         moodTags: sanitizedMoodTags,
         notes: sanitizedNotes,
       }),
@@ -154,7 +154,8 @@ export const generateStyleSuggestion = mutation({
 
 export const generatePalettePlan = mutation({
   args: {
-    baseModelId: v.id("baseModels"),
+    baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
     stylePresetId: v.id("stylePresets"),
     materialPresetId: v.id("materialPresets"),
     moodTags: v.optional(v.array(vMoodTag)),
@@ -163,15 +164,16 @@ export const generatePalettePlan = mutation({
   },
   async handler(
     ctx,
-    { baseModelId, stylePresetId, materialPresetId, moodTags, weatheringLevel, notes }
+    { baseModelId, kitVariantId, stylePresetId, materialPresetId, moodTags, weatheringLevel, notes }
   ) {
     const viewer = ctx.viewerX();
     const sanitizedNotes = sanitizeNotes(notes);
     const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
+    const selectedKitVariantId = kitVariantId ?? baseModelId;
 
     const [baseModel, stylePreset, materialPreset, colorRoles, paintMappings, account, priceRule] =
       await Promise.all([
-        ctx.db.get(baseModelId),
+        selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
         ctx.db.get(stylePresetId),
         ctx.db.get(materialPresetId),
         ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
@@ -188,7 +190,7 @@ export const generatePalettePlan = mutation({
       ]);
 
     if (baseModel === null || !baseModel.isActive) {
-      throw new Error("Selected base model is unavailable");
+      throw new Error("Selected kit variant is unavailable");
     }
     if (stylePreset === null || !stylePreset.isActive) {
       throw new Error("Selected Style DNA preset is unavailable");
@@ -226,8 +228,9 @@ export const generatePalettePlan = mutation({
       paintMappings,
     });
     const colorRoleNames = colorRoles.map((role) => role.name).join(", ");
+    const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
     const promptPreview = composePrompt(template.userPromptTemplate, {
-      baseModel: baseModel.name,
+      baseModel: modelPromptContext.promptText,
       colorRoles: colorRoleNames,
       materialPreset: materialPreset.name,
       mood: formatMoodTags(sanitizedMoodTags),
@@ -244,11 +247,7 @@ export const generatePalettePlan = mutation({
       negativePrompt: template.negativePromptTemplate,
       additionalNotes: sanitizedNotes,
       inputSnapshotJson: JSON.stringify({
-        baseModel: {
-          id: baseModel._id,
-          name: baseModel.name,
-          slug: baseModel.slug,
-        },
+        baseModel: modelPromptContext.snapshot,
         stylePreset: {
           id: stylePreset._id,
           name: stylePreset.name,
@@ -496,9 +495,10 @@ async function queueConceptRender(
     stylePreset.recommendedMaterialSlugs
   );
   const materialComparisonSummary = formatMaterialComparisonVariants(materialComparisonVariants);
+  const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
 
   const promptPreview = composePrompt(template.userPromptTemplate, {
-    baseModel: baseModel.name,
+    baseModel: modelPromptContext.promptText,
     conceptId: concept._id,
     materialPreset: materialPreset.name,
     mood: formatMoodTags(concept.moodTags ?? []),
@@ -556,11 +556,7 @@ async function queueConceptRender(
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
       sourceConceptId: concept._id,
-      baseModel: {
-        id: baseModel._id,
-        name: baseModel.name,
-        slug: baseModel.slug,
-      },
+      baseModel: modelPromptContext.snapshot,
       stylePreset: {
         id: stylePreset._id,
         name: stylePreset.name,
@@ -674,6 +670,16 @@ function buildStyleSuggestions(input: {
     slug: string;
     silhouetteType?: string;
     tags: string[];
+    baseUnit: {
+      name: string;
+      unitCode?: string;
+      keyShapeAnchors: string[];
+      forbiddenChanges: string[];
+      ipSeries: null | {
+        name: string;
+        universe?: string;
+      };
+    } | null;
   };
   moodTags: MoodTag[];
   notes?: string;
@@ -717,6 +723,27 @@ function buildStyleSuggestions(input: {
         score += silhouetteScore;
         reasons.push(
           `${input.baseModel.silhouetteType ?? "Selected silhouette"} aligns with ${preset.name}'s contrast envelope.`
+        );
+      }
+
+      if (input.baseModel.baseUnit?.keyShapeAnchors.length) {
+        score += 1;
+        reasons.push(
+          `${preset.name} can preserve ${input.baseModel.baseUnit.keyShapeAnchors
+            .slice(0, 3)
+            .join(", ")} while changing the paint language.`
+        );
+      }
+      if (input.baseModel.baseUnit?.forbiddenChanges.length) {
+        reasons.push(
+          `Keep ${input.baseModel.baseUnit.name}'s silhouette intact and avoid ${input.baseModel.baseUnit.forbiddenChanges
+            .slice(0, 2)
+            .join(", ")}.`
+        );
+      }
+      if (input.baseModel.baseUnit?.ipSeries) {
+        reasons.push(
+          `${input.baseModel.baseUnit.ipSeries.name} context keeps the style recommendation grounded in ${input.baseModel.baseUnit.ipSeries.universe ?? "its source universe"}.`
         );
       }
 

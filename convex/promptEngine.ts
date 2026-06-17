@@ -1,6 +1,8 @@
 import { v } from "convex/values";
+import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { vPromptTemplateKind } from "./domain";
 import { query } from "./functions";
+import { buildOptionalModelPromptContext } from "./modelPromptContext";
 import { normalizeStringForSearch } from "./utils";
 
 export const listTemplates = query({
@@ -55,7 +57,8 @@ export const describeCompositionInputs = query({
     ]);
 
     return {
-      baseModel,
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+      modelPromptContext: await buildOptionalModelPromptContext(ctx, baseModel),
       stylePreset,
       materialPreset,
     };

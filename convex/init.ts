@@ -1,4 +1,11 @@
 import { Id } from "./_generated/dataModel";
+import {
+  baseModelVariantSeeds,
+  baseUnitSeeds,
+  buildBaseModelVariantSearchText,
+  buildBaseUnitSearchText,
+  ipSeriesSeeds,
+} from "./catalogHierarchy";
 import { internalMutation } from "./functions";
 
 export const init = internalMutation({
@@ -14,14 +21,78 @@ export const init = internalMutation({
       materialPresetIdsBySlug.set(preset.slug, id);
     }
 
+    const ipSeriesIdsBySlug = new Map<string, Id<"ipSeries">>();
+    for (const series of ipSeriesSeeds) {
+      const id = await ctx.db.insert("ipSeries", series);
+      ipSeriesIdsBySlug.set(series.slug, id);
+    }
+
+    const baseUnitIdsBySlug = new Map<string, Id<"baseUnits">>();
+    for (const unit of baseUnitSeeds) {
+      const ipSeriesId = ipSeriesIdsBySlug.get(unit.ipSeriesSlug);
+      if (ipSeriesId === undefined) {
+        throw new Error(`IP series seed not found for base unit ${unit.slug}`);
+      }
+      const { ipSeriesSlug, ...unitFields } = unit;
+      const id = await ctx.db.insert("baseUnits", {
+        ...unitFields,
+        ipSeriesId,
+        searchText: buildBaseUnitSearchText(unit),
+      });
+      baseUnitIdsBySlug.set(unit.slug, id);
+    }
+
+    const baseUnitSeedBySlug = new Map(baseUnitSeeds.map((unit) => [unit.slug, unit]));
+    const ipSeriesSeedBySlug = new Map(ipSeriesSeeds.map((series) => [series.slug, series]));
+    const variantSeedByBaseModelSlug = new Map(
+      baseModelVariantSeeds.map((variant) => [variant.baseModelSlug, variant])
+    );
+
     for (const model of baseModels) {
       const { defaultMaterialSlug, ...modelFields } = model;
+      const variantSeed = variantSeedByBaseModelSlug.get(model.slug);
+      const baseUnitId =
+        variantSeed === undefined
+          ? undefined
+          : baseUnitIdsBySlug.get(variantSeed.baseUnitSlug);
+      const baseUnit =
+        variantSeed === undefined
+          ? undefined
+          : baseUnitSeedBySlug.get(variantSeed.baseUnitSlug);
+      const ipSeries =
+        baseUnit === undefined
+          ? undefined
+          : ipSeriesSeedBySlug.get(baseUnit.ipSeriesSlug);
+
       await ctx.db.insert("baseModels", {
         ...modelFields,
+        baseUnitId,
+        scale: variantSeed?.scale,
+        releaseVersion: variantSeed?.releaseVersion,
+        panelDensity: variantSeed?.panelDensity,
+        promptAnchor: variantSeed?.promptAnchor,
         defaultMaterialPresetId:
           defaultMaterialSlug === undefined
             ? undefined
             : materialPresetIdsBySlug.get(defaultMaterialSlug),
+        searchText: buildBaseModelVariantSearchText({
+          name: model.name,
+          series: model.series,
+          manufacturer: model.manufacturer,
+          grade: model.grade,
+          scale: variantSeed?.scale,
+          releaseVersion: variantSeed?.releaseVersion,
+          silhouetteType: model.silhouetteType,
+          complexityLevel: model.complexityLevel,
+          panelDensity: variantSeed?.panelDensity,
+          aliases: model.aliases,
+          tags: model.tags,
+          promptAnchor: variantSeed?.promptAnchor,
+          unitName: baseUnit?.name,
+          unitCode: baseUnit?.unitCode,
+          ipSeriesName: ipSeries?.name,
+          universe: ipSeries?.universe,
+        }),
       });
     }
 

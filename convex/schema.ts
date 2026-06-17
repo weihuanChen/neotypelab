@@ -45,18 +45,53 @@ const schema = defineSchema({
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_handle", ["handle"]),
 
+  ipSeries: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    universe: v.optional(v.string()),
+    manufacturer: v.optional(v.string()),
+    visualDNA: v.optional(v.string()),
+    promptAnchor: v.optional(v.string()),
+    isActive: v.boolean(),
+  }).index("by_slug", ["slug"]),
+
+  baseUnits: defineTable({
+    ipSeriesId: v.id("ipSeries"),
+    name: v.string(),
+    slug: v.string(),
+    unitCode: v.optional(v.string()),
+    aliases: v.array(v.string()),
+    silhouetteType: v.optional(v.string()),
+    proportionDNA: v.optional(v.string()),
+    armorDNA: v.optional(v.string()),
+    keyShapeAnchors: v.array(v.string()),
+    forbiddenChanges: v.array(v.string()),
+    searchText: v.string(),
+    isActive: v.boolean(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_ipSeriesId", ["ipSeriesId"])
+    .searchIndex("searchText", {
+      searchField: "searchText",
+    }),
+
   baseModels: defineTable({
+    baseUnitId: v.optional(v.id("baseUnits")),
     name: v.string(),
     slug: v.string(),
     series: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
     grade: v.optional(v.string()),
+    scale: v.optional(v.string()),
+    releaseVersion: v.optional(v.string()),
     silhouetteType: v.optional(v.string()),
     complexityLevel: v.optional(v.string()),
+    panelDensity: v.optional(v.string()),
     aliases: v.array(v.string()),
     tags: v.array(v.string()),
     thumbnailAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
+    promptAnchor: v.optional(v.string()),
     isActive: v.boolean(),
     searchText: v.string(),
   })
@@ -340,6 +375,43 @@ const schema = defineSchema({
     .index("by_userId", ["userId"])
     .index("by_conceptId", ["conceptId"])
     .index("by_generationJobId", ["generationJobId"]),
+
+  promptExperimentRuns: defineTable({
+    userId: v.id("users"),
+    promptTemplateId: v.optional(v.id("promptTemplates")),
+    templateKind: vPromptTemplateKind,
+    templateName: v.string(),
+    templateVersion: v.string(),
+    templateSnapshotJson: v.string(),
+    inputSnapshotJson: v.string(),
+    composedPrompt: v.string(),
+    negativePrompt: v.optional(v.string()),
+    source: v.union(v.literal("manual-web"), v.literal("api")),
+    status: v.union(
+      v.literal("ready-for-web"),
+      v.literal("tested"),
+      v.literal("selected"),
+      v.literal("rejected"),
+      v.literal("archived")
+    ),
+    providerLabel: v.optional(v.string()),
+    modelLabel: v.optional(v.string()),
+    vendorUrl: v.optional(v.string()),
+    parameterNotes: v.optional(v.string()),
+    outputImageUrl: v.optional(v.string()),
+    outputNotes: v.optional(v.string()),
+    failureTags: v.array(v.string()),
+    styleHitScore: v.optional(v.number()),
+    silhouetteScore: v.optional(v.number()),
+    paintabilityScore: v.optional(v.number()),
+    promptAdherenceScore: v.optional(v.number()),
+    visualImpactScore: v.optional(v.number()),
+    overallScore: v.optional(v.number()),
+    selectedAsWinner: v.boolean(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_templateKind", ["templateKind"]),
 
   generationJobs: defineTable({
     userId: v.id("users"),

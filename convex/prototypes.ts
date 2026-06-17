@@ -2,13 +2,15 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { vConceptVisibility, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
+import { buildModelPromptContext } from "./modelPromptContext";
 
 const MAX_NOTES_LENGTH = 100;
 
 export const initializePrototype = mutation({
   args: {
     sourceConceptId: v.optional(v.id("concepts")),
-    baseModelId: v.id("baseModels"),
+    baseModelId: v.optional(v.id("baseModels")),
+    kitVariantId: v.optional(v.id("baseModels")),
     stylePresetId: v.id("stylePresets"),
     materialPresetId: v.id("materialPresets"),
     moodTags: v.optional(v.array(vMoodTag)),
@@ -21,6 +23,7 @@ export const initializePrototype = mutation({
     {
       sourceConceptId,
       baseModelId,
+      kitVariantId,
       stylePresetId,
       materialPresetId,
       moodTags,
@@ -33,6 +36,7 @@ export const initializePrototype = mutation({
     const sanitizedNotes = notes?.trim() || undefined;
     const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
     const nextVisibility = visibility ?? "private";
+    const selectedKitVariantId = kitVariantId ?? baseModelId;
 
     if (sanitizedNotes !== undefined && sanitizedNotes.length > MAX_NOTES_LENGTH) {
       throw new Error(`Additional notes must be ${MAX_NOTES_LENGTH} characters or fewer`);
@@ -50,7 +54,7 @@ export const initializePrototype = mutation({
     ] =
       await Promise.all([
         sourceConceptId ? ctx.db.get(sourceConceptId) : null,
-        ctx.db.get(baseModelId),
+        selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
         ctx.db.get(stylePresetId),
         ctx.db.get(materialPresetId),
         ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
@@ -83,7 +87,7 @@ export const initializePrototype = mutation({
       throw new Error("Remix source is not available on a shareable surface");
     }
     if (baseModel === null || !baseModel.isActive) {
-      throw new Error("Selected base model is unavailable");
+      throw new Error("Selected kit variant is unavailable");
     }
     if (stylePreset === null || !stylePreset.isActive) {
       throw new Error("Selected Style DNA preset is unavailable");
@@ -110,6 +114,7 @@ export const initializePrototype = mutation({
       ? `${baseModel.name} / ${stylePreset.name} Remix`
       : `${baseModel.name} / ${stylePreset.name}`;
     const colorRoleNames = colorRoles.map((role) => role.name).join(", ");
+    const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
     const inputSnapshot = {
       sourceConcept:
         sourceConcept === null
@@ -120,13 +125,7 @@ export const initializePrototype = mutation({
               visibility: sourceConcept.visibility,
               status: sourceConcept.status,
             },
-      baseModel: {
-        id: baseModel._id,
-        name: baseModel.name,
-        slug: baseModel.slug,
-        series: baseModel.series,
-        grade: baseModel.grade,
-      },
+      baseModel: modelPromptContext.snapshot,
       stylePreset: {
         id: stylePreset._id,
         name: stylePreset.name,
@@ -151,7 +150,7 @@ export const initializePrototype = mutation({
     };
 
     const initialPrompt = composePrompt(template.userPromptTemplate, {
-      baseModel: baseModel.name,
+      baseModel: modelPromptContext.promptText,
       stylePreset: stylePreset.name,
       materialPreset: materialPreset.name,
       mood: sanitizedMoodTags.join(", ") || "No mood vector selected.",
@@ -222,7 +221,7 @@ export const initializePrototype = mutation({
     });
 
     const composedPrompt = composePrompt(template.userPromptTemplate, {
-      baseModel: baseModel.name,
+      baseModel: modelPromptContext.promptText,
       stylePreset: stylePreset.name,
       materialPreset: materialPreset.name,
       mood: sanitizedMoodTags.join(", ") || "No mood vector selected.",

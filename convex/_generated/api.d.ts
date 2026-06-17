@@ -11,7 +11,10 @@
 import type * as admin from "../admin.js";
 import type * as adminAccess from "../adminAccess.js";
 import type * as assets from "../assets.js";
+import type * as baseModelHierarchy from "../baseModelHierarchy.js";
 import type * as catalog from "../catalog.js";
+import type * as catalogHierarchy from "../catalogHierarchy.js";
+import type * as catalogMigrations from "../catalogMigrations.js";
 import type * as concepts from "../concepts.js";
 import type * as creditCampaigns from "../creditCampaigns.js";
 import type * as credits from "../credits.js";
@@ -23,6 +26,7 @@ import type * as functions from "../functions.js";
 import type * as generation from "../generation.js";
 import type * as generationNode from "../generationNode.js";
 import type * as init from "../init.js";
+import type * as modelPromptContext from "../modelPromptContext.js";
 import type * as packEngagement from "../packEngagement.js";
 import type * as paintMappingEngine from "../paintMappingEngine.js";
 import type * as paintMappingPlans from "../paintMappingPlans.js";
@@ -48,7 +52,10 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminAccess: typeof adminAccess;
   assets: typeof assets;
+  baseModelHierarchy: typeof baseModelHierarchy;
   catalog: typeof catalog;
+  catalogHierarchy: typeof catalogHierarchy;
+  catalogMigrations: typeof catalogMigrations;
   concepts: typeof concepts;
   creditCampaigns: typeof creditCampaigns;
   credits: typeof credits;
@@ -60,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   generation: typeof generation;
   generationNode: typeof generationNode;
   init: typeof init;
+  modelPromptContext: typeof modelPromptContext;
   packEngagement: typeof packEngagement;
   paintMappingEngine: typeof paintMappingEngine;
   paintMappingPlans: typeof paintMappingPlans;

@@ -19,7 +19,7 @@ import { ReactNode, useMemo, useState } from "react";
 const categoryOptions = [
   {
     value: "missing-base-model",
-    label: "Missing Base Model",
+    label: "Missing Kit Variant",
     detail: "Request a kit or silhouette that is not in the catalog yet.",
   },
   {
@@ -55,7 +55,7 @@ export function FeedbackWorkbench() {
 
   const [category, setCategory] = useState<FeedbackCategory>("generation-quality");
   const [conceptId, setConceptId] = useState<string>("none");
-  const [baseModelId, setBaseModelId] = useState<string>("none");
+  const [kitVariantId, setKitVariantId] = useState<string>("none");
   const [stylePresetId, setStylePresetId] = useState<string>("none");
   const [titleHint, setTitleHint] = useState("");
   const [message, setMessage] = useState("");
@@ -67,10 +67,10 @@ export function FeedbackWorkbench() {
     () => concepts?.find((concept) => concept._id === conceptId) ?? null,
     [conceptId, concepts]
   );
-  const effectiveBaseModelId =
-    baseModelId !== "none"
-      ? (baseModelId as Id<"baseModels">)
-      : selectedConcept?.baseModelId ?? undefined;
+  const effectiveKitVariantId =
+    kitVariantId !== "none"
+      ? (kitVariantId as Id<"baseModels">)
+      : selectedConcept?.kitVariantId ?? undefined;
   const effectiveStylePresetId =
     stylePresetId !== "none"
       ? (stylePresetId as Id<"stylePresets">)
@@ -94,7 +94,7 @@ export function FeedbackWorkbench() {
           ? `${titleHint.trim()}\n\n${message.trim()}`
           : message.trim(),
         conceptId: conceptId !== "none" ? (conceptId as Id<"concepts">) : undefined,
-        baseModelId: effectiveBaseModelId,
+        kitVariantId: effectiveKitVariantId,
         stylePresetId: effectiveStylePresetId,
         sourcePage: "/t/feedback",
       });
@@ -102,7 +102,7 @@ export function FeedbackWorkbench() {
       setTitleHint("");
       setMessage("");
       setConceptId("none");
-      setBaseModelId("none");
+      setKitVariantId("none");
       setStylePresetId("none");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to submit feedback");
@@ -214,20 +214,20 @@ export function FeedbackWorkbench() {
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <Field label="Base Model Context">
-              <Select value={baseModelId} onValueChange={setBaseModelId}>
+            <Field label="Kit Variant Context">
+              <Select value={kitVariantId} onValueChange={setKitVariantId}>
                 <SelectTrigger className="h-11 border-line-secondary bg-surface text-ink-primary">
-                  <SelectValue placeholder="Select base model or inherit from concept" />
+                  <SelectValue placeholder="Select kit variant or inherit from concept" />
                 </SelectTrigger>
                 <SelectContent className="border-line-secondary bg-panel text-ink-primary">
                   <SelectItem value="none">
-                    {selectedConcept?.baseModel?.name
-                      ? `Inherit from concept: ${selectedConcept.baseModel.name}`
-                      : "No explicit base model"}
+                    {selectedConcept?.kitVariant?.name
+                      ? `Inherit from concept: ${selectedConcept.kitVariant.name}`
+                      : "No explicit kit variant"}
                   </SelectItem>
-                  {catalog.baseModels.map((model) => (
-                    <SelectItem key={model._id} value={model._id}>
-                      {model.name}
+                  {catalog.kitVariants.map((kitVariant) => (
+                    <SelectItem key={kitVariant._id} value={kitVariant._id}>
+                      {kitVariant.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -335,10 +335,10 @@ export function FeedbackWorkbench() {
               value={selectedConcept?.title ?? "No concept attached"}
             />
             <MetaRow
-              label="Base model"
+              label="Kit variant"
               value={
-                catalog.baseModels.find((item) => item._id === effectiveBaseModelId)?.name ??
-                selectedConcept?.baseModel?.name ??
+                catalog.kitVariants.find((item) => item._id === effectiveKitVariantId)?.name ??
+                selectedConcept?.kitVariant?.name ??
                 "Unspecified"
               }
             />
@@ -377,7 +377,7 @@ export function FeedbackWorkbench() {
                   <p className="mt-3 text-sm leading-6 text-ink-primary">{report.message}</p>
                   <div className="mt-4 space-y-2 text-xs text-ink-secondary">
                     {report.concept ? <p>Prototype: {report.concept.title}</p> : null}
-                    {report.baseModel ? <p>Base Model: {report.baseModel.name}</p> : null}
+                    {report.kitVariant ? <p>Kit Variant: {report.kitVariant.name}</p> : null}
                     {report.stylePreset ? <p>Style DNA: {report.stylePreset.name}</p> : null}
                     {report.adminNotes ? <p>Admin Notes: {report.adminNotes}</p> : null}
                   </div>

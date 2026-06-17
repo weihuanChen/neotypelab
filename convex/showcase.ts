@@ -1,4 +1,8 @@
 import { v } from "convex/values";
+import {
+  BaseModelWithHierarchy,
+  summarizeBaseModelWithHierarchy,
+} from "./baseModelHierarchy";
 import { Doc, Id } from "./_generated/dataModel";
 import { MoodTag } from "./domain";
 import { getConceptEngagementSnapshot } from "./engagement";
@@ -31,11 +35,7 @@ type ConceptShareCard = {
     handle: string;
     fullName: string;
   } | null;
-  baseModel: {
-    name: string;
-    slug: string;
-    grade?: string;
-  } | null;
+  baseModel: BaseModelWithHierarchy | null;
   stylePreset: {
     name: string;
     slug: string;
@@ -96,13 +96,7 @@ export const listPublicConcepts = query({
                 fullName: owner.fullName,
               }
             : null,
-          baseModel: baseModel
-            ? {
-                name: baseModel.name,
-                slug: baseModel.slug,
-                grade: baseModel.grade,
-              }
-            : null,
+          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
           stylePreset: stylePreset
             ? {
                 name: stylePreset.name,
@@ -375,14 +369,7 @@ export const getSharedConcept = query({
             fullName: owner.fullName,
           }
         : null,
-      baseModel: baseModel
-        ? {
-            name: baseModel.name,
-            slug: baseModel.slug,
-            series: baseModel.series,
-            grade: baseModel.grade,
-          }
-        : null,
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
       stylePreset: stylePreset
         ? {
             name: stylePreset.name,
@@ -444,13 +431,12 @@ export const getRemixSeed = query({
       moodTags: concept.moodTags ?? [],
       weatheringLevel: concept.weatheringLevel,
       visibility: concept.visibility,
+      kitVariantId: baseModel._id,
       baseModelId: baseModel._id,
       stylePresetId: stylePreset._id,
       materialPresetId: materialPreset._id,
-      baseModel: {
-        name: baseModel.name,
-        slug: baseModel.slug,
-      },
+      kitVariant: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
       stylePreset: {
         name: stylePreset.name,
         slug: stylePreset.slug,
@@ -881,16 +867,7 @@ export const getSeoLandingPage = query({
           });
 
     return {
-      baseModel: {
-        _id: baseModel._id,
-        name: baseModel.name,
-        slug: baseModel.slug,
-        series: baseModel.series,
-        grade: baseModel.grade,
-        silhouetteType: baseModel.silhouetteType,
-        complexityLevel: baseModel.complexityLevel,
-        tags: baseModel.tags,
-      },
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
       stylePreset: {
         _id: stylePreset._id,
         name: stylePreset.name,
@@ -1003,13 +980,9 @@ export const getCreatorPackBySlug = query({
         shortDescription: stylePreset.shortDescription,
         isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
       })),
-      baseModels: baseModels.map((baseModel) => ({
-        _id: baseModel._id,
-        name: baseModel.name,
-        slug: baseModel.slug,
-        series: baseModel.series,
-        grade: baseModel.grade,
-      })),
+      baseModels: await Promise.all(
+        baseModels.map((baseModel) => summarizeBaseModelWithHierarchy(ctx, baseModel))
+      ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null)),
       materials: materialPresets.map((materialPreset) => ({
         _id: materialPreset._id,
         name: materialPreset.name,
@@ -1261,13 +1234,7 @@ async function getConceptShareCard(
           fullName: owner.fullName,
         }
       : null,
-    baseModel: baseModel
-      ? {
-          name: baseModel.name,
-          slug: baseModel.slug,
-          grade: baseModel.grade,
-        }
-      : null,
+    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
     stylePreset: stylePreset
       ? {
           name: stylePreset.name,
