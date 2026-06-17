@@ -15,6 +15,7 @@ import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TShowcaseRouteImport } from './routes/t_.showcase'
+import { Route as TModelsRouteImport } from './routes/t_.models'
 import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as TFeedbackRouteImport } from './routes/t_.feedback'
 import { Route as TCreateRouteImport } from './routes/t_.create'
@@ -63,6 +64,11 @@ const IndexRoute = IndexRouteImport.update({
 const TShowcaseRoute = TShowcaseRouteImport.update({
   id: '/t_/showcase',
   path: '/t/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TModelsRoute = TModelsRouteImport.update({
+  id: '/t_/models',
+  path: '/t/models',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TLibraryRoute = TLibraryRouteImport.update({
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
   '/t/library': typeof TLibraryRoute
+  '/t/models': typeof TModelsRoute
   '/t/showcase': typeof TShowcaseRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
   '/t/library': typeof TLibraryRoute
+  '/t/models': typeof TModelsRoute
   '/t/showcase': typeof TShowcaseRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -242,6 +250,7 @@ export interface FileRoutesById {
   '/t_/create': typeof TCreateRoute
   '/t_/feedback': typeof TFeedbackRoute
   '/t_/library': typeof TLibraryRoute
+  '/t_/models': typeof TModelsRoute
   '/t_/showcase': typeof TShowcaseRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack_/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/t/create'
     | '/t/feedback'
     | '/t/library'
+    | '/t/models'
     | '/t/showcase'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -298,6 +308,7 @@ export interface FileRouteTypes {
     | '/t/create'
     | '/t/feedback'
     | '/t/library'
+    | '/t/models'
     | '/t/showcase'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/t_/create'
     | '/t_/feedback'
     | '/t_/library'
+    | '/t_/models'
     | '/t_/showcase'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack_/$slug/opengraph-image'
@@ -353,6 +365,7 @@ export interface RootRouteChildren {
   TCreateRoute: typeof TCreateRoute
   TFeedbackRoute: typeof TFeedbackRoute
   TLibraryRoute: typeof TLibraryRoute
+  TModelsRoute: typeof TModelsRoute
   TShowcaseRoute: typeof TShowcaseRoute
   CreatorPackSlugOpengraphImageRoute: typeof CreatorPackSlugOpengraphImageRoute
   CreatorHandleOpengraphImageRoute: typeof CreatorHandleOpengraphImageRoute
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       path: '/t/showcase'
       fullPath: '/t/showcase'
       preLoaderRoute: typeof TShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/t_/models': {
+      id: '/t_/models'
+      path: '/t/models'
+      fullPath: '/t/models'
+      preLoaderRoute: typeof TModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/t_/library': {
@@ -576,6 +596,7 @@ const rootRouteChildren: RootRouteChildren = {
   TCreateRoute: TCreateRoute,
   TFeedbackRoute: TFeedbackRoute,
   TLibraryRoute: TLibraryRoute,
+  TModelsRoute: TModelsRoute,
   TShowcaseRoute: TShowcaseRoute,
   CreatorPackSlugOpengraphImageRoute: CreatorPackSlugOpengraphImageRoute,
   CreatorHandleOpengraphImageRoute: CreatorHandleOpengraphImageRoute,

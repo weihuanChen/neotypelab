@@ -9,6 +9,7 @@ import { getConceptEngagementSnapshot } from "./engagement";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
 import { buildPaintPlan } from "./paintMappingEngine";
 import { query } from "./functions";
+import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { QueryCtx } from "./types";
 
 type ShareableConcept = Doc<"concepts"> & {
@@ -96,7 +97,7 @@ export const listPublicConcepts = query({
                 fullName: owner.fullName,
               }
             : null,
-          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
           stylePreset: stylePreset
             ? {
                 name: stylePreset.name,
@@ -369,7 +370,7 @@ export const getSharedConcept = query({
             fullName: owner.fullName,
           }
         : null,
-      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
       stylePreset: stylePreset
         ? {
             name: stylePreset.name,
@@ -435,8 +436,8 @@ export const getRemixSeed = query({
       baseModelId: baseModel._id,
       stylePresetId: stylePreset._id,
       materialPresetId: materialPreset._id,
-      kitVariant: await summarizeBaseModelWithHierarchy(ctx, baseModel),
-      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+      kitVariant: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
       stylePreset: {
         name: stylePreset.name,
         slug: stylePreset.slug,
@@ -811,7 +812,7 @@ export const getSeoLandingPage = query({
     if (
       baseModel === null ||
       stylePreset === null ||
-      !baseModel.isActive ||
+      !isPublicModelCatalogRecord(baseModel) ||
       !stylePreset.isActive
     ) {
       return null;
@@ -867,7 +868,7 @@ export const getSeoLandingPage = query({
           });
 
     return {
-      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
       stylePreset: {
         _id: stylePreset._id,
         name: stylePreset.name,
@@ -981,7 +982,9 @@ export const getCreatorPackBySlug = query({
         isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
       })),
       baseModels: await Promise.all(
-        baseModels.map((baseModel) => summarizeBaseModelWithHierarchy(ctx, baseModel))
+        baseModels
+          .filter(isPublicModelCatalogRecord)
+          .map((baseModel) => summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }))
       ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null)),
       materials: materialPresets.map((materialPreset) => ({
         _id: materialPreset._id,
@@ -1083,7 +1086,7 @@ export const listSeoLandingPagesForSitemap = query({
     ]);
 
     const activeBaseModels = new Map(
-      baseModels.filter((model) => model.isActive).map((model) => [model._id, model])
+      baseModels.filter(isPublicModelCatalogRecord).map((model) => [model._id, model])
     );
     const activeStyles = new Map(
       stylePresets.filter((preset) => preset.isActive).map((preset) => [preset._id, preset])
@@ -1234,7 +1237,7 @@ async function getConceptShareCard(
           fullName: owner.fullName,
         }
       : null,
-    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
     stylePreset: stylePreset
       ? {
           name: stylePreset.name,

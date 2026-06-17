@@ -1,5 +1,6 @@
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { query } from "./functions";
+import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 
 export const listCreateOptions = query({
   args: {},
@@ -20,7 +21,7 @@ export const listCreateOptions = query({
 
     const kitVariants = await Promise.all(
       kitVariantsRaw
-        .filter((kitVariant) => kitVariant.isActive)
+        .filter(isPublicModelCatalogRecord)
         .map((kitVariant) => summarizeBaseModelWithHierarchy(ctx, kitVariant))
     ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
     const stylePresets = stylePresetsRaw

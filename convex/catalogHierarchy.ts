@@ -3,8 +3,10 @@ export type IpSeriesSeed = {
   slug: string;
   universe?: string;
   manufacturer?: string;
+  rightsOwner?: string;
   visualDNA?: string;
   promptAnchor?: string;
+  status?: "active" | "prerelease" | "archived";
   isActive: boolean;
 };
 
@@ -15,10 +17,11 @@ export type BaseUnitSeed = {
   unitCode?: string;
   aliases: string[];
   silhouetteType?: string;
-  proportionDNA?: string;
-  armorDNA?: string;
   keyShapeAnchors: string[];
+  nativeEquipment: string[];
   forbiddenChanges: string[];
+  promptAnchor?: string;
+  status?: "active" | "prerelease" | "archived";
   isActive: boolean;
 };
 
@@ -27,8 +30,10 @@ export type BaseModelVariantSeed = {
   baseUnitSlug: string;
   scale?: string;
   releaseVersion?: string;
+  primaryModelBrand?: string;
   panelDensity?: string;
   promptAnchor?: string;
+  status?: "active" | "prerelease" | "archived";
 };
 
 export const ipSeriesSeeds: IpSeriesSeed[] = [
@@ -36,40 +41,44 @@ export const ipSeriesSeeds: IpSeriesSeed[] = [
     name: "Mobile Suit Gundam",
     slug: "mobile-suit-gundam",
     universe: "Universal Century",
-    manufacturer: "Bandai",
+    rightsOwner: "Sunrise / Bandai Namco Filmworks",
     visualDNA: "classic blocky heroic real-robot armor with primary color separation",
     promptAnchor:
       "Universal Century Gundam real-robot world: grounded military hardware, clean humanoid mobile suits, functional armor panels, restrained heroic proportions.",
+    status: "active",
     isActive: true,
   },
   {
     name: "Mobile Suit Gundam: Char's Counterattack",
     slug: "chars-counterattack",
     universe: "Universal Century",
-    manufacturer: "Bandai",
+    rightsOwner: "Sunrise / Bandai Namco Filmworks",
     visualDNA: "late-UC ace mobile suits with larger frames, funnels, and mature military detailing",
     promptAnchor:
       "Char's Counterattack era: advanced Universal Century mobile suits, fin funnels, commander silhouettes, dense panel logic, and restrained late-UC military styling.",
+    status: "active",
     isActive: true,
   },
   {
     name: "Mobile Suit Gundam: Iron-Blooded Orphans",
     slug: "iron-blooded-orphans",
     universe: "Post Disaster",
-    manufacturer: "Bandai",
+    rightsOwner: "Sunrise / Bandai Namco Filmworks",
     visualDNA: "exposed mechanical frames, lean melee-focused armor, raw industrial battlefield forms",
     promptAnchor:
       "Iron-Blooded Orphans world: exposed Gundam frames, utilitarian armor, melee-heavy silhouettes, visible pistons, and harsh industrial combat wear.",
+    status: "active",
     isActive: true,
   },
   {
     name: "Evangelion",
     slug: "evangelion",
     universe: "Evangelion",
-    manufacturer: "Bandai",
+    rightsOwner: "khara",
     visualDNA: "lanky biomechanical humanoids with organic armor rhythm and vivid restraint accents",
     promptAnchor:
       "Evangelion world: biomechanical humanoid giants, elongated proportions, shoulder pylons, restrained armor plating, and high-contrast experimental color accents.",
+    status: "active",
     isActive: true,
   },
 ];
@@ -82,10 +91,11 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "RX-78-2",
     aliases: ["First Gundam", "Grandpa Gundam", "Gundam RX-78-2"],
     silhouetteType: "humanoid-mecha",
-    proportionDNA: "heroic humanoid, broad chest, squared limbs, compact backpack",
-    armorDNA: "white armor, blue torso, red feet, yellow vents, V-fin head",
-    keyShapeAnchors: ["V-fin", "dual eye visor", "chest vents", "shield", "beam rifle"],
-    forbiddenChanges: ["no wing backpack", "no mono-eye", "no full armor overload", "no organic silhouette"],
+    keyShapeAnchors: ["V-fin head", "twin eye sensors", "blue torso block", "yellow chest vents", "red feet"],
+    nativeEquipment: ["shield", "beam rifle"],
+    forbiddenChanges: ["no mono-eye", "no wing backpack", "no extra armor"],
+    promptAnchor: "Keep RX-78-2 Gundam recognizable as the original V-fin hero mobile suit.",
+    status: "active",
     isActive: true,
   },
   {
@@ -95,10 +105,11 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "MSN-04",
     aliases: ["Sazabi"],
     silhouetteType: "heavy-ace",
-    proportionDNA: "large commander frame, broad shoulders, heavy skirt armor, powerful legs",
-    armorDNA: "deep red armor, mono-eye head, rounded Neo Zeon armor volumes, dark internal frame",
-    keyShapeAnchors: ["mono-eye", "large shoulder armor", "funnel containers", "shield", "beam shot rifle"],
-    forbiddenChanges: ["no Gundam face", "no slim hero frame", "no white-blue-red hero palette", "no wing backpack"],
+    keyShapeAnchors: ["mono-eye head", "large shoulder armor", "funnel containers", "heavy skirt armor"],
+    nativeEquipment: ["shield", "beam shot rifle", "funnels"],
+    forbiddenChanges: ["no Gundam face", "no slim hero frame", "no wing backpack"],
+    promptAnchor: "Keep MSN-04 Sazabi recognizable as Char's heavy Neo Zeon commander suit.",
+    status: "active",
     isActive: true,
   },
   {
@@ -108,10 +119,11 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "ASW-G-08",
     aliases: ["Barbatos", "Gundam Barbatos"],
     silhouetteType: "agile-frame",
-    proportionDNA: "lean exposed frame, narrow waist, long limbs, melee-ready stance",
-    armorDNA: "white armor plates over dark mechanical frame, blue torso, red feet, yellow vents",
-    keyShapeAnchors: ["exposed waist frame", "mace", "angular head crest", "piston joints", "clawed feet"],
-    forbiddenChanges: ["no bulky classic Gundam torso", "no funnel backpack", "no mono-eye", "no smooth organic armor"],
+    keyShapeAnchors: ["exposed waist frame", "angular head crest", "piston joints", "clawed feet"],
+    nativeEquipment: ["mace"],
+    forbiddenChanges: ["no bulky classic Gundam torso", "no funnel backpack", "no mono-eye"],
+    promptAnchor: "Keep ASW-G-08 Barbatos recognizable as a lean exposed-frame melee Gundam.",
+    status: "active",
     isActive: true,
   },
   {
@@ -121,10 +133,11 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "RX-93",
     aliases: ["Nu Gundam"],
     silhouetteType: "hero-long-range",
-    proportionDNA: "tall heroic mobile suit, long legs, asymmetrical fin funnel rack, balanced armor mass",
-    armorDNA: "white armor, navy torso blocks, yellow vents, red accent parts, black fin funnel patterning",
-    keyShapeAnchors: ["V-fin", "fin funnels", "shield", "beam rifle", "chest vents"],
-    forbiddenChanges: ["no mono-eye", "no red commander armor", "no missing fin funnels", "no organic EVA proportions"],
+    keyShapeAnchors: ["V-fin head", "asymmetrical fin funnel rack", "chest vents", "long-range hero silhouette"],
+    nativeEquipment: ["fin funnels", "shield", "beam rifle"],
+    forbiddenChanges: ["no mono-eye", "no red commander armor", "no missing fin funnels"],
+    promptAnchor: "Keep RX-93 Nu Gundam recognizable through its V-fin head and asymmetrical fin funnel identity.",
+    status: "active",
     isActive: true,
   },
   {
@@ -134,10 +147,11 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "EVA-01",
     aliases: ["Evangelion Unit-01", "Test Type-01"],
     silhouetteType: "agile-experimental",
-    proportionDNA: "lanky biomechanical humanoid, narrow waist, long limbs, hunched predatory posture",
-    armorDNA: "purple armor, black undersuit, vivid green accents, orange eye details, shoulder pylons",
     keyShapeAnchors: ["single horn", "shoulder pylons", "narrow waist", "green chest accents", "elongated head"],
-    forbiddenChanges: ["no Gundam V-fin", "no blocky mobile suit torso", "no heavy skirt armor", "no classic military mono-eye"],
+    nativeEquipment: ["progressive knife", "pallet rifle"],
+    forbiddenChanges: ["no Gundam V-fin", "no blocky mobile suit torso", "no classic military mono-eye"],
+    promptAnchor: "Keep EVA Unit-01 recognizable as the lanky experimental Evangelion test type.",
+    status: "active",
     isActive: true,
   },
 ];
@@ -147,41 +161,51 @@ export const baseModelVariantSeeds: BaseModelVariantSeed[] = [
     baseModelSlug: "rx-78-2",
     baseUnitSlug: "rx-78-2-gundam",
     scale: "1/100",
+    primaryModelBrand: "Bandai",
     panelDensity: "medium",
+    status: "active",
     promptAnchor:
-      "MG RX-78-2 kit variant: preserve classic RX-78-2 proportions, V-fin, chest vents, shield, beam rifle, and clean 1/100 Master Grade panel separation.",
+      "Preserve this kit version rather than simplifying into HG-style surfaces or mixing with other RX-78-2 Gundam versions.",
   },
   {
     baseModelSlug: "sazabi",
     baseUnitSlug: "msn-04-sazabi",
     scale: "1/100",
+    primaryModelBrand: "Bandai",
     panelDensity: "high",
+    status: "active",
     promptAnchor:
-      "MG Sazabi kit variant: preserve the large red commander silhouette, mono-eye, heavy shoulders, funnel containers, shield mass, and dense Master Grade armor paneling.",
+      "Preserve this kit version rather than simplifying its Master Grade surfaces or mixing with other Sazabi versions.",
   },
   {
     baseModelSlug: "barbatos",
     baseUnitSlug: "asw-g-08-gundam-barbatos",
     scale: "1/100",
+    primaryModelBrand: "Bandai",
     panelDensity: "medium",
+    status: "active",
     promptAnchor:
-      "MG Barbatos kit variant: preserve the exposed Gundam frame, narrow waist, mace-ready melee posture, angular armor plates, and visible piston/mechanical detail.",
+      "Preserve this kit version rather than simplifying its Master Grade frame detail or mixing with other Barbatos forms.",
   },
   {
     baseModelSlug: "nu-gundam",
     baseUnitSlug: "rx-93-nu-gundam",
     scale: "1/144",
+    primaryModelBrand: "Bandai",
     panelDensity: "high",
+    status: "active",
     promptAnchor:
-      "RG Nu Gundam kit variant: preserve the tall RX-93 silhouette, fin funnel rack, V-fin head, shield, beam rifle, and dense Real Grade panel separation.",
+      "Preserve this kit version rather than simplifying into HG-style surfaces or mixing with other RX-93 Nu Gundam versions.",
   },
   {
     baseModelSlug: "eva-unit-01",
     baseUnitSlug: "eva-unit-01",
     scale: "1/144",
+    primaryModelBrand: "Bandai",
     panelDensity: "high",
+    status: "active",
     promptAnchor:
-      "RG EVA Unit-01 kit variant: preserve the lanky biomechanical body, single horn, shoulder pylons, purple armor, green accents, and experimental organic armor rhythm.",
+      "Preserve this kit version rather than simplifying its Real Grade surfaces or mixing with other EVA Unit-01 versions.",
   },
 ];
 
@@ -191,10 +215,10 @@ export function buildBaseUnitSearchText(unit: BaseUnitSeed) {
     unit.slug,
     unit.unitCode,
     unit.silhouetteType,
-    unit.proportionDNA,
-    unit.armorDNA,
+    unit.promptAnchor,
     ...unit.aliases,
     ...unit.keyShapeAnchors,
+    ...unit.nativeEquipment,
     ...unit.forbiddenChanges,
   ]
     .filter(Boolean)
@@ -203,12 +227,10 @@ export function buildBaseUnitSearchText(unit: BaseUnitSeed) {
 
 export function buildBaseModelVariantSearchText(input: {
   name: string;
-  series?: string;
-  manufacturer?: string;
+  primaryModelBrand?: string;
   grade?: string;
   scale?: string;
   releaseVersion?: string;
-  silhouetteType?: string;
   complexityLevel?: string;
   panelDensity?: string;
   aliases: string[];
@@ -216,24 +238,18 @@ export function buildBaseModelVariantSearchText(input: {
   promptAnchor?: string;
   unitName?: string;
   unitCode?: string;
-  ipSeriesName?: string;
-  universe?: string;
 }) {
   return [
     input.name,
-    input.series,
-    input.manufacturer,
+    input.primaryModelBrand,
     input.grade,
     input.scale,
     input.releaseVersion,
-    input.silhouetteType,
     input.complexityLevel,
     input.panelDensity,
     input.promptAnchor,
     input.unitName,
     input.unitCode,
-    input.ipSeriesName,
-    input.universe,
     ...input.aliases,
     ...input.tags,
   ]

@@ -43,7 +43,6 @@ export const init = internalMutation({
     }
 
     const baseUnitSeedBySlug = new Map(baseUnitSeeds.map((unit) => [unit.slug, unit]));
-    const ipSeriesSeedBySlug = new Map(ipSeriesSeeds.map((series) => [series.slug, series]));
     const variantSeedByBaseModelSlug = new Map(
       baseModelVariantSeeds.map((variant) => [variant.baseModelSlug, variant])
     );
@@ -59,30 +58,26 @@ export const init = internalMutation({
         variantSeed === undefined
           ? undefined
           : baseUnitSeedBySlug.get(variantSeed.baseUnitSlug);
-      const ipSeries =
-        baseUnit === undefined
-          ? undefined
-          : ipSeriesSeedBySlug.get(baseUnit.ipSeriesSlug);
 
       await ctx.db.insert("baseModels", {
         ...modelFields,
         baseUnitId,
         scale: variantSeed?.scale,
         releaseVersion: variantSeed?.releaseVersion,
+        primaryModelBrand: variantSeed?.primaryModelBrand ?? model.manufacturer,
         panelDensity: variantSeed?.panelDensity,
         promptAnchor: variantSeed?.promptAnchor,
+        status: variantSeed?.status ?? (model.isActive ? "active" : "archived"),
         defaultMaterialPresetId:
           defaultMaterialSlug === undefined
             ? undefined
             : materialPresetIdsBySlug.get(defaultMaterialSlug),
         searchText: buildBaseModelVariantSearchText({
           name: model.name,
-          series: model.series,
-          manufacturer: model.manufacturer,
+          primaryModelBrand: variantSeed?.primaryModelBrand ?? model.manufacturer,
           grade: model.grade,
           scale: variantSeed?.scale,
           releaseVersion: variantSeed?.releaseVersion,
-          silhouetteType: model.silhouetteType,
           complexityLevel: model.complexityLevel,
           panelDensity: variantSeed?.panelDensity,
           aliases: model.aliases,
@@ -90,8 +85,6 @@ export const init = internalMutation({
           promptAnchor: variantSeed?.promptAnchor,
           unitName: baseUnit?.name,
           unitCode: baseUnit?.unitCode,
-          ipSeriesName: ipSeries?.name,
-          universe: ipSeries?.universe,
         }),
       });
     }
@@ -199,12 +192,14 @@ const baseModels = [
     slug: "rx-78-2",
     series: "Mobile Suit Gundam",
     manufacturer: "Bandai",
+    primaryModelBrand: "Bandai",
     grade: "MG",
     silhouetteType: "hero-balanced",
     complexityLevel: "medium",
     aliases: ["Gundam RX-78-2", "Granddaddy Gundam"],
     tags: ["hero", "universal-century", "balanced"],
     defaultMaterialSlug: "semi-gloss-armor",
+    status: "active",
     isActive: true,
     searchText: "RX-78-2 Mobile Suit Gundam MG hero balanced",
   },
@@ -213,12 +208,14 @@ const baseModels = [
     slug: "sazabi",
     series: "Char's Counterattack",
     manufacturer: "Bandai",
+    primaryModelBrand: "Bandai",
     grade: "MG",
     silhouetteType: "heavy-ace",
     complexityLevel: "high",
     aliases: ["MSN-04 Sazabi"],
     tags: ["ace", "heavy", "char"],
     defaultMaterialSlug: "gunmetal-frame",
+    status: "active",
     isActive: true,
     searchText: "Sazabi Char's Counterattack MG heavy ace",
   },
@@ -227,12 +224,14 @@ const baseModels = [
     slug: "barbatos",
     series: "Iron-Blooded Orphans",
     manufacturer: "Bandai",
+    primaryModelBrand: "Bandai",
     grade: "MG",
     silhouetteType: "agile-frame",
     complexityLevel: "medium",
     aliases: ["ASW-G-08 Barbatos"],
     tags: ["frame", "melee", "orphan"],
     defaultMaterialSlug: "matte-armor",
+    status: "active",
     isActive: true,
     searchText: "Barbatos Iron-Blooded Orphans MG agile frame",
   },
@@ -241,12 +240,14 @@ const baseModels = [
     slug: "nu-gundam",
     series: "Char's Counterattack",
     manufacturer: "Bandai",
+    primaryModelBrand: "Bandai",
     grade: "RG",
     silhouetteType: "hero-long-range",
     complexityLevel: "high",
     aliases: ["RX-93 Nu Gundam"],
     tags: ["hero", "fin-funnel", "char-counterattack"],
     defaultMaterialSlug: "semi-gloss-armor",
+    status: "active",
     isActive: true,
     searchText: "Nu Gundam Char's Counterattack RG hero long range",
   },
@@ -255,12 +256,14 @@ const baseModels = [
     slug: "eva-unit-01",
     series: "Evangelion",
     manufacturer: "Bandai",
+    primaryModelBrand: "Bandai",
     grade: "RG",
     silhouetteType: "agile-experimental",
     complexityLevel: "high",
     aliases: ["Evangelion Unit-01", "Test Type-01"],
     tags: ["eva", "experimental", "organic"],
     defaultMaterialSlug: "ceramic-white",
+    status: "active",
     isActive: true,
     searchText: "EVA Unit 01 Evangelion RG agile experimental",
   },

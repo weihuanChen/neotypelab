@@ -12,6 +12,7 @@ export type ModelPromptContext = {
     slug: string;
     series?: string;
     manufacturer?: string;
+    primaryModelBrand?: string;
     grade?: string;
     scale?: string;
     releaseVersion?: string;
@@ -28,9 +29,8 @@ export type ModelPromptContext = {
       unitCode?: string;
       aliases: string[];
       silhouetteType?: string;
-      proportionDNA?: string;
-      armorDNA?: string;
       keyShapeAnchors: string[];
+      nativeEquipment: string[];
       forbiddenChanges: string[];
       promptAnchor?: string;
       ipSeries: null | {
@@ -39,6 +39,7 @@ export type ModelPromptContext = {
         slug: string;
         universe?: string;
         manufacturer?: string;
+        rightsOwner?: string;
         visualDNA?: string;
         promptAnchor?: string;
       };
@@ -63,34 +64,20 @@ export async function buildModelPromptContext(
 ): Promise<ModelPromptContext> {
   const baseUnit = baseModel.baseUnitId ? await ctx.db.get(baseModel.baseUnitId) : null;
   const ipSeries = baseUnit ? await ctx.db.get(baseUnit.ipSeriesId) : null;
-  const shortLabel = formatKitVariantLabel(baseModel);
+  const shortLabel = formatKitVariantLabel(baseModel, baseUnit?.name);
+  const baseUnitName = baseUnit?.name ?? baseModel.name;
   const lines = [
-    shortLabel,
-    ipSeries
-      ? [
-          `IP / Series DNA: ${ipSeries.name}`,
-          ipSeries.universe ? `Universe: ${ipSeries.universe}` : undefined,
-          ipSeries.visualDNA ? `Visual DNA: ${ipSeries.visualDNA}` : undefined,
-          ipSeries.promptAnchor ? `World anchor: ${ipSeries.promptAnchor}` : undefined,
-        ]
-          .filter(Boolean)
-          .join(". ")
-      : baseModel.series
-        ? `IP / Series DNA: ${baseModel.series}`
-        : undefined,
-    baseUnit
-      ? [
-          `Base Unit DNA: ${baseUnit.name}${baseUnit.unitCode ? ` (${baseUnit.unitCode})` : ""}`,
-          baseUnit.proportionDNA ? `Proportions: ${baseUnit.proportionDNA}` : undefined,
-          baseUnit.armorDNA ? `Armor: ${baseUnit.armorDNA}` : undefined,
-        ]
-          .filter(Boolean)
-          .join(". ")
-      : undefined,
+    `Kit Variant: ${shortLabel}.`,
+    baseModel.promptAnchor ??
+      `Preserve this kit version without simplifying its surface language or mixing with other ${baseUnitName} versions.`,
+    baseUnit ? `Base Unit: ${baseUnit.name}.` : undefined,
     baseUnit?.keyShapeAnchors.length
-      ? `Key shape anchors: ${baseUnit.keyShapeAnchors.join(", ")}.`
+      ? `Key identity anchors: ${baseUnit.keyShapeAnchors.join(", ")}.`
       : undefined,
-    baseModel.promptAnchor ? `Kit variant anchor: ${baseModel.promptAnchor}` : undefined,
+    baseUnit?.nativeEquipment?.length
+      ? `Native equipment: ${baseUnit.nativeEquipment.join(", ")}.`
+      : undefined,
+    baseUnit?.promptAnchor,
     baseUnit?.forbiddenChanges.length
       ? `Forbidden changes: ${baseUnit.forbiddenChanges.join(", ")}.`
       : undefined,
@@ -105,6 +92,7 @@ export async function buildModelPromptContext(
       slug: baseModel.slug,
       series: baseModel.series,
       manufacturer: baseModel.manufacturer,
+      primaryModelBrand: baseModel.primaryModelBrand ?? baseModel.manufacturer,
       grade: baseModel.grade,
       scale: baseModel.scale,
       releaseVersion: baseModel.releaseVersion,
@@ -122,10 +110,10 @@ export async function buildModelPromptContext(
             unitCode: baseUnit.unitCode,
             aliases: baseUnit.aliases,
             silhouetteType: baseUnit.silhouetteType,
-            proportionDNA: baseUnit.proportionDNA,
-            armorDNA: baseUnit.armorDNA,
             keyShapeAnchors: baseUnit.keyShapeAnchors,
+            nativeEquipment: baseUnit.nativeEquipment ?? [],
             forbiddenChanges: baseUnit.forbiddenChanges,
+            promptAnchor: baseUnit.promptAnchor,
             ipSeries: ipSeries
               ? {
                   id: ipSeries._id,
@@ -133,6 +121,7 @@ export async function buildModelPromptContext(
                   slug: ipSeries.slug,
                   universe: ipSeries.universe,
                   manufacturer: ipSeries.manufacturer,
+                  rightsOwner: ipSeries.rightsOwner ?? ipSeries.manufacturer,
                   visualDNA: ipSeries.visualDNA,
                   promptAnchor: ipSeries.promptAnchor,
                 }
@@ -143,14 +132,17 @@ export async function buildModelPromptContext(
   };
 }
 
-function formatKitVariantLabel(baseModel: Doc<"baseModels">) {
-  const meta = [
-    baseModel.grade,
-    baseModel.scale,
-    baseModel.releaseVersion,
-    baseModel.panelDensity ? `${baseModel.panelDensity} panel density` : undefined,
-    baseModel.complexityLevel ? `${baseModel.complexityLevel} complexity` : undefined,
+function formatKitVariantLabel(baseModel: Doc<"baseModels">, baseUnitName?: string) {
+  const name = baseUnitName && baseUnitName.includes(baseModel.name) ? baseUnitName : baseModel.name;
+  const parts = [
+    baseModel.grade && !name.toLowerCase().includes(baseModel.grade.toLowerCase())
+      ? baseModel.grade
+      : undefined,
+    name,
+    baseModel.releaseVersion && !name.toLowerCase().includes(baseModel.releaseVersion.toLowerCase())
+      ? baseModel.releaseVersion
+      : undefined,
   ].filter(Boolean);
 
-  return meta.length > 0 ? `${baseModel.name} (${meta.join(", ")})` : baseModel.name;
+  return baseModel.scale ? `${parts.join(" ")} (${baseModel.scale})` : parts.join(" ");
 }

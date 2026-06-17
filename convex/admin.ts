@@ -11,6 +11,7 @@ import {
   UserAccountStatus,
   UserPlan,
   vCreditActionType,
+  vModelCatalogStatus,
   vMoodTag,
   vPromptTemplateKind,
   vUserAccountStatus,
@@ -936,6 +937,7 @@ export const updateBaseModel = mutation({
     name: v.optional(v.string()),
     series: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
+    primaryModelBrand: v.optional(v.string()),
     grade: v.optional(v.string()),
     scale: v.optional(v.string()),
     releaseVersion: v.optional(v.string()),
@@ -947,6 +949,7 @@ export const updateBaseModel = mutation({
     thumbnailAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
     promptAnchor: v.optional(v.string()),
+    status: v.optional(vModelCatalogStatus),
     isActive: v.optional(v.boolean()),
   },
   async handler(ctx, args) {
@@ -965,6 +968,7 @@ export const updateKitVariant = mutation({
     name: v.optional(v.string()),
     series: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
+    primaryModelBrand: v.optional(v.string()),
     grade: v.optional(v.string()),
     scale: v.optional(v.string()),
     releaseVersion: v.optional(v.string()),
@@ -976,6 +980,7 @@ export const updateKitVariant = mutation({
     thumbnailAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
     promptAnchor: v.optional(v.string()),
+    status: v.optional(vModelCatalogStatus),
     isActive: v.optional(v.boolean()),
   },
   async handler(ctx, args) {
@@ -1454,6 +1459,7 @@ function buildBaseModelSearchText(input: {
   name: string;
   series?: string;
   manufacturer?: string;
+  primaryModelBrand?: string;
   grade?: string;
   scale?: string;
   releaseVersion?: string;
@@ -1467,7 +1473,7 @@ function buildBaseModelSearchText(input: {
   return [
     input.name,
     input.series,
-    input.manufacturer,
+    input.primaryModelBrand ?? input.manufacturer,
     input.grade,
     input.scale,
     input.releaseVersion,
@@ -1489,6 +1495,7 @@ async function updateKitVariantFields(
     name?: string;
     series?: string;
     manufacturer?: string;
+    primaryModelBrand?: string;
     grade?: string;
     scale?: string;
     releaseVersion?: string;
@@ -1500,6 +1507,7 @@ async function updateKitVariantFields(
     thumbnailAssetKey?: string;
     defaultMaterialPresetId?: Id<"materialPresets">;
     promptAnchor?: string;
+    status?: "active" | "prerelease" | "archived";
     isActive?: boolean;
     auditAction: string;
     auditEntityType: string;
@@ -1520,6 +1528,9 @@ async function updateKitVariantFields(
   }
   if (args.manufacturer !== undefined) {
     patch.manufacturer = args.manufacturer;
+  }
+  if (args.primaryModelBrand !== undefined) {
+    patch.primaryModelBrand = args.primaryModelBrand || undefined;
   }
   if (args.grade !== undefined) {
     patch.grade = args.grade;
@@ -1554,14 +1565,20 @@ async function updateKitVariantFields(
   if (args.promptAnchor !== undefined) {
     patch.promptAnchor = args.promptAnchor || undefined;
   }
+  if (args.status !== undefined) {
+    patch.status = args.status;
+    patch.isActive = args.status === "active";
+  }
   if (args.isActive !== undefined) {
     patch.isActive = args.isActive;
+    patch.status = args.isActive ? "active" : "archived";
   }
 
   patch.searchText = buildBaseModelSearchText({
     name: patch.name ?? variant.name,
     series: patch.series ?? variant.series,
     manufacturer: patch.manufacturer ?? variant.manufacturer,
+    primaryModelBrand: patch.primaryModelBrand ?? variant.primaryModelBrand ?? variant.manufacturer,
     grade: patch.grade ?? variant.grade,
     scale: patch.scale ?? variant.scale,
     releaseVersion: patch.releaseVersion ?? variant.releaseVersion,

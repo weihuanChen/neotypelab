@@ -15,6 +15,7 @@ const terminalNavItems = [
 ] as const satisfies readonly TerminalNavItem[];
 
 const adminNavItem = { href: "/t/admin", label: "Admin" } as const satisfies TerminalNavItem;
+const modelsNavItem = { href: "/t/models", label: "Models" } as const satisfies TerminalNavItem;
 
 type TerminalNavHref =
   | "/t"
@@ -22,6 +23,7 @@ type TerminalNavHref =
   | "/t/create"
   | "/t/feedback"
   | "/t/library"
+  | "/t/models"
   | "/t/showcase";
 
 type TerminalNavItem = {
@@ -108,7 +110,7 @@ function TerminalShellBody({
   viewer: TerminalViewer;
 }) {
   const visibleNavItems = viewer?.canManagePlatform
-    ? [...terminalNavItems, adminNavItem]
+    ? [...terminalNavItems, modelsNavItem, adminNavItem]
     : terminalNavItems;
 
   return (

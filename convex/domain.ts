@@ -27,6 +27,13 @@ export const vConceptStatus = v.union(
 );
 export type ConceptStatus = Infer<typeof vConceptStatus>;
 
+export const vModelCatalogStatus = v.union(
+  v.literal("active"),
+  v.literal("prerelease"),
+  v.literal("archived")
+);
+export type ModelCatalogStatus = Infer<typeof vModelCatalogStatus>;
+
 export const vConceptVisibility = v.union(
   v.literal("private"),
   v.literal("unlisted"),

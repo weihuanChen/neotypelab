@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { vConceptVisibility, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
+import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 
 const MAX_NOTES_LENGTH = 100;
@@ -86,7 +87,7 @@ export const initializePrototype = mutation({
     ) {
       throw new Error("Remix source is not available on a shareable surface");
     }
-    if (baseModel === null || !baseModel.isActive) {
+    if (baseModel === null || !isPublicModelCatalogRecord(baseModel)) {
       throw new Error("Selected kit variant is unavailable");
     }
     if (stylePreset === null || !stylePreset.isActive) {

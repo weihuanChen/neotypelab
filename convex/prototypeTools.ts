@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { buildPaintPlan } from "./paintMappingEngine";
 import { MoodTag, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
+import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
 
@@ -57,7 +58,7 @@ export const generateStyleSuggestion = mutation({
         .then((items) => items.find((item) => item.isActive) ?? null),
     ]);
 
-    if (baseModel === null || !baseModel.isActive) {
+    if (baseModel === null || !isPublicModelCatalogRecord(baseModel)) {
       throw new Error("Selected kit variant is unavailable");
     }
     if (account === null) {
@@ -189,7 +190,7 @@ export const generatePalettePlan = mutation({
           .then((items) => items.find((item) => item.isActive) ?? null),
       ]);
 
-    if (baseModel === null || !baseModel.isActive) {
+    if (baseModel === null || !isPublicModelCatalogRecord(baseModel)) {
       throw new Error("Selected kit variant is unavailable");
     }
     if (stylePreset === null || !stylePreset.isActive) {
@@ -675,10 +676,6 @@ function buildStyleSuggestions(input: {
       unitCode?: string;
       keyShapeAnchors: string[];
       forbiddenChanges: string[];
-      ipSeries: null | {
-        name: string;
-        universe?: string;
-      };
     } | null;
   };
   moodTags: MoodTag[];
@@ -741,12 +738,6 @@ function buildStyleSuggestions(input: {
             .join(", ")}.`
         );
       }
-      if (input.baseModel.baseUnit?.ipSeries) {
-        reasons.push(
-          `${input.baseModel.baseUnit.ipSeries.name} context keeps the style recommendation grounded in ${input.baseModel.baseUnit.ipSeries.universe ?? "its source universe"}.`
-        );
-      }
-
       if (preset.promptKeywords.some((keyword) => notes.includes(keyword.toLowerCase()))) {
         score += 2;
         reasons.push("Operator notes overlap with this preset's governed prompt vocabulary.");

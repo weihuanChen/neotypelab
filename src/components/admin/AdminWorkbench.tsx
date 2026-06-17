@@ -114,19 +114,6 @@ type FeedbackDraft = {
   status: "open" | "triaged" | "resolved";
 };
 
-type KitVariantDraft = {
-  name: string;
-  series: string;
-  manufacturer: string;
-  grade: string;
-  silhouetteType: string;
-  complexityLevel: string;
-  aliases: string;
-  tags: string;
-  defaultMaterialPresetId: string;
-  isActive: boolean;
-};
-
 type StylePresetDraft = {
   name: string;
   category: string;
@@ -290,7 +277,6 @@ export function AdminWorkbench() {
   const updatePromptExperimentRun = useMutation(api.admin.updatePromptExperimentRun);
   const updatePriceRule = useMutation(api.admin.updatePriceRule);
   const reviewFeedback = useMutation(api.admin.reviewFeedback);
-  const updateKitVariant = useMutation(api.admin.updateKitVariant);
   const updateStylePreset = useMutation(api.admin.updateStylePreset);
   const updateMaterialPreset = useMutation(api.admin.updateMaterialPreset);
   const updatePaintMapping = useMutation(api.admin.updatePaintMapping);
@@ -323,7 +309,6 @@ export function AdminWorkbench() {
   const [codeBatchDrafts, setCodeBatchDrafts] = useState<Record<string, CodeBatchDraft>>({});
   const [generatedCodeBatches, setGeneratedCodeBatches] = useState<Record<string, string[]>>({});
   const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, FeedbackDraft>>({});
-  const [kitVariantDrafts, setKitVariantDrafts] = useState<Record<string, KitVariantDraft>>({});
   const [stylePresetDrafts, setStylePresetDrafts] = useState<Record<string, StylePresetDraft>>({});
   const [materialPresetDrafts, setMaterialPresetDrafts] = useState<Record<string, MaterialPresetDraft>>({});
   const [paintMappingDrafts, setPaintMappingDrafts] = useState<Record<string, PaintMappingDraft>>({});
@@ -331,6 +316,11 @@ export function AdminWorkbench() {
     __new__: defaultCreatorPackDraft(),
   });
   const newCreatorPackDraft = creatorPackDrafts.__new__;
+  const catalogOpsCount =
+    (catalogData?.stylePresets.length ?? 0) +
+    (catalogData?.materialPresets.length ?? 0) +
+    (catalogData?.paintMappings.length ?? 0) +
+    (catalogData?.creatorPacks.length ?? 0);
 
   const adminSections: AdminSection[] = [
     {
@@ -377,8 +367,8 @@ export function AdminWorkbench() {
       id: "catalog",
       label: "Catalog",
       eyebrow: "Content ops",
-      description: "Maintain kit variants, Style DNA, materials, paint maps, and creator packs.",
-      metric: `${catalogData?.kitVariants.length ?? 0}`,
+      description: "Maintain Style DNA, materials, paint maps, and creator packs.",
+      metric: `${catalogOpsCount}`,
       tone: "neutral",
     },
   ];
@@ -1944,7 +1934,7 @@ export function AdminWorkbench() {
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Catalog operations</p>
-            <h3 className="mt-2 text-2xl font-semibold">Base models, Style DNA, materials, paint maps</h3>
+            <h3 className="mt-2 text-2xl font-semibold">Style DNA, materials, paint maps</h3>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
             This is the operational catalog layer behind P1. Each entry can be tuned,
@@ -1953,111 +1943,6 @@ export function AdminWorkbench() {
         </div>
 
         <div className="mt-5 grid gap-6 xl:grid-cols-2">
-          <section className="border-2 border-line-primary bg-panel p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Kit Variants</p>
-            <div className="mt-4 space-y-4">
-              {catalogData === undefined ? (
-                <CatalogLoading label="Loading kit variants." />
-              ) : (
-                catalogData.kitVariants.map((kitVariant) => {
-                  const draft = kitVariantDrafts[kitVariant._id] ?? {
-                    name: kitVariant.name,
-                    series: kitVariant.series ?? "",
-                    manufacturer: kitVariant.manufacturer ?? "",
-                    grade: kitVariant.grade ?? "",
-                    silhouetteType: kitVariant.silhouetteType ?? "",
-                    complexityLevel: kitVariant.complexityLevel ?? "",
-                    aliases: joinCsv(kitVariant.aliases),
-                    tags: joinCsv(kitVariant.tags),
-                    defaultMaterialPresetId: kitVariant.defaultMaterialPresetId ?? "none",
-                    isActive: kitVariant.isActive,
-                  };
-                  return (
-                    <article key={kitVariant._id} className="rounded-[20px] border border-line-secondary bg-main p-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <FlagPill label={kitVariant.slug} tone="cyan" />
-                        <FlagPill label={draft.isActive ? "active" : "inactive"} tone={draft.isActive ? "green" : "red"} />
-                      </div>
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <Field label="Name">
-                          <Input value={draft.name} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Series">
-                          <Input value={draft.series} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, series: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Manufacturer">
-                          <Input value={draft.manufacturer} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, manufacturer: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Grade">
-                          <Input value={draft.grade} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, grade: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Silhouette">
-                          <Input value={draft.silhouetteType} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, silhouetteType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Complexity">
-                          <Input value={draft.complexityLevel} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, complexityLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Aliases CSV">
-                          <Input value={draft.aliases} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, aliases: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Tags CSV">
-                          <Input value={draft.tags} onChange={(event) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, tags: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
-                        </Field>
-                        <Field label="Default Material">
-                          <Select value={draft.defaultMaterialPresetId} onValueChange={(value) => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, defaultMaterialPresetId: value } }))}>
-                            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
-                              <SelectItem value="none">None</SelectItem>
-                              {catalogData.materialPresets.map((preset) => (
-                                <SelectItem key={preset._id} value={preset._id}>{preset.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <ActionButton
-                          onClick={() =>
-                            void runAdminAction({
-                              key: `kit-variant-${kitVariant._id}`,
-                              action: async () => {
-                                await updateKitVariant({
-                                  kitVariantId: kitVariant._id,
-                                  name: draft.name.trim(),
-                                  series: emptyToUndefined(draft.series),
-                                  manufacturer: emptyToUndefined(draft.manufacturer),
-                                  grade: emptyToUndefined(draft.grade),
-                                  silhouetteType: emptyToUndefined(draft.silhouetteType),
-                                  complexityLevel: emptyToUndefined(draft.complexityLevel),
-                                  aliases: parseCsv(draft.aliases),
-                                  tags: parseCsv(draft.tags),
-                                  defaultMaterialPresetId: draft.defaultMaterialPresetId === "none" ? undefined : draft.defaultMaterialPresetId as Id<"materialPresets">,
-                                  isActive: draft.isActive,
-                                });
-                              },
-                              success: `Saved kit variant ${draft.name}.`,
-                              setBusyKey,
-                              setErrorMessage,
-                              setStatusMessage,
-                            })
-                          }
-                          busy={busyKey === `kit-variant-${kitVariant._id}`}
-                        >
-                          Save Kit Variant
-                        </ActionButton>
-                        <button type="button" onClick={() => setKitVariantDrafts((current) => ({ ...current, [kitVariant._id]: { ...draft, isActive: !draft.isActive } }))} className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary">
-                          {draft.isActive ? "Disable" : "Enable"}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
           <section className="border-2 border-line-primary bg-panel p-5">
             <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Style DNA</p>
             <div className="mt-4 space-y-4">

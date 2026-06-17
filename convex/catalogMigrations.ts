@@ -90,8 +90,10 @@ export const splitBaseModelHierarchy = internalMutation({
           name: seed.name,
           universe: seed.universe,
           manufacturer: seed.manufacturer,
+          rightsOwner: seed.rightsOwner ?? seed.manufacturer,
           visualDNA: seed.visualDNA,
           promptAnchor: seed.promptAnchor,
+          status: seed.status ?? (seed.isActive ? "active" : "archived"),
           isActive: seed.isActive,
         };
         if (shouldWrite) {
@@ -124,11 +126,12 @@ export const splitBaseModelHierarchy = internalMutation({
         unitCode: seed.unitCode,
         aliases: seed.aliases,
         silhouetteType: seed.silhouetteType,
-        proportionDNA: seed.proportionDNA,
-        armorDNA: seed.armorDNA,
         keyShapeAnchors: seed.keyShapeAnchors,
+        nativeEquipment: seed.nativeEquipment,
         forbiddenChanges: seed.forbiddenChanges,
+        promptAnchor: seed.promptAnchor,
         searchText: buildBaseUnitSearchText(seed),
+        status: seed.status ?? (seed.isActive ? "active" : "archived"),
         isActive: seed.isActive,
       };
       const existing = await ctx.db
@@ -158,9 +161,6 @@ export const splitBaseModelHierarchy = internalMutation({
       const baseModel = baseModelsBySlug.get(seed.baseModelSlug);
       const baseUnitId = baseUnitIdsBySlug.get(seed.baseUnitSlug);
       const baseUnit = baseUnitSeeds.find((unit) => unit.slug === seed.baseUnitSlug);
-      const ipSeries = baseUnit
-        ? ipSeriesSeeds.find((series) => series.slug === baseUnit.ipSeriesSlug)
-        : undefined;
 
       if (baseModel === undefined) {
         missingBaseModels.push(seed.baseModelSlug);
@@ -178,16 +178,16 @@ export const splitBaseModelHierarchy = internalMutation({
         baseUnitId,
         scale: seed.scale,
         releaseVersion: seed.releaseVersion,
+        primaryModelBrand: seed.primaryModelBrand ?? baseModel.primaryModelBrand ?? baseModel.manufacturer,
         panelDensity: seed.panelDensity,
         promptAnchor: seed.promptAnchor,
+        status: seed.status ?? (baseModel.isActive ? "active" : "archived"),
         searchText: buildBaseModelVariantSearchText({
           name: baseModel.name,
-          series: baseModel.series,
-          manufacturer: baseModel.manufacturer,
+          primaryModelBrand: seed.primaryModelBrand ?? baseModel.primaryModelBrand ?? baseModel.manufacturer,
           grade: baseModel.grade,
           scale: seed.scale ?? baseModel.scale,
           releaseVersion: seed.releaseVersion ?? baseModel.releaseVersion,
-          silhouetteType: baseModel.silhouetteType,
           complexityLevel: baseModel.complexityLevel,
           panelDensity: seed.panelDensity ?? baseModel.panelDensity,
           aliases: baseModel.aliases,
@@ -195,8 +195,6 @@ export const splitBaseModelHierarchy = internalMutation({
           promptAnchor: seed.promptAnchor ?? baseModel.promptAnchor,
           unitName: baseUnit.name,
           unitCode: baseUnit.unitCode,
-          ipSeriesName: ipSeries?.name,
-          universe: ipSeries?.universe,
         }),
       };
 
@@ -214,6 +212,67 @@ export const splitBaseModelHierarchy = internalMutation({
       baseUnitsUpdated,
       baseModelsUpdated,
       missingBaseModels,
+    };
+  },
+});
+
+export const backfillModelCatalogStatus = internalMutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+  },
+  async handler(ctx, { dryRun }) {
+    const shouldWrite = dryRun !== true;
+    const [ipSeries, baseUnits, baseModels] = await Promise.all([
+      ctx.db.query("ipSeries").collect(),
+      ctx.db.query("baseUnits").collect(),
+      ctx.db.query("baseModels").collect(),
+    ]);
+
+    let ipSeriesUpdated = 0;
+    let baseUnitsUpdated = 0;
+    let baseModelsUpdated = 0;
+
+    for (const series of ipSeries) {
+      if (series.status !== undefined) {
+        continue;
+      }
+      if (shouldWrite) {
+        await ctx.db.patch(series._id, {
+          status: series.isActive ? "active" : "archived",
+        });
+      }
+      ipSeriesUpdated += 1;
+    }
+
+    for (const unit of baseUnits) {
+      if (unit.status !== undefined) {
+        continue;
+      }
+      if (shouldWrite) {
+        await ctx.db.patch(unit._id, {
+          status: unit.isActive ? "active" : "archived",
+        });
+      }
+      baseUnitsUpdated += 1;
+    }
+
+    for (const model of baseModels) {
+      if (model.status !== undefined) {
+        continue;
+      }
+      if (shouldWrite) {
+        await ctx.db.patch(model._id, {
+          status: model.isActive ? "active" : "archived",
+        });
+      }
+      baseModelsUpdated += 1;
+    }
+
+    return {
+      dryRun: !shouldWrite,
+      ipSeriesUpdated,
+      baseUnitsUpdated,
+      baseModelsUpdated,
     };
   },
 });

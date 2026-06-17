@@ -21,7 +21,7 @@ export function TerminalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const viewer = useQuery(api.users.viewer);
   const visibleNavItems = viewer?.canManagePlatform
-    ? [...navItems, { href: "/t/admin", label: "Admin" }]
+    ? [...navItems, { href: "/t/models", label: "Models" }, { href: "/t/admin", label: "Admin" }]
     : navItems;
 
   return (

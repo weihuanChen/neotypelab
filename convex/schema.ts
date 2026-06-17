@@ -13,6 +13,7 @@ import {
     vGenerationProvider,
     vGenerationKind,
     vGenerationStatus,
+    vModelCatalogStatus,
     vMoodTag,
     vPromptCompositionStatus,
     vPromptTemplateKind,
@@ -50,8 +51,10 @@ const schema = defineSchema({
     slug: v.string(),
     universe: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
+    rightsOwner: v.optional(v.string()),
     visualDNA: v.optional(v.string()),
     promptAnchor: v.optional(v.string()),
+    status: v.optional(vModelCatalogStatus),
     isActive: v.boolean(),
   }).index("by_slug", ["slug"]),
 
@@ -65,8 +68,11 @@ const schema = defineSchema({
     proportionDNA: v.optional(v.string()),
     armorDNA: v.optional(v.string()),
     keyShapeAnchors: v.array(v.string()),
+    nativeEquipment: v.optional(v.array(v.string())),
     forbiddenChanges: v.array(v.string()),
+    promptAnchor: v.optional(v.string()),
     searchText: v.string(),
+    status: v.optional(vModelCatalogStatus),
     isActive: v.boolean(),
   })
     .index("by_slug", ["slug"])
@@ -81,6 +87,7 @@ const schema = defineSchema({
     slug: v.string(),
     series: v.optional(v.string()),
     manufacturer: v.optional(v.string()),
+    primaryModelBrand: v.optional(v.string()),
     grade: v.optional(v.string()),
     scale: v.optional(v.string()),
     releaseVersion: v.optional(v.string()),
@@ -92,6 +99,7 @@ const schema = defineSchema({
     thumbnailAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
     promptAnchor: v.optional(v.string()),
+    status: v.optional(vModelCatalogStatus),
     isActive: v.boolean(),
     searchText: v.string(),
   })

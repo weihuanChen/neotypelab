@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { vPromptTemplateKind } from "./domain";
 import { query } from "./functions";
+import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildOptionalModelPromptContext } from "./modelPromptContext";
 import { normalizeStringForSearch } from "./utils";
 
@@ -57,8 +58,14 @@ export const describeCompositionInputs = query({
     ]);
 
     return {
-      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
-      modelPromptContext: await buildOptionalModelPromptContext(ctx, baseModel),
+      baseModel:
+        baseModel !== null && isPublicModelCatalogRecord(baseModel)
+          ? await summarizeBaseModelWithHierarchy(ctx, baseModel)
+          : null,
+      modelPromptContext:
+        baseModel !== null && isPublicModelCatalogRecord(baseModel)
+          ? await buildOptionalModelPromptContext(ctx, baseModel)
+          : null,
       stylePreset,
       materialPreset,
     };

@@ -26,6 +26,8 @@ import type * as functions from "../functions.js";
 import type * as generation from "../generation.js";
 import type * as generationNode from "../generationNode.js";
 import type * as init from "../init.js";
+import type * as modelCatalogAdmin from "../modelCatalogAdmin.js";
+import type * as modelCatalogStatus from "../modelCatalogStatus.js";
 import type * as modelPromptContext from "../modelPromptContext.js";
 import type * as packEngagement from "../packEngagement.js";
 import type * as paintMappingEngine from "../paintMappingEngine.js";
@@ -67,6 +69,8 @@ declare const fullApi: ApiFromModules<{
   generation: typeof generation;
   generationNode: typeof generationNode;
   init: typeof init;
+  modelCatalogAdmin: typeof modelCatalogAdmin;
+  modelCatalogStatus: typeof modelCatalogStatus;
   modelPromptContext: typeof modelPromptContext;
   packEngagement: typeof packEngagement;
   paintMappingEngine: typeof paintMappingEngine;

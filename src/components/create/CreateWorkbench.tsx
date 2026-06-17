@@ -662,11 +662,11 @@ export function CreateWorkbench({
                       </div>
                       <div className="border-l-2 border-accent-blue/30 pl-3 mb-4">
                         <p className="text-sm leading-6 text-ink-secondary">
-                          {kitVariant.silhouetteType?.replace("-", " ") ?? "Unclassified silhouette"}. Complexity: <span className="font-semibold text-ink-primary">{kitVariant.complexityLevel ?? "Unknown"}</span>.
+                          {kitVariant.baseUnit?.silhouetteType?.replace("-", " ") ?? "Unclassified base unit"}. Complexity: <span className="font-semibold text-ink-primary">{kitVariant.complexityLevel ?? "Unknown"}</span>.
                         </p>
                       </div>
                       <div className="mt-auto flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-ink-muted">
-                        <span className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{kitVariant.series ?? "N/A"}</span>
+                        <span className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{kitVariant.baseUnit?.ipSeries?.name ?? "N/A"}</span>
                         <span className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{kitVariant.grade ?? "N/A"}</span>
                         {kitVariant.tags.map((tag) => (
                           <span key={tag} className="border border-accent-blue/20 bg-accent-blue/5 px-2 py-1">{tag}</span>
@@ -680,12 +680,12 @@ export function CreateWorkbench({
                           DRAFT
                         </span>
                         <span className="text-[10px] font-mono tracking-widest text-ink-muted uppercase">
-                          {kitVariant.series ?? "N/A"} / {kitVariant.grade ?? "N/A"}
+                          {kitVariant.baseUnit?.ipSeries?.name ?? "N/A"} / {kitVariant.grade ?? "N/A"}
                         </span>
                       </div>
                       <h3 className="text-lg font-bold text-ink-primary uppercase tracking-widest">{kitVariant.name}</h3>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-ink-secondary line-clamp-2">
-                        {kitVariant.silhouetteType?.replace("-", " ") ?? "Unclassified silhouette"}
+                        {kitVariant.baseUnit?.silhouetteType?.replace("-", " ") ?? "Unclassified base unit"}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-widest text-ink-muted">
                         {kitVariant.tags.map((tag) => (
