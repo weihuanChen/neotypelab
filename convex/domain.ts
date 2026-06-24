@@ -7,6 +7,89 @@ export const vWeatheringLevel = v.union(
 );
 export type WeatheringLevel = Infer<typeof vWeatheringLevel>;
 
+export const vMaterialSpec = v.object({
+  reflectivity: v.string(),
+  roughness: v.string(),
+  surfaceTexture: v.string(),
+  metallicResponse: v.string(),
+  coatingBehavior: v.string(),
+  clearCoatBehavior: v.optional(v.string()),
+  edgeWearBehavior: v.optional(v.string()),
+  weatheringInteraction: v.optional(v.string()),
+  allowedColorRoleSlugs: v.array(v.string()),
+  forbiddenColorRoleSlugs: v.array(v.string()),
+  renderBehavior: v.string(),
+});
+export type MaterialSpec = Infer<typeof vMaterialSpec>;
+
+export const vPaintFinishSpec = v.object({
+  finishType: v.string(),
+  glossLevel: v.number(),
+  specularStrength: v.number(),
+  surfaceSheen: v.string(),
+  clearCoatBehavior: v.optional(v.string()),
+  weatheringInteraction: v.optional(v.string()),
+  renderBehaviorText: v.string(),
+});
+export type PaintFinishSpec = Infer<typeof vPaintFinishSpec>;
+
+export const vPaintFinishRenderPriority = v.object({
+  matte: v.number(),
+  semiGloss: v.number(),
+  gloss: v.number(),
+});
+export type PaintFinishRenderPriority = Infer<typeof vPaintFinishRenderPriority>;
+
+export const vStyleSpec = v.object({
+  colorRelationship: v.string(),
+  decalStyle: v.string(),
+  markingDensity: v.string(),
+  warningMarkingBehavior: v.string(),
+  tone: v.string(),
+  contrastBehavior: v.string(),
+  personalityTags: v.array(v.string()),
+  prohibitedEffects: v.array(v.string()),
+  identityBoundary: v.string(),
+  renderBehavior: v.string(),
+});
+export type StyleSpec = Infer<typeof vStyleSpec>;
+
+export const vWeatheringSpec = v.object({
+  level: vWeatheringLevel,
+  edgeWear: v.string(),
+  dustAccumulation: v.string(),
+  paintChipping: v.string(),
+  staining: v.string(),
+  panelLineEmphasis: v.string(),
+  intensityCap: v.string(),
+  colorReadabilityRule: v.string(),
+  renderBehavior: v.string(),
+});
+export type WeatheringSpec = Infer<typeof vWeatheringSpec>;
+
+export const vSpecPresetKind = v.union(
+  v.literal("material"),
+  v.literal("paint-finish"),
+  v.literal("style"),
+  v.literal("weathering"),
+  v.literal("identity-lock")
+);
+export type SpecPresetKind = Infer<typeof vSpecPresetKind>;
+
+export const vSpecPresetStatus = v.union(
+  v.literal("draft"),
+  v.literal("active")
+);
+export type SpecPresetStatus = Infer<typeof vSpecPresetStatus>;
+
+export const vSpecPresetTestStatus = v.union(
+  v.literal("untested"),
+  v.literal("testing"),
+  v.literal("passed"),
+  v.literal("failed")
+);
+export type SpecPresetTestStatus = Infer<typeof vSpecPresetTestStatus>;
+
 export const vUserPlan = v.union(
   v.literal("free"),
   v.literal("pro"),

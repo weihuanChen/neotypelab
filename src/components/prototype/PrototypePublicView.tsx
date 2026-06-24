@@ -21,9 +21,7 @@ import type {
 } from "./types";
 
 type ShoppingBundleItem =
-  PublicPrototypeShoppingList["bundles"]["core"][number] |
-  PublicPrototypeShoppingList["bundles"]["support"][number] |
-  PublicPrototypeShoppingList["bundles"]["backup"][number];
+  PublicPrototypeShoppingList["bundles"][keyof PublicPrototypeShoppingList["bundles"]][number];
 
 export function PrototypePublicView({
   conceptId,

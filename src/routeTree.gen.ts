@@ -20,6 +20,13 @@ import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as TFeedbackRouteImport } from './routes/t_.feedback'
 import { Route as TCreateRouteImport } from './routes/t_.create'
 import { Route as TAdminRouteImport } from './routes/t_.admin'
+import { Route as SpecAdminWeatheringRouteImport } from './routes/spec-admin_.weathering'
+import { Route as SpecAdminTestsRouteImport } from './routes/spec-admin_.tests'
+import { Route as SpecAdminStylesRouteImport } from './routes/spec-admin_.styles'
+import { Route as SpecAdminPromptPreviewRouteImport } from './routes/spec-admin_.prompt-preview'
+import { Route as SpecAdminPaintFinishesRouteImport } from './routes/spec-admin_.paint-finishes'
+import { Route as SpecAdminMaterialsRouteImport } from './routes/spec-admin_.materials'
+import { Route as SpecAdminIdentityLocksRouteImport } from './routes/spec-admin_.identity-locks'
 import { Route as ShowcaseOpengraphImageRouteImport } from './routes/showcase_.opengraph-image'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
@@ -89,6 +96,41 @@ const TCreateRoute = TCreateRouteImport.update({
 const TAdminRoute = TAdminRouteImport.update({
   id: '/t_/admin',
   path: '/t/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminWeatheringRoute = SpecAdminWeatheringRouteImport.update({
+  id: '/spec-admin_/weathering',
+  path: '/spec-admin/weathering',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminTestsRoute = SpecAdminTestsRouteImport.update({
+  id: '/spec-admin_/tests',
+  path: '/spec-admin/tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminStylesRoute = SpecAdminStylesRouteImport.update({
+  id: '/spec-admin_/styles',
+  path: '/spec-admin/styles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminPromptPreviewRoute = SpecAdminPromptPreviewRouteImport.update({
+  id: '/spec-admin_/prompt-preview',
+  path: '/spec-admin/prompt-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminPaintFinishesRoute = SpecAdminPaintFinishesRouteImport.update({
+  id: '/spec-admin_/paint-finishes',
+  path: '/spec-admin/paint-finishes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminMaterialsRoute = SpecAdminMaterialsRouteImport.update({
+  id: '/spec-admin_/materials',
+  path: '/spec-admin/materials',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminIdentityLocksRoute = SpecAdminIdentityLocksRouteImport.update({
+  id: '/spec-admin_/identity-locks',
+  path: '/spec-admin/identity-locks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShowcaseOpengraphImageRoute = ShowcaseOpengraphImageRouteImport.update({
@@ -189,6 +231,13 @@ export interface FileRoutesByFullPath {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/spec-admin/identity-locks': typeof SpecAdminIdentityLocksRoute
+  '/spec-admin/materials': typeof SpecAdminMaterialsRoute
+  '/spec-admin/paint-finishes': typeof SpecAdminPaintFinishesRoute
+  '/spec-admin/prompt-preview': typeof SpecAdminPromptPreviewRoute
+  '/spec-admin/styles': typeof SpecAdminStylesRoute
+  '/spec-admin/tests': typeof SpecAdminTestsRoute
+  '/spec-admin/weathering': typeof SpecAdminWeatheringRoute
   '/t/admin': typeof TAdminRoute
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
@@ -217,6 +266,13 @@ export interface FileRoutesByTo {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/spec-admin/identity-locks': typeof SpecAdminIdentityLocksRoute
+  '/spec-admin/materials': typeof SpecAdminMaterialsRoute
+  '/spec-admin/paint-finishes': typeof SpecAdminPaintFinishesRoute
+  '/spec-admin/prompt-preview': typeof SpecAdminPromptPreviewRoute
+  '/spec-admin/styles': typeof SpecAdminStylesRoute
+  '/spec-admin/tests': typeof SpecAdminTestsRoute
+  '/spec-admin/weathering': typeof SpecAdminWeatheringRoute
   '/t/admin': typeof TAdminRoute
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
@@ -246,6 +302,13 @@ export interface FileRoutesById {
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase_/opengraph-image': typeof ShowcaseOpengraphImageRoute
+  '/spec-admin_/identity-locks': typeof SpecAdminIdentityLocksRoute
+  '/spec-admin_/materials': typeof SpecAdminMaterialsRoute
+  '/spec-admin_/paint-finishes': typeof SpecAdminPaintFinishesRoute
+  '/spec-admin_/prompt-preview': typeof SpecAdminPromptPreviewRoute
+  '/spec-admin_/styles': typeof SpecAdminStylesRoute
+  '/spec-admin_/tests': typeof SpecAdminTestsRoute
+  '/spec-admin_/weathering': typeof SpecAdminWeatheringRoute
   '/t_/admin': typeof TAdminRoute
   '/t_/create': typeof TCreateRoute
   '/t_/feedback': typeof TFeedbackRoute
@@ -276,6 +339,13 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/opengraph-image'
+    | '/spec-admin/identity-locks'
+    | '/spec-admin/materials'
+    | '/spec-admin/paint-finishes'
+    | '/spec-admin/prompt-preview'
+    | '/spec-admin/styles'
+    | '/spec-admin/tests'
+    | '/spec-admin/weathering'
     | '/t/admin'
     | '/t/create'
     | '/t/feedback'
@@ -304,6 +374,13 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/opengraph-image'
+    | '/spec-admin/identity-locks'
+    | '/spec-admin/materials'
+    | '/spec-admin/paint-finishes'
+    | '/spec-admin/prompt-preview'
+    | '/spec-admin/styles'
+    | '/spec-admin/tests'
+    | '/spec-admin/weathering'
     | '/t/admin'
     | '/t/create'
     | '/t/feedback'
@@ -332,6 +409,13 @@ export interface FileRouteTypes {
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase_/opengraph-image'
+    | '/spec-admin_/identity-locks'
+    | '/spec-admin_/materials'
+    | '/spec-admin_/paint-finishes'
+    | '/spec-admin_/prompt-preview'
+    | '/spec-admin_/styles'
+    | '/spec-admin_/tests'
+    | '/spec-admin_/weathering'
     | '/t_/admin'
     | '/t_/create'
     | '/t_/feedback'
@@ -361,6 +445,13 @@ export interface RootRouteChildren {
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
   ShowcaseOpengraphImageRoute: typeof ShowcaseOpengraphImageRoute
+  SpecAdminIdentityLocksRoute: typeof SpecAdminIdentityLocksRoute
+  SpecAdminMaterialsRoute: typeof SpecAdminMaterialsRoute
+  SpecAdminPaintFinishesRoute: typeof SpecAdminPaintFinishesRoute
+  SpecAdminPromptPreviewRoute: typeof SpecAdminPromptPreviewRoute
+  SpecAdminStylesRoute: typeof SpecAdminStylesRoute
+  SpecAdminTestsRoute: typeof SpecAdminTestsRoute
+  SpecAdminWeatheringRoute: typeof SpecAdminWeatheringRoute
   TAdminRoute: typeof TAdminRoute
   TCreateRoute: typeof TCreateRoute
   TFeedbackRoute: typeof TFeedbackRoute
@@ -454,6 +545,55 @@ declare module '@tanstack/react-router' {
       path: '/t/admin'
       fullPath: '/t/admin'
       preLoaderRoute: typeof TAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/weathering': {
+      id: '/spec-admin_/weathering'
+      path: '/spec-admin/weathering'
+      fullPath: '/spec-admin/weathering'
+      preLoaderRoute: typeof SpecAdminWeatheringRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/tests': {
+      id: '/spec-admin_/tests'
+      path: '/spec-admin/tests'
+      fullPath: '/spec-admin/tests'
+      preLoaderRoute: typeof SpecAdminTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/styles': {
+      id: '/spec-admin_/styles'
+      path: '/spec-admin/styles'
+      fullPath: '/spec-admin/styles'
+      preLoaderRoute: typeof SpecAdminStylesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/prompt-preview': {
+      id: '/spec-admin_/prompt-preview'
+      path: '/spec-admin/prompt-preview'
+      fullPath: '/spec-admin/prompt-preview'
+      preLoaderRoute: typeof SpecAdminPromptPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/paint-finishes': {
+      id: '/spec-admin_/paint-finishes'
+      path: '/spec-admin/paint-finishes'
+      fullPath: '/spec-admin/paint-finishes'
+      preLoaderRoute: typeof SpecAdminPaintFinishesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/materials': {
+      id: '/spec-admin_/materials'
+      path: '/spec-admin/materials'
+      fullPath: '/spec-admin/materials'
+      preLoaderRoute: typeof SpecAdminMaterialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin_/identity-locks': {
+      id: '/spec-admin_/identity-locks'
+      path: '/spec-admin/identity-locks'
+      fullPath: '/spec-admin/identity-locks'
+      preLoaderRoute: typeof SpecAdminIdentityLocksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/showcase_/opengraph-image': {
@@ -592,6 +732,13 @@ const rootRouteChildren: RootRouteChildren = {
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
   ShowcaseOpengraphImageRoute: ShowcaseOpengraphImageRoute,
+  SpecAdminIdentityLocksRoute: SpecAdminIdentityLocksRoute,
+  SpecAdminMaterialsRoute: SpecAdminMaterialsRoute,
+  SpecAdminPaintFinishesRoute: SpecAdminPaintFinishesRoute,
+  SpecAdminPromptPreviewRoute: SpecAdminPromptPreviewRoute,
+  SpecAdminStylesRoute: SpecAdminStylesRoute,
+  SpecAdminTestsRoute: SpecAdminTestsRoute,
+  SpecAdminWeatheringRoute: SpecAdminWeatheringRoute,
   TAdminRoute: TAdminRoute,
   TCreateRoute: TCreateRoute,
   TFeedbackRoute: TFeedbackRoute,

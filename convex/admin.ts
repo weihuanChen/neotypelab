@@ -11,9 +11,11 @@ import {
   UserAccountStatus,
   UserPlan,
   vCreditActionType,
+  vMaterialSpec,
   vModelCatalogStatus,
   vMoodTag,
   vPromptTemplateKind,
+  vStyleSpec,
   vUserAccountStatus,
   vUserPlan,
   vWeatheringLevel,
@@ -630,6 +632,7 @@ export const listCatalogData = query({
           recommendedMaterialSlugs: preset.recommendedMaterialSlugs,
           seoKeywords: preset.seoKeywords,
           systemPromptFragment: preset.systemPromptFragment,
+          styleSpec: preset.styleSpec,
           promptVersion: preset.promptVersion,
           visibilityWeight: preset.visibilityWeight,
           creatorUserId: preset.creatorUserId,
@@ -644,6 +647,7 @@ export const listCatalogData = query({
           slug: preset.slug,
           finishType: preset.finishType,
           reflectivityLevel: preset.reflectivityLevel,
+          materialSpec: preset.materialSpec,
           promptKeywords: preset.promptKeywords,
           paintFinish: preset.paintFinish,
           difficultyLevel: preset.difficultyLevel,
@@ -1005,6 +1009,7 @@ export const updateStylePreset = mutation({
     recommendedMaterialSlugs: v.optional(v.array(v.string())),
     seoKeywords: v.optional(v.array(v.string())),
     systemPromptFragment: v.optional(v.string()),
+    styleSpec: v.optional(v.union(vStyleSpec, v.null())),
     promptVersion: v.optional(v.string()),
     visibilityWeight: v.optional(v.number()),
     creatorUserId: v.optional(v.id("users")),
@@ -1049,6 +1054,9 @@ export const updateStylePreset = mutation({
     if (args.systemPromptFragment !== undefined) {
       patch.systemPromptFragment = args.systemPromptFragment || undefined;
     }
+    if (args.styleSpec !== undefined) {
+      patch.styleSpec = args.styleSpec ?? undefined;
+    }
     if (args.promptVersion !== undefined) {
       patch.promptVersion = args.promptVersion || undefined;
     }
@@ -1090,6 +1098,7 @@ export const updateMaterialPreset = mutation({
     name: v.optional(v.string()),
     finishType: v.optional(v.string()),
     reflectivityLevel: v.optional(v.string()),
+    materialSpec: v.optional(v.union(vMaterialSpec, v.null())),
     promptKeywords: v.optional(v.array(v.string())),
     paintFinish: v.optional(v.string()),
     difficultyLevel: v.optional(v.string()),
@@ -1113,6 +1122,9 @@ export const updateMaterialPreset = mutation({
     }
     if (args.reflectivityLevel !== undefined) {
       patch.reflectivityLevel = args.reflectivityLevel || undefined;
+    }
+    if (args.materialSpec !== undefined) {
+      patch.materialSpec = args.materialSpec ?? undefined;
     }
     if (args.promptKeywords !== undefined) {
       patch.promptKeywords = compactStringArray(args.promptKeywords);

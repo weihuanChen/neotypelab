@@ -31,10 +31,16 @@ create and library workflows.
    npm run dev
    ```
 
+   `npm run dev` is an alias for the full-stack local workflow:
+
+   ```bash
+   npm run dev:full
+   ```
+
    Useful targeted commands:
 
    ```bash
-   npm run dev:tanstack
+   npm run dev:tanstack # frontend only; admin Convex data will stay pending
    npm run dev:backend
    npm run dev:next
    ```

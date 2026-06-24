@@ -81,6 +81,33 @@ type MoodTag =
 
 type WeatheringLevel = "clean" | "light" | "heavy";
 
+type MaterialSpec = {
+  reflectivity: string;
+  roughness: string;
+  surfaceTexture: string;
+  metallicResponse: string;
+  coatingBehavior: string;
+  clearCoatBehavior?: string;
+  edgeWearBehavior?: string;
+  weatheringInteraction?: string;
+  allowedColorRoleSlugs: string[];
+  forbiddenColorRoleSlugs: string[];
+  renderBehavior: string;
+};
+
+type StyleSpec = {
+  colorRelationship: string;
+  decalStyle: string;
+  markingDensity: string;
+  warningMarkingBehavior: string;
+  tone: string;
+  contrastBehavior: string;
+  personalityTags: string[];
+  prohibitedEffects: string[];
+  identityBoundary: string;
+  renderBehavior: string;
+};
+
 type PriceRuleDraft = {
   label: string;
   creditCost: string;
@@ -125,6 +152,7 @@ type StylePresetDraft = {
   recommendedMaterialSlugs: string;
   seoKeywords: string;
   systemPromptFragment: string;
+  styleSpecJson: string;
   promptVersion: string;
   visibilityWeight: string;
   creatorUserId: string;
@@ -136,6 +164,7 @@ type MaterialPresetDraft = {
   name: string;
   finishType: string;
   reflectivityLevel: string;
+  materialSpecJson: string;
   promptKeywords: string;
   paintFinish: string;
   difficultyLevel: string;
@@ -1961,6 +1990,7 @@ export function AdminWorkbench() {
                     recommendedMaterialSlugs: joinCsv(preset.recommendedMaterialSlugs),
                     seoKeywords: joinCsv(preset.seoKeywords),
                     systemPromptFragment: preset.systemPromptFragment ?? "",
+                    styleSpecJson: formatSpecJson(preset.styleSpec),
                     promptVersion: preset.promptVersion ?? "",
                     visibilityWeight: preset.visibilityWeight?.toString() ?? "",
                     creatorUserId: preset.creatorUserId ?? "none",
@@ -2030,6 +2060,9 @@ export function AdminWorkbench() {
                         <Field label="System Prompt Fragment">
                           <Textarea value={draft.systemPromptFragment} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, systemPromptFragment: event.target.value } }))} className="min-h-[100px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
                         </Field>
+                        <Field label="Style Spec JSON">
+                          <Textarea value={draft.styleSpecJson} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, styleSpecJson: event.target.value } }))} className="min-h-[220px] font-mono text-xs border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                        </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <ActionButton
@@ -2049,6 +2082,7 @@ export function AdminWorkbench() {
                                   recommendedMaterialSlugs: parseCsv(draft.recommendedMaterialSlugs),
                                   seoKeywords: parseCsv(draft.seoKeywords),
                                   systemPromptFragment: emptyToUndefined(draft.systemPromptFragment),
+                                  styleSpec: parseStyleSpecJson(draft.styleSpecJson),
                                   promptVersion: emptyToUndefined(draft.promptVersion),
                                   visibilityWeight: draft.visibilityWeight.trim() === "" ? undefined : Number(draft.visibilityWeight),
                                   creatorUserId: draft.creatorUserId === "none" ? undefined : draft.creatorUserId as Id<"users">,
@@ -2091,6 +2125,7 @@ export function AdminWorkbench() {
                     name: preset.name,
                     finishType: preset.finishType,
                     reflectivityLevel: preset.reflectivityLevel ?? "",
+                    materialSpecJson: formatSpecJson(preset.materialSpec),
                     promptKeywords: joinCsv(preset.promptKeywords),
                     paintFinish: preset.paintFinish ?? "",
                     difficultyLevel: preset.difficultyLevel ?? "",
@@ -2132,6 +2167,11 @@ export function AdminWorkbench() {
                           <Textarea value={draft.shortDescription} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
                         </Field>
                       </div>
+                      <div className="mt-4">
+                        <Field label="Material Spec JSON">
+                          <Textarea value={draft.materialSpecJson} onChange={(event) => setMaterialPresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, materialSpecJson: event.target.value } }))} className="min-h-[240px] font-mono text-xs border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal" />
+                        </Field>
+                      </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <ActionButton
                           onClick={() =>
@@ -2143,6 +2183,7 @@ export function AdminWorkbench() {
                                   name: draft.name.trim(),
                                   finishType: draft.finishType.trim(),
                                   reflectivityLevel: emptyToUndefined(draft.reflectivityLevel),
+                                  materialSpec: parseMaterialSpecJson(draft.materialSpecJson),
                                   promptKeywords: parseCsv(draft.promptKeywords),
                                   paintFinish: emptyToUndefined(draft.paintFinish),
                                   difficultyLevel: emptyToUndefined(draft.difficultyLevel),
@@ -3797,6 +3838,99 @@ function formatClerkError(error: unknown) {
 
 function joinCsv(values: string[]) {
   return values.join(", ");
+}
+
+function formatSpecJson(value: unknown) {
+  return value ? JSON.stringify(value, null, 2) : "";
+}
+
+function parseMaterialSpecJson(value: string): MaterialSpec | null {
+  const parsed = parseSpecJson(value, "Material Spec JSON");
+  if (parsed === null) {
+    return null;
+  }
+  if (!isMaterialSpec(parsed)) {
+    throw new Error("Material Spec JSON must match the required materialSpec shape.");
+  }
+  return parsed;
+}
+
+function parseStyleSpecJson(value: string): StyleSpec | null {
+  const parsed = parseSpecJson(value, "Style Spec JSON");
+  if (parsed === null) {
+    return null;
+  }
+  if (!isStyleSpec(parsed)) {
+    throw new Error("Style Spec JSON must match the required styleSpec shape.");
+  }
+  return parsed;
+}
+
+function parseSpecJson(value: string, label: string) {
+  if (value.trim() === "") {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Expected a JSON object.");
+    }
+    return parsed;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Invalid JSON.";
+    throw new Error(`${label} is invalid: ${detail}`);
+  }
+}
+
+function isMaterialSpec(value: unknown): value is MaterialSpec {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const spec = value as Partial<MaterialSpec>;
+  return (
+    hasString(spec.reflectivity) &&
+    hasString(spec.roughness) &&
+    hasString(spec.surfaceTexture) &&
+    hasString(spec.metallicResponse) &&
+    hasString(spec.coatingBehavior) &&
+    hasOptionalString(spec.clearCoatBehavior) &&
+    hasOptionalString(spec.edgeWearBehavior) &&
+    hasOptionalString(spec.weatheringInteraction) &&
+    hasStringArray(spec.allowedColorRoleSlugs) &&
+    hasStringArray(spec.forbiddenColorRoleSlugs) &&
+    hasString(spec.renderBehavior)
+  );
+}
+
+function isStyleSpec(value: unknown): value is StyleSpec {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const spec = value as Partial<StyleSpec>;
+  return (
+    hasString(spec.colorRelationship) &&
+    hasString(spec.decalStyle) &&
+    hasString(spec.markingDensity) &&
+    hasString(spec.warningMarkingBehavior) &&
+    hasString(spec.tone) &&
+    hasString(spec.contrastBehavior) &&
+    hasStringArray(spec.personalityTags) &&
+    hasStringArray(spec.prohibitedEffects) &&
+    hasString(spec.identityBoundary) &&
+    hasString(spec.renderBehavior)
+  );
+}
+
+function hasString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === "string";
+}
+
+function hasStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isBrowserStorageAvailable() {
