@@ -5,9 +5,9 @@ export const appPaths = {
   library: "/library",
   feedback: "/feedback",
   studio: "/studio",
-  models: "/t/models",
-  admin: "/t/admin",
-  specAdmin: "/spec-admin/materials",
+  models: "/admin/models",
+  admin: "/admin",
+  specAdmin: "/admin/materials",
 } as const;
 
 export type AppPath = (typeof appPaths)[keyof typeof appPaths];

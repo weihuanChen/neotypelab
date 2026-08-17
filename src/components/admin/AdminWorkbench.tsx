@@ -15,6 +15,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { useAuth, useUser } from "@clerk/tanstack-react-start";
 import { useMutation, useQuery } from "convex/react";
+import { useNavigate } from "@tanstack/react-router";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 
 type TemplateDraft = {
@@ -171,7 +172,7 @@ type CreatorPackDraft = {
 };
 
 type FlagTone = "neutral" | "cyan" | "green" | "amber" | "red";
-type AdminSectionId = "templates" | "prompt-lab" | "ops" | "access" | "commerce" | "catalog";
+export type AdminSectionId = "templates" | "prompt-lab" | "ops" | "access" | "commerce" | "catalog";
 
 type AdminSection = {
   id: AdminSectionId;
@@ -235,7 +236,16 @@ const adminSelectedTemplateStorageKey = "neotypelab.admin.selectedTemplateId";
 const promptLabDraftStorageKey = "neotypelab.admin.promptLabDraft";
 const promptLabExperimentDraftStorageKey = "neotypelab.admin.promptLabExperimentDraft";
 
-export function AdminWorkbench() {
+export function AdminWorkbench({
+  catalogScope,
+  section,
+  workspaceOnly = false,
+}: {
+  catalogScope?: "styles" | "materials" | "paints" | "creator-packs";
+  section?: AdminSectionId;
+  workspaceOnly?: boolean;
+} = {}) {
+  const navigate = useNavigate();
   const { getToken, isLoaded: isClerkLoaded, isSignedIn, sessionId } = useAuth();
   const { user } = useUser();
   const viewer = useQuery(api.users.viewer);
@@ -288,7 +298,7 @@ export function AdminWorkbench() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [clerkTokenStatus, setClerkTokenStatus] = useState<string>("Not checked");
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSectionId>(() =>
-    readInitialAdminSection()
+    section ?? readInitialAdminSection()
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(() =>
     readStoredString(adminSelectedTemplateStorageKey)
@@ -374,6 +384,18 @@ export function AdminWorkbench() {
   ];
 
   const handleAdminSectionChange = (section: AdminSectionId) => {
+    if (workspaceOnly) {
+      const routes: Record<AdminSectionId, string> = {
+        templates: "/admin/templates",
+        "prompt-lab": "/admin/prompt-lab",
+        ops: "/admin/feedback",
+        access: "/admin/users",
+        commerce: "/admin/credits",
+        catalog: "/admin/styles",
+      };
+      void navigate({ to: routes[section] as never });
+      return;
+    }
     setActiveAdminSection(section);
     writeAdminSectionHash(section);
   };
@@ -412,6 +434,15 @@ export function AdminWorkbench() {
   }, [selectedTemplate]);
 
   useEffect(() => {
+    if (section) {
+      setActiveAdminSection(section);
+    }
+  }, [section]);
+
+  useEffect(() => {
+    if (section) {
+      return;
+    }
     if (typeof window === "undefined") {
       return;
     }
@@ -420,7 +451,7 @@ export function AdminWorkbench() {
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
+  }, [section]);
 
   useEffect(() => {
     writeStoredString(adminSelectedTemplateStorageKey, selectedTemplateId);
@@ -562,7 +593,9 @@ export function AdminWorkbench() {
   }
 
   return (
-    <div className="space-y-6 text-ink-primary">
+    <div className={cn("admin-workbench space-y-6 text-ink-primary", workspaceOnly && "is-workspace-only", workspaceOnly && `is-${activeAdminSection}-workspace`)}>
+      {!workspaceOnly ? (
+        <>
       <section className="border-2 border-line-primary bg-panel p-6">
         <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Admin terminal</p>
         <h2 className="mt-3 text-3xl font-semibold">Super admin control surface</h2>
@@ -616,6 +649,8 @@ export function AdminWorkbench() {
         onSectionChange={handleAdminSectionChange}
         sections={adminSections}
       />
+        </>
+      ) : null}
 
       {activeAdminSection === "ops" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
@@ -837,7 +872,7 @@ export function AdminWorkbench() {
       ) : null}
 
       {activeAdminSection === "access" ? (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
+      <div className={cn("grid gap-6", !workspaceOnly && "xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]")}>
         <section className="border-2 border-line-primary bg-surface p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -894,6 +929,7 @@ export function AdminWorkbench() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="admin-user-credit-actions contents">
                     <ActionButton
                       onClick={() =>
                         void runAdminAction({
@@ -937,6 +973,7 @@ export function AdminWorkbench() {
                     >
                       Debit -10
                     </ActionButton>
+                    </div>
                     <ActionButton
                       onClick={() =>
                         void runAdminAction({
@@ -1054,7 +1091,7 @@ export function AdminWorkbench() {
           </div>
         </section>
 
-        <aside className="space-y-6">
+        {!workspaceOnly ? <aside className="space-y-6">
           <section className="border-2 border-line-primary bg-surface p-6">
             <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Failure monitor</p>
             <div className="mt-4 space-y-3">
@@ -1110,7 +1147,7 @@ export function AdminWorkbench() {
               )}
             </div>
           </section>
-        </aside>
+        </aside> : null}
       </div>
       ) : null}
 
@@ -1710,8 +1747,8 @@ export function AdminWorkbench() {
       ) : null}
 
       {activeAdminSection === "templates" ? (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="border-2 border-line-primary bg-surface p-6">
+      <div className="admin-template-workspace grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <section className="border-2 border-line-primary bg-surface p-6" data-template-pane="editor">
             <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Template editor</p>
             {activeTemplateDraft && selectedTemplate ? (
               <div className="mt-4 space-y-4">
@@ -1848,14 +1885,14 @@ export function AdminWorkbench() {
             )}
           </section>
 
-          <section className="border-2 border-line-primary bg-surface p-6">
+          <section className="border-2 border-line-primary bg-surface p-6" data-template-pane="list">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">
                   Prompt templates
                 </p>
                 <h3 className="mt-2 text-2xl font-semibold text-ink-primary">
-                  Template editor
+                  Templates
                 </h3>
               </div>
               <FlagPill label={`${promptTemplates?.length ?? 0} records`} tone="cyan" />
@@ -1930,11 +1967,13 @@ export function AdminWorkbench() {
       ) : null}
 
       {activeAdminSection === "catalog" ? (
-      <section className="border-2 border-line-primary bg-surface p-6">
+      <section className={cn("border-2 border-line-primary bg-surface p-6", catalogScope && `catalog-scope-${catalogScope}`)}>
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Catalog operations</p>
-            <h3 className="mt-2 text-2xl font-semibold">Style DNA, materials, paint maps</h3>
+            <h3 className="mt-2 text-2xl font-semibold">
+              {catalogScope === "styles" ? "Style DNA" : catalogScope === "materials" ? "Materials" : catalogScope === "paints" ? "Paint Catalog" : catalogScope === "creator-packs" ? "Creator Packs" : "Style DNA, materials, paint maps"}
+            </h3>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
             This is the operational catalog layer behind P1. Each entry can be tuned,
@@ -1942,8 +1981,8 @@ export function AdminWorkbench() {
           </p>
         </div>
 
-        <div className="mt-5 grid gap-6 xl:grid-cols-2">
-          <section className="border-2 border-line-primary bg-panel p-5">
+        <div className={cn("mt-5 grid gap-6", catalogScope ? "xl:grid-cols-1" : "xl:grid-cols-2")}>
+          <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="styles">
             <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Style DNA</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
@@ -2080,7 +2119,7 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="border-2 border-line-primary bg-panel p-5">
+          <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="materials">
             <p className="text-xs uppercase tracking-[0.28em] text-accent-teal">Material Presets</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
@@ -2172,7 +2211,7 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="border-2 border-line-primary bg-panel p-5">
+          <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="creator-packs">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Creator Packs</p>
@@ -2366,7 +2405,7 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="border-2 border-line-primary bg-panel p-5">
+          <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="paints">
             <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Paint Mappings</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
@@ -2511,7 +2550,7 @@ export function AdminWorkbench() {
             </div>
           </section>
 
-          <section className="border-2 border-line-primary bg-panel p-5">
+          <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="creator-packs">
             <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Creator Packs</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (

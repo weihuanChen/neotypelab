@@ -45,9 +45,7 @@ export const appNavGroups: readonly AppNavGroup[] = [
     label: "Admin",
     adminOnly: true,
     items: [
-      { href: appPaths.models, label: "Models", match: "prefix" },
-      { href: appPaths.admin, label: "Admin", match: "prefix" },
-      { href: appPaths.specAdmin, label: "Spec Admin", match: "prefix" },
+      { href: appPaths.admin, label: "Admin Console", match: "prefix" },
     ],
   },
 ];
@@ -73,10 +71,6 @@ export function isNavItemActive(pathname: string, item: AppNavItem) {
       ) ||
       isSeoLandingPath(pathname)
     );
-  }
-
-  if (item.href === appPaths.specAdmin) {
-    return pathname.startsWith("/spec-admin");
   }
 
   return pathname === item.href || pathname.startsWith(`${item.href}/`);

@@ -51,6 +51,9 @@ export const overview = query({
       generationJobs,
       queueItems,
       auditLogs,
+      orders,
+      paintMappings,
+      creatorPacks,
     ] = await Promise.all([
       ctx.db.query("users").collect(),
       ctx.db.query("creditAccounts").collect(),
@@ -62,6 +65,9 @@ export const overview = query({
       ctx.db.query("generationJobs").collect(),
       ctx.db.query("adminQueue").withIndex("by_priority").order("asc").take(10),
       ctx.db.query("adminAuditLogs").collect(),
+      ctx.db.query("orders").collect(),
+      ctx.db.query("paintMappings").collect(),
+      ctx.db.query("creatorPacks").collect(),
     ]);
 
     const recentFailedJobs = generationJobs
@@ -85,6 +91,11 @@ export const overview = query({
       openFeedbackCount: feedbackReports.filter((item) => item.status === "open").length,
       queuedGenerationCount: generationJobs.filter((item) => item.status === "queued").length,
       failedGenerationCount: generationJobs.filter((item) => item.status === "failed").length,
+      generationJobCount: generationJobs.length,
+      orderCount: orders.length,
+      auditLogCount: auditLogs.length,
+      paintMappingCount: paintMappings.length,
+      creatorPackCount: creatorPacks.length,
       queueItems,
       recentFailedJobs: recentFailedJobs.map((job) => ({
         _id: job._id,
@@ -944,6 +955,77 @@ export const listAuditLog = query({
   },
 });
 
+export const listGenerationJobsAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [jobs, users, baseModels, stylePresets, materialPresets] =
+      await Promise.all([
+        ctx.db.query("generationJobs").collect(),
+        ctx.db.query("users").collect(),
+        ctx.db.query("baseModels").collect(),
+        ctx.db.query("stylePresets").collect(),
+        ctx.db.query("materialPresets").collect(),
+      ]);
+    const usersById = new Map(users.map((item) => [item._id, item]));
+    const modelsById = new Map(baseModels.map((item) => [item._id, item]));
+    const stylesById = new Map(stylePresets.map((item) => [item._id, item]));
+    const materialsById = new Map(materialPresets.map((item) => [item._id, item]));
+
+    return jobs
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 200)
+      .map((job) => {
+        const user = usersById.get(job.userId);
+        const model = job.baseModelId ? modelsById.get(job.baseModelId) : undefined;
+        const style = job.stylePresetId ? stylesById.get(job.stylePresetId) : undefined;
+        const material = job.materialPresetId
+          ? materialsById.get(job.materialPresetId)
+          : undefined;
+        return {
+          ...job,
+          user: user
+            ? { _id: user._id, fullName: user.fullName, email: user.email, handle: user.handle }
+            : null,
+          model: model ? { _id: model._id, name: model.name, slug: model.slug } : null,
+          style: style ? { _id: style._id, name: style.name, slug: style.slug } : null,
+          material: material
+            ? { _id: material._id, name: material.name, slug: material.slug }
+            : null,
+        };
+      });
+  },
+});
+
+export const listOrdersAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [orders, users, items] = await Promise.all([
+      ctx.db.query("orders").collect(),
+      ctx.db.query("users").collect(),
+      ctx.db.query("orderItems").collect(),
+    ]);
+    const usersById = new Map(users.map((item) => [item._id, item]));
+    const itemsByOrderId = new Map<Id<"orders">, Doc<"orderItems">[]>();
+    for (const item of items) {
+      itemsByOrderId.set(item.orderId, [...(itemsByOrderId.get(item.orderId) ?? []), item]);
+    }
+    return orders
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .map((order) => {
+        const user = usersById.get(order.userId);
+        return {
+          ...order,
+          user: user
+            ? { _id: user._id, fullName: user.fullName, email: user.email, handle: user.handle }
+            : null,
+          items: itemsByOrderId.get(order._id) ?? [],
+        };
+      });
+  },
+});
+
 export const listFeedbackPipeline = query({
   args: {},
   async handler(ctx) {
@@ -1156,6 +1238,108 @@ export const listCatalogData = query({
             };
           })
       ),
+    };
+  },
+});
+
+export const listStylePresetsAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [styles, users] = await Promise.all([
+      ctx.db.query("stylePresets").collect(),
+      ctx.db.query("users").collect(),
+    ]);
+    const usersById = new Map(users.map((user) => [user._id, user]));
+    return {
+      styles: styles
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((style) => {
+          const creator = style.creatorUserId ? usersById.get(style.creatorUserId) : null;
+          return {
+            ...style,
+            isFeaturedStyle: style.isFeaturedStyle ?? false,
+            creator: creator
+              ? { _id: creator._id, fullName: creator.fullName, email: creator.email, handle: creator.handle }
+              : null,
+          };
+        }),
+      creators: users
+        .filter((user) => user.isVerifiedCreator || user.isFeaturedCreator || canManagePlatform(user))
+        .map((user) => ({ _id: user._id, fullName: user.fullName, email: user.email, handle: user.handle })),
+    };
+  },
+});
+
+export const listMaterialPresetsAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    return (await ctx.db.query("materialPresets").collect()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  },
+});
+
+export const listPaintMappingsAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    return (await ctx.db.query("paintMappings").collect()).sort(
+      (a, b) => a.brand.localeCompare(b.brand) || a.code.localeCompare(b.code)
+    );
+  },
+});
+
+export const listCreatorPacksAdmin = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [packs, users, styles, materials, kitVariantsRaw] = await Promise.all([
+      ctx.db.query("creatorPacks").collect(),
+      ctx.db.query("users").collect(),
+      ctx.db.query("stylePresets").collect(),
+      ctx.db.query("materialPresets").collect(),
+      ctx.db.query("baseModels").collect(),
+    ]);
+    const usersById = new Map(users.map((user) => [user._id, user]));
+    const kitVariants = await Promise.all(
+      kitVariantsRaw
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((model) => summarizeBaseModelWithHierarchy(ctx, model))
+    ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
+    return {
+      packs: await Promise.all(
+        packs
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(async (pack) => {
+            const creator = usersById.get(pack.creatorUserId);
+            const engagement = await getCreatorPackEngagementSnapshot(ctx, pack._id);
+            return {
+              ...pack,
+              creator: creator
+                ? { _id: creator._id, fullName: creator.fullName, email: creator.email, handle: creator.handle }
+                : null,
+              analytics: { likes: engagement.likeCount, saves: engagement.saveCount },
+            };
+          })
+      ),
+      creators: users
+        .filter((user) => user.isVerifiedCreator || user.isFeaturedCreator || canManagePlatform(user))
+        .map((user) => ({ _id: user._id, fullName: user.fullName, email: user.email, handle: user.handle })),
+      styles: styles
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((style) => ({ _id: style._id, name: style.name, slug: style.slug, isActive: style.isActive })),
+      materials: materials
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((material) => ({ _id: material._id, name: material.name, slug: material.slug, isActive: material.isActive })),
+      kitVariants: kitVariants.map((kit) => ({
+        _id: kit._id,
+        name: kit.name,
+        slug: kit.slug,
+        isActive: kit.isActive,
+        baseUnitName: kit.baseUnit?.name ?? null,
+      })),
     };
   },
 });
@@ -1536,6 +1720,81 @@ export const updateStylePreset = mutation({
   },
 });
 
+export const upsertStylePresetAdmin = mutation({
+  args: {
+    stylePresetId: v.optional(v.id("stylePresets")),
+    name: v.string(),
+    slug: v.optional(v.string()),
+    category: v.optional(v.string()),
+    shortDescription: v.optional(v.string()),
+    contrastLevel: v.optional(v.string()),
+    weatheringProfile: v.optional(v.string()),
+    promptKeywords: v.array(v.string()),
+    negativeKeywords: v.array(v.string()),
+    recommendedMaterialSlugs: v.array(v.string()),
+    seoKeywords: v.array(v.string()),
+    systemPromptFragment: v.optional(v.string()),
+    styleSpec: vStyleSpec,
+    promptVersion: v.optional(v.string()),
+    visibilityWeight: v.optional(v.union(v.number(), v.null())),
+    creatorUserId: v.optional(v.union(v.id("users"), v.null())),
+    isFeaturedStyle: v.boolean(),
+    isActive: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const name = args.name.trim();
+    if (!name) throw new Error("Style name is required");
+    const styleSlug = slugify(args.slug?.trim() || name);
+    const duplicate = await ctx.db
+      .query("stylePresets")
+      .withIndex("by_slug", (q) => q.eq("slug", styleSlug))
+      .unique();
+    if (duplicate && duplicate._id !== args.stylePresetId) {
+      throw new Error(`Style slug "${styleSlug}" is already in use`);
+    }
+    const promptKeywords = compactStringArray(args.promptKeywords);
+    const seoKeywords = compactStringArray(args.seoKeywords);
+    const patch = {
+      name,
+      slug: styleSlug,
+      category: args.category?.trim() || undefined,
+      shortDescription: args.shortDescription?.trim() || undefined,
+      contrastLevel: args.contrastLevel?.trim() || undefined,
+      weatheringProfile: args.weatheringProfile?.trim() || undefined,
+      promptKeywords,
+      negativeKeywords: compactStringArray(args.negativeKeywords),
+      recommendedMaterialSlugs: compactStringArray(args.recommendedMaterialSlugs),
+      seoKeywords,
+      systemPromptFragment: args.systemPromptFragment?.trim() || undefined,
+      styleSpec: args.styleSpec,
+      promptVersion: args.promptVersion?.trim() || undefined,
+      visibilityWeight: args.visibilityWeight ?? undefined,
+      creatorUserId: args.creatorUserId ?? undefined,
+      isFeaturedStyle: args.isFeaturedStyle,
+      isActive: args.isActive,
+      searchText: buildStylePresetSearchText({
+        name,
+        category: args.category,
+        shortDescription: args.shortDescription,
+        promptKeywords,
+        seoKeywords,
+      }),
+    };
+    const stylePresetId = args.stylePresetId
+      ? (await ctx.db.patch(args.stylePresetId, patch), args.stylePresetId)
+      : await ctx.db.insert("stylePresets", patch);
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: args.stylePresetId ? "update-style-preset" : "create-style-preset",
+      entityType: "stylePreset",
+      entityId: stylePresetId,
+      detailsJson: JSON.stringify({ stylePresetId, slug: styleSlug, isActive: args.isActive }),
+    });
+    return stylePresetId;
+  },
+});
+
 export const updateMaterialPreset = mutation({
   args: {
     materialPresetId: v.id("materialPresets"),
@@ -1597,6 +1856,62 @@ export const updateMaterialPreset = mutation({
       entityId: args.materialPresetId,
       detailsJson: JSON.stringify({ materialPresetId: args.materialPresetId, isActive: patch.isActive }),
     });
+  },
+});
+
+export const upsertMaterialPresetAdmin = mutation({
+  args: {
+    materialPresetId: v.optional(v.id("materialPresets")),
+    name: v.string(),
+    slug: v.optional(v.string()),
+    finishType: v.string(),
+    reflectivityLevel: v.optional(v.string()),
+    materialSpec: vMaterialSpec,
+    promptKeywords: v.array(v.string()),
+    paintFinish: v.optional(v.string()),
+    difficultyLevel: v.optional(v.string()),
+    sheenLevel: v.optional(v.string()),
+    shortDescription: v.optional(v.string()),
+    isActive: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const name = args.name.trim();
+    const finishType = args.finishType.trim();
+    if (!name) throw new Error("Material name is required");
+    if (!finishType) throw new Error("Finish type is required");
+    const materialSlug = slugify(args.slug?.trim() || name);
+    const duplicate = await ctx.db
+      .query("materialPresets")
+      .withIndex("by_slug", (q) => q.eq("slug", materialSlug))
+      .unique();
+    if (duplicate && duplicate._id !== args.materialPresetId) {
+      throw new Error(`Material slug "${materialSlug}" is already in use`);
+    }
+    const patch = {
+      name,
+      slug: materialSlug,
+      finishType,
+      reflectivityLevel: args.reflectivityLevel?.trim() || undefined,
+      materialSpec: args.materialSpec,
+      promptKeywords: compactStringArray(args.promptKeywords),
+      paintFinish: args.paintFinish?.trim() || undefined,
+      difficultyLevel: args.difficultyLevel?.trim() || undefined,
+      sheenLevel: args.sheenLevel?.trim() || undefined,
+      shortDescription: args.shortDescription?.trim() || undefined,
+      isActive: args.isActive,
+    };
+    const materialPresetId = args.materialPresetId
+      ? (await ctx.db.patch(args.materialPresetId, patch), args.materialPresetId)
+      : await ctx.db.insert("materialPresets", patch);
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: args.materialPresetId ? "update-material-preset" : "create-material-preset",
+      entityType: "materialPreset",
+      entityId: materialPresetId,
+      detailsJson: JSON.stringify({ materialPresetId, slug: materialSlug, isActive: args.isActive }),
+    });
+    return materialPresetId;
   },
 });
 
@@ -1669,6 +1984,77 @@ export const updatePaintMapping = mutation({
       entityId: args.paintMappingId,
       detailsJson: JSON.stringify({ paintMappingId: args.paintMappingId, isActive: patch.isActive }),
     });
+  },
+});
+
+export const upsertPaintMappingAdmin = mutation({
+  args: {
+    paintMappingId: v.optional(v.id("paintMappings")),
+    mappingKey: v.optional(v.string()),
+    brand: v.string(),
+    line: v.optional(v.string()),
+    code: v.string(),
+    colorName: v.string(),
+    finishType: v.optional(v.string()),
+    paintType: v.optional(v.string()),
+    availabilityRegion: v.optional(v.string()),
+    affiliateUrl: v.optional(v.string()),
+    hexPreview: v.optional(v.string()),
+    isActive: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const brand = args.brand.trim();
+    const code = args.code.trim();
+    const colorName = args.colorName.trim();
+    if (!brand || !code || !colorName) {
+      throw new Error("Brand, code, and color name are required");
+    }
+    const mappingKey = slugify(
+      args.mappingKey?.trim() || [brand, args.line, code, colorName].filter(Boolean).join(" ")
+    );
+    const duplicate = await ctx.db
+      .query("paintMappings")
+      .withIndex("by_mappingKey", (q) => q.eq("mappingKey", mappingKey))
+      .unique();
+    if (duplicate && duplicate._id !== args.paintMappingId) {
+      throw new Error(`Paint mapping key "${mappingKey}" is already in use`);
+    }
+    const hexPreview = args.hexPreview?.trim() || undefined;
+    if (hexPreview && !/^#[0-9a-fA-F]{6}$/.test(hexPreview)) {
+      throw new Error("Hex preview must use the format #RRGGBB");
+    }
+    const patch = {
+      mappingKey,
+      brand,
+      line: args.line?.trim() || undefined,
+      code,
+      colorName,
+      finishType: args.finishType?.trim() || undefined,
+      paintType: args.paintType?.trim() || undefined,
+      availabilityRegion: args.availabilityRegion?.trim() || undefined,
+      affiliateUrl: args.affiliateUrl?.trim() || undefined,
+      hexPreview,
+      isActive: args.isActive,
+      searchText: buildPaintMappingSearchText({
+        brand,
+        line: args.line,
+        code,
+        colorName,
+        finishType: args.finishType,
+      }),
+    };
+    const paintMappingId = args.paintMappingId
+      ? (await ctx.db.patch(args.paintMappingId, patch), args.paintMappingId)
+      : await ctx.db.insert("paintMappings", patch);
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: args.paintMappingId ? "update-paint-mapping" : "create-paint-mapping",
+      entityType: "paintMapping",
+      entityId: paintMappingId,
+      detailsJson: JSON.stringify({ paintMappingId, mappingKey, isActive: args.isActive }),
+    });
+    return paintMappingId;
   },
 });
 

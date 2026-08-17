@@ -1,11 +1,25 @@
 import { SignInButton, UserButton, useUser } from "@clerk/tanstack-react-start";
+import {
+  Cross1Icon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+  HamburgerMenuIcon,
+} from "@radix-ui/react-icons";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { type ReactNode, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { api } from "@/convex/_generated/api";
+import { useAppShellState } from "@/src/components/app-shell/AppShellState";
 import { appNavGroups, isNavItemActive } from "@/src/components/app-shell/nav";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
+import { cn } from "@/lib/utils";
 
 type AppShellProps = {
   children: ReactNode;
@@ -71,7 +85,12 @@ function AppShellBody({
   pathname: string;
   viewer: AppViewer;
 }) {
-  const [navOpen, setNavOpen] = useState(false);
+  const { sidebarCollapsed, sidebarStateReady, toggleSidebar } =
+    useAppShellState();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const groups = useMemo(
     () =>
       appNavGroups.filter(
@@ -80,18 +99,105 @@ function AppShellBody({
     [viewer?.canManagePlatform]
   );
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 860px)");
+    const syncViewport = () => setIsMobile(mediaQuery.matches);
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => {
+      navRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    const handleKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && mobileNavOpen) {
+        setMobileNavOpen(false);
+        toggleRef.current?.focus();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "\\") {
+        event.preventDefault();
+        if (isMobile) {
+          setMobileNavOpen((open) => !open);
+        } else {
+          if (!sidebarCollapsed && navRef.current?.contains(document.activeElement)) {
+            toggleRef.current?.focus();
+          }
+          toggleSidebar();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyboard);
+    return () => window.removeEventListener("keydown", handleKeyboard);
+  }, [isMobile, mobileNavOpen, sidebarCollapsed, toggleSidebar]);
+
+  const navigationVisible = isMobile ? mobileNavOpen : !sidebarCollapsed;
+  const toggleLabel = isMobile
+    ? mobileNavOpen
+      ? "Close navigation"
+      : "Open navigation"
+    : sidebarCollapsed
+      ? "Expand sidebar"
+      : "Collapse sidebar";
+
+  const handleToggle = () => {
+    if (isMobile) {
+      setMobileNavOpen((open) => !open);
+      return;
+    }
+    if (!sidebarCollapsed && navRef.current?.contains(document.activeElement)) {
+      toggleRef.current?.focus();
+    }
+    toggleSidebar();
+  };
+
   return (
-    <div className="app-shell">
-      {navOpen ? (
+    <div
+      className={cn(
+        "app-shell",
+        sidebarCollapsed && "is-nav-collapsed",
+        sidebarStateReady && "is-nav-ready"
+      )}
+    >
+      {mobileNavOpen ? (
         <button
           aria-label="Close navigation"
           className="app-nav__backdrop"
-          onClick={() => setNavOpen(false)}
+          onClick={() => {
+            setMobileNavOpen(false);
+            window.requestAnimationFrame(() => toggleRef.current?.focus());
+          }}
           type="button"
         />
       ) : null}
-      <aside className={navOpen ? "app-nav is-open" : "app-nav"}>
-        <Link className="app-nav__brand" onClick={() => setNavOpen(false)} to="/">
+      <aside
+        aria-hidden={!navigationVisible}
+        className={mobileNavOpen ? "app-nav is-open" : "app-nav"}
+        id="app-primary-navigation"
+        ref={navRef}
+      >
+        <Link
+          className="app-nav__brand"
+          onClick={() => setMobileNavOpen(false)}
+          tabIndex={navigationVisible ? undefined : -1}
+          to="/"
+        >
           <span>Vol. 02</span>
           <strong>NeotypeLab</strong>
           <em>spray-ready almanac</em>
@@ -110,8 +216,9 @@ function AppShellBody({
                         active ? "app-nav__link is-active" : "app-nav__link"
                       }
                       key={item.href}
-                      onClick={() => setNavOpen(false)}
+                      onClick={() => setMobileNavOpen(false)}
                       preload="intent"
+                      tabIndex={navigationVisible ? undefined : -1}
                       to={item.href}
                     >
                       {item.label}
@@ -131,15 +238,22 @@ function AppShellBody({
         <header className="app-topbar">
           <div className="app-topbar__lead">
             <button
-              aria-expanded={navOpen}
-              aria-label="Open navigation"
+              aria-controls="app-primary-navigation"
+              aria-expanded={navigationVisible}
+              aria-label={toggleLabel}
               className="app-nav__toggle"
-              onClick={() => setNavOpen((open) => !open)}
+              onClick={handleToggle}
+              ref={toggleRef}
+              title={`${toggleLabel} (⌘\\)`}
               type="button"
             >
-              <span />
-              <span />
-              <span />
+              {isMobile ? (
+                mobileNavOpen ? <Cross1Icon /> : <HamburgerMenuIcon />
+              ) : sidebarCollapsed ? (
+                <DoubleArrowRightIcon />
+              ) : (
+                <DoubleArrowLeftIcon />
+              )}
             </button>
             <div>
               <p className="app-topbar__kicker">NeotypeLab</p>

@@ -8,6 +8,7 @@ import {
 import { lazy, Suspense, type ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
+import { AppShellStateProvider } from "@/src/components/app-shell/AppShellState";
 import { StartProviders } from "@/src/providers/StartProviders";
 import tokensCss from "@/src/styles/tokens.css?url";
 import appCss from "@/src/styles/app.css?url";
@@ -78,7 +79,9 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <StartProviders>
-          <div className="app-root">{children}</div>
+          <AppShellStateProvider>
+            <div className="app-root">{children}</div>
+          </AppShellStateProvider>
         </StartProviders>
         {RouterDevtools ? (
           <Suspense fallback={null}>

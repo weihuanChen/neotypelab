@@ -17,7 +17,9 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TShowcaseRouteImport } from './routes/t_.showcase'
 import { Route as TModelsRouteImport } from './routes/t_.models'
 import { Route as TLibraryRouteImport } from './routes/t_.library'
@@ -39,6 +41,20 @@ import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
 import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
 import { Route as CreatorPackSlugRouteImport } from './routes/creator-pack.$slug'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminTemplatesRouteImport } from './routes/admin.templates'
+import { Route as AdminStylesRouteImport } from './routes/admin.styles'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminPromptLabRouteImport } from './routes/admin.prompt-lab'
+import { Route as AdminPaintsRouteImport } from './routes/admin.paints'
+import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
+import { Route as AdminModelsRouteImport } from './routes/admin.models'
+import { Route as AdminMaterialsRouteImport } from './routes/admin.materials'
+import { Route as AdminGenerationsRouteImport } from './routes/admin.generations'
+import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
+import { Route as AdminCreditsRouteImport } from './routes/admin.credits'
+import { Route as AdminCreatorPacksRouteImport } from './routes/admin.creator-packs'
+import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as BaseModelSlugStylePresetSlugRouteImport } from './routes/$baseModelSlug.$stylePresetSlug'
 import { Route as PrototypeConceptIdWatermarkedImageRouteImport } from './routes/prototype_.$conceptId.watermarked-image'
 import { Route as PrototypeConceptIdRedditImageRouteImport } from './routes/prototype_.$conceptId.reddit-image'
@@ -90,10 +106,20 @@ const CreateRoute = CreateRouteImport.update({
   path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const TShowcaseRoute = TShowcaseRouteImport.update({
   id: '/t_/showcase',
@@ -200,6 +226,76 @@ const CreatorPackSlugRoute = CreatorPackSlugRouteImport.update({
   path: '/creator-pack/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTemplatesRoute = AdminTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStylesRoute = AdminStylesRouteImport.update({
+  id: '/styles',
+  path: '/styles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPromptLabRoute = AdminPromptLabRouteImport.update({
+  id: '/prompt-lab',
+  path: '/prompt-lab',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaintsRoute = AdminPaintsRouteImport.update({
+  id: '/paints',
+  path: '/paints',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOrdersRoute = AdminOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminModelsRoute = AdminModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMaterialsRoute = AdminMaterialsRouteImport.update({
+  id: '/materials',
+  path: '/materials',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGenerationsRoute = AdminGenerationsRouteImport.update({
+  id: '/generations',
+  path: '/generations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCreditsRoute = AdminCreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCreatorPacksRoute = AdminCreatorPacksRouteImport.update({
+  id: '/creator-packs',
+  path: '/creator-packs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditLogRoute = AdminAuditLogRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
+  getParentRoute: () => AdminRoute,
+} as any)
 const BaseModelSlugStylePresetSlugRoute =
   BaseModelSlugStylePresetSlugRouteImport.update({
     id: '/$baseModelSlug/$stylePresetSlug',
@@ -263,6 +359,7 @@ const BaseModelSlugStylePresetSlugOpengraphImageRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/create': typeof CreateRoute
   '/feedback': typeof FeedbackRoute
   '/library': typeof LibraryRoute
@@ -272,6 +369,20 @@ export interface FileRoutesByFullPath {
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
+  '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/creator-packs': typeof AdminCreatorPacksRoute
+  '/admin/credits': typeof AdminCreditsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
+  '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/materials': typeof AdminMaterialsRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/paints': typeof AdminPaintsRoute
+  '/admin/prompt-lab': typeof AdminPromptLabRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/styles': typeof AdminStylesRoute
+  '/admin/templates': typeof AdminTemplatesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -293,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/t/library': typeof TLibraryRoute
   '/t/models': typeof TModelsRoute
   '/t/showcase': typeof TShowcaseRoute
+  '/admin/': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
@@ -314,6 +426,20 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
+  '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/creator-packs': typeof AdminCreatorPacksRoute
+  '/admin/credits': typeof AdminCreditsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
+  '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/materials': typeof AdminMaterialsRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/paints': typeof AdminPaintsRoute
+  '/admin/prompt-lab': typeof AdminPromptLabRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/styles': typeof AdminStylesRoute
+  '/admin/templates': typeof AdminTemplatesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -335,6 +461,7 @@ export interface FileRoutesByTo {
   '/t/library': typeof TLibraryRoute
   '/t/models': typeof TModelsRoute
   '/t/showcase': typeof TShowcaseRoute
+  '/admin': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
@@ -348,6 +475,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/create': typeof CreateRoute
   '/feedback': typeof FeedbackRoute
   '/library': typeof LibraryRoute
@@ -357,6 +485,20 @@ export interface FileRoutesById {
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
+  '/admin/audit-log': typeof AdminAuditLogRoute
+  '/admin/creator-packs': typeof AdminCreatorPacksRoute
+  '/admin/credits': typeof AdminCreditsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
+  '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/materials': typeof AdminMaterialsRoute
+  '/admin/models': typeof AdminModelsRoute
+  '/admin/orders': typeof AdminOrdersRoute
+  '/admin/paints': typeof AdminPaintsRoute
+  '/admin/prompt-lab': typeof AdminPromptLabRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/styles': typeof AdminStylesRoute
+  '/admin/templates': typeof AdminTemplatesRoute
+  '/admin/users': typeof AdminUsersRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -378,6 +520,7 @@ export interface FileRoutesById {
   '/t_/library': typeof TLibraryRoute
   '/t_/models': typeof TModelsRoute
   '/t_/showcase': typeof TShowcaseRoute
+  '/admin/': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack_/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
   '/creator_/$handle/opengraph-image': typeof CreatorHandleOpengraphImageRoute
@@ -392,6 +535,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/create'
     | '/feedback'
     | '/library'
@@ -401,6 +545,20 @@ export interface FileRouteTypes {
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
+    | '/admin/audit-log'
+    | '/admin/creator-packs'
+    | '/admin/credits'
+    | '/admin/feedback'
+    | '/admin/generations'
+    | '/admin/materials'
+    | '/admin/models'
+    | '/admin/orders'
+    | '/admin/paints'
+    | '/admin/prompt-lab'
+    | '/admin/settings'
+    | '/admin/styles'
+    | '/admin/templates'
+    | '/admin/users'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback/$feedbackId'
@@ -422,6 +580,7 @@ export interface FileRouteTypes {
     | '/t/library'
     | '/t/models'
     | '/t/showcase'
+    | '/admin/'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
     | '/creator/$handle/opengraph-image'
@@ -443,6 +602,20 @@ export interface FileRouteTypes {
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
+    | '/admin/audit-log'
+    | '/admin/creator-packs'
+    | '/admin/credits'
+    | '/admin/feedback'
+    | '/admin/generations'
+    | '/admin/materials'
+    | '/admin/models'
+    | '/admin/orders'
+    | '/admin/paints'
+    | '/admin/prompt-lab'
+    | '/admin/settings'
+    | '/admin/styles'
+    | '/admin/templates'
+    | '/admin/users'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback/$feedbackId'
@@ -464,6 +637,7 @@ export interface FileRouteTypes {
     | '/t/library'
     | '/t/models'
     | '/t/showcase'
+    | '/admin'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
     | '/creator/$handle/opengraph-image'
@@ -476,6 +650,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/create'
     | '/feedback'
     | '/library'
@@ -485,6 +660,20 @@ export interface FileRouteTypes {
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
+    | '/admin/audit-log'
+    | '/admin/creator-packs'
+    | '/admin/credits'
+    | '/admin/feedback'
+    | '/admin/generations'
+    | '/admin/materials'
+    | '/admin/models'
+    | '/admin/orders'
+    | '/admin/paints'
+    | '/admin/prompt-lab'
+    | '/admin/settings'
+    | '/admin/styles'
+    | '/admin/templates'
+    | '/admin/users'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback_/$feedbackId'
@@ -506,6 +695,7 @@ export interface FileRouteTypes {
     | '/t_/library'
     | '/t_/models'
     | '/t_/showcase'
+    | '/admin/'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack_/$slug/opengraph-image'
     | '/creator_/$handle/opengraph-image'
@@ -519,6 +709,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CreateRoute: typeof CreateRoute
   FeedbackRoute: typeof FeedbackRoute
   LibraryRoute: typeof LibraryRoute
@@ -617,12 +808,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/t_/showcase': {
       id: '/t_/showcase'
@@ -771,6 +976,104 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorPackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/templates': {
+      id: '/admin/templates'
+      path: '/templates'
+      fullPath: '/admin/templates'
+      preLoaderRoute: typeof AdminTemplatesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/styles': {
+      id: '/admin/styles'
+      path: '/styles'
+      fullPath: '/admin/styles'
+      preLoaderRoute: typeof AdminStylesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/prompt-lab': {
+      id: '/admin/prompt-lab'
+      path: '/prompt-lab'
+      fullPath: '/admin/prompt-lab'
+      preLoaderRoute: typeof AdminPromptLabRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/paints': {
+      id: '/admin/paints'
+      path: '/paints'
+      fullPath: '/admin/paints'
+      preLoaderRoute: typeof AdminPaintsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/orders': {
+      id: '/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AdminOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/models': {
+      id: '/admin/models'
+      path: '/models'
+      fullPath: '/admin/models'
+      preLoaderRoute: typeof AdminModelsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/materials': {
+      id: '/admin/materials'
+      path: '/materials'
+      fullPath: '/admin/materials'
+      preLoaderRoute: typeof AdminMaterialsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/generations': {
+      id: '/admin/generations'
+      path: '/generations'
+      fullPath: '/admin/generations'
+      preLoaderRoute: typeof AdminGenerationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/credits': {
+      id: '/admin/credits'
+      path: '/credits'
+      fullPath: '/admin/credits'
+      preLoaderRoute: typeof AdminCreditsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/creator-packs': {
+      id: '/admin/creator-packs'
+      path: '/creator-packs'
+      fullPath: '/admin/creator-packs'
+      preLoaderRoute: typeof AdminCreatorPacksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit-log': {
+      id: '/admin/audit-log'
+      path: '/audit-log'
+      fullPath: '/admin/audit-log'
+      preLoaderRoute: typeof AdminAuditLogRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/$baseModelSlug/$stylePresetSlug': {
       id: '/$baseModelSlug/$stylePresetSlug'
       path: '/$baseModelSlug/$stylePresetSlug'
@@ -844,6 +1147,44 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminAuditLogRoute: typeof AdminAuditLogRoute
+  AdminCreatorPacksRoute: typeof AdminCreatorPacksRoute
+  AdminCreditsRoute: typeof AdminCreditsRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
+  AdminGenerationsRoute: typeof AdminGenerationsRoute
+  AdminMaterialsRoute: typeof AdminMaterialsRoute
+  AdminModelsRoute: typeof AdminModelsRoute
+  AdminOrdersRoute: typeof AdminOrdersRoute
+  AdminPaintsRoute: typeof AdminPaintsRoute
+  AdminPromptLabRoute: typeof AdminPromptLabRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStylesRoute: typeof AdminStylesRoute
+  AdminTemplatesRoute: typeof AdminTemplatesRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditLogRoute: AdminAuditLogRoute,
+  AdminCreatorPacksRoute: AdminCreatorPacksRoute,
+  AdminCreditsRoute: AdminCreditsRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
+  AdminGenerationsRoute: AdminGenerationsRoute,
+  AdminMaterialsRoute: AdminMaterialsRoute,
+  AdminModelsRoute: AdminModelsRoute,
+  AdminOrdersRoute: AdminOrdersRoute,
+  AdminPaintsRoute: AdminPaintsRoute,
+  AdminPromptLabRoute: AdminPromptLabRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminStylesRoute: AdminStylesRoute,
+  AdminTemplatesRoute: AdminTemplatesRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface BaseModelSlugStylePresetSlugRouteChildren {
   BaseModelSlugStylePresetSlugOpengraphImageRoute: typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
 }
@@ -861,6 +1202,7 @@ const BaseModelSlugStylePresetSlugRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   CreateRoute: CreateRoute,
   FeedbackRoute: FeedbackRoute,
   LibraryRoute: LibraryRoute,
