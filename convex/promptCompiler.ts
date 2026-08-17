@@ -21,6 +21,136 @@ export type CompiledPromptSection = {
 
 type SpecRecord = Record<string, unknown>;
 
+type MaterialSemanticTags = {
+  materialFamily?: string;
+  surface: string[];
+  optics: string[];
+  reflection: string[];
+  exclusions: string[];
+};
+
+type StyleSemanticTags = {
+  styleFamily?: string;
+  shapeLanguage: string[];
+  visualTone: string[];
+  surfaceLanguage: string[];
+  visualExclusions: string[];
+};
+
+const materialFamilyPromptLines: Record<string, string[]> = {
+  "ceramic-coating": [
+    "Hard ceramic-style coating.",
+    "Opaque painted color with controlled diffuse response.",
+  ],
+  "gunmetal": [
+    "Dark gunmetal alloy response.",
+    "Restrained mechanical metallic depth.",
+  ],
+  "metallic-alloy": [
+    "Scale-model metallic alloy response.",
+    "Metallic depth should stay controlled and physically painted.",
+  ],
+  "painted-armor": [
+    "Scale-model painted armor material.",
+    "Surface reads as coated plastic or resin armor, not raw metal.",
+  ],
+  "pseudo-chrome": ["Pseudo-plated candy-over-chrome finish."],
+  "titanium": [
+    "Titanium alloy material response.",
+    "Bright metal value with restrained scale-model reflectivity.",
+  ],
+};
+
+const materialTagPromptLines: Record<
+  Exclude<keyof MaterialSemanticTags, "materialFamily">,
+  Record<string, string>
+> = {
+  surface: {
+    "fine-grain": "Fine painted surface grain.",
+    "high-reflectivity": "High reflectivity with controlled highlight edges.",
+    "low-reflectivity": "Low-reflection surface response.",
+    "smooth-painted": "Smooth painted armor surface.",
+    "soft-specular": "Soft controlled specular highlights.",
+    "ultra-smooth": "Ultra-smooth continuous surface.",
+  },
+  optics: {
+    "candy-over-chrome": "Transparent candy color over a polished metallic undercoat.",
+    "ceramic-depth": "Solid ceramic color depth without pearl or chrome effects.",
+    "opaque-painted-color": "Opaque painted color remains readable under lighting.",
+    "translucent-color-depth": "Translucent color depth remains visible through reflections.",
+  },
+  reflection: {
+    "broad-diffuse": "Broad diffuse highlights.",
+    "color-rich": "Reflections carry rich color without becoming mirror chrome.",
+    "crisp-panel-readability": "Panel edges and armor segmentation remain readable.",
+    "studio-soft": "Soft studio reflections.",
+  },
+  exclusions: {
+    "full-chrome": "Avoid full chrome plating.",
+    "metallic-flakes": "Avoid visible metallic flakes.",
+    "mirror-glare": "Avoid uncontrolled mirror glare.",
+    "pearl-effect": "Avoid pearl paint effects.",
+    "wet-plastic": "Avoid wet plastic shine.",
+  },
+};
+
+const materialFamilyImplicitExclusions: Record<string, string[]> = {
+  "ceramic-coating": ["full-chrome", "metallic-flakes", "pearl-effect"],
+  "painted-armor": ["full-chrome", "metallic-flakes"],
+  "pseudo-chrome": ["full-chrome", "metallic-flakes"],
+};
+
+const styleFamilyPromptLines: Record<string, string[]> = {
+  "anime-reference": [
+    "Anime-reference surface styling applied only through paint, markings, and panel emphasis.",
+  ],
+  "industrial-mecha": [
+    "Industrial hard-surface style language.",
+    "Factory-grade visual logic with practical markings and material separation.",
+  ],
+  "military-prototype": [
+    "Military prototype style direction.",
+    "Utilitarian color blocking and restrained operational markings.",
+  ],
+  "neo-zeon": [
+    "Neo Zeon-inspired command-unit style language.",
+    "Apply the style through color hierarchy, markings, panel rhythm, and surface treatment only.",
+  ],
+};
+
+const styleTagPromptLines: Record<
+  Exclude<keyof StyleSemanticTags, "styleFamily">,
+  Record<string, string>
+> = {
+  shapeLanguage: {
+    "heavy-armor":
+      "Suggest heavy-armor presence through color massing and surface hierarchy without changing proportions.",
+    "large-curves":
+      "Favor broad curved armor rhythms already present in the base model; do not reshape the silhouette.",
+    "layered-plating":
+      "Emphasize layered plating cues through panel separation, trim, and decal placement.",
+    "sharp-armor": "Favor sharper armor read through angular color boundaries and panel accents.",
+  },
+  visualTone: {
+    "commander-unit": "Commander-unit tone with controlled prestige and authority.",
+    "elite-guard": "Elite guard presentation with disciplined contrast and formal restraint.",
+    "military-industrial": "Military-industrial tone with functional markings and grounded color logic.",
+    "prototype": "Prototype development tone with experimental but plausible surface logic.",
+  },
+  surfaceLanguage: {
+    "katoki-paneling": "Katoki-style panel density and technical surface subdivision.",
+    "low-visibility-markings": "Low-visibility unit markings and restrained labels.",
+    "serial-markings": "Serial numbers and maintenance labels in believable mechanical zones.",
+    "warning-markings": "Localized warning markings near vents, hatches, and mechanical interfaces.",
+  },
+  visualExclusions: {
+    "heroic-proportions": "Avoid heroic-proportion changes.",
+    "organic-redesign": "Avoid organic redesign cues.",
+    "super-robot": "Avoid super-robot exaggeration.",
+    "toy-like": "Avoid toy-like styling.",
+  },
+};
+
 export function compileHdRenderPrompt(input: PromptCompilerInput) {
   return [
     "NeotypeLab HD Render",
@@ -128,6 +258,11 @@ export function compileMaterialSpec(preset?: PromptCompilerPreset | null) {
   }
 
   const spec = parseSpecJson(preset.specJson);
+  const semanticMaterialPrompt = compileMaterialSemanticTags(spec);
+  if (semanticMaterialPrompt) {
+    return semanticMaterialPrompt;
+  }
+
   if (isPseudoPlating(preset, spec)) {
     if (isCandyOverChromePseudoPlating(spec)) {
       return joinPromptLines([
@@ -175,6 +310,60 @@ export function compileMaterialSpec(preset?: PromptCompilerPreset | null) {
     weatheringInteractionLine(spec),
     avoidColorRoleLine(spec),
   ]);
+}
+
+function compileMaterialSemanticTags(spec: SpecRecord) {
+  const tags = getMaterialSemanticTags(spec);
+  if (tags === null) {
+    return undefined;
+  }
+
+  const exclusions = uniqueStrings([
+    ...(tags.materialFamily
+      ? materialFamilyImplicitExclusions[tags.materialFamily] ?? []
+      : []),
+    ...tags.exclusions,
+  ]);
+
+  return joinPromptLines([
+    ...(tags.materialFamily
+      ? materialFamilyPromptLines[tags.materialFamily] ?? [
+          `${humanizeValue(tags.materialFamily)} material family.`,
+        ]
+      : []),
+    ...compileMaterialTagGroup("surface", tags.surface, exclusions),
+    ...compileMaterialTagGroup("optics", tags.optics, exclusions),
+    ...compileMaterialTagGroup("reflection", tags.reflection, exclusions),
+    ...exclusions.map((tag) => compileMaterialExclusionTag(tag)),
+  ]);
+}
+
+function compileMaterialTagGroup(
+  group: "surface" | "optics" | "reflection",
+  tags: string[],
+  exclusions: string[]
+) {
+  return tags
+    .filter((tag) => !exclusions.includes(tag))
+    .map((tag) => materialTagPromptLines[group][tag] ?? fallbackMaterialTagLine(group, tag));
+}
+
+function compileMaterialExclusionTag(tag: string) {
+  return materialTagPromptLines.exclusions[tag] ?? `Avoid ${humanizeValue(tag)}.`;
+}
+
+function fallbackMaterialTagLine(
+  group: "surface" | "optics" | "reflection",
+  tag: string
+) {
+  const label =
+    group === "surface"
+      ? "Surface"
+      : group === "optics"
+        ? "Optical behavior"
+        : "Reflection behavior";
+
+  return `${label}: ${humanizeValue(tag)}.`;
 }
 
 export function compilePaintFinishSpec(preset?: PromptCompilerPreset | null) {
@@ -310,6 +499,11 @@ export function compileStyleSpec(preset?: PromptCompilerPreset | null) {
   }
 
   const spec = parseSpecJson(preset.specJson);
+  const semanticStylePrompt = compileStyleSemanticTags(spec, preset.name);
+  if (semanticStylePrompt) {
+    return semanticStylePrompt;
+  }
+
   const personalityTags = getStringArray(spec, "personalityTags");
   const prohibitedEffects = getStringArray(spec, "prohibitedEffects");
 
@@ -328,6 +522,53 @@ export function compileStyleSpec(preset?: PromptCompilerPreset | null) {
     sentenceFromField(spec, "identityBoundary"),
     avoidLine(prohibitedEffects),
   ]);
+}
+
+function compileStyleSemanticTags(spec: SpecRecord, presetName: string) {
+  const tags = getStyleSemanticTags(spec);
+  if (tags === null) {
+    return undefined;
+  }
+
+  return joinPromptLines([
+    ...(tags.styleFamily
+      ? styleFamilyPromptLines[tags.styleFamily] ?? [
+          `${humanizeValue(tags.styleFamily)} style family.`,
+        ]
+      : [`Render the ${presetName} style direction as semantic surface design only.`]),
+    ...compileStyleTagGroup("shapeLanguage", tags.shapeLanguage),
+    ...compileStyleTagGroup("visualTone", tags.visualTone),
+    ...compileStyleTagGroup("surfaceLanguage", tags.surfaceLanguage),
+    ...tags.visualExclusions.map((tag) => compileStyleExclusionTag(tag)),
+    "Style must not alter silhouette, proportions, armor structure, or native equipment.",
+  ]);
+}
+
+function compileStyleTagGroup(
+  group: "shapeLanguage" | "visualTone" | "surfaceLanguage",
+  tags: string[]
+) {
+  return tags.map(
+    (tag) => styleTagPromptLines[group][tag] ?? fallbackStyleTagLine(group, tag)
+  );
+}
+
+function compileStyleExclusionTag(tag: string) {
+  return styleTagPromptLines.visualExclusions[tag] ?? `Avoid ${humanizeValue(tag)}.`;
+}
+
+function fallbackStyleTagLine(
+  group: "shapeLanguage" | "visualTone" | "surfaceLanguage",
+  tag: string
+) {
+  const label =
+    group === "shapeLanguage"
+      ? "Shape language"
+      : group === "visualTone"
+        ? "Visual tone"
+        : "Surface language";
+
+  return `${label}: ${humanizeValue(tag)}.`;
 }
 
 export function compileComposition() {
@@ -470,6 +711,109 @@ function getStringArray(spec: SpecRecord, key: string) {
   return value
     .map((item) => getTextValue(item))
     .filter((item): item is string => Boolean(item));
+}
+
+function getRecord(spec: SpecRecord, key: string) {
+  const value = spec[key];
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    return value as SpecRecord;
+  }
+
+  return undefined;
+}
+
+function getMaterialSemanticTags(spec: SpecRecord): MaterialSemanticTags | null {
+  const nested = getRecord(spec, "semanticTags");
+  const materialFamily =
+    getTag(spec, "materialFamily") ||
+    (nested ? getTag(nested, "materialFamily") : undefined);
+  const surface = uniqueStrings([
+    ...getTagArray(spec, "surface"),
+    ...(nested ? getTagArray(nested, "surface") : []),
+  ]);
+  const optics = uniqueStrings([
+    ...getTagArray(spec, "optics"),
+    ...(nested ? getTagArray(nested, "optics") : []),
+  ]);
+  const reflection = uniqueStrings([
+    ...getTagArray(spec, "reflection"),
+    ...(nested ? getTagArray(nested, "reflection") : []),
+  ]);
+  const exclusions = uniqueStrings([
+    ...getTagArray(spec, "exclusions"),
+    ...(nested ? getTagArray(nested, "exclusions") : []),
+  ]);
+
+  if (
+    !materialFamily &&
+    surface.length === 0 &&
+    optics.length === 0 &&
+    reflection.length === 0 &&
+    exclusions.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    materialFamily,
+    surface,
+    optics,
+    reflection,
+    exclusions,
+  };
+}
+
+function getStyleSemanticTags(spec: SpecRecord): StyleSemanticTags | null {
+  const nested = getRecord(spec, "semanticTags");
+  const styleFamily =
+    getTag(spec, "styleFamily") || (nested ? getTag(nested, "styleFamily") : undefined);
+  const shapeLanguage = uniqueStrings([
+    ...getTagArray(spec, "shapeLanguage"),
+    ...(nested ? getTagArray(nested, "shapeLanguage") : []),
+  ]);
+  const visualTone = uniqueStrings([
+    ...getTagArray(spec, "visualTone"),
+    ...(nested ? getTagArray(nested, "visualTone") : []),
+  ]);
+  const surfaceLanguage = uniqueStrings([
+    ...getTagArray(spec, "surfaceLanguage"),
+    ...(nested ? getTagArray(nested, "surfaceLanguage") : []),
+  ]);
+  const visualExclusions = uniqueStrings([
+    ...getTagArray(spec, "visualExclusions"),
+    ...(nested ? getTagArray(nested, "visualExclusions") : []),
+  ]);
+
+  if (
+    !styleFamily &&
+    shapeLanguage.length === 0 &&
+    visualTone.length === 0 &&
+    surfaceLanguage.length === 0 &&
+    visualExclusions.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    styleFamily,
+    shapeLanguage,
+    visualTone,
+    surfaceLanguage,
+    visualExclusions,
+  };
+}
+
+function getTag(spec: SpecRecord, key: string) {
+  const value = getText(spec, key);
+  return value ? normalizeTag(value) : undefined;
+}
+
+function getTagArray(spec: SpecRecord, key: string) {
+  return getStringArray(spec, key).map(normalizeTag).filter((tag) => tag.length > 0);
+}
+
+function normalizeTag(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, "-");
 }
 
 function describeCoatingBehavior(spec: SpecRecord) {
@@ -678,6 +1022,14 @@ function classifyFinish(finishType: string, glossLevel?: number) {
 }
 
 function isCandyOverChromePseudoPlating(spec: SpecRecord) {
+  const semanticTags = getMaterialSemanticTags(spec);
+  if (
+    semanticTags?.materialFamily === "pseudo-chrome" ||
+    semanticTags?.optics.includes("candy-over-chrome")
+  ) {
+    return true;
+  }
+
   const text = [
     getText(spec, "coatingBehavior"),
     getText(spec, "visualCharacter"),
@@ -695,8 +1047,17 @@ function isCandyOverChromePseudoPlating(spec: SpecRecord) {
 }
 
 function isPseudoPlating(preset: PromptCompilerPreset, spec: SpecRecord) {
+  const semanticTags = getMaterialSemanticTags(spec);
+  if (
+    semanticTags?.materialFamily === "pseudo-chrome" ||
+    semanticTags?.optics.includes("candy-over-chrome")
+  ) {
+    return true;
+  }
+
   const haystack = searchablePresetText(preset, spec);
   return (
+    haystack.includes("pseudo-chrome") ||
     haystack.includes("pseudo plating") ||
     haystack.includes("pseudo-plating") ||
     haystack.includes("pseudo plated") ||
@@ -719,12 +1080,29 @@ function searchablePresetText(preset: PromptCompilerPreset, spec: SpecRecord) {
   return [
     preset.name,
     preset.renderBehaviorText,
-    ...Object.values(spec)
-      .map((value) => getTextValue(value))
-      .filter((value): value is string => Boolean(value)),
+    ...collectSearchableText(spec),
   ]
     .join(" ")
     .toLowerCase();
+}
+
+function collectSearchableText(value: unknown): string[] {
+  const text = getTextValue(value);
+  if (text) {
+    return [text];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectSearchableText(item));
+  }
+
+  if (value !== null && typeof value === "object") {
+    return Object.values(value as SpecRecord).flatMap((item) =>
+      collectSearchableText(item)
+    );
+  }
+
+  return [];
 }
 
 function behaviorMentionsChromeBoundary(lines: string[]) {
@@ -778,6 +1156,10 @@ function joinPromptLines(lines: Array<string | undefined>) {
 
 function uniqueLine(line: string, index: number, lines: string[]) {
   return lines.indexOf(line) === index;
+}
+
+function uniqueStrings(values: string[]) {
+  return values.filter((value, index, list) => list.indexOf(value) === index);
 }
 
 function humanizeKey(value: string) {

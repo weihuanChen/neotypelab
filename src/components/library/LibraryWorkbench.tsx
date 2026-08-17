@@ -12,11 +12,28 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SignInButton } from "@clerk/tanstack-react-start";
-import { Button } from "@/components/ui/button";
-import { ConceptEngagementBar } from "@/src/components/showcase/EngagementBars";
 import { ShoppingListActions } from "@/components/public/ShoppingListActions";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ChoiceChip,
+  FieldHint,
+  FocusPanel,
+  GhostButton,
+  Kicker,
+  MetaRow,
+  StatusPill,
+  WorkbenchNotice,
+  mapStatusTone,
+} from "@/src/components/ui/workbench";
 import { api } from "@/convex/_generated/api";
-import { cn } from "@/lib/utils";
 import {
   AuthLoading,
   Authenticated,
@@ -25,10 +42,20 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type PublishVisibility = "private" | "unlisted" | "public";
 type BuildStage = "primer-pass" | "decal-pass" | "weathering-pass";
+type LibraryScope = "prototypes" | "saved";
+type LibraryView = "list" | "grid";
+type OperationalStatus =
+  | "draft"
+  | "queued"
+  | "rendering"
+  | "ready"
+  | "failed"
+  | "archived";
+type StatusFilter = "all" | "draft" | "rendering" | "ready" | "failed";
 type LibrarySearch = {
   filter?: "all" | "draft" | "generated" | "archived" | "saved" | "jobs";
 };
@@ -71,11 +98,10 @@ export function LibraryWorkbench({ search: _search }: { search: LibrarySearch })
 }
 
 function AuthenticatedLibraryWorkbench() {
-  const viewer = useQuery(api.users.viewer);
   const concepts = useQuery(api.concepts.listLibrary);
   const savedConcepts = useQuery(api.concepts.listSavedPublicConcepts);
-  const jobs = useQuery(api.generation.listViewerJobs);
   const updateConcept = useMutation(api.concepts.update);
+  const createSprayPlan = useMutation(api.sprayPlans.createFromConcept);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
   const requestMultiAnglePreview = useMutation(api.prototypeTools.requestMultiAnglePreview);
   const requestHighFidelityRender = useMutation(api.prototypeTools.requestHighFidelityRender);
@@ -120,6 +146,7 @@ function AuthenticatedLibraryWorkbench() {
   } | null>(null);
   const [stabilizingConceptId, setStabilizingConceptId] = useState<string | null>(null);
   const [updatingConceptId, setUpdatingConceptId] = useState<string | null>(null);
+  const [creatingSprayPlanId, setCreatingSprayPlanId] = useState<string | null>(null);
   const [publishIntent, setPublishIntent] = useState<{
     conceptId: string;
     conceptTitle: string;
@@ -129,6 +156,15 @@ function AuthenticatedLibraryWorkbench() {
     currentStatus: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
+  const [scope, setScope] = useState<LibraryScope>("prototypes");
+  const [view, setView] = useState<LibraryView>("list");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [kitFilter, setKitFilter] = useState("all");
+  const [styleFilter, setStyleFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
 
   async function onRetry(jobId: string) {
     setRerunningJobId(jobId);
@@ -154,6 +190,19 @@ function AuthenticatedLibraryWorkbench() {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update visibility");
     } finally {
       setUpdatingConceptId(null);
+    }
+  }
+
+  async function onCreateSprayPlan(conceptId: string) {
+    setCreatingSprayPlanId(conceptId);
+    setErrorMessage(null);
+    try {
+      await createSprayPlan({ conceptId: conceptId as never });
+      window.location.assign("/studio");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to create spray plan");
+    } finally {
+      setCreatingSprayPlanId(null);
     }
   }
 
@@ -229,18 +278,50 @@ function AuthenticatedLibraryWorkbench() {
     }
   }
 
-  if (concepts === undefined || savedConcepts === undefined || jobs === undefined) {
+  useEffect(() => {
+    if (!concepts || concepts.length === 0) {
+      return;
+    }
+    if (!selectedConceptId || !concepts.some((concept) => concept._id === selectedConceptId)) {
+      setSelectedConceptId(concepts[0]._id);
+    }
+  }, [concepts, selectedConceptId]);
+
+  useEffect(() => {
+    if (!savedConcepts || savedConcepts.length === 0) {
+      return;
+    }
+    if (!selectedSavedId || !savedConcepts.some((concept) => concept._id === selectedSavedId)) {
+      setSelectedSavedId(savedConcepts[0]._id);
+    }
+  }, [savedConcepts, selectedSavedId]);
+
+  if (concepts === undefined || savedConcepts === undefined) {
     return (
-      <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Hangar sync</p>
-        <h2 className="mt-4 text-3xl font-semibold">Indexing saved prototypes and reactor jobs</h2>
-      </section>
+      <div className="workbench-page">
+        <Kicker>Hangar sync</Kicker>
+        <h2>Indexing saved prototypes and reactor jobs</h2>
+      </div>
     );
   }
 
-  const queuedJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
-  const failedJobs = jobs.filter((job) => job.status === "failed");
-  const successfulJobs = jobs.filter((job) => job.status === "succeeded");
+  const statusCounts = concepts.reduce(
+    (counts, concept) => {
+      const status = getOperationalStatus(concept);
+      counts.all += 1;
+      if (status === "queued" || status === "rendering") {
+        counts.rendering += 1;
+      } else if (status === "ready") {
+        counts.ready += 1;
+      } else if (status === "failed") {
+        counts.failed += 1;
+      } else if (status === "draft") {
+        counts.draft += 1;
+      }
+      return counts;
+    },
+    { all: 0, draft: 0, rendering: 0, ready: 0, failed: 0 }
+  );
   const paintPlanByConceptId = new Map((paintPlans ?? []).map((plan) => [plan.conceptId, plan]));
   const feasibilityByConceptId = new Map(
     (feasibility ?? []).map((entry) => [entry.conceptId, entry])
@@ -252,819 +333,228 @@ function AuthenticatedLibraryWorkbench() {
   const renderHistoryByConceptId = new Map(
     (renderHistory ?? []).map((entry) => [entry.conceptId, entry.outputs])
   );
-  const renderOutputCount = (renderHistory ?? []).reduce(
-    (sum, entry) => sum + entry.outputs.length,
-    0
-  );
+
+  const kitOptions = uniqueValues(concepts.map((concept) => concept.baseModel?.name));
+  const styleOptions = uniqueValues(concepts.map((concept) => concept.stylePreset?.name));
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredConcepts = concepts
+    .filter((concept) => {
+      const status = getOperationalStatus(concept);
+      const statusMatches =
+        statusFilter === "all" ||
+        (statusFilter === "rendering"
+          ? status === "queued" || status === "rendering"
+          : status === statusFilter);
+      const searchMatches =
+        normalizedSearch.length === 0 ||
+        [
+          concept.title,
+          concept.baseModel?.name,
+          concept.stylePreset?.name,
+          concept.materialPreset?.name,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+      return (
+        statusMatches &&
+        searchMatches &&
+        (kitFilter === "all" || concept.baseModel?.name === kitFilter) &&
+        (styleFilter === "all" || concept.stylePreset?.name === styleFilter)
+      );
+    })
+    .sort((a, b) =>
+      sortOrder === "oldest"
+        ? a._creationTime - b._creationTime
+        : sortOrder === "title"
+          ? a.title.localeCompare(b.title)
+          : b._creationTime - a._creationTime
+    );
+
+  const selectedConcept =
+    filteredConcepts.find((concept) => concept._id === selectedConceptId) ??
+    filteredConcepts.at(0) ??
+    null;
+  const selectedSaved =
+    savedConcepts.find((concept) => concept._id === selectedSavedId) ??
+    savedConcepts.at(0) ??
+    null;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_380px]">
-      <div className="space-y-6">
-        <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Saved Hangar</p>
-          <h2 className="mt-4 text-3xl font-semibold">Prototype library and generation ledger</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
-            This is the operator archive for draft concepts, successful previews,
-            and failed simulation attempts. Every item here is backed by the current
-            P1 domain model: concept, generation job, asset record, and credit transaction.
-          </p>
-        </section>
-
-        <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Saved Public Builds</p>
-              <h3 className="mt-3 text-2xl font-semibold">Bookmarked showcase concepts in your hangar</h3>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
-                Public concepts you save from showcase, profile, and landing pages now land here for
-                quick recall inside the terminal.
-              </p>
+    <div className="library-operations">
+      <header className="library-operations__head">
+        <div>
+          <Kicker>Technical archive / vol.02</Kicker>
+          <h2>Prototype operations</h2>
+          <FieldHint>Manage every prototype from initialization through render, inspection, and publish.</FieldHint>
+        </div>
+        <dl className="library-status-strip" aria-label="Prototype status summary">
+          {(["all", "rendering", "ready", "failed"] as const).map((status) => (
+            <div key={status}>
+              <dt>{status === "all" ? "Prototypes" : status}</dt>
+              <dd>{statusCounts[status]}</dd>
             </div>
-            <div className="grid gap-2 text-right text-sm text-ink-secondary">
-              <span>{savedConcepts.length} saved public build{savedConcepts.length === 1 ? "" : "s"}</span>
-              <span>Syncs from public share surfaces</span>
-            </div>
-          </div>
+          ))}
+        </dl>
+      </header>
 
-          {savedConcepts.length === 0 ? (
-            <div className="mt-5 rounded-[20px] border border-line-secondary bg-main p-5">
-              <p className="text-sm font-semibold text-ink-primary">No saved public builds yet.</p>
-              <p className="mt-2 text-sm leading-6 text-ink-secondary">
-                Visit the public showcase, a pilot profile, or a style landing page and save a concept
-                to pin it into your terminal library.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {savedConcepts.map((concept) => (
-                <article
-                  key={concept._id}
-                  className="overflow-hidden rounded-[24px] border border-line-secondary bg-main"
-                >
-                  <div className="aspect-[4/3] bg-main">
-                    {concept.previewAsset?.publicUrl ? (
-                      <img
-                        src={concept.previewAsset.publicUrl}
-                        alt={concept.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-end p-5">
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-                            Preview unavailable
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-ink-secondary">
-                            Asset exists, but no public URL is attached yet.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-4 p-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill label={concept.visibility} tone="neutral" />
-                      <StatusPill label={concept.status} tone={statusTone(concept.status)} />
-                      {concept.remixCount > 0 ? (
-                        <StatusPill label={`${concept.remixCount} remix${concept.remixCount === 1 ? "" : "es"}`} tone="amber" />
-                      ) : null}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold tracking-tight">{concept.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-ink-secondary">
-                        {concept.baseModel?.name ?? "Unknown base model"} ·{" "}
-                        {concept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
-                        {concept.materialPreset?.name ?? "Unknown material profile"}
-                      </p>
-                      {concept.owner ? (
-                        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                          Pilot · @{concept.owner.handle}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="grid gap-2 text-sm text-ink-muted">
-                      <MetaRow label="Weathering" value={concept.weatheringLevel} />
-                      <MetaRow label="Finish" value={concept.materialPreset?.finishType ?? "Unknown"} />
-                    </div>
-                    <ConceptEngagementBar
-                      conceptId={concept._id}
-                      likeCount={concept.engagement.likeCount}
-                      saveCount={concept.engagement.saveCount}
-                      viewerHasLiked={concept.engagement.viewerHasLiked}
-                      viewerHasSaved={concept.engagement.viewerHasSaved}
-                      interactive
-                      compact
-                    />
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
-                        <Button
-                          type="button"
-                          disabled={stabilizingConceptId === concept._id}
-                          onClick={() => {
-                            void onStabilizePreviewAsset(concept._id);
-                          }}
-                          className="h-11 rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
-                        >
-                          {stabilizingConceptId === concept._id
-                            ? "Stabilizing Preview"
-                            : "Stabilize Public Preview"}
-                        </Button>
-                      ) : null}
-                      <a
-                        href={`/prototype/${concept._id}`}
-                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-blue bg-[#0E2430] px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-white/10"
-                      >
-                        Open Share Surface
-                      </a>
-                      <a
-                        href={`/t/create?remix=${concept._id}`}
-                        className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-orange bg-[#2A210F] px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-white/10"
-                      >
-                        Remix in Create
-                      </a>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+      <nav className="library-scope-tabs" aria-label="Library scope">
+        <button className={scope === "prototypes" ? "is-active" : ""} onClick={() => setScope("prototypes")} type="button">
+          My prototypes <span>{concepts.length}</span>
+        </button>
+        <button className={scope === "saved" ? "is-active" : ""} onClick={() => setScope("saved")} type="button">
+          Saved builds <span>{savedConcepts.length}</span>
+        </button>
+      </nav>
 
-        {concepts.length === 0 ? (
-          <section className="border-2 border-line-primary bg-surface p-8 text-ink-primary">
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-blue">Library empty</p>
-            <h3 className="mt-4 text-2xl font-semibold">No prototypes have been initialized yet.</h3>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-secondary">
-              Use the Create terminal to dispatch the first structured concept. Once
-              queued, succeeded, or failed, it will appear here with job and credit context.
-            </p>
-          </section>
-        ) : (
-          <section className="grid gap-4">
-            {concepts.map((concept) => {
-              const paintPlan = paintPlanByConceptId.get(concept._id);
-              const feasibilityEntry = feasibilityByConceptId.get(concept._id);
-              const shoppingEntry = shoppingByConceptId.get(concept._id);
-              const recommendationEntry = recommendationsByConceptId.get(concept._id);
-              const renderOutputs = renderHistoryByConceptId.get(concept._id) ?? [];
-              return (
-              <article
-                key={concept._id}
-                className="rounded-[28px] border border-line-secondary bg-surface p-5 text-ink-primary"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusPill label={concept.status} tone={statusTone(concept.status)} />
-                      {concept.generationJob?.status ? (
-                        <StatusPill
-                          label={`job ${concept.generationJob.status}`}
-                          tone={statusTone(concept.generationJob.status)}
-                        />
-                      ) : null}
-                      <StatusPill label={concept.visibility} tone="neutral" />
-                    </div>
-                    <h3 className="mt-4 text-2xl font-semibold tracking-tight">
-                      {concept.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-ink-secondary">
-                      {concept.baseModel?.name ?? "Unknown base model"} ·{" "}
-                      {concept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
-                      {concept.materialPreset?.name ?? "Unknown material profile"}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                      {concept.sourceConcept ? (
-                        <span>Remix Source · {concept.sourceConcept.title}</span>
-                      ) : (
-                        <span>Direct Prototype</span>
-                      )}
-                      {concept.remixCount > 0 ? <span>Outbound Remixes · {concept.remixCount}</span> : null}
-                    </div>
-                    {concept.moodTags.length > 0 ? (
-                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-ink-muted">
-                        Mood Vector · {concept.moodTags.map(formatMoodTagLabel).join(" / ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="w-full max-w-[320px] rounded-[22px] border border-line-secondary bg-main p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-blue">
-                      Reactor record
-                    </p>
-                    <div className="mt-4 space-y-3 text-sm">
-                      <MetaRow label="Weathering" value={concept.weatheringLevel} />
-                      <MetaRow
-                        label="Credits"
-                        value={
-                          concept.generationJob
-                            ? `${concept.generationJob.requestedCredits} credits`
-                            : "N/A"
-                        }
-                      />
-                      <MetaRow
-                        label="Provider"
-                        value={concept.generationJob?.provider ?? "Not assigned"}
-                      />
-                      <MetaRow
-                        label="Job Kind"
-                        value={formatJobKind(concept.generationJob?.kind, concept.generationJob?.renderMode)}
-                      />
-                      <MetaRow
-                        label="Asset"
-                        value={concept.previewAsset?.contentType ?? "No preview asset yet"}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-                  <div className="rounded-[22px] border border-line-secondary bg-panel p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-teal">
-                      Notes + status
-                    </p>
-                    <p className="mt-3 text-sm leading-6 text-ink-muted">
-                      {concept.notes?.trim() || "No additional operator note was attached."}
-                    </p>
-                    {concept.generationJob?.errorMessage ? (
-                      <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
-                        {concept.generationJob.errorMessage}
-                      </div>
-                    ) : null}
-                    {concept.previewAsset?.key ? (
-                      <p className="mt-4 break-all text-xs leading-5 text-ink-muted">
-                        Asset key: {concept.previewAsset.key}
-                      </p>
-                    ) : null}
-                    {concept.sourceConcept ? (
-                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">
-                          Source lineage
-                        </p>
-                        <p className="mt-3 text-sm text-ink-primary">{concept.sourceConcept.title}</p>
-                        <p className="mt-2 text-xs leading-5 text-ink-secondary">
-                          {concept.sourceConcept.baseModel?.name ?? "Unknown base model"} ·{" "}
-                          {concept.sourceConcept.stylePreset?.name ?? "Unknown Style DNA"} ·{" "}
-                          {concept.sourceConcept.owner?.handle ?? concept.sourceConcept.owner?.fullName ?? "Unknown pilot"}
-                        </p>
-                        {concept.sourceConcept.visibility !== "private" ? (
-                          <a
-                            href={`/prototype/${concept.sourceConcept._id}`}
-                            className="mt-3 inline-flex h-9 items-center justify-center rounded-[14px] border border-accent-blue bg-[#0E2430] px-3 text-xs text-ink-primary transition-colors hover:bg-white/10"
-                          >
-                            Open Source Surface
-                          </a>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {renderOutputs.length > 0 ? (
-                      <div className="mt-4 rounded-[18px] border border-[#8FEAFF]/20 bg-main p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-[11px] uppercase tracking-[0.22em] text-accent-blue">
-                              Render History
-                            </p>
-                            <p className="mt-2 text-sm leading-6 text-ink-muted">
-                              {renderOutputs.length} archived render output{renderOutputs.length === 1 ? "" : "s"} for
-                              this concept.
-                            </p>
-                          </div>
-                          <StatusPill label="independent assets" tone="cyan" />
-                        </div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                          {renderOutputs.slice(0, 4).map((output) => (
-                            <div
-                              key={output._id}
-                              className="overflow-hidden rounded-[16px] border border-line-secondary bg-main"
-                            >
-                              <div className="aspect-[16/10] bg-main/30">
-                                {output.asset?.publicUrl ? (
-                                  <img
-                                    src={output.asset.publicUrl}
-                                    alt={output.label}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full items-end p-3">
-                                    <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                                      Asset URL pending
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="space-y-3 p-3">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <StatusPill
-                                    label={formatJobKind("hd-preview", output.renderMode)}
-                                    tone="green"
-                                  />
-                                  {output.simulationStage ? (
-                                    <StatusPill
-                                      label={formatSimulationStagePill(output.simulationStage)}
-                                      tone="amber"
-                                    />
-                                  ) : null}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-ink-primary">{output.label}</p>
-                                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-ink-muted">
-                                    {formatHistoryTimestamp(output._creationTime)}
-                                  </p>
-                                </div>
-                                {output.summary?.layoutSpec ? (
-                                  <p className="rounded-[12px] border border-[#8FEAFF]/15 bg-[#8FEAFF]/5 p-2 text-xs leading-5 text-ink-muted">
-                                    {output.summary.layoutSpec}
-                                  </p>
-                                ) : null}
-                                {output.summary?.materialComparisonVariants?.length ? (
-                                  <div className="rounded-[12px] border border-[#EFCB7A]/15 bg-[#EFCB7A]/5 p-2 text-xs leading-5 text-ink-muted">
-                                    {output.summary.materialComparisonVariants
-                                      .slice(0, 4)
-                                      .map((variant) => variant.name)
-                                      .join(" / ")}
-                                  </div>
-                                ) : null}
-                                <div className="grid gap-2 text-xs text-ink-secondary">
-                                  <span>{output.job?.provider ?? "provider pending"}</span>
-                                  <span>{output.asset?.contentType ?? "asset pending"}</span>
-                                  <span className="break-all font-mono">{output.generationJobId}</span>
-                                </div>
-                                {output.asset?.publicUrl ? (
-                                  <a
-                                    href={output.asset.publicUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex h-9 items-center justify-center rounded-[14px] border border-accent-blue bg-[#0E2430] px-3 text-xs text-ink-primary transition-colors hover:bg-white/10"
-                                  >
-                                    Open Render Asset
-                                  </a>
-                                ) : null}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {renderOutputs.length > 4 ? (
-                          <p className="mt-3 text-xs leading-5 text-ink-secondary">
-                            {renderOutputs.length - 4} older render output{renderOutputs.length - 4 === 1 ? "" : "s"} retained in
-                            history.
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {paintPlan ? (
-                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-orange">
-                          Paint Mapping Plan
-                        </p>
-                        <div className="mt-3 space-y-3">
-                          {paintPlan.entries.slice(0, 4).map((entry) => (
-                            <div key={entry.roleSlug} className="rounded-[14px] border border-line-secondary p-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm text-ink-primary">{entry.roleName}</span>
-                                <span className="text-[11px] uppercase tracking-[0.16em] text-ink-secondary">
-                                  {entry.suggestedPaint?.code ?? "N/A"}
-                                </span>
-                              </div>
-                              <p className="mt-2 text-xs text-ink-muted">
-                                {entry.suggestedPaint
-                                  ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`
-                                  : "No active paint mapping"}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 space-y-2 text-xs leading-5 text-ink-secondary">
-                          {paintPlan.sprayNotes.slice(0, 2).map((note) => (
-                            <p key={note}>{note}</p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {feasibilityEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-orange">
-                          Spray Feasibility
-                        </p>
-                        <p className="mt-3 text-sm leading-6 text-ink-muted">
-                          {feasibilityEntry.summary}
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <FeasibilityStat
-                            label="Beginner difficulty"
-                            value={feasibilityEntry.beginnerDifficulty}
-                          />
-                          <FeasibilityStat
-                            label="Masking"
-                            value={`${feasibilityEntry.maskingComplexity}/100`}
-                          />
-                          <FeasibilityStat
-                            label="Estimated layers"
-                            value={`${feasibilityEntry.estimatedLayerCount}`}
-                          />
-                          <FeasibilityStat
-                            label="Paint cost"
-                            value={feasibilityEntry.paintCostBand}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    {shoppingEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-blue">
-                          Shopping Readiness
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <FeasibilityStat
-                            label="Primary items"
-                            value={`${shoppingEntry.primaryItems.length}`}
-                          />
-                          <FeasibilityStat
-                            label="Alternate items"
-                            value={`${shoppingEntry.alternateItems.length}`}
-                          />
-                          <FeasibilityStat
-                            label="Confidence"
-                            value={shoppingEntry.procurementConfidence}
-                          />
-                          <FeasibilityStat
-                            label="Affiliate-ready"
-                            value={`${shoppingEntry.purchaseSummary.affiliateReadyCount}`}
-                          />
-                        </div>
-                        <p className="mt-4 text-xs leading-5 text-ink-secondary">
-                          This concept already has a P3 shopping list model behind it, including primary purchase items
-                          and fallback sourcing options.
-                        </p>
-                        {shoppingEntry.bundles.core[0] ? (
-                          <div className="mt-4 rounded-[16px] border border-line-secondary bg-main p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                              Core Anchor
-                            </p>
-                            <p className="mt-2 text-sm text-ink-primary">
-                              {shoppingEntry.bundles.core[0].brand} {shoppingEntry.bundles.core[0].code}
-                            </p>
-                            <p className="mt-1 text-xs text-ink-secondary">
-                              {shoppingEntry.bundles.core[0].colorName}
-                            </p>
-                          </div>
-                        ) : null}
-                        {shoppingEntry.featuredPurchasePath ? (
-                          <a
-                            href={shoppingEntry.featuredPurchasePath.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className={cn(
-                              "mt-4 inline-flex h-10 items-center justify-center rounded-[16px] px-4 text-sm text-ink-primary transition-colors",
-                              shoppingEntry.featuredPurchasePath.type === "affiliate"
-                                ? "border border-accent-teal bg-[#13241B] hover:bg-white/10"
-                                : "border border-accent-blue bg-[#0E2430] hover:bg-white/10"
-                            )}
-                          >
-                            {shoppingEntry.featuredPurchasePath.type === "affiliate"
-                              ? "Open Best Purchase Path"
-                              : "Search Best Purchase Path"}
-                          </a>
-                        ) : null}
-                        <ShoppingListActions
-                          className="mt-4"
-                          data={{
-                            conceptTitle: shoppingEntry.conceptTitle,
-                            baseModelName: shoppingEntry.baseModelName,
-                            stylePresetName: shoppingEntry.stylePresetName,
-                            materialPresetName: shoppingEntry.materialPresetName,
-                            bundles: shoppingEntry.bundles,
-                            notes: shoppingEntry.notes,
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                    {recommendationEntry ? (
-                      <div className="mt-4 rounded-[18px] border border-line-secondary bg-main p-4">
-                        <p className="text-[11px] uppercase tracking-[0.22em] text-accent-teal">
-                          Recommendation Bias
-                        </p>
-                        <p className="mt-3 text-sm leading-6 text-ink-muted">
-                          {recommendationEntry.feasibilityBias === "practical"
-                            ? "Current guidance is leaning toward easier execution and safer procurement paths."
-                            : "Current guidance is balanced between visual ambition and practical execution."}
-                        </p>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <FeasibilityStat
-                            label="Style alternatives"
-                            value={`${recommendationEntry.alternativeStyles.length}`}
-                          />
-                          <FeasibilityStat
-                            label="Material alternatives"
-                            value={`${recommendationEntry.easierMaterials.length}`}
-                          />
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <a
-                            href={`/t/create?remix=${concept._id}`}
-                            className="inline-flex h-10 items-center justify-center rounded-[16px] border border-accent-blue bg-[#0E2430] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
-                          >
-                            Open In Create
-                          </a>
-                          <div className="rounded-[16px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
-                            Use the recommendation bridge from the prototype page when you want the create session to
-                            preload a specific style, material, or workflow recommendation.
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="rounded-[22px] border border-line-secondary bg-panel p-4">
-                    <p className="text-[11px] uppercase tracking-[0.26em] text-accent-orange">
-                      Action surface
-                    </p>
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[18px] border border-line-secondary bg-main p-3">
-                        <p className="text-[11px] uppercase tracking-[0.18em] text-ink-secondary">
-                          Publish workflow
-                        </p>
-                        <div className="mt-3 grid gap-2">
-                          {(["private", "unlisted", "public"] as const).map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              disabled={
-                                updatingConceptId === concept._id ||
-                                (option !== "private" &&
-                                  (concept.status !== "generated" && concept.status !== "archived"))
-                              }
-                              onClick={() => {
-                                openPublishReview({
-                                  conceptId: concept._id,
-                                  conceptTitle: concept.title,
-                                  nextVisibility: option,
-                                  currentVisibility: concept.visibility,
-                                  previewUrlAvailable: Boolean(concept.previewAsset?.publicUrl),
-                                  currentStatus: concept.status,
-                                });
-                              }}
-                              className={cn(
-                                "rounded-[14px] border px-3 py-2 text-left text-xs uppercase tracking-[0.18em] transition-colors",
-                                concept.visibility === option
-                                  ? "border-accent-blue bg-accent-blue/10 text-ink-primary"
-                                  : "border-line-secondary text-ink-secondary hover:border-line-active hover:text-ink-primary"
-                              )}
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="mt-3 rounded-[14px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
-                          `private` keeps the concept internal.
-                          `unlisted` creates a direct-link share surface.
-                          `public` sends it to the showcase, landing pages, and profile surfaces.
-                        </div>
-                      </div>
-                      {concept.visibility !== "private" ? (
-                        <a
-                          href={`/prototype/${concept._id}`}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-accent-teal bg-[#13241B] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
-                        >
-                          Open Share Surface
-                        </a>
-                      ) : null}
-                      {(concept.status === "generated" || concept.status === "archived") &&
-                      concept.visibility !== "private" ? (
-                        <a
-                          href={`/t/create?remix=${concept._id}`}
-                          className="inline-flex h-11 w-full items-center justify-center rounded-[18px] border border-accent-orange bg-[#2A210F] px-4 text-sm text-ink-primary transition-colors hover:bg-white/10"
-                        >
-                          Remix in Create
-                        </a>
-                      ) : null}
-                      {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
-                        <Button
-                          type="button"
-                          disabled={stabilizingConceptId === concept._id}
-                          onClick={() => {
-                            void onStabilizePreviewAsset(concept._id);
-                          }}
-                          className="h-11 w-full rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
-                        >
-                          {stabilizingConceptId === concept._id
-                            ? "Stabilizing Public Preview"
-                            : "Stabilize Public Preview"}
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "hd-render");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-accent-blue bg-[#0E2430] text-ink-primary hover:bg-white/10"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "hd-render"
-                          ? "Queueing HD Render"
-                          : "Generate HD Render"}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "multi-angle-preview");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "multi-angle-preview"
-                          ? "Queueing Contact Sheet"
-                          : "Generate Contact Sheet"}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "high-fidelity-render");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2C2211] text-ink-primary hover:bg-[#3A2C15]"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "high-fidelity-render"
-                          ? "Queueing High-fidelity Render"
-                          : "Generate High-fidelity Render"}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "material-finish-comparison");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-[#EFCB7A]/40 bg-[#292414] text-ink-primary hover:bg-[#38301A]"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "material-finish-comparison"
-                          ? "Queueing Finish Comparison"
-                          : "Generate Finish Comparison"}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "weathering-simulation");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/40 bg-[#113042] text-ink-primary hover:bg-[#174155]"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "weathering-simulation"
-                          ? "Queueing Weathering Simulation"
-                          : "Generate Weathering Simulation"}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.status !== "generated" ||
-                          concept.generationJob?.status === "queued" ||
-                          concept.generationJob?.status === "running" ||
-                          renderingState?.conceptId === concept._id
-                        }
-                        onClick={() => {
-                          void onRequestRender(concept._id, "weathering-split-preview");
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2B1F16] text-ink-primary hover:bg-[#3A2B1D]"
-                      >
-                        {renderingState &&
-                        renderingState.conceptId === concept._id &&
-                        renderingState.mode === "weathering-split-preview"
-                          ? "Queueing Weathering Split"
-                          : "Generate Weathering Split"}
-                      </Button>
-                      {(["primer-pass", "decal-pass", "weathering-pass"] as const).map((stage) => (
-                        <Button
-                          key={stage}
-                          type="button"
-                          disabled={
-                            concept.status !== "generated" ||
-                            concept.generationJob?.status === "queued" ||
-                            concept.generationJob?.status === "running" ||
-                            renderingState?.conceptId === concept._id
-                          }
-                          onClick={() => {
-                            void onRequestRender(concept._id, "build-stage-visualization", stage);
-                          }}
-                          className="h-11 w-full rounded-[18px] border border-[#8FEAFF]/35 bg-[#102632] text-ink-primary hover:bg-[#173444]"
-                        >
-                          {renderingState &&
-                          renderingState.conceptId === concept._id &&
-                          renderingState.mode === "build-stage-visualization" &&
-                          renderingState.stage === stage
-                            ? `Queueing ${formatBuildStageLabel(stage)}`
-                            : `Generate ${formatBuildStageLabel(stage)}`}
-                        </Button>
-                      ))}
-                      <Button
-                        type="button"
-                        disabled={
-                          concept.generationJob === null ||
-                          concept.generationJob.status !== "failed" ||
-                          rerunningJobId === concept.generationJob._id
-                        }
-                        onClick={() => {
-                          if (concept.generationJob) {
-                            void onRetry(concept.generationJob._id);
-                          }
-                        }}
-                        className="h-11 w-full rounded-[18px] border border-accent-orange bg-[#2C2211] text-ink-primary hover:bg-[#3A2C15]"
-                      >
-                        {rerunningJobId === concept.generationJob?._id
-                          ? "Re-dispatching"
-                          : "Retry Failed Job"}
-                      </Button>
-                      <div className="rounded-[18px] border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
-                        Publishing now runs through a review gate before the concept moves onto
-                        public or unlisted surfaces. Retry remains available only for failed jobs.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </article>
-              );
-            })}
-          </section>
-        )}
-      </div>
-
-      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <section className="border-2 border-line-primary bg-panel p-6 text-ink-primary">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">Operator ledger</p>
-          <div className="mt-5 space-y-4">
-            <MetaRow label="Pilot" value={viewer?.handle ?? "Unknown"} />
-            <MetaRow label="Credits" value={`${viewer?.credits.balance ?? 0}`} />
-            <MetaRow label="Drafts + outputs" value={`${concepts.length}`} />
-            <MetaRow label="Render outputs" value={`${renderOutputCount}`} />
-            <MetaRow label="Queued / running" value={`${queuedJobs.length}`} />
-            <MetaRow label="Failed jobs" value={`${failedJobs.length}`} />
-            <MetaRow label="Succeeded jobs" value={`${successfulJobs.length}`} />
-          </div>
-        </section>
-
-        <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">Queue monitor</p>
-          <div className="mt-4 space-y-3">
-            {jobs.slice(0, 6).map((job) => (
-              <div
-                key={job._id}
-                className="rounded-[18px] border border-line-secondary bg-main p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <StatusPill label={job.status} tone={statusTone(job.status)} />
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                    {job.requestedCredits} credits
-                  </span>
-                </div>
-                <p className="mt-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted">
-                  {formatJobKind(job.kind, job.renderMode)}
-                </p>
-                <p className="mt-3 break-all font-mono text-[12px] leading-5 text-ink-secondary">
-                  {job._id}
-                </p>
-                {job.errorMessage ? (
-                  <p className="mt-3 text-xs leading-5 text-accent-red">{job.errorMessage}</p>
-                ) : null}
-              </div>
+      {scope === "prototypes" ? (
+        <>
+          <div className="library-status-tabs" aria-label="Prototype status">
+            {(["all", "draft", "rendering", "ready", "failed"] as const).map((status) => (
+              <button className={statusFilter === status ? "is-active" : ""} key={status} onClick={() => setStatusFilter(status)} type="button">
+                {status} <span>{statusCounts[status]}</span>
+              </button>
             ))}
           </div>
-          {errorMessage ? (
-            <div className="mt-4 rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
-              {errorMessage}
+
+          <div className="library-toolbar">
+            <label className="library-search">
+              <span>Search</span>
+              <input onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search prototypes..." type="search" value={searchQuery} />
+            </label>
+            <LibraryToolbarSelect
+              label="Kit"
+              onValueChange={setKitFilter}
+              options={[{ label: "All variants", value: "all" }, ...kitOptions.map((kit) => ({ label: kit, value: kit }))]}
+              value={kitFilter}
+            />
+            <LibraryToolbarSelect
+              label="Style DNA"
+              onValueChange={setStyleFilter}
+              options={[{ label: "All systems", value: "all" }, ...styleOptions.map((style) => ({ label: style, value: style }))]}
+              value={styleFilter}
+            />
+            <LibraryToolbarSelect
+              label="Sequence"
+              onValueChange={setSortOrder}
+              options={[
+                { label: "Newest first", value: "newest" },
+                { label: "Oldest first", value: "oldest" },
+                { label: "Title A–Z", value: "title" },
+              ]}
+              value={sortOrder}
+            />
+            <div className="library-view-switch" aria-label="View mode">
+              <button aria-label="List view" className={view === "list" ? "is-active" : ""} onClick={() => setView("list")} type="button">List</button>
+              <button aria-label="Grid view" className={view === "grid" ? "is-active" : ""} onClick={() => setView("grid")} type="button">Grid</button>
             </div>
-          ) : null}
-        </section>
-      </aside>
+          </div>
+
+          <div className="library-operations__workspace">
+            <section className="library-assets" aria-label="Prototypes">
+              <div className="library-assets__label"><Kicker>Prototypes / {filteredConcepts.length}</Kicker><span>Lifecycle record</span></div>
+              {concepts.length === 0 ? (
+                <div className="library-compact-empty">
+                  <Kicker>No prototypes</Kicker>
+                  <p>Your initialized prototypes will appear here.</p>
+                  <GhostButton compact href="/create">Initialize first prototype</GhostButton>
+                </div>
+              ) : filteredConcepts.length === 0 ? (
+                <div className="library-compact-empty"><Kicker>No matches</Kicker><p>Adjust the status or discovery controls.</p></div>
+              ) : view === "list" ? (
+                <div className="library-asset-list">
+                  <div className="library-asset-list__head" aria-hidden="true"><span>Preview / Prototype</span><span>Status</span><span>Visibility</span><span>Updated</span></div>
+                  {filteredConcepts.map((concept) => {
+                    const status = getOperationalStatus(concept);
+                    return (
+                      <button className={selectedConcept?._id === concept._id ? "library-asset-row is-active" : "library-asset-row"} key={concept._id} onClick={() => setSelectedConceptId(concept._id)} type="button">
+                        <div className="library-asset-row__identity">
+                          <div className="library-asset-row__thumb">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : <span>{formatRecordNumber(concepts, concept._id)}</span>}</div>
+                          <div><span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unassigned Style DNA"}</small></div>
+                        </div>
+                        <LifecycleLabel status={status} />
+                        <span className="library-asset-row__meta">{concept.visibility}</span>
+                        <time className="library-asset-row__meta" dateTime={new Date(concept._creationTime).toISOString()}>{formatRelativeTime(concept._creationTime)}</time>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="library-asset-grid">
+                  {filteredConcepts.map((concept) => {
+                    const status = getOperationalStatus(concept);
+                    return (
+                      <button className={selectedConcept?._id === concept._id ? "library-grid-card is-active" : "library-grid-card"} key={concept._id} onClick={() => setSelectedConceptId(concept._id)} type="button">
+                        <div className="library-grid-card__image">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : <span>N°.{formatRecordNumber(concepts, concept._id)}</span>}</div>
+                        <span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"}</small><LifecycleLabel status={status} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <aside className="library-inspector">
+              {selectedConcept ? (
+          <LibraryConceptFocus
+            concept={selectedConcept}
+            creatingSprayPlanId={creatingSprayPlanId}
+            recordNumber={formatRecordNumber(concepts, selectedConcept._id)}
+            errorMessage={errorMessage}
+            feasibility={feasibilityByConceptId.get(selectedConcept._id)}
+            onRequestRender={onRequestRender}
+            onCreateSprayPlan={onCreateSprayPlan}
+            onRetry={onRetry}
+            onStabilizePreviewAsset={onStabilizePreviewAsset}
+            openPublishReview={openPublishReview}
+            paintPlan={paintPlanByConceptId.get(selectedConcept._id)}
+            recommendation={recommendationsByConceptId.get(selectedConcept._id)}
+            renderOutputs={renderHistoryByConceptId.get(selectedConcept._id) ?? []}
+            renderingState={renderingState}
+            rerunningJobId={rerunningJobId}
+            shopping={shoppingByConceptId.get(selectedConcept._id)}
+            stabilizingConceptId={stabilizingConceptId}
+            updatingConceptId={updatingConceptId}
+          />
+              ) : (
+                <div className="library-inspector__empty"><Kicker>No selection</Kicker><p>Select a prototype to inspect its configuration and render state.</p></div>
+              )}
+            </aside>
+          </div>
+        </>
+      ) : (
+        <div className="library-operations__workspace">
+          <section className="library-assets" aria-label="Saved public builds">
+            <div className="library-assets__label"><Kicker>Saved public builds / {savedConcepts.length}</Kicker><span>Reference archive</span></div>
+            {savedConcepts.length === 0 ? (
+              <div className="library-compact-empty"><Kicker>No saved builds</Kicker><p>Save a public work from Showcase to keep it here.</p><GhostButton compact href="/showcase">Browse showcase</GhostButton></div>
+            ) : (
+              <div className="library-asset-list">
+                {savedConcepts.map((concept) => (
+                  <button className={selectedSaved?._id === concept._id ? "library-asset-row is-active" : "library-asset-row"} key={concept._id} onClick={() => setSelectedSavedId(concept._id)} type="button">
+                    <div className="library-asset-row__identity"><div className="library-asset-row__thumb">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : null}</div><div><span className="library-record-number">Saved work</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unknown Style DNA"}</small></div></div>
+                    <StatusPill label={concept.status} tone={mapStatusTone(concept.status)} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+          <aside className="library-inspector">
+            {selectedSaved ? (
+              <div className="library-saved-inspector">
+                <Kicker>Saved public build</Kicker>
+                <div className="library-saved-inspector__preview">{selectedSaved.previewAsset?.publicUrl ? <img alt={selectedSaved.title} src={selectedSaved.previewAsset.publicUrl} /> : null}</div>
+                <h2>{selectedSaved.title}</h2>
+                <MetaRow label="Kit" value={selectedSaved.baseModel?.name ?? "Unknown"} />
+                <MetaRow label="Style DNA" value={selectedSaved.stylePreset?.name ?? "Unknown"} />
+                <GhostButton href={`/prototype/${selectedSaved._id}`}>Open prototype</GhostButton>
+                <GhostButton href={`/create?remix=${selectedSaved._id}`}>Remix in create</GhostButton>
+              </div>
+            ) : <div className="library-inspector__empty"><Kicker>No selection</Kicker><p>Select a saved build to inspect it.</p></div>}
+          </aside>
+        </div>
+      )}
 
       <AlertDialog
         open={publishIntent !== null}
@@ -1150,7 +640,7 @@ function AuthenticatedLibraryWorkbench() {
               onClick={() => {
                 void confirmPublishReview();
               }}
-              className="border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
+              className="border border-line-primary bg-[var(--color-ink)] text-[var(--color-paper)] hover:opacity-90"
             >
               {publishIntent?.nextVisibility === "private"
                 ? "Confirm unpublish"
@@ -1165,61 +655,479 @@ function AuthenticatedLibraryWorkbench() {
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-dashed border-line-guide pb-3">
-      <span className="text-[11px] uppercase tracking-[0.22em] text-ink-muted">{label}</span>
-      <span className="max-w-[58%] text-right text-sm text-ink-primary">{value}</span>
-    </div>
-  );
-}
-
-function FeasibilityStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[14px] border border-line-secondary p-3">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">{label}</p>
-      <p className="mt-2 text-sm text-ink-primary">{value}</p>
-    </div>
-  );
-}
-
-function StatusPill({
-  label,
-  tone,
+function LibraryConceptFocus({
+  concept,
+  creatingSprayPlanId,
+  recordNumber,
+  errorMessage,
+  feasibility,
+  onRequestRender,
+  onCreateSprayPlan,
+  onRetry,
+  onStabilizePreviewAsset,
+  openPublishReview,
+  paintPlan,
+  recommendation,
+  renderOutputs,
+  renderingState,
+  rerunningJobId,
+  shopping,
+  stabilizingConceptId,
+  updatingConceptId,
 }: {
-  label: string;
-  tone: "neutral" | "cyan" | "green" | "amber" | "red";
+  concept: {
+    _id: string;
+    title: string;
+    status: string;
+    visibility: PublishVisibility;
+    weatheringLevel: string;
+    notes?: string | null;
+    moodTags: string[];
+    remixCount: number;
+    previewAsset?: {
+      publicUrl?: string | null;
+      key?: string | null;
+      contentType?: string | null;
+    } | null;
+    generationJob?: {
+      _id: string;
+      status: string;
+      requestedCredits?: number;
+      provider?: string | null;
+      kind?: string;
+      renderMode?: string;
+      errorMessage?: string | null;
+    } | null;
+    baseModel?: { name?: string } | null;
+    stylePreset?: { name?: string } | null;
+    materialPreset?: { name?: string; finishType?: string } | null;
+    sourceConcept?: {
+      _id: string;
+      title: string;
+      visibility: string;
+      baseModel?: { name?: string } | null;
+      stylePreset?: { name?: string } | null;
+      owner?: { handle?: string; fullName?: string } | null;
+    } | null;
+  };
+  creatingSprayPlanId: string | null;
+  recordNumber: string;
+  errorMessage: string | null;
+  feasibility?: {
+    summary: string;
+    beginnerDifficulty: string;
+    maskingComplexity: number;
+    estimatedLayerCount: number;
+    paintCostBand: string;
+  };
+  onRequestRender: (
+    conceptId: string,
+    mode:
+      | "hd-render"
+      | "multi-angle-preview"
+      | "high-fidelity-render"
+      | "build-stage-visualization"
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison",
+    stage?: BuildStage
+  ) => Promise<void>;
+  onCreateSprayPlan: (conceptId: string) => Promise<void>;
+  onRetry: (jobId: string) => Promise<void>;
+  onStabilizePreviewAsset: (conceptId: string) => Promise<void>;
+  openPublishReview: (input: {
+    conceptId: string;
+    conceptTitle: string;
+    nextVisibility: PublishVisibility;
+    currentVisibility: PublishVisibility;
+    previewUrlAvailable: boolean;
+    currentStatus: string;
+  }) => void;
+  paintPlan?: {
+    entries: Array<{
+      roleSlug: string;
+      roleName: string;
+      suggestedPaint?: { brand: string; code: string; colorName: string } | null;
+    }>;
+    sprayNotes: string[];
+  };
+  recommendation?: {
+    feasibilityBias: string;
+    alternativeStyles: unknown[];
+    easierMaterials: unknown[];
+  };
+  renderOutputs: Array<{
+    _id: string;
+    label: string;
+    renderMode?: string;
+    asset?: { publicUrl?: string | null } | null;
+  }>;
+  renderingState: {
+    conceptId: string;
+    mode: string;
+    stage?: BuildStage;
+  } | null;
+  rerunningJobId: string | null;
+  shopping?: {
+    conceptTitle: string;
+    baseModelName: string;
+    stylePresetName: string;
+    materialPresetName: string;
+    primaryItems: unknown[];
+    alternateItems: unknown[];
+    procurementConfidence: string;
+    purchaseSummary: { affiliateReadyCount: number };
+    featuredPurchasePath?: { url: string; type: string } | null;
+    bundles: {
+      core: Array<{ brand: string; code: string; colorName: string }>;
+      support: Array<{ brand: string; code: string; colorName: string }>;
+      backup: Array<{ brand: string; code: string; colorName: string }>;
+    };
+    notes: string[];
+  };
+  stabilizingConceptId: string | null;
+  updatingConceptId: string | null;
 }) {
-  return (
-    <span
-      className={cn(
-        "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em]",
-        tone === "neutral" && "border-line-secondary text-ink-secondary",
-        tone === "cyan" && "border-accent-blue bg-accent-blue/10 text-accent-blue",
-        tone === "green" && "border-accent-teal bg-accent-teal/10 text-accent-teal",
-        tone === "amber" && "border-accent-orange bg-accent-orange/10 text-accent-orange",
-        tone === "red" && "border-accent-red bg-accent-red/10 text-[#FFD2D2]"
-      )}
-    >
-      {label}
-    </span>
-  );
-}
+  const operationalStatus = getOperationalStatus(concept);
+  const busy =
+    concept.status !== "generated" ||
+    concept.generationJob?.status === "queued" ||
+    concept.generationJob?.status === "running" ||
+    renderingState?.conceptId === concept._id;
 
-function statusTone(status: string): "neutral" | "cyan" | "green" | "amber" | "red" {
-  if (status === "queued" || status === "draft" || status === "running") {
-    return "cyan";
+  function renderLabel(
+    mode: string,
+    idle: string,
+    busyLabel: string,
+    stage?: BuildStage
+  ) {
+    if (
+      renderingState?.conceptId === concept._id &&
+      renderingState.mode === mode &&
+      (!stage || renderingState.stage === stage)
+    ) {
+      return busyLabel;
+    }
+    return idle;
   }
-  if (status === "generated" || status === "succeeded") {
-    return "green";
-  }
-  if (status === "archived") {
-    return "amber";
-  }
-  if (status === "failed") {
-    return "red";
-  }
-  return "neutral";
+
+  return (
+    <FocusPanel>
+      <div className="library-inspector__heading">
+        <Kicker>Inspector</Kicker>
+        <span>N°.{recordNumber} / Prototype record</span>
+      </div>
+      <div className="workbench-focus__preview">
+        {concept.previewAsset?.publicUrl ? (
+          <img src={concept.previewAsset.publicUrl} alt={concept.title} />
+        ) : (
+          <div className="workbench-focus__preview-copy">
+            <strong>{concept.title}</strong>
+            <span>No public preview yet</span>
+          </div>
+        )}
+      </div>
+      <div className="workbench-focus__body library-inspector__body">
+        <span className="library-record-number">N°.{recordNumber}</span>
+        <h2>{concept.title}</h2>
+        <div className="library-inspector__state"><LifecycleLabel status={operationalStatus} /><span>{concept.visibility}</span></div>
+        <div className="library-inspector__specimen">
+          <MetaRow label="Kit" value={concept.baseModel?.name ?? "Unknown base model"} />
+          <MetaRow label="Style DNA" value={concept.stylePreset?.name ?? "Unknown Style DNA"} />
+          <MetaRow label="Material" value={concept.materialPreset?.name ?? "Unknown material"} />
+          <MetaRow label="Weathering" value={concept.weatheringLevel} />
+          {concept.moodTags.length > 0 ? <MetaRow label="Mood" value={concept.moodTags.map(formatMoodTagLabel).join(" / ")} /> : null}
+        </div>
+        <MetaRow
+          label="Credits"
+          value={
+            concept.generationJob
+              ? `${concept.generationJob.requestedCredits} credits`
+              : "N/A"
+          }
+        />
+        <MetaRow label="Provider" value={concept.generationJob?.provider ?? "Not assigned"} />
+        <MetaRow
+          label="Job kind"
+          value={formatJobKind(concept.generationJob?.kind, concept.generationJob?.renderMode)}
+        />
+        {concept.notes?.trim() ? <FieldHint>{concept.notes}</FieldHint> : null}
+        {concept.generationJob?.errorMessage ? (
+          <WorkbenchNotice tone="danger">
+            <p>{concept.generationJob.errorMessage}</p>
+          </WorkbenchNotice>
+        ) : null}
+        {errorMessage ? (
+          <WorkbenchNotice tone="danger">
+            <p>{errorMessage}</p>
+          </WorkbenchNotice>
+        ) : null}
+
+        <div className="library-inspector__primary-actions">
+          <GhostButton href={`/prototype/${concept._id}`}>Open prototype</GhostButton>
+          {(concept.status === "generated" || concept.status === "archived") ? (
+            <GhostButton disabled={creatingSprayPlanId === concept._id} onClick={() => void onCreateSprayPlan(concept._id)}>
+              {creatingSprayPlanId === concept._id ? "Building spray plan" : "Generate Spray Plan →"}
+            </GhostButton>
+          ) : null}
+          {(concept.status === "generated" || concept.status === "archived") ? <GhostButton href={`/create?remix=${concept._id}`}>Remix</GhostButton> : null}
+          {concept.generationJob?.status === "failed" ? (
+            <GhostButton disabled={rerunningJobId === concept.generationJob._id} onClick={() => void onRetry(concept.generationJob!._id)}>
+              {rerunningJobId === concept.generationJob._id ? "Re-dispatching" : "Retry generation"}
+            </GhostButton>
+          ) : null}
+        </div>
+
+        <details className="library-inspector__technical">
+          <summary>Technical tools + render outputs</summary>
+          <div className="library-inspector__technical-body">
+
+        <div className="workbench-block">
+          <Kicker>Publish</Kicker>
+          <div className="choice-chip-row">
+            {(["private", "unlisted", "public"] as const).map((option) => (
+              <ChoiceChip
+                key={option}
+                active={concept.visibility === option}
+                disabled={
+                  updatingConceptId === concept._id ||
+                  (option !== "private" &&
+                    concept.status !== "generated" &&
+                    concept.status !== "archived")
+                }
+                onClick={() => {
+                  openPublishReview({
+                    conceptId: concept._id,
+                    conceptTitle: concept.title,
+                    nextVisibility: option,
+                    currentVisibility: concept.visibility,
+                    previewUrlAvailable: Boolean(concept.previewAsset?.publicUrl),
+                    currentStatus: concept.status,
+                  });
+                }}
+              >
+                {option}
+              </ChoiceChip>
+            ))}
+          </div>
+        </div>
+
+        <div className="workbench-block">
+          <Kicker>Actions</Kicker>
+          {concept.visibility !== "private" ? (
+            <GhostButton href={`/prototype/${concept._id}`}>Open share surface</GhostButton>
+          ) : null}
+          {(concept.status === "generated" || concept.status === "archived") &&
+          concept.visibility !== "private" ? (
+            <GhostButton href={`/create?remix=${concept._id}`}>Remix in create</GhostButton>
+          ) : null}
+          {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
+            <GhostButton
+              disabled={stabilizingConceptId === concept._id}
+              loading={stabilizingConceptId === concept._id}
+              onClick={() => {
+                void onStabilizePreviewAsset(concept._id);
+              }}
+            >
+              {stabilizingConceptId === concept._id
+                ? "Stabilizing preview"
+                : "Stabilize public preview"}
+            </GhostButton>
+          ) : null}
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "hd-render");
+            }}
+          >
+            {renderLabel("hd-render", "Generate HD render", "Queueing HD render")}
+          </GhostButton>
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "multi-angle-preview");
+            }}
+          >
+            {renderLabel(
+              "multi-angle-preview",
+              "Generate contact sheet",
+              "Queueing contact sheet"
+            )}
+          </GhostButton>
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "high-fidelity-render");
+            }}
+          >
+            {renderLabel(
+              "high-fidelity-render",
+              "Generate high-fidelity render",
+              "Queueing high-fidelity render"
+            )}
+          </GhostButton>
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "material-finish-comparison");
+            }}
+          >
+            {renderLabel(
+              "material-finish-comparison",
+              "Generate finish comparison",
+              "Queueing finish comparison"
+            )}
+          </GhostButton>
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "weathering-simulation");
+            }}
+          >
+            {renderLabel(
+              "weathering-simulation",
+              "Generate weathering simulation",
+              "Queueing weathering simulation"
+            )}
+          </GhostButton>
+          <GhostButton
+            disabled={busy}
+            onClick={() => {
+              void onRequestRender(concept._id, "weathering-split-preview");
+            }}
+          >
+            {renderLabel(
+              "weathering-split-preview",
+              "Generate weathering split",
+              "Queueing weathering split"
+            )}
+          </GhostButton>
+          {(["primer-pass", "decal-pass", "weathering-pass"] as const).map((stage) => (
+            <GhostButton
+              key={stage}
+              disabled={busy}
+              onClick={() => {
+                void onRequestRender(concept._id, "build-stage-visualization", stage);
+              }}
+            >
+              {renderLabel(
+                "build-stage-visualization",
+                `Generate ${formatBuildStageLabel(stage)}`,
+                `Queueing ${formatBuildStageLabel(stage)}`,
+                stage
+              )}
+            </GhostButton>
+          ))}
+          <GhostButton
+            disabled={
+              concept.generationJob == null ||
+              concept.generationJob.status !== "failed" ||
+              rerunningJobId === concept.generationJob._id
+            }
+            onClick={() => {
+              if (concept.generationJob) {
+                void onRetry(concept.generationJob._id);
+              }
+            }}
+          >
+            {rerunningJobId === concept.generationJob?._id
+              ? "Re-dispatching"
+              : "Retry failed job"}
+          </GhostButton>
+        </div>
+
+        {paintPlan ? (
+          <div className="workbench-block">
+            <Kicker>Paint mapping</Kicker>
+            {paintPlan.entries.slice(0, 4).map((entry) => (
+              <MetaRow
+                key={entry.roleSlug}
+                label={entry.roleName}
+                value={entry.suggestedPaint?.code ?? "N/A"}
+              />
+            ))}
+          </div>
+        ) : null}
+        {feasibility ? (
+          <div className="workbench-block">
+            <Kicker>Spray feasibility</Kicker>
+            <FieldHint>{feasibility.summary}</FieldHint>
+            <MetaRow label="Difficulty" value={feasibility.beginnerDifficulty} />
+            <MetaRow label="Masking" value={`${feasibility.maskingComplexity}/100`} />
+          </div>
+        ) : null}
+        {shopping ? (
+          <div className="workbench-block">
+            <Kicker>Shopping</Kicker>
+            <MetaRow label="Primary items" value={`${shopping.primaryItems.length}`} />
+            <MetaRow label="Confidence" value={shopping.procurementConfidence} />
+            {shopping.featuredPurchasePath ? (
+              <GhostButton href={shopping.featuredPurchasePath.url}>
+                {shopping.featuredPurchasePath.type === "affiliate"
+                  ? "Open best purchase path"
+                  : "Search best purchase path"}
+              </GhostButton>
+            ) : null}
+            <ShoppingListActions
+              className="mt-2"
+              data={{
+                conceptTitle: shopping.conceptTitle,
+                baseModelName: shopping.baseModelName,
+                stylePresetName: shopping.stylePresetName,
+                materialPresetName: shopping.materialPresetName,
+                bundles: shopping.bundles,
+                notes: shopping.notes,
+              }}
+            />
+          </div>
+        ) : null}
+        {recommendation ? (
+          <div className="workbench-block">
+            <Kicker>Recommendation bias</Kicker>
+            <FieldHint>
+              {recommendation.feasibilityBias === "practical"
+                ? "Current guidance leans toward easier execution and safer procurement."
+                : "Current guidance balances visual ambition and practical execution."}
+            </FieldHint>
+            <GhostButton href={`/create?remix=${concept._id}`}>Open in create</GhostButton>
+          </div>
+        ) : null}
+        {renderOutputs.length > 0 ? (
+          <div className="workbench-block">
+            <Kicker>Render history</Kicker>
+            {renderOutputs.slice(0, 4).map((output) => (
+              <MetaRow
+                key={output._id}
+                label={output.label}
+                value={
+                  output.asset?.publicUrl ? (
+                    <a href={output.asset.publicUrl} rel="noreferrer" target="_blank">
+                      Open asset
+                    </a>
+                  ) : (
+                    "URL pending"
+                  )
+                }
+              />
+            ))}
+          </div>
+        ) : null}
+        {concept.sourceConcept ? (
+          <div className="workbench-block">
+            <Kicker>Source lineage</Kicker>
+            <FieldHint>{concept.sourceConcept.title}</FieldHint>
+            {concept.sourceConcept.visibility !== "private" ? (
+              <GhostButton href={`/prototype/${concept.sourceConcept._id}`}>
+                Open source surface
+              </GhostButton>
+            ) : null}
+          </div>
+        ) : null}
+          </div>
+        </details>
+      </div>
+    </FocusPanel>
+  );
 }
 
 function formatJobKind(kind?: string, renderMode?: string) {
@@ -1253,6 +1161,119 @@ function formatJobKind(kind?: string, renderMode?: string) {
   return "Not assigned";
 }
 
+function LibraryToolbarSelect({
+  label,
+  onValueChange,
+  options,
+  value,
+}: {
+  label: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+}) {
+  return (
+    <Select onValueChange={onValueChange} value={value}>
+      <SelectTrigger
+        aria-label={label}
+        className="library-toolbar-select__trigger"
+      >
+        <span className="library-toolbar-select__value">
+          <span>{label}</span>
+          <SelectValue />
+        </span>
+      </SelectTrigger>
+      <SelectContent
+        align="start"
+        className="library-toolbar-select__content"
+        position="popper"
+        sideOffset={-1}
+      >
+        <SelectGroup>
+          <SelectLabel className="library-toolbar-select__label">
+            {label} index
+          </SelectLabel>
+          {options.map((option, index) => (
+            <SelectItem
+              className="library-toolbar-select__item"
+              key={option.value}
+              value={option.value}
+            >
+              <span className="library-toolbar-select__option">
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                {option.label}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+}
+
+function LifecycleLabel({ status }: { status: OperationalStatus }) {
+  return (
+    <span className={`library-lifecycle is-${status}`}>
+      <span aria-hidden="true" />
+      {status}
+    </span>
+  );
+}
+
+function getOperationalStatus(concept: {
+  status: string;
+  previewAsset?: { publicUrl?: string | null } | null;
+  generationJob?: { status: string } | null;
+}): OperationalStatus {
+  if (concept.generationJob?.status === "failed") {
+    return "failed";
+  }
+  if (concept.generationJob?.status === "running") {
+    return "rendering";
+  }
+  if (concept.generationJob?.status === "queued") {
+    return "queued";
+  }
+  if (concept.status === "archived") {
+    return "archived";
+  }
+  if (concept.status === "generated" && concept.previewAsset?.publicUrl) {
+    return "ready";
+  }
+  return "draft";
+}
+
+function uniqueValues(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value)))).sort();
+}
+
+function formatRecordNumber<T extends { _id: string; recordNumber?: number }>(
+  concepts: T[],
+  conceptId: string
+) {
+  const concept = concepts.find((item) => item._id === conceptId);
+  if (concept?.recordNumber) {
+    return String(concept.recordNumber).padStart(3, "0");
+  }
+  const index = concepts.findIndex((concept) => concept._id === conceptId);
+  const number = index < 0 ? concepts.length : concepts.length - index;
+  return String(number).padStart(3, "0");
+}
+
+function formatRelativeTime(timestamp: number) {
+  const delta = Math.max(0, Date.now() - timestamp);
+  const minutes = Math.floor(delta / 60_000);
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(
+    new Date(timestamp)
+  );
+}
+
 function formatBuildStageLabel(stage: BuildStage) {
   if (stage === "primer-pass") {
     return "Primer Pass Visualization";
@@ -1261,28 +1282,6 @@ function formatBuildStageLabel(stage: BuildStage) {
     return "Decal Pass Visualization";
   }
   return "Weathering Pass Visualization";
-}
-
-function formatSimulationStagePill(stage: string) {
-  if (stage === "primer-pass") {
-    return "Primer Pass";
-  }
-  if (stage === "decal-pass") {
-    return "Decal Pass";
-  }
-  if (stage === "weathering-pass") {
-    return "Weathering Pass";
-  }
-  return "Build Stage";
-}
-
-function formatHistoryTimestamp(timestamp: number) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(timestamp));
 }
 
 function formatMoodTagLabel(tag: string) {

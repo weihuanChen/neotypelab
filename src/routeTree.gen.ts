@@ -10,9 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
+import { Route as StudioRouteImport } from './routes/studio'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as LibraryRouteImport } from './routes/library'
+import { Route as FeedbackRouteImport } from './routes/feedback'
+import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TShowcaseRouteImport } from './routes/t_.showcase'
 import { Route as TModelsRouteImport } from './routes/t_.models'
@@ -28,8 +32,11 @@ import { Route as SpecAdminPaintFinishesRouteImport } from './routes/spec-admin_
 import { Route as SpecAdminMaterialsRouteImport } from './routes/spec-admin_.materials'
 import { Route as SpecAdminIdentityLocksRouteImport } from './routes/spec-admin_.identity-locks'
 import { Route as ShowcaseOpengraphImageRouteImport } from './routes/showcase_.opengraph-image'
+import { Route as ShowcaseArchiveRouteImport } from './routes/showcase_.archive'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
+import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
+import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
 import { Route as CreatorPackSlugRouteImport } from './routes/creator-pack.$slug'
 import { Route as BaseModelSlugStylePresetSlugRouteImport } from './routes/$baseModelSlug.$stylePresetSlug'
@@ -48,6 +55,11 @@ const TRoute = TRouteImport.update({
   path: '/t',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -61,6 +73,21 @@ const ShowcaseRoute = ShowcaseRouteImport.update({
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryRoute = LibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackRoute = FeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -138,6 +165,11 @@ const ShowcaseOpengraphImageRoute = ShowcaseOpengraphImageRouteImport.update({
   path: '/showcase/opengraph-image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShowcaseArchiveRoute = ShowcaseArchiveRouteImport.update({
+  id: '/showcase_/archive',
+  path: '/showcase/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrototypeConceptIdRoute = PrototypeConceptIdRouteImport.update({
   id: '/prototype/$conceptId',
   path: '/prototype/$conceptId',
@@ -146,6 +178,16 @@ const PrototypeConceptIdRoute = PrototypeConceptIdRouteImport.update({
 const PilotHandleRoute = PilotHandleRouteImport.update({
   id: '/pilot/$handle',
   path: '/pilot/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackReportsRoute = FeedbackReportsRouteImport.update({
+  id: '/feedback_/reports',
+  path: '/feedback/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackFeedbackIdRoute = FeedbackFeedbackIdRouteImport.update({
+  id: '/feedback_/$feedbackId',
+  path: '/feedback/$feedbackId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreatorHandleRoute = CreatorHandleRouteImport.update({
@@ -221,15 +263,22 @@ const BaseModelSlugStylePresetSlugOpengraphImageRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/feedback': typeof FeedbackRoute
+  '/library': typeof LibraryRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
+  '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
+  '/feedback/reports': typeof FeedbackReportsRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/showcase/archive': typeof ShowcaseArchiveRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
   '/spec-admin/identity-locks': typeof SpecAdminIdentityLocksRoute
   '/spec-admin/materials': typeof SpecAdminMaterialsRoute
@@ -256,15 +305,22 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/feedback': typeof FeedbackRoute
+  '/library': typeof LibraryRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
+  '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
+  '/feedback/reports': typeof FeedbackReportsRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/showcase/archive': typeof ShowcaseArchiveRoute
   '/showcase/opengraph-image': typeof ShowcaseOpengraphImageRoute
   '/spec-admin/identity-locks': typeof SpecAdminIdentityLocksRoute
   '/spec-admin/materials': typeof SpecAdminMaterialsRoute
@@ -292,15 +348,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/feedback': typeof FeedbackRoute
+  '/library': typeof LibraryRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
+  '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
+  '/feedback_/reports': typeof FeedbackReportsRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
+  '/showcase_/archive': typeof ShowcaseArchiveRoute
   '/showcase_/opengraph-image': typeof ShowcaseOpengraphImageRoute
   '/spec-admin_/identity-locks': typeof SpecAdminIdentityLocksRoute
   '/spec-admin_/materials': typeof SpecAdminMaterialsRoute
@@ -329,15 +392,22 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/create'
+    | '/feedback'
+    | '/library'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/creator-pack/$slug'
     | '/creator/$handle'
+    | '/feedback/$feedbackId'
+    | '/feedback/reports'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
+    | '/showcase/archive'
     | '/showcase/opengraph-image'
     | '/spec-admin/identity-locks'
     | '/spec-admin/materials'
@@ -364,15 +434,22 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/create'
+    | '/feedback'
+    | '/library'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/creator-pack/$slug'
     | '/creator/$handle'
+    | '/feedback/$feedbackId'
+    | '/feedback/reports'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
+    | '/showcase/archive'
     | '/showcase/opengraph-image'
     | '/spec-admin/identity-locks'
     | '/spec-admin/materials'
@@ -399,15 +476,22 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/create'
+    | '/feedback'
+    | '/library'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/creator-pack/$slug'
     | '/creator/$handle'
+    | '/feedback_/$feedbackId'
+    | '/feedback_/reports'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
+    | '/showcase_/archive'
     | '/showcase_/opengraph-image'
     | '/spec-admin_/identity-locks'
     | '/spec-admin_/materials'
@@ -435,15 +519,22 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CreateRoute: typeof CreateRoute
+  FeedbackRoute: typeof FeedbackRoute
+  LibraryRoute: typeof LibraryRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   ShowcaseRoute: typeof ShowcaseRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StudioRoute: typeof StudioRoute
   TRoute: typeof TRoute
   BaseModelSlugStylePresetSlugRoute: typeof BaseModelSlugStylePresetSlugRouteWithChildren
   CreatorPackSlugRoute: typeof CreatorPackSlugRoute
   CreatorHandleRoute: typeof CreatorHandleRoute
+  FeedbackFeedbackIdRoute: typeof FeedbackFeedbackIdRoute
+  FeedbackReportsRoute: typeof FeedbackReportsRoute
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
+  ShowcaseArchiveRoute: typeof ShowcaseArchiveRoute
   ShowcaseOpengraphImageRoute: typeof ShowcaseOpengraphImageRoute
   SpecAdminIdentityLocksRoute: typeof SpecAdminIdentityLocksRoute
   SpecAdminMaterialsRoute: typeof SpecAdminMaterialsRoute
@@ -477,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -496,6 +594,27 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library': {
+      id: '/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback': {
+      id: '/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof FeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -603,6 +722,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShowcaseOpengraphImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/showcase_/archive': {
+      id: '/showcase_/archive'
+      path: '/showcase/archive'
+      fullPath: '/showcase/archive'
+      preLoaderRoute: typeof ShowcaseArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype/$conceptId': {
       id: '/prototype/$conceptId'
       path: '/prototype/$conceptId'
@@ -615,6 +741,20 @@ declare module '@tanstack/react-router' {
       path: '/pilot/$handle'
       fullPath: '/pilot/$handle'
       preLoaderRoute: typeof PilotHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback_/reports': {
+      id: '/feedback_/reports'
+      path: '/feedback/reports'
+      fullPath: '/feedback/reports'
+      preLoaderRoute: typeof FeedbackReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback_/$feedbackId': {
+      id: '/feedback_/$feedbackId'
+      path: '/feedback/$feedbackId'
+      fullPath: '/feedback/$feedbackId'
+      preLoaderRoute: typeof FeedbackFeedbackIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/creator/$handle': {
@@ -721,16 +861,23 @@ const BaseModelSlugStylePresetSlugRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CreateRoute: CreateRoute,
+  FeedbackRoute: FeedbackRoute,
+  LibraryRoute: LibraryRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   ShowcaseRoute: ShowcaseRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StudioRoute: StudioRoute,
   TRoute: TRoute,
   BaseModelSlugStylePresetSlugRoute:
     BaseModelSlugStylePresetSlugRouteWithChildren,
   CreatorPackSlugRoute: CreatorPackSlugRoute,
   CreatorHandleRoute: CreatorHandleRoute,
+  FeedbackFeedbackIdRoute: FeedbackFeedbackIdRoute,
+  FeedbackReportsRoute: FeedbackReportsRoute,
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
+  ShowcaseArchiveRoute: ShowcaseArchiveRoute,
   ShowcaseOpengraphImageRoute: ShowcaseOpengraphImageRoute,
   SpecAdminIdentityLocksRoute: SpecAdminIdentityLocksRoute,
   SpecAdminMaterialsRoute: SpecAdminMaterialsRoute,

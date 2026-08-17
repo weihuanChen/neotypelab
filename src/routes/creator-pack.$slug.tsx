@@ -4,6 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildCreatorPackStructuredData } from "@/lib/structuredData";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   CreatorPackView,
   PublicUnavailable,
@@ -78,18 +79,19 @@ function CreatorPackRoute() {
   const snapshot = Route.useLoaderData();
 
   return (
-    <main className="public-page">
-      <StructuredData data={snapshot.structuredData} />
-      <PublicTopbar title="Creator pack" />
-      {snapshot.pack ? (
-        <CreatorPackView pack={snapshot.pack} />
-      ) : (
-        <PublicUnavailable
-          message={snapshot.message}
-          title="This creator pack is not available."
-        />
-      )}
-    </main>
+    <AppShell title="Creator pack">
+      <main className="public-page">
+        <StructuredData data={snapshot.structuredData} />
+        {snapshot.pack ? (
+          <CreatorPackView pack={snapshot.pack} />
+        ) : (
+          <PublicUnavailable
+            message={snapshot.message}
+            title="This creator pack is not available."
+          />
+        )}
+      </main>
+    </AppShell>
   );
 }
 
@@ -132,25 +134,6 @@ function buildCreatorPackDescription(pack: CreatorPackData) {
   return (
     pack.description ??
     `${pack.styles.length} styles / ${pack.baseModels.length} base models / ${pack.materials.length} materials`
-  );
-}
-
-function PublicTopbar({ title }: { title: string }) {
-  return (
-    <section className="showcase-topbar">
-      <div>
-        <p className="showcase-kicker">NeotypeLab Public</p>
-        <h1>{title}</h1>
-      </div>
-      <div className="showcase-topbar__actions">
-        <a className="showcase-button is-ghost" href="/showcase">
-          Showcase
-        </a>
-        <a className="showcase-button" href="/t/create">
-          Open Terminal
-        </a>
-      </div>
-    </section>
   );
 }
 

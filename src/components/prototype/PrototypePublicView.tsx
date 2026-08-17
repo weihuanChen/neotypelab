@@ -138,8 +138,8 @@ function PrototypePublicViewBody({
           <a className="showcase-button" href="/showcase">
             Back to Showcase
           </a>
-          <a className="showcase-button is-ghost" href="/t/library">
-            Open Terminal
+          <a className="showcase-button is-ghost" href="/library">
+            Open Library
           </a>
         </div>
       </section>
@@ -167,7 +167,11 @@ function PrototypePublicViewBody({
           </div>
 
           <div>
-            <p className="showcase-kicker">Prototype Share Surface</p>
+            <p className="showcase-kicker">
+              {concept.recordNumber
+                ? `N°.${String(concept.recordNumber).padStart(3, "0")} / Prototype record`
+                : "Prototype Share Surface"}
+            </p>
             <h1>{concept.title}</h1>
             <p className="prototype-lede">
               {buildPrototypeDescription(concept)}
@@ -262,7 +266,7 @@ function PrototypeActions({ concept }: { concept: SharedPrototype }) {
         title={concept.title}
       />
       <div className="prototype-action-row">
-        <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
+        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
           Remix This Prototype
         </a>
         {styleLandingHref ? (
@@ -270,6 +274,12 @@ function PrototypeActions({ concept }: { concept: SharedPrototype }) {
             Open Style Landing
           </a>
         ) : null}
+        <a
+          className="showcase-button is-ghost"
+          href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&type=generation-quality`}
+        >
+          Report generation issue
+        </a>
         <a className="showcase-button is-ghost" href="/showcase">
           Back to Showcase
         </a>
@@ -983,7 +993,7 @@ function buildCreateRecommendationHref(
     params.set("recommendedWorkflow", item.value);
   }
 
-  return `/t/create?${params.toString()}`;
+  return `/create?${params.toString()}`;
 }
 
 function RemixesPanel({ concept }: { concept: SharedPrototype }) {
@@ -995,7 +1005,7 @@ function RemixesPanel({ concept }: { concept: SharedPrototype }) {
         <p className="prototype-muted">
           This concept has not produced public descendant prototypes yet.
         </p>
-        <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
+        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
           Start First Remix
         </a>
       </section>
@@ -1012,7 +1022,7 @@ function RemixesPanel({ concept }: { concept: SharedPrototype }) {
             {concept.remixCount === 1 ? "" : "es"}
           </h2>
         </div>
-        <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
+        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
           Start Your Remix
         </a>
       </div>

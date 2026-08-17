@@ -9,8 +9,12 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
 import { StartProviders } from "@/src/providers/StartProviders";
+import tokensCss from "@/src/styles/tokens.css?url";
 import appCss from "@/src/styles/app.css?url";
 import globalsCss from "@/src/styles/globals.css?url";
+import workbenchCss from "@/src/styles/workbench.css?url";
+import exploreCss from "@/src/styles/explore.css?url";
+import exhibitionCss from "@/src/styles/showcase-exhibition.css?url";
 
 const RouterDevtools = import.meta.env.DEV
   ? lazy(() =>
@@ -31,12 +35,26 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "NeotypeLab public showcase and authenticated repaint creation terminal.",
+          "Explore public mecha repaint prototypes and start a structured create session.",
       },
     ],
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap",
+      },
+      { rel: "stylesheet", href: tokensCss },
       { rel: "stylesheet", href: globalsCss },
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: workbenchCss },
+      { rel: "stylesheet", href: exploreCss },
+      { rel: "stylesheet", href: exhibitionCss },
     ],
   }),
   errorComponent: DefaultCatchBoundary,
@@ -60,7 +78,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <StartProviders>
-          <div className="spike-shell">{children}</div>
+          <div className="app-root">{children}</div>
         </StartProviders>
         {RouterDevtools ? (
           <Suspense fallback={null}>

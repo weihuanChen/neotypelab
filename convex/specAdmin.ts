@@ -531,18 +531,13 @@ function getPresetDefaults(kind: SpecPresetKind) {
     return {
       name: "New Material Spec",
       slug: "new-material-spec",
-      renderBehaviorText:
-        "Render with the calibrated material behavior described in the spec JSON.",
+      renderBehaviorText: "Derived from material semantic tags.",
       spec: {
-        materialEffect: "ceramic-coating",
-        surfaceTexture: "smooth",
-        reflectivity: 0.2,
-        metallicResponse: 0,
-        coatingBehavior: "ceramic",
-        edgeHighlightBehavior: "soft",
-        weatheringInteraction: "chipping remains subtle; dust sits on surface",
-        renderBehaviorText:
-          "Render as a smooth ceramic material with low reflectivity, no metallic base response, and soft edge highlights.",
+        materialFamily: "ceramic-coating",
+        surface: ["smooth-painted", "low-reflectivity", "soft-specular"],
+        optics: ["opaque-painted-color", "ceramic-depth"],
+        reflection: ["studio-soft", "broad-diffuse", "crisp-panel-readability"],
+        exclusions: ["full-chrome", "metallic-flakes", "wet-plastic"],
       },
     };
   }
@@ -590,17 +585,13 @@ function getPresetDefaults(kind: SpecPresetKind) {
     return {
       name: "New Style Spec",
       slug: "new-style-spec",
-      renderBehaviorText:
-        "Render style language through color relationships, decals, and markings only.",
+      renderBehaviorText: "Derived from style semantic tags.",
       spec: {
-        colorRelationship: "controlled contrast",
-        decalStyle: "technical markings",
-        markingDensity: "medium",
-        warningMarkingBehavior: "localized caution markings",
-        tone: "grounded mechanical",
-        identityBoundary: "style must not alter silhouette, proportions, armor structure, or native equipment",
-        renderBehaviorText:
-          "Render style as surface language and marking logic without redesigning the base model.",
+        styleFamily: "neo-zeon",
+        shapeLanguage: ["heavy-armor", "large-curves", "layered-plating"],
+        visualTone: ["military-industrial", "commander-unit"],
+        surfaceLanguage: ["katoki-paneling", "warning-markings"],
+        visualExclusions: ["heroic-proportions", "super-robot"],
       },
     };
   }

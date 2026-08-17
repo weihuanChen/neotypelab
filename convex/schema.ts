@@ -4,30 +4,36 @@ import {
   vAssetKind,
   vAssetStatus,
   vConceptInteractionKind,
+  vConceptStatus,
+  vConceptVisibility,
   vCreditActionType,
+  vFeedbackCategory,
+  vFeedbackStatus,
+  vGenerationKind,
+  vGenerationProvider,
+  vGenerationStatus,
+  vLlmApiFormat,
+  vLlmCapability,
+  vLlmProvider,
+  vMaterialSpec,
+  vModelCatalogStatus,
+  vMoodTag,
+  vOrderItemType,
+  vOrderStatus,
+  vPaintFinishRenderPriority,
+  vPromptCompositionStatus,
+  vPromptTemplateKind,
   vRecommendationFeedbackKind,
-    vConceptStatus,
-    vConceptVisibility,
-    vFeedbackCategory,
-    vFeedbackStatus,
-    vGenerationProvider,
-    vGenerationKind,
-    vGenerationStatus,
-    vMaterialSpec,
-    vModelCatalogStatus,
-    vMoodTag,
-    vPaintFinishRenderPriority,
-    vPromptCompositionStatus,
-    vPromptTemplateKind,
-    vRenderMode,
-    vSimulationStage,
-    vSpecPresetKind,
-    vSpecPresetStatus,
-    vSpecPresetTestStatus,
-    vStyleSpec,
-    vUserAccountStatus,
-    vUserPlan,
-    vWeatheringLevel,
+  vRenderMode,
+  vSimulationStage,
+  vSpecPresetKind,
+  vSpecPresetStatus,
+  vSpecPresetTestStatus,
+  vStyleSpec,
+  vSprayPlanStatus,
+  vUserAccountStatus,
+  vUserPlan,
+  vWeatheringLevel,
 } from "./domain";
 
 const schema = defineSchema({
@@ -247,6 +253,43 @@ const schema = defineSchema({
       searchField: "searchText",
     }),
 
+  paintPurchaseSources: defineTable({
+    paintMappingId: v.id("paintMappings"),
+    sourceName: v.string(),
+    sourceType: v.union(
+      v.literal("amazon"),
+      v.literal("official"),
+      v.literal("local"),
+      v.literal("other")
+    ),
+    region: v.optional(v.string()),
+    url: v.string(),
+    affiliate: v.boolean(),
+    priceMinor: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_paintMappingId", ["paintMappingId"])
+    .index("by_sourceType", ["sourceType"]),
+
+  paintBenchItems: defineTable({
+    userId: v.id("users"),
+    paintMappingId: v.id("paintMappings"),
+    quantity: v.number(),
+    containerSizeMl: v.optional(v.number()),
+    status: v.union(
+      v.literal("in-stock"),
+      v.literal("low"),
+      v.literal("empty"),
+      v.literal("wishlist")
+    ),
+    notes: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_paint", ["userId", "paintMappingId"]),
+
   creditAccounts: defineTable({
     userId: v.id("users"),
     balance: v.number(),
@@ -263,12 +306,41 @@ const schema = defineSchema({
     balanceAfter: v.number(),
     generationJobId: v.optional(v.id("generationJobs")),
     conceptId: v.optional(v.id("concepts")),
+    orderId: v.optional(v.id("orders")),
     referenceTable: v.optional(v.string()),
     referenceId: v.optional(v.string()),
     description: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_user_actionType", ["userId", "actionType"]),
+
+  orders: defineTable({
+    userId: v.id("users"),
+    orderNumber: v.string(),
+    status: vOrderStatus,
+    currency: v.string(),
+    subtotalMinor: v.number(),
+    totalMinor: v.number(),
+    paymentProvider: v.optional(v.string()),
+    externalPaymentId: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_orderNumber", ["orderNumber"]),
+
+  orderItems: defineTable({
+    orderId: v.id("orders"),
+    productType: vOrderItemType,
+    referenceId: v.optional(v.string()),
+    title: v.string(),
+    quantity: v.number(),
+    unitAmountMinor: v.number(),
+    metadataJson: v.optional(v.string()),
+  })
+    .index("by_orderId", ["orderId"])
+    .index("by_productType", ["productType"]),
 
   creditPriceRules: defineTable({
     actionType: vCreditActionType,
@@ -343,8 +415,14 @@ const schema = defineSchema({
     .index("by_userId", ["userId"])
     .index("by_key", ["key"]),
 
+  archiveCounters: defineTable({
+    key: v.string(),
+    value: v.number(),
+  }).index("by_key", ["key"]),
+
   concepts: defineTable({
     userId: v.id("users"),
+    recordNumber: v.optional(v.number()),
     title: v.string(),
     notes: v.optional(v.string()),
     baseModelId: v.optional(v.id("baseModels")),
@@ -367,6 +445,34 @@ const schema = defineSchema({
       searchField: "searchText",
       filterFields: ["userId"],
     }),
+
+  sprayPlans: defineTable({
+    userId: v.id("users"),
+    conceptId: v.id("concepts"),
+    title: v.string(),
+    status: vSprayPlanStatus,
+    currentVersion: v.number(),
+    currentVersionId: v.optional(v.id("sprayPlanVersions")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_concept", ["userId", "conceptId"])
+    .index("by_conceptId", ["conceptId"]),
+
+  sprayPlanVersions: defineTable({
+    sprayPlanId: v.id("sprayPlans"),
+    userId: v.id("users"),
+    version: v.number(),
+    sourceConceptId: v.id("concepts"),
+    sourceConceptCreatedAt: v.number(),
+    planSnapshotJson: v.string(),
+    changeNote: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_sprayPlanId", ["sprayPlanId"])
+    .index("by_userId", ["userId"])
+    .index("by_plan_version", ["sprayPlanId", "version"]),
 
   conceptInteractions: defineTable({
     userId: v.id("users"),
@@ -417,6 +523,46 @@ const schema = defineSchema({
   })
     .index("by_slug", ["slug"])
     .index("by_kind", ["kind"]),
+
+  llmProfiles: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    provider: vLlmProvider,
+    capability: vLlmCapability,
+    apiFormat: vLlmApiFormat,
+    baseUrl: v.string(),
+    keyEnvName: v.string(),
+    modelId: v.string(),
+    headersJson: v.optional(v.string()),
+    requestDefaultsJson: v.optional(v.string()),
+    timeoutMs: v.optional(v.number()),
+    priority: v.number(),
+    notes: v.optional(v.string()),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_provider", ["provider"])
+    .index("by_capability", ["capability"]),
+
+  promptTemplateBindings: defineTable({
+    promptTemplateId: v.id("promptTemplates"),
+    templateKind: vPromptTemplateKind,
+    llmProfileId: v.id("llmProfiles"),
+    generationKind: v.optional(vGenerationKind),
+    renderMode: v.optional(vRenderMode),
+    parameterOverridesJson: v.optional(v.string()),
+    priority: v.number(),
+    notes: v.optional(v.string()),
+    isDefault: v.boolean(),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_template", ["promptTemplateId"])
+    .index("by_templateKind", ["templateKind"])
+    .index("by_profile", ["llmProfileId"]),
 
   promptCompositions: defineTable({
     userId: v.id("users"),
@@ -511,8 +657,10 @@ const schema = defineSchema({
 
   feedbackReports: defineTable({
     userId: v.id("users"),
+    recordNumber: v.optional(v.number()),
     category: vFeedbackCategory,
     status: vFeedbackStatus,
+    title: v.optional(v.string()),
     message: v.string(),
     relatedGenerationJobId: v.optional(v.id("generationJobs")),
     relatedAssetId: v.optional(v.id("assets")),
@@ -522,6 +670,7 @@ const schema = defineSchema({
     sourcePage: v.optional(v.string()),
     adminNotes: v.optional(v.string()),
   })
+    .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"]),
 

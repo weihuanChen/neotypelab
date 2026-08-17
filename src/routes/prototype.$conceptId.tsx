@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import { PrototypePublicView } from "@/src/components/prototype/PrototypePublicView";
 import type {
   PrototypeMeta,
@@ -101,31 +102,19 @@ function PrototypeRoute() {
   const conceptId = getConceptIdFromSnapshot(snapshot);
 
   return (
-    <main className="prototype-page">
-      {snapshot.structuredData ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(snapshot.structuredData),
-          }}
-        />
-      ) : null}
-      <section className="showcase-topbar">
-        <div>
-          <p className="showcase-kicker">NeotypeLab Public</p>
-          <h1>Shared prototype</h1>
-        </div>
-        <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/showcase">
-            Showcase
-          </a>
-          <a className="showcase-button" href="/t/library">
-            Open Terminal
-          </a>
-        </div>
-      </section>
-      <PrototypePublicView conceptId={conceptId} snapshot={snapshot} />
-    </main>
+    <AppShell title="Shared prototype">
+      <main className="prototype-page">
+        {snapshot.structuredData ? (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(snapshot.structuredData),
+            }}
+          />
+        ) : null}
+        <PrototypePublicView conceptId={conceptId} snapshot={snapshot} />
+      </main>
+    </AppShell>
   );
 }
 

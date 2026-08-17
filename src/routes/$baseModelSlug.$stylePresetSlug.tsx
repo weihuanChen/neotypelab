@@ -4,6 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildLandingPageStructuredData } from "@/lib/structuredData";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   PublicUnavailable,
   SeoLandingView,
@@ -101,18 +102,19 @@ function SeoLandingRoute() {
   const snapshot = Route.useLoaderData();
 
   return (
-    <main className="public-page">
-      <StructuredData data={snapshot.structuredData} />
-      <PublicTopbar title="Style landing page" />
-      {snapshot.landing ? (
-        <SeoLandingView landing={snapshot.landing} />
-      ) : (
-        <PublicUnavailable
-          message={snapshot.message}
-          title="This landing page is not available."
-        />
-      )}
-    </main>
+    <AppShell title="Style landing page">
+      <main className="public-page">
+        <StructuredData data={snapshot.structuredData} />
+        {snapshot.landing ? (
+          <SeoLandingView landing={snapshot.landing} />
+        ) : (
+          <PublicUnavailable
+            message={snapshot.message}
+            title="This landing page is not available."
+          />
+        )}
+      </main>
+    </AppShell>
   );
 }
 
@@ -171,25 +173,6 @@ function buildSeoLandingDescription(landing: SeoLandingData) {
     landing.stylePreset.name,
     `${landing.conceptCount} public concept${landing.conceptCount === 1 ? "" : "s"}`,
   ].join(" / ");
-}
-
-function PublicTopbar({ title }: { title: string }) {
-  return (
-    <section className="showcase-topbar">
-      <div>
-        <p className="showcase-kicker">NeotypeLab Public</p>
-        <h1>{title}</h1>
-      </div>
-      <div className="showcase-topbar__actions">
-        <a className="showcase-button is-ghost" href="/showcase">
-          Showcase
-        </a>
-        <a className="showcase-button" href="/t/create">
-          Open Terminal
-        </a>
-      </div>
-    </section>
-  );
 }
 
 function StructuredData({ data }: { data: unknown }) {

@@ -358,6 +358,7 @@ export const getSharedConcept = query({
     return {
       _id: concept._id,
       _creationTime: concept._creationTime,
+      recordNumber: concept.recordNumber,
       title: concept.title,
       notes: concept.notes,
       visibility: concept.visibility,

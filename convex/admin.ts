@@ -6,15 +6,25 @@ import { buildOptionalModelPromptContext } from "./modelPromptContext";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   CreditActionType,
+  GenerationKind,
+  LlmApiFormat,
+  LlmCapability,
+  LlmProvider,
   MoodTag,
   PromptTemplateKind,
+  RenderMode,
   UserAccountStatus,
   UserPlan,
   vCreditActionType,
+  vGenerationKind,
+  vLlmApiFormat,
+  vLlmCapability,
+  vLlmProvider,
   vMaterialSpec,
   vModelCatalogStatus,
   vMoodTag,
   vPromptTemplateKind,
+  vRenderMode,
   vStyleSpec,
   vUserAccountStatus,
   vUserPlan,
@@ -164,6 +174,440 @@ export const listPromptTemplates = query({
         notePolicy: template.notePolicy,
         isActive: template.isActive,
       }));
+  },
+});
+
+export const listLlmRoutingConfig = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+
+    const [profiles, bindings, templates] = await Promise.all([
+      ctx.db.query("llmProfiles").collect(),
+      ctx.db.query("promptTemplateBindings").collect(),
+      ctx.db.query("promptTemplates").collect(),
+    ]);
+    const profileById = new Map(profiles.map((profile) => [profile._id, profile]));
+    const templateById = new Map(templates.map((template) => [template._id, template]));
+
+    return {
+      profiles: profiles
+        .sort((a, b) => b.priority - a.priority || a.name.localeCompare(b.name))
+        .map((profile) => ({
+          _id: profile._id,
+          _creationTime: profile._creationTime,
+          name: profile.name,
+          slug: profile.slug,
+          provider: profile.provider,
+          capability: profile.capability,
+          apiFormat: profile.apiFormat,
+          baseUrl: profile.baseUrl,
+          keyEnvName: profile.keyEnvName,
+          modelId: profile.modelId,
+          headersJson: profile.headersJson,
+          requestDefaultsJson: profile.requestDefaultsJson,
+          timeoutMs: profile.timeoutMs,
+          priority: profile.priority,
+          notes: profile.notes,
+          isActive: profile.isActive,
+          updatedAt: profile.updatedAt,
+          updatedByUserId: profile.updatedByUserId,
+        })),
+      bindings: bindings
+        .sort((a, b) => b.priority - a.priority || b._creationTime - a._creationTime)
+        .map((binding) => {
+          const profile = profileById.get(binding.llmProfileId);
+          const template = templateById.get(binding.promptTemplateId);
+
+          return {
+            _id: binding._id,
+            _creationTime: binding._creationTime,
+            promptTemplateId: binding.promptTemplateId,
+            templateKind: binding.templateKind,
+            llmProfileId: binding.llmProfileId,
+            generationKind: binding.generationKind,
+            renderMode: binding.renderMode,
+            parameterOverridesJson: binding.parameterOverridesJson,
+            priority: binding.priority,
+            notes: binding.notes,
+            isDefault: binding.isDefault,
+            isActive: binding.isActive,
+            updatedAt: binding.updatedAt,
+            updatedByUserId: binding.updatedByUserId,
+            profile: profile
+              ? {
+                  _id: profile._id,
+                  name: profile.name,
+                  slug: profile.slug,
+                  provider: profile.provider,
+                  capability: profile.capability,
+                  modelId: profile.modelId,
+                  isActive: profile.isActive,
+                }
+              : null,
+            template: template
+              ? {
+                  _id: template._id,
+                  name: template.name,
+                  slug: template.slug,
+                  kind: template.kind,
+                  version: template.version,
+                  isActive: template.isActive,
+                }
+              : null,
+          };
+        }),
+      promptTemplates: templates
+        .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
+        .map((template) => ({
+          _id: template._id,
+          name: template.name,
+          slug: template.slug,
+          kind: template.kind,
+          version: template.version,
+          isActive: template.isActive,
+        })),
+    };
+  },
+});
+
+export const createLlmProfile = mutation({
+  args: {
+    name: v.string(),
+    slug: v.optional(v.string()),
+    provider: vLlmProvider,
+    capability: vLlmCapability,
+    apiFormat: v.optional(vLlmApiFormat),
+    baseUrl: v.string(),
+    keyEnvName: v.string(),
+    modelId: v.string(),
+    headersJson: v.optional(v.string()),
+    requestDefaultsJson: v.optional(v.string()),
+    timeoutMs: v.optional(v.number()),
+    priority: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const now = Date.now();
+    const name = requireTrimmedString(args.name, "Profile name");
+    const slug = normalizeLlmSlug(args.slug ?? name);
+    await assertLlmProfileSlugAvailable(ctx, slug);
+
+    const profileId = await ctx.db.insert("llmProfiles", {
+      name,
+      slug,
+      provider: args.provider,
+      capability: args.capability,
+      apiFormat: args.apiFormat ?? "openai-compatible",
+      baseUrl: normalizeLlmBaseUrl(args.baseUrl),
+      keyEnvName: normalizeEnvName(args.keyEnvName),
+      modelId: requireTrimmedString(args.modelId, "Model id"),
+      headersJson: normalizeHeadersJson(args.headersJson),
+      requestDefaultsJson: normalizeJsonObjectString(args.requestDefaultsJson, "Request defaults"),
+      timeoutMs: normalizeTimeoutMs(args.timeoutMs),
+      priority: normalizePriority(args.priority),
+      notes: cleanOptionalString(args.notes),
+      isActive: args.isActive ?? true,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "create-llm-profile",
+      entityType: "llmProfile",
+      entityId: profileId,
+      detailsJson: JSON.stringify({
+        profileId,
+        provider: args.provider,
+        capability: args.capability,
+        slug,
+      }),
+    });
+
+    return profileId;
+  },
+});
+
+export const updateLlmProfile = mutation({
+  args: {
+    profileId: v.id("llmProfiles"),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    provider: v.optional(vLlmProvider),
+    capability: v.optional(vLlmCapability),
+    apiFormat: v.optional(vLlmApiFormat),
+    baseUrl: v.optional(v.string()),
+    keyEnvName: v.optional(v.string()),
+    modelId: v.optional(v.string()),
+    headersJson: v.optional(v.string()),
+    requestDefaultsJson: v.optional(v.string()),
+    timeoutMs: v.optional(v.number()),
+    priority: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const profile = await ctx.db.get(args.profileId);
+    if (profile === null) {
+      throw new Error("LLM profile not found");
+    }
+
+    const patch: {
+      apiFormat?: LlmApiFormat;
+      baseUrl?: string;
+      capability?: LlmCapability;
+      headersJson?: string;
+      isActive?: boolean;
+      keyEnvName?: string;
+      modelId?: string;
+      name?: string;
+      notes?: string;
+      priority?: number;
+      provider?: LlmProvider;
+      requestDefaultsJson?: string;
+      slug?: string;
+      timeoutMs?: number;
+      updatedAt: number;
+      updatedByUserId: Id<"users">;
+    } = {
+      updatedAt: Date.now(),
+      updatedByUserId: viewer._id,
+    };
+
+    if (args.name !== undefined) {
+      patch.name = requireTrimmedString(args.name, "Profile name");
+    }
+    if (args.slug !== undefined) {
+      const slug = normalizeLlmSlug(args.slug);
+      await assertLlmProfileSlugAvailable(ctx, slug, args.profileId);
+      patch.slug = slug;
+    }
+    if (args.provider !== undefined) {
+      patch.provider = args.provider;
+    }
+    if (args.capability !== undefined) {
+      patch.capability = args.capability;
+    }
+    if (args.apiFormat !== undefined) {
+      patch.apiFormat = args.apiFormat;
+    }
+    if (args.baseUrl !== undefined) {
+      patch.baseUrl = normalizeLlmBaseUrl(args.baseUrl);
+    }
+    if (args.keyEnvName !== undefined) {
+      patch.keyEnvName = normalizeEnvName(args.keyEnvName);
+    }
+    if (args.modelId !== undefined) {
+      patch.modelId = requireTrimmedString(args.modelId, "Model id");
+    }
+    if (args.headersJson !== undefined) {
+      patch.headersJson = normalizeHeadersJson(args.headersJson);
+    }
+    if (args.requestDefaultsJson !== undefined) {
+      patch.requestDefaultsJson = normalizeJsonObjectString(
+        args.requestDefaultsJson,
+        "Request defaults"
+      );
+    }
+    if (args.timeoutMs !== undefined) {
+      patch.timeoutMs = normalizeTimeoutMs(args.timeoutMs);
+    }
+    if (args.priority !== undefined) {
+      patch.priority = normalizePriority(args.priority);
+    }
+    if (args.notes !== undefined) {
+      patch.notes = cleanOptionalString(args.notes);
+    }
+    if (args.isActive !== undefined) {
+      patch.isActive = args.isActive;
+    }
+
+    await ctx.db.patch(args.profileId, patch);
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-llm-profile",
+      entityType: "llmProfile",
+      entityId: args.profileId,
+      detailsJson: JSON.stringify({
+        profileId: args.profileId,
+        provider: patch.provider ?? profile.provider,
+        capability: patch.capability ?? profile.capability,
+        isActive: patch.isActive ?? profile.isActive,
+      }),
+    });
+  },
+});
+
+export const createPromptTemplateBinding = mutation({
+  args: {
+    promptTemplateId: v.id("promptTemplates"),
+    llmProfileId: v.id("llmProfiles"),
+    generationKind: v.optional(vGenerationKind),
+    renderMode: v.optional(vRenderMode),
+    parameterOverridesJson: v.optional(v.string()),
+    priority: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const [template, profile] = await Promise.all([
+      ctx.db.get(args.promptTemplateId),
+      ctx.db.get(args.llmProfileId),
+    ]);
+    if (template === null) {
+      throw new Error("Prompt template not found");
+    }
+    if (profile === null) {
+      throw new Error("LLM profile not found");
+    }
+    assertBindingScope(args.generationKind, args.renderMode);
+
+    const now = Date.now();
+    if (args.isDefault === true) {
+      await clearDefaultTemplateBindings(ctx, args.promptTemplateId, viewer._id, now);
+    }
+
+    const bindingId = await ctx.db.insert("promptTemplateBindings", {
+      promptTemplateId: args.promptTemplateId,
+      templateKind: template.kind,
+      llmProfileId: args.llmProfileId,
+      generationKind: args.generationKind,
+      renderMode: args.renderMode,
+      parameterOverridesJson: normalizeJsonObjectString(
+        args.parameterOverridesJson,
+        "Parameter overrides"
+      ),
+      priority: normalizePriority(args.priority),
+      notes: cleanOptionalString(args.notes),
+      isDefault: args.isDefault ?? false,
+      isActive: args.isActive ?? true,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "create-prompt-template-binding",
+      entityType: "promptTemplateBinding",
+      entityId: bindingId,
+      detailsJson: JSON.stringify({
+        bindingId,
+        promptTemplateId: args.promptTemplateId,
+        llmProfileId: args.llmProfileId,
+        templateKind: template.kind,
+        profileSlug: profile.slug,
+      }),
+    });
+
+    return bindingId;
+  },
+});
+
+export const updatePromptTemplateBinding = mutation({
+  args: {
+    bindingId: v.id("promptTemplateBindings"),
+    llmProfileId: v.optional(v.id("llmProfiles")),
+    generationKind: v.optional(vGenerationKind),
+    renderMode: v.optional(vRenderMode),
+    parameterOverridesJson: v.optional(v.string()),
+    priority: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+    isActive: v.optional(v.boolean()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const binding = await ctx.db.get(args.bindingId);
+    if (binding === null) {
+      throw new Error("Prompt template binding not found");
+    }
+    if (args.llmProfileId !== undefined) {
+      const profile = await ctx.db.get(args.llmProfileId);
+      if (profile === null) {
+        throw new Error("LLM profile not found");
+      }
+    }
+
+    const generationKind = args.generationKind ?? binding.generationKind;
+    const renderMode = args.renderMode ?? binding.renderMode;
+    assertBindingScope(generationKind, renderMode);
+
+    const now = Date.now();
+    if (args.isDefault === true) {
+      await clearDefaultTemplateBindings(
+        ctx,
+        binding.promptTemplateId,
+        viewer._id,
+        now,
+        args.bindingId
+      );
+    }
+
+    const patch: {
+      generationKind?: GenerationKind;
+      isActive?: boolean;
+      isDefault?: boolean;
+      llmProfileId?: Id<"llmProfiles">;
+      notes?: string;
+      parameterOverridesJson?: string;
+      priority?: number;
+      renderMode?: RenderMode;
+      updatedAt: number;
+      updatedByUserId: Id<"users">;
+    } = {
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    };
+    if (args.llmProfileId !== undefined) {
+      patch.llmProfileId = args.llmProfileId;
+    }
+    if (args.generationKind !== undefined) {
+      patch.generationKind = args.generationKind;
+    }
+    if (args.renderMode !== undefined) {
+      patch.renderMode = args.renderMode;
+    }
+    if (args.parameterOverridesJson !== undefined) {
+      patch.parameterOverridesJson = normalizeJsonObjectString(
+        args.parameterOverridesJson,
+        "Parameter overrides"
+      );
+    }
+    if (args.priority !== undefined) {
+      patch.priority = normalizePriority(args.priority);
+    }
+    if (args.notes !== undefined) {
+      patch.notes = cleanOptionalString(args.notes);
+    }
+    if (args.isDefault !== undefined) {
+      patch.isDefault = args.isDefault;
+    }
+    if (args.isActive !== undefined) {
+      patch.isActive = args.isActive;
+    }
+
+    await ctx.db.patch(args.bindingId, patch);
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-prompt-template-binding",
+      entityType: "promptTemplateBinding",
+      entityId: args.bindingId,
+      detailsJson: JSON.stringify({
+        bindingId: args.bindingId,
+        promptTemplateId: binding.promptTemplateId,
+        llmProfileId: patch.llmProfileId ?? binding.llmProfileId,
+        isDefault: patch.isDefault ?? binding.isDefault,
+        isActive: patch.isActive ?? binding.isActive,
+      }),
+    });
   },
 });
 
@@ -1458,6 +1902,156 @@ export const updatePriceRule = mutation({
     });
   },
 });
+
+function requireTrimmedString(value: string, label: string) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new Error(`${label} is required`);
+  }
+  return trimmed;
+}
+
+function normalizeLlmSlug(value: string) {
+  const slug = slugify(value);
+  if (slug.length === 0) {
+    throw new Error("Profile slug must include at least one ASCII letter or number");
+  }
+  return slug;
+}
+
+async function assertLlmProfileSlugAvailable(
+  ctx: MutationCtx,
+  slug: string,
+  exceptProfileId?: Id<"llmProfiles">
+) {
+  const existing = await ctx.db
+    .query("llmProfiles")
+    .withIndex("by_slug", (q) => q.eq("slug", slug))
+    .unique();
+
+  if (existing !== null && existing._id !== exceptProfileId) {
+    throw new Error("LLM profile slug is already in use");
+  }
+}
+
+function normalizeLlmBaseUrl(value: string) {
+  const trimmed = requireTrimmedString(value, "Base URL").replace(/\/+$/, "");
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error("Base URL must be a valid absolute URL");
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Base URL must use http or https");
+  }
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+function normalizeEnvName(value: string) {
+  const trimmed = requireTrimmedString(value, "API key env name");
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(trimmed)) {
+    throw new Error("API key env name must look like OPENAI_API_KEY");
+  }
+  return trimmed;
+}
+
+function normalizePriority(value?: number) {
+  if (value === undefined) {
+    return 0;
+  }
+  if (!Number.isFinite(value)) {
+    throw new Error("Priority must be a finite number");
+  }
+  return Math.round(value);
+}
+
+function normalizeTimeoutMs(value?: number) {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isFinite(value) || value < 1000 || value > 300000) {
+    throw new Error("Timeout must be between 1000 and 300000 milliseconds");
+  }
+  return Math.round(value);
+}
+
+function normalizeHeadersJson(value?: string) {
+  const headers = parseOptionalJsonObject(value, "Headers");
+  if (headers === undefined) {
+    return undefined;
+  }
+  for (const [key, headerValue] of Object.entries(headers)) {
+    if (key.trim().length === 0) {
+      throw new Error("Header names cannot be blank");
+    }
+    if (typeof headerValue !== "string") {
+      throw new Error("Header values must be strings");
+    }
+  }
+  return JSON.stringify(headers);
+}
+
+function normalizeJsonObjectString(value: string | undefined, label: string) {
+  const parsed = parseOptionalJsonObject(value, label);
+  return parsed === undefined ? undefined : JSON.stringify(parsed);
+}
+
+function parseOptionalJsonObject(value: string | undefined, label: string) {
+  const trimmed = cleanOptionalString(value);
+  if (trimmed === undefined) {
+    return undefined;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed) as unknown;
+  } catch {
+    throw new Error(`${label} must be valid JSON`);
+  }
+  if (!isPlainObject(parsed)) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+  return parsed;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertBindingScope(
+  generationKind?: GenerationKind,
+  renderMode?: RenderMode
+) {
+  if (generationKind === "palette-plan" && renderMode !== undefined) {
+    throw new Error("Render mode bindings only apply to hd-preview jobs");
+  }
+}
+
+async function clearDefaultTemplateBindings(
+  ctx: MutationCtx,
+  promptTemplateId: Id<"promptTemplates">,
+  viewerId: Id<"users">,
+  updatedAt: number,
+  exceptBindingId?: Id<"promptTemplateBindings">
+) {
+  const bindings = await ctx.db
+    .query("promptTemplateBindings")
+    .withIndex("by_template", (q) => q.eq("promptTemplateId", promptTemplateId))
+    .collect();
+
+  await Promise.all(
+    bindings
+      .filter((binding) => binding.isDefault && binding._id !== exceptBindingId)
+      .map((binding) =>
+        ctx.db.patch(binding._id, {
+          isDefault: false,
+          updatedAt,
+          updatedByUserId: viewerId,
+        })
+      )
+  );
+}
 
 function normalizeAdminSearch(value?: string) {
   return normalizeStringForSearch(value ?? "").trim().toLowerCase();

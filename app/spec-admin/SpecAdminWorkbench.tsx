@@ -22,6 +22,28 @@ type SpecKind = "material" | "paint-finish" | "style" | "weathering" | "identity
 type SpecSection = SpecKind | "prompt-preview" | "tests";
 type SpecStatus = "draft" | "active";
 type TestStatus = "untested" | "testing" | "passed" | "failed";
+type MaterialDslGroup = "surface" | "optics" | "reflection" | "exclusions";
+type StyleDslGroup =
+  | "shapeLanguage"
+  | "visualTone"
+  | "surfaceLanguage"
+  | "visualExclusions";
+
+type MaterialDsl = {
+  materialFamily?: string;
+  surface: string[];
+  optics: string[];
+  reflection: string[];
+  exclusions: string[];
+};
+
+type StyleDsl = {
+  styleFamily?: string;
+  shapeLanguage: string[];
+  visualTone: string[];
+  surfaceLanguage: string[];
+  visualExclusions: string[];
+};
 
 type PresetDraft = {
   name: string;
@@ -60,6 +82,199 @@ const priorityLabels: Record<SpecKind, string> = {
   weathering: "P4",
   style: "P5",
 };
+
+const emptyMaterialDsl: MaterialDsl = {
+  surface: [],
+  optics: [],
+  reflection: [],
+  exclusions: [],
+};
+
+const pseudoChromeExample: MaterialDsl = {
+  materialFamily: "pseudo-chrome",
+  surface: ["ultra-smooth", "high-reflectivity", "soft-specular"],
+  optics: ["candy-over-chrome", "translucent-color-depth"],
+  reflection: ["studio-soft", "color-rich"],
+  exclusions: ["full-chrome", "metallic-flakes"],
+};
+
+const materialFamilyOptions = [
+  {
+    value: "pseudo-chrome",
+    label: "Pseudo Chrome",
+    detail: "Candy-over-chrome without true full chrome plating.",
+  },
+  {
+    value: "ceramic-coating",
+    label: "Ceramic Coating",
+    detail: "Opaque ceramic-style painted shell.",
+  },
+  {
+    value: "painted-armor",
+    label: "Painted Armor",
+    detail: "Standard coated model armor material.",
+  },
+  {
+    value: "metallic-alloy",
+    label: "Metallic Alloy",
+    detail: "Controlled scale-model metallic response.",
+  },
+  {
+    value: "titanium",
+    label: "Titanium",
+    detail: "Bright alloy value with restrained reflections.",
+  },
+  {
+    value: "gunmetal",
+    label: "Gunmetal",
+    detail: "Dark mechanical alloy depth.",
+  },
+];
+
+const materialTagGroups: Array<{
+  key: MaterialDslGroup;
+  label: string;
+  description: string;
+  options: Array<{ value: string; label: string }>;
+}> = [
+  {
+    key: "surface",
+    label: "Surface",
+    description: "Physical surface read before color and lighting.",
+    options: [
+      { value: "ultra-smooth", label: "Ultra Smooth" },
+      { value: "smooth-painted", label: "Smooth Painted" },
+      { value: "fine-grain", label: "Fine Grain" },
+      { value: "high-reflectivity", label: "High Reflectivity" },
+      { value: "low-reflectivity", label: "Low Reflectivity" },
+      { value: "soft-specular", label: "Soft Specular" },
+    ],
+  },
+  {
+    key: "optics",
+    label: "Optics",
+    description: "Layering, transparency, and color depth behavior.",
+    options: [
+      { value: "candy-over-chrome", label: "Candy Over Chrome" },
+      { value: "translucent-color-depth", label: "Translucent Color Depth" },
+      { value: "opaque-painted-color", label: "Opaque Painted Color" },
+      { value: "ceramic-depth", label: "Ceramic Depth" },
+    ],
+  },
+  {
+    key: "reflection",
+    label: "Reflection",
+    description: "How highlights and studio reflections should resolve.",
+    options: [
+      { value: "studio-soft", label: "Studio Soft" },
+      { value: "color-rich", label: "Color Rich" },
+      { value: "broad-diffuse", label: "Broad Diffuse" },
+      { value: "crisp-panel-readability", label: "Crisp Panel Readability" },
+    ],
+  },
+  {
+    key: "exclusions",
+    label: "Exclusions",
+    description: "Hard negative material behaviors for prompt assembly.",
+    options: [
+      { value: "full-chrome", label: "Full Chrome" },
+      { value: "metallic-flakes", label: "Metallic Flakes" },
+      { value: "mirror-glare", label: "Mirror Glare" },
+      { value: "pearl-effect", label: "Pearl Effect" },
+      { value: "wet-plastic", label: "Wet Plastic" },
+    ],
+  },
+];
+
+const emptyStyleDsl: StyleDsl = {
+  shapeLanguage: [],
+  visualTone: [],
+  surfaceLanguage: [],
+  visualExclusions: [],
+};
+
+const neoZeonExample: StyleDsl = {
+  styleFamily: "neo-zeon",
+  shapeLanguage: ["heavy-armor", "large-curves", "layered-plating"],
+  visualTone: ["military-industrial", "commander-unit"],
+  surfaceLanguage: ["katoki-paneling", "warning-markings"],
+  visualExclusions: ["heroic-proportions", "super-robot"],
+};
+
+const styleFamilyOptions = [
+  {
+    value: "neo-zeon",
+    label: "Neo Zeon",
+    detail: "Command-unit military styling with curved heavy armor cues.",
+  },
+  {
+    value: "military-prototype",
+    label: "Military Prototype",
+    detail: "Utilitarian prototype styling with restrained field markings.",
+  },
+  {
+    value: "industrial-mecha",
+    label: "Industrial Mecha",
+    detail: "Factory-grade hard-surface styling and warning zones.",
+  },
+  {
+    value: "anime-reference",
+    label: "Anime Reference",
+    detail: "Borrow surface logic from anime lineage without changing identity.",
+  },
+];
+
+const styleTagGroups: Array<{
+  key: StyleDslGroup;
+  label: string;
+  description: string;
+  options: Array<{ value: string; label: string }>;
+}> = [
+  {
+    key: "shapeLanguage",
+    label: "Shape Language",
+    description: "Style read implied through paint massing and panel rhythm.",
+    options: [
+      { value: "heavy-armor", label: "Heavy Armor" },
+      { value: "large-curves", label: "Large Curves" },
+      { value: "layered-plating", label: "Layered Plating" },
+      { value: "sharp-armor", label: "Sharp Armor" },
+    ],
+  },
+  {
+    key: "visualTone",
+    label: "Visual Tone",
+    description: "The emotional and factional read of the finished model.",
+    options: [
+      { value: "military-industrial", label: "Military Industrial" },
+      { value: "commander-unit", label: "Commander Unit" },
+      { value: "elite-guard", label: "Elite Guard" },
+      { value: "prototype", label: "Prototype" },
+    ],
+  },
+  {
+    key: "surfaceLanguage",
+    label: "Surface Language",
+    description: "Marking, panel, label, and technical surface vocabulary.",
+    options: [
+      { value: "katoki-paneling", label: "Katoki Paneling" },
+      { value: "warning-markings", label: "Warning Markings" },
+      { value: "serial-markings", label: "Serial Markings" },
+      { value: "low-visibility-markings", label: "Low Visibility Markings" },
+    ],
+  },
+  {
+    key: "visualExclusions",
+    label: "Visual Exclusions",
+    description: "Hard negative style directions.",
+    options: [
+      { value: "heroic-proportions", label: "Heroic Proportions" },
+      { value: "super-robot", label: "Super Robot" },
+      { value: "organic-redesign", label: "Organic Redesign" },
+      { value: "toy-like", label: "Toy Like" },
+    ],
+  },
+];
 
 export function SpecAdminWorkbench({ section }: { section: SpecSection }) {
   const viewer = useQuery(api.users.viewer);
@@ -349,7 +564,26 @@ function PresetEditor({ kind }: { kind: SpecKind }) {
               </Field>
             </div>
 
-            <Field label="Spec JSON">
+            {kind === "material" ? (
+              <MaterialDslEditor
+                specJson={draft.specJson}
+                onChange={(specJson) => setDraft({ ...draft, specJson })}
+              />
+            ) : null}
+            {kind === "style" ? (
+              <StyleDslEditor
+                specJson={draft.specJson}
+                onChange={(specJson) => setDraft({ ...draft, specJson })}
+              />
+            ) : null}
+
+            <Field
+              label={
+                kind === "material" || kind === "style"
+                  ? "Spec JSON / Semantic Tags DSL"
+                  : "Spec JSON"
+              }
+            >
               <Textarea
                 value={draft.specJson}
                 onChange={(event) => setDraft({ ...draft, specJson: event.target.value })}
@@ -357,7 +591,13 @@ function PresetEditor({ kind }: { kind: SpecKind }) {
               />
             </Field>
 
-            <Field label="Render Behavior Text">
+            <Field
+              label={
+                kind === "material" || kind === "style"
+                  ? "Legacy Render Behavior Text (Fallback)"
+                  : "Render Behavior Text"
+              }
+            >
               <Textarea
                 value={draft.renderBehaviorText}
                 onChange={(event) =>
@@ -399,6 +639,728 @@ function PresetEditor({ kind }: { kind: SpecKind }) {
       </div>
     </section>
   );
+}
+
+function MaterialDslEditor({
+  onChange,
+  specJson,
+}: {
+  onChange: (specJson: string) => void;
+  specJson: string;
+}) {
+  const parsedDsl = useMemo(() => readMaterialDslSpec(specJson), [specJson]);
+  const [customTagDrafts, setCustomTagDrafts] = useState<Record<MaterialDslGroup, string>>({
+    surface: "",
+    optics: "",
+    reflection: "",
+    exclusions: "",
+  });
+  const canEdit = parsedDsl.state !== "invalid";
+  const selectedFamily = parsedDsl.dsl.materialFamily ?? "none";
+  const selectedFamilyDetail = materialFamilyOptions.find(
+    (option) => option.value === parsedDsl.dsl.materialFamily
+  )?.detail;
+
+  function updateDsl(nextDsl: MaterialDsl) {
+    onChange(writeMaterialDslSpec(specJson, nextDsl));
+  }
+
+  function onSetFamily(value: string) {
+    updateDsl({
+      ...parsedDsl.dsl,
+      materialFamily: value === "none" ? undefined : normalizeMaterialDslTag(value),
+    });
+  }
+
+  function onToggleTag(group: MaterialDslGroup, tag: string) {
+    const normalizedTag = normalizeMaterialDslTag(tag);
+    const currentTags = parsedDsl.dsl[group];
+    const nextTags = currentTags.includes(normalizedTag)
+      ? currentTags.filter((item) => item !== normalizedTag)
+      : [...currentTags, normalizedTag];
+
+    updateDsl({
+      ...parsedDsl.dsl,
+      [group]: nextTags,
+    });
+  }
+
+  function onAddCustomTag(group: MaterialDslGroup) {
+    const normalizedTag = normalizeMaterialDslTag(customTagDrafts[group]);
+    if (!normalizedTag || parsedDsl.dsl[group].includes(normalizedTag)) {
+      setCustomTagDrafts((current) => ({ ...current, [group]: "" }));
+      return;
+    }
+
+    updateDsl({
+      ...parsedDsl.dsl,
+      [group]: [...parsedDsl.dsl[group], normalizedTag],
+    });
+    setCustomTagDrafts((current) => ({ ...current, [group]: "" }));
+  }
+
+  const compactDslJson = JSON.stringify(compactMaterialDsl(parsedDsl.dsl), null, 2);
+
+  return (
+    <section className="border-2 border-accent-teal/50 bg-main p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent-teal">
+            Material DSL Builder
+          </p>
+          <h3 className="mt-2 text-lg font-semibold text-ink-primary">
+            Semantic tags before prompt text
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-secondary">
+            Edit the semantic structure here. The JSON below is still the source of
+            truth, but Prompt Preview now compiles these tags before using legacy text.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="border border-line-secondary bg-panel px-2 py-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+            {parsedDsl.state}
+          </span>
+          <Button
+            type="button"
+            onClick={() => onChange(writeMaterialDslSpec(specJson, pseudoChromeExample))}
+            className="h-9 rounded-[14px] border border-accent-orange bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
+          >
+            Load Pseudo Chrome Sample
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.65fr)]">
+        <div className="space-y-4">
+          <div className="grid gap-3 border border-line-secondary bg-panel p-3 md:grid-cols-[220px_minmax(0,1fr)]">
+            <Field label="Material Family">
+              <Select value={selectedFamily} onValueChange={onSetFamily} disabled={!canEdit}>
+                <SelectTrigger className="border-line-secondary bg-main text-ink-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+                  <SelectItem value="none">None</SelectItem>
+                  {materialFamilyOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
+              <p className="font-mono text-ink-primary">
+                materialFamily={parsedDsl.dsl.materialFamily ?? "not-set"}
+              </p>
+              <p className="mt-1">
+                {selectedFamilyDetail ?? "Choose a family, then compose surface tags."}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            {materialTagGroups.map((group) => (
+              <MaterialTagGroupEditor
+                key={group.key}
+                customValue={customTagDrafts[group.key]}
+                disabled={!canEdit}
+                group={group}
+                selectedTags={parsedDsl.dsl[group.key]}
+                onAddCustomTag={() => onAddCustomTag(group.key)}
+                onCustomValueChange={(value) =>
+                  setCustomTagDrafts((current) => ({
+                    ...current,
+                    [group.key]: value,
+                  }))
+                }
+                onToggleTag={(tag) => onToggleTag(group.key, tag)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="border border-line-secondary bg-panel p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-orange">
+              Current DSL
+            </p>
+            <span className="font-mono text-[11px] text-ink-muted">{parsedDsl.detail}</span>
+          </div>
+          {parsedDsl.state === "invalid" ? (
+            <div className="mt-3 border border-accent-red bg-accent-red/10 p-3 text-sm text-accent-red">
+              Fix the JSON syntax or load a sample before using tag controls.
+            </div>
+          ) : null}
+          <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap border border-line-secondary bg-main p-3 font-mono text-xs leading-5 text-ink-secondary">
+            {compactDslJson}
+          </pre>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MaterialTagGroupEditor({
+  customValue,
+  disabled,
+  group,
+  onAddCustomTag,
+  onCustomValueChange,
+  onToggleTag,
+  selectedTags,
+}: {
+  customValue: string;
+  disabled: boolean;
+  group: (typeof materialTagGroups)[number];
+  onAddCustomTag: () => void;
+  onCustomValueChange: (value: string) => void;
+  onToggleTag: (tag: string) => void;
+  selectedTags: string[];
+}) {
+  const knownTags = new Set(group.options.map((option) => option.value));
+  const customTags = selectedTags.filter((tag) => !knownTags.has(tag));
+
+  return (
+    <div className="border border-line-secondary bg-panel p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-primary">
+            {group.label}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-ink-muted">{group.description}</p>
+        </div>
+        <span className="font-mono text-[11px] text-accent-teal">
+          {selectedTags.length} tags
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {group.options.map((option) => {
+          const active = selectedTags.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => onToggleTag(option.value)}
+              className={cn(
+                "border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                active
+                  ? "border-accent-teal bg-accent-teal/15 text-ink-primary"
+                  : "border-line-secondary bg-main text-ink-secondary hover:border-line-active hover:text-ink-primary"
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+        {customTags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggleTag(tag)}
+            className="border border-accent-orange bg-accent-orange/10 px-2.5 py-1.5 font-mono text-xs text-ink-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+        <Input
+          value={customValue}
+          disabled={disabled}
+          onChange={(event) => onCustomValueChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onAddCustomTag();
+            }
+          }}
+          placeholder="custom-tag"
+          className="h-9 border-line-secondary bg-main font-mono text-xs text-ink-primary"
+        />
+        <Button
+          type="button"
+          disabled={disabled}
+          onClick={onAddCustomTag}
+          className="h-9 rounded-[14px] border border-line-secondary bg-main px-3 text-xs text-ink-primary hover:bg-hover-subtle disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function readMaterialDslSpec(specJson: string) {
+  try {
+    const parsed = JSON.parse(specJson) as unknown;
+    if (!isPlainRecord(parsed)) {
+      return {
+        state: "invalid" as const,
+        detail: "JSON object required",
+        dsl: emptyMaterialDsl,
+      };
+    }
+
+    const nested = isPlainRecord(parsed.semanticTags) ? parsed.semanticTags : undefined;
+    const dsl = normalizeMaterialDsl({
+      materialFamily:
+        getStringField(parsed, "materialFamily") ||
+        (nested ? getStringField(nested, "materialFamily") : undefined),
+      surface: [
+        ...getStringList(parsed, "surface"),
+        ...(nested ? getStringList(nested, "surface") : []),
+      ],
+      optics: [
+        ...getStringList(parsed, "optics"),
+        ...(nested ? getStringList(nested, "optics") : []),
+      ],
+      reflection: [
+        ...getStringList(parsed, "reflection"),
+        ...(nested ? getStringList(nested, "reflection") : []),
+      ],
+      exclusions: [
+        ...getStringList(parsed, "exclusions"),
+        ...(nested ? getStringList(nested, "exclusions") : []),
+      ],
+    });
+    const tagCount =
+      dsl.surface.length +
+      dsl.optics.length +
+      dsl.reflection.length +
+      dsl.exclusions.length;
+
+    if (dsl.materialFamily || tagCount > 0) {
+      return {
+        state: "dsl-active" as const,
+        detail: `family=${dsl.materialFamily || "not-set"} / tags=${tagCount}`,
+        dsl,
+      };
+    }
+
+    return {
+      state: "legacy" as const,
+      detail: "no semantic tags",
+      dsl,
+    };
+  } catch {
+    return {
+      state: "invalid" as const,
+      detail: "invalid JSON",
+      dsl: emptyMaterialDsl,
+    };
+  }
+}
+
+function writeMaterialDslSpec(specJson: string, nextDsl: MaterialDsl) {
+  let parsed: Record<string, unknown> = {};
+  try {
+    const maybeParsed = JSON.parse(specJson) as unknown;
+    if (isPlainRecord(maybeParsed)) {
+      parsed = maybeParsed;
+    }
+  } catch {
+    parsed = {};
+  }
+
+  const normalizedDsl = normalizeMaterialDsl(nextDsl);
+  if (normalizedDsl.materialFamily) {
+    parsed.materialFamily = normalizedDsl.materialFamily;
+  } else {
+    delete parsed.materialFamily;
+  }
+
+  parsed.surface = normalizedDsl.surface;
+  parsed.optics = normalizedDsl.optics;
+  parsed.reflection = normalizedDsl.reflection;
+  parsed.exclusions = normalizedDsl.exclusions;
+
+  return JSON.stringify(parsed, null, 2);
+}
+
+function compactMaterialDsl(dsl: MaterialDsl): MaterialDsl {
+  return normalizeMaterialDsl(dsl);
+}
+
+function normalizeMaterialDsl(dsl: MaterialDsl): MaterialDsl {
+  return {
+    materialFamily: dsl.materialFamily
+      ? normalizeMaterialDslTag(dsl.materialFamily)
+      : undefined,
+    surface: uniqueStrings(dsl.surface.map(normalizeMaterialDslTag)),
+    optics: uniqueStrings(dsl.optics.map(normalizeMaterialDslTag)),
+    reflection: uniqueStrings(dsl.reflection.map(normalizeMaterialDslTag)),
+    exclusions: uniqueStrings(dsl.exclusions.map(normalizeMaterialDslTag)),
+  };
+}
+
+function normalizeMaterialDslTag(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+function uniqueStrings(values: string[]) {
+  return values.filter((value, index, list) => value.length > 0 && list.indexOf(value) === index);
+}
+
+function StyleDslEditor({
+  onChange,
+  specJson,
+}: {
+  onChange: (specJson: string) => void;
+  specJson: string;
+}) {
+  const parsedDsl = useMemo(() => readStyleDslSpec(specJson), [specJson]);
+  const [customTagDrafts, setCustomTagDrafts] = useState<Record<StyleDslGroup, string>>({
+    shapeLanguage: "",
+    visualTone: "",
+    surfaceLanguage: "",
+    visualExclusions: "",
+  });
+  const canEdit = parsedDsl.state !== "invalid";
+  const selectedFamily = parsedDsl.dsl.styleFamily ?? "none";
+  const selectedFamilyDetail = styleFamilyOptions.find(
+    (option) => option.value === parsedDsl.dsl.styleFamily
+  )?.detail;
+
+  function updateDsl(nextDsl: StyleDsl) {
+    onChange(writeStyleDslSpec(specJson, nextDsl));
+  }
+
+  function onSetFamily(value: string) {
+    updateDsl({
+      ...parsedDsl.dsl,
+      styleFamily: value === "none" ? undefined : normalizeStyleDslTag(value),
+    });
+  }
+
+  function onToggleTag(group: StyleDslGroup, tag: string) {
+    const normalizedTag = normalizeStyleDslTag(tag);
+    const currentTags = parsedDsl.dsl[group];
+    const nextTags = currentTags.includes(normalizedTag)
+      ? currentTags.filter((item) => item !== normalizedTag)
+      : [...currentTags, normalizedTag];
+
+    updateDsl({
+      ...parsedDsl.dsl,
+      [group]: nextTags,
+    });
+  }
+
+  function onAddCustomTag(group: StyleDslGroup) {
+    const normalizedTag = normalizeStyleDslTag(customTagDrafts[group]);
+    if (!normalizedTag || parsedDsl.dsl[group].includes(normalizedTag)) {
+      setCustomTagDrafts((current) => ({ ...current, [group]: "" }));
+      return;
+    }
+
+    updateDsl({
+      ...parsedDsl.dsl,
+      [group]: [...parsedDsl.dsl[group], normalizedTag],
+    });
+    setCustomTagDrafts((current) => ({ ...current, [group]: "" }));
+  }
+
+  const compactDslJson = JSON.stringify(compactStyleDsl(parsedDsl.dsl), null, 2);
+
+  return (
+    <section className="border-2 border-accent-orange/60 bg-main p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent-orange">
+            Style DSL Builder
+          </p>
+          <h3 className="mt-2 text-lg font-semibold text-ink-primary">
+            Surface style as semantic tags
+          </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-secondary">
+            Compose style family, shape read, visual tone, surface language, and hard
+            exclusions. The compiler applies these as surface direction only.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="border border-line-secondary bg-panel px-2 py-1 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+            {parsedDsl.state}
+          </span>
+          <Button
+            type="button"
+            onClick={() => onChange(writeStyleDslSpec(specJson, neoZeonExample))}
+            className="h-9 rounded-[14px] border border-accent-orange bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
+          >
+            Load Neo Zeon Sample
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.65fr)]">
+        <div className="space-y-4">
+          <div className="grid gap-3 border border-line-secondary bg-panel p-3 md:grid-cols-[220px_minmax(0,1fr)]">
+            <Field label="Style Family">
+              <Select value={selectedFamily} onValueChange={onSetFamily} disabled={!canEdit}>
+                <SelectTrigger className="border-line-secondary bg-main text-ink-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+                  <SelectItem value="none">None</SelectItem>
+                  {styleFamilyOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="border border-line-secondary bg-main p-3 text-xs leading-5 text-ink-secondary">
+              <p className="font-mono text-ink-primary">
+                styleFamily={parsedDsl.dsl.styleFamily ?? "not-set"}
+              </p>
+              <p className="mt-1">
+                {selectedFamilyDetail ?? "Choose a family, then compose style tags."}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            {styleTagGroups.map((group) => (
+              <StyleTagGroupEditor
+                key={group.key}
+                customValue={customTagDrafts[group.key]}
+                disabled={!canEdit}
+                group={group}
+                selectedTags={parsedDsl.dsl[group.key]}
+                onAddCustomTag={() => onAddCustomTag(group.key)}
+                onCustomValueChange={(value) =>
+                  setCustomTagDrafts((current) => ({
+                    ...current,
+                    [group.key]: value,
+                  }))
+                }
+                onToggleTag={(tag) => onToggleTag(group.key, tag)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="border border-line-secondary bg-panel p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-orange">
+              Current DSL
+            </p>
+            <span className="font-mono text-[11px] text-ink-muted">{parsedDsl.detail}</span>
+          </div>
+          {parsedDsl.state === "invalid" ? (
+            <div className="mt-3 border border-accent-red bg-accent-red/10 p-3 text-sm text-accent-red">
+              Fix the JSON syntax or load a sample before using tag controls.
+            </div>
+          ) : null}
+          <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap border border-line-secondary bg-main p-3 font-mono text-xs leading-5 text-ink-secondary">
+            {compactDslJson}
+          </pre>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StyleTagGroupEditor({
+  customValue,
+  disabled,
+  group,
+  onAddCustomTag,
+  onCustomValueChange,
+  onToggleTag,
+  selectedTags,
+}: {
+  customValue: string;
+  disabled: boolean;
+  group: (typeof styleTagGroups)[number];
+  onAddCustomTag: () => void;
+  onCustomValueChange: (value: string) => void;
+  onToggleTag: (tag: string) => void;
+  selectedTags: string[];
+}) {
+  const knownTags = new Set(group.options.map((option) => option.value));
+  const customTags = selectedTags.filter((tag) => !knownTags.has(tag));
+
+  return (
+    <div className="border border-line-secondary bg-panel p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-primary">
+            {group.label}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-ink-muted">{group.description}</p>
+        </div>
+        <span className="font-mono text-[11px] text-accent-orange">
+          {selectedTags.length} tags
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {group.options.map((option) => {
+          const active = selectedTags.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => onToggleTag(option.value)}
+              className={cn(
+                "border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                active
+                  ? "border-accent-orange bg-accent-orange/15 text-ink-primary"
+                  : "border-line-secondary bg-main text-ink-secondary hover:border-line-active hover:text-ink-primary"
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+        {customTags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggleTag(tag)}
+            className="border border-accent-teal bg-accent-teal/10 px-2.5 py-1.5 font-mono text-xs text-ink-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+        <Input
+          value={customValue}
+          disabled={disabled}
+          onChange={(event) => onCustomValueChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onAddCustomTag();
+            }
+          }}
+          placeholder="custom-tag"
+          className="h-9 border-line-secondary bg-main font-mono text-xs text-ink-primary"
+        />
+        <Button
+          type="button"
+          disabled={disabled}
+          onClick={onAddCustomTag}
+          className="h-9 rounded-[14px] border border-line-secondary bg-main px-3 text-xs text-ink-primary hover:bg-hover-subtle disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function readStyleDslSpec(specJson: string) {
+  try {
+    const parsed = JSON.parse(specJson) as unknown;
+    if (!isPlainRecord(parsed)) {
+      return {
+        state: "invalid" as const,
+        detail: "JSON object required",
+        dsl: emptyStyleDsl,
+      };
+    }
+
+    const nested = isPlainRecord(parsed.semanticTags) ? parsed.semanticTags : undefined;
+    const dsl = normalizeStyleDsl({
+      styleFamily:
+        getStringField(parsed, "styleFamily") ||
+        (nested ? getStringField(nested, "styleFamily") : undefined),
+      shapeLanguage: [
+        ...getStringList(parsed, "shapeLanguage"),
+        ...(nested ? getStringList(nested, "shapeLanguage") : []),
+      ],
+      visualTone: [
+        ...getStringList(parsed, "visualTone"),
+        ...(nested ? getStringList(nested, "visualTone") : []),
+      ],
+      surfaceLanguage: [
+        ...getStringList(parsed, "surfaceLanguage"),
+        ...(nested ? getStringList(nested, "surfaceLanguage") : []),
+      ],
+      visualExclusions: [
+        ...getStringList(parsed, "visualExclusions"),
+        ...(nested ? getStringList(nested, "visualExclusions") : []),
+      ],
+    });
+    const tagCount =
+      dsl.shapeLanguage.length +
+      dsl.visualTone.length +
+      dsl.surfaceLanguage.length +
+      dsl.visualExclusions.length;
+
+    if (dsl.styleFamily || tagCount > 0) {
+      return {
+        state: "dsl-active" as const,
+        detail: `family=${dsl.styleFamily || "not-set"} / tags=${tagCount}`,
+        dsl,
+      };
+    }
+
+    return {
+      state: "legacy" as const,
+      detail: "no semantic tags",
+      dsl,
+    };
+  } catch {
+    return {
+      state: "invalid" as const,
+      detail: "invalid JSON",
+      dsl: emptyStyleDsl,
+    };
+  }
+}
+
+function writeStyleDslSpec(specJson: string, nextDsl: StyleDsl) {
+  let parsed: Record<string, unknown> = {};
+  try {
+    const maybeParsed = JSON.parse(specJson) as unknown;
+    if (isPlainRecord(maybeParsed)) {
+      parsed = maybeParsed;
+    }
+  } catch {
+    parsed = {};
+  }
+
+  const normalizedDsl = normalizeStyleDsl(nextDsl);
+  if (normalizedDsl.styleFamily) {
+    parsed.styleFamily = normalizedDsl.styleFamily;
+  } else {
+    delete parsed.styleFamily;
+  }
+
+  parsed.shapeLanguage = normalizedDsl.shapeLanguage;
+  parsed.visualTone = normalizedDsl.visualTone;
+  parsed.surfaceLanguage = normalizedDsl.surfaceLanguage;
+  parsed.visualExclusions = normalizedDsl.visualExclusions;
+
+  return JSON.stringify(parsed, null, 2);
+}
+
+function compactStyleDsl(dsl: StyleDsl): StyleDsl {
+  return normalizeStyleDsl(dsl);
+}
+
+function normalizeStyleDsl(dsl: StyleDsl): StyleDsl {
+  return {
+    styleFamily: dsl.styleFamily ? normalizeStyleDslTag(dsl.styleFamily) : undefined,
+    shapeLanguage: uniqueStrings(dsl.shapeLanguage.map(normalizeStyleDslTag)),
+    visualTone: uniqueStrings(dsl.visualTone.map(normalizeStyleDslTag)),
+    surfaceLanguage: uniqueStrings(dsl.surfaceLanguage.map(normalizeStyleDslTag)),
+    visualExclusions: uniqueStrings(dsl.visualExclusions.map(normalizeStyleDslTag)),
+  };
+}
+
+function normalizeStyleDslTag(value: string) {
+  return value.trim().toLowerCase().replace(/[\s_]+/g, "-");
 }
 
 function PromptPreviewPanel() {
@@ -853,6 +1815,28 @@ function emptyToUndefined(value: string) {
 
 function readError(error: unknown) {
   return error instanceof Error ? error.message : "Unknown spec admin error";
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function getStringField(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function getStringList(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0
+  );
 }
 
 function Meta({ label, value }: { label: string; value: string }) {

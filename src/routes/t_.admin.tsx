@@ -3,17 +3,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AdminWorkbench } from "@/src/components/admin/AdminWorkbench";
-import { TerminalShell } from "@/src/components/terminal/TerminalShell";
+import { AppShell } from "@/src/components/app-shell/AppShell";
+import { noIndexRobots } from "@/src/lib/appPaths";
 
 export const Route = createFileRoute("/t_/admin")({
   head: () => ({
     meta: [
-      { title: "Admin | NeotypeLab Terminal" },
+      { title: "Admin | NeotypeLab" },
       {
         name: "description",
         content:
           "Platform administration surface for NeotypeLab prompt templates, catalog data, feedback triage, users, and credits.",
       },
+      noIndexRobots,
     ],
   }),
   component: AdminRoute,
@@ -21,8 +23,7 @@ export const Route = createFileRoute("/t_/admin")({
 
 function AdminRoute() {
   return (
-    <TerminalShell
-      activePath="/t/admin"
+    <AppShell
       description="Platform administration for prompt templates, catalog data, feedback triage, users, and credit operations."
       title="Admin"
     >
@@ -30,10 +31,6 @@ function AdminRoute() {
         <section className="library-empty">
           <p className="showcase-kicker is-teal">Admin sync</p>
           <h1>Resolving platform clearance.</h1>
-          <p>
-            Clerk is present and Convex is negotiating the authenticated viewer
-            token.
-          </p>
         </section>
       </AuthLoading>
 
@@ -41,10 +38,6 @@ function AdminRoute() {
         <section className="library-empty">
           <p className="showcase-kicker is-orange">Signed out</p>
           <h1>Sign in to open the admin terminal.</h1>
-          <p>
-            Admin actions require a Clerk session and a Convex viewer with
-            platform management clearance.
-          </p>
           <SignInButton mode="modal">
             <button className="showcase-button" type="button">
               Sign in
@@ -65,6 +58,6 @@ function AdminRoute() {
           <AdminWorkbench />
         </Suspense>
       </Authenticated>
-    </TerminalShell>
+    </AppShell>
   );
 }

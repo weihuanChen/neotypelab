@@ -2,18 +2,20 @@ import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ModelCatalogWorkbench } from "@/src/components/models/ModelCatalogWorkbench";
-import { TerminalShell } from "@/src/components/terminal/TerminalShell";
+import { noIndexRobots } from "@/src/lib/appPaths";
 
 export const Route = createFileRoute("/t_/models")({
   head: () => ({
     meta: [
-      { title: "Models | NeotypeLab Terminal" },
+      { title: "Models | NeotypeLab" },
       {
         name: "description",
         content:
           "Admin-only model hierarchy management for IP series, base units, and kit variants.",
       },
+      noIndexRobots,
     ],
   }),
   component: ModelsRoute,
@@ -21,8 +23,7 @@ export const Route = createFileRoute("/t_/models")({
 
 function ModelsRoute() {
   return (
-    <TerminalShell
-      activePath="/t/models"
+    <AppShell
       description="Admin-only model hierarchy management for IP series, base units, and kit variants."
       title="Models"
     >
@@ -37,7 +38,6 @@ function ModelsRoute() {
         <section className="library-empty">
           <p className="showcase-kicker is-orange">Signed out</p>
           <h1>Sign in to manage model DNA.</h1>
-          <p>Model hierarchy editing requires an authenticated platform admin.</p>
           <SignInButton mode="modal">
             <button className="showcase-button" type="button">
               Sign in
@@ -58,6 +58,6 @@ function ModelsRoute() {
           <ModelCatalogWorkbench />
         </Suspense>
       </Authenticated>
-    </TerminalShell>
+    </AppShell>
   );
 }

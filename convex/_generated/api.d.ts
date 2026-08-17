@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as adminAccess from "../adminAccess.js";
+import type * as archiveNumbers from "../archiveNumbers.js";
 import type * as assets from "../assets.js";
 import type * as baseModelHierarchy from "../baseModelHierarchy.js";
 import type * as catalog from "../catalog.js";
@@ -29,7 +30,9 @@ import type * as init from "../init.js";
 import type * as modelCatalogAdmin from "../modelCatalogAdmin.js";
 import type * as modelCatalogStatus from "../modelCatalogStatus.js";
 import type * as modelPromptContext from "../modelPromptContext.js";
+import type * as orders from "../orders.js";
 import type * as packEngagement from "../packEngagement.js";
+import type * as paintBench from "../paintBench.js";
 import type * as paintMappingEngine from "../paintMappingEngine.js";
 import type * as paintMappingPlans from "../paintMappingPlans.js";
 import type * as promptCompiler from "../promptCompiler.js";
@@ -43,6 +46,7 @@ import type * as renderSpecification from "../renderSpecification.js";
 import type * as shopping from "../shopping.js";
 import type * as showcase from "../showcase.js";
 import type * as specAdmin from "../specAdmin.js";
+import type * as sprayPlans from "../sprayPlans.js";
 import type * as types from "../types.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
@@ -56,6 +60,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminAccess: typeof adminAccess;
+  archiveNumbers: typeof archiveNumbers;
   assets: typeof assets;
   baseModelHierarchy: typeof baseModelHierarchy;
   catalog: typeof catalog;
@@ -75,7 +80,9 @@ declare const fullApi: ApiFromModules<{
   modelCatalogAdmin: typeof modelCatalogAdmin;
   modelCatalogStatus: typeof modelCatalogStatus;
   modelPromptContext: typeof modelPromptContext;
+  orders: typeof orders;
   packEngagement: typeof packEngagement;
+  paintBench: typeof paintBench;
   paintMappingEngine: typeof paintMappingEngine;
   paintMappingPlans: typeof paintMappingPlans;
   promptCompiler: typeof promptCompiler;
@@ -89,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   shopping: typeof shopping;
   showcase: typeof showcase;
   specAdmin: typeof specAdmin;
+  sprayPlans: typeof sprayPlans;
   types: typeof types;
   users: typeof users;
   utils: typeof utils;

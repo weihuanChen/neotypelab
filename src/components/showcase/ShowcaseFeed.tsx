@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
+import { ChoiceChip, FieldHint, Kicker } from "@/src/components/ui/workbench";
 import { ConceptEngagementBar } from "./EngagementBars";
 import { CreatorPackCard } from "./CreatorPackCard";
 import { CreatorRankingCard } from "./CreatorRankingCard";
@@ -21,10 +22,12 @@ import type {
 
 export function ShowcaseFeed({
   basePath = "/showcase",
+  hideIntro = false,
   search,
   snapshot,
 }: {
   basePath?: string;
+  hideIntro?: boolean;
   search: ShowcaseSearch;
   snapshot: ShowcaseSnapshot;
 }) {
@@ -37,6 +40,7 @@ export function ShowcaseFeed({
     <LiveShowcaseFeed
       basePath={basePath}
       canInteract={canInteract}
+      hideIntro={hideIntro}
       search={search}
       snapshot={snapshot}
     />
@@ -45,6 +49,7 @@ export function ShowcaseFeed({
       canInteract={canInteract}
       data={snapshot}
       basePath={basePath}
+      hideIntro={hideIntro}
       providerReady={providerStatus.hasConvexClient}
       search={search}
       status={snapshot.status}
@@ -58,11 +63,13 @@ export function ShowcaseFeed({
 function LiveShowcaseFeed({
   basePath,
   canInteract,
+  hideIntro,
   search,
   snapshot,
 }: {
   basePath: string;
   canInteract: boolean;
+  hideIntro: boolean;
   search: ShowcaseSearch;
   snapshot: ShowcaseSnapshot;
 }) {
@@ -80,6 +87,7 @@ function LiveShowcaseFeed({
       basePath={basePath}
       canInteract={canInteract}
       data={data}
+      hideIntro={hideIntro}
       providerReady
       search={search}
       status={snapshot.status}
@@ -94,6 +102,7 @@ function ShowcaseFeedView({
   basePath,
   canInteract,
   data,
+  hideIntro = false,
   providerReady,
   search,
   status,
@@ -102,6 +111,7 @@ function ShowcaseFeedView({
   basePath: string;
   canInteract: boolean;
   data: ShowcaseData;
+  hideIntro?: boolean;
   providerReady: boolean;
   search: ShowcaseSearch;
   status: ShowcaseSnapshot["status"];
@@ -121,6 +131,12 @@ function ShowcaseFeedView({
       data.concepts.map((concept) => ({
         value: concept.stylePreset?.slug,
         label: concept.stylePreset?.name,
+      }))
+    ),
+    materials: uniqueOptions(
+      data.concepts.map((concept) => ({
+        value: concept.materialPreset?.slug,
+        label: concept.materialPreset?.name,
       }))
     ),
     categories: uniqueOptions(
@@ -143,11 +159,33 @@ function ShowcaseFeedView({
     if (search.style && concept.stylePreset?.slug !== search.style) {
       return false;
     }
+    if (search.material && concept.materialPreset?.slug !== search.material) {
+      return false;
+    }
+    if (search.weathering && concept.weatheringLevel !== search.weathering) {
+      return false;
+    }
     if (search.category && concept.stylePreset?.category !== search.category) {
       return false;
     }
     if (search.creator && concept.owner?.handle !== search.creator) {
       return false;
+    }
+    if (search.q) {
+      const query = search.q.toLowerCase();
+      const haystack = [
+        concept.title,
+        concept.baseModel?.name,
+        concept.stylePreset?.name,
+        concept.materialPreset?.name,
+        concept.owner?.handle,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(query)) {
+        return false;
+      }
     }
     return true;
   });
@@ -158,42 +196,47 @@ function ShowcaseFeedView({
     compareCreatorPacks(left, right, activeSort.id)
   );
   const hasActiveFilters = Boolean(
-    search.baseModel || search.style || search.category || search.creator
+    search.baseModel ||
+      search.style ||
+      search.material ||
+      search.weathering ||
+      search.category ||
+      search.creator ||
+      search.q
   );
 
   return (
     <div className="showcase-stack">
       <section className="showcase-control-panel">
-        <div>
-          <p className="showcase-kicker">Public Showcase</p>
-          <h1>Published prototype surface</h1>
-          <p>
-            This feed only surfaces concepts marked public. Unlisted operator work
-            stays off the grid but remains accessible by direct share link.
-          </p>
-        </div>
-        <div className="showcase-sort-row">
-          {showcaseSortOptions.map((option) => (
-            <a
-              className={
-                option.id === activeSort.id
-                  ? "showcase-filter is-active"
-                  : "showcase-filter"
-              }
-              href={buildShowcaseHref(search, { sort: option.id }, basePath)}
-              key={option.id}
-            >
-              {option.label}
-            </a>
-          ))}
-        </div>
-        <p className="showcase-discovery">
-          Discovery lens: {activeSort.description}
-        </p>
-        <div className="showcase-filter-grid">
+        {hideIntro ? null : (
+          <div>
+            <p className="showcase-kicker">Public Showcase</p>
+            <h1>Published prototype surface</h1>
+            <p>
+              This feed only surfaces concepts marked public. Unlisted operator work
+              stays off the grid but remains accessible by direct share link.
+            </p>
+          </div>
+        )}
+        <div className="filter-stack">
+          <div className="filter-stack__group">
+            <Kicker>Sort</Kicker>
+            <div className="choice-chip-row">
+              {showcaseSortOptions.map((option) => (
+                <ChoiceChip
+                  key={option.id}
+                  active={option.id === activeSort.id}
+                  href={buildShowcaseHref(search, { sort: option.id }, basePath)}
+                >
+                  {option.label}
+                </ChoiceChip>
+              ))}
+            </div>
+            <FieldHint>Discovery lens: {activeSort.description}</FieldHint>
+          </div>
           <FilterGroup
             activeValue={search.baseModel}
-            label="Base Model"
+            label="Base model"
             options={filterOptions.baseModels}
             paramName="baseModel"
             basePath={basePath}
@@ -204,6 +247,14 @@ function ShowcaseFeedView({
             label="Style DNA"
             options={filterOptions.styles}
             paramName="style"
+            basePath={basePath}
+            search={search}
+          />
+          <FilterGroup
+            activeValue={search.material}
+            label="Material"
+            options={filterOptions.materials}
+            paramName="material"
             basePath={basePath}
             search={search}
           />
@@ -297,7 +348,10 @@ function ShowcaseFeedView({
                   baseModel: null,
                   category: null,
                   creator: null,
+                  material: null,
+                  q: null,
                   style: null,
+                  weathering: null,
                 },
                 basePath
               )}
@@ -382,8 +436,8 @@ function ShowcaseFeedView({
                   <a className="showcase-button" href={`/prototype/${concept._id}`}>
                     Open Share Surface
                   </a>
-                  <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
-                    Remix in Terminal
+                  <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
+                    Remix
                   </a>
                 </div>
               </div>
@@ -407,31 +461,27 @@ function FilterGroup({
   basePath: string;
   label: string;
   options: Array<{ value: string; label: string }>;
-  paramName: "baseModel" | "style" | "category" | "creator";
+  paramName: "baseModel" | "style" | "material" | "category" | "creator";
   search: ShowcaseSearch;
 }) {
   return (
-    <div className="showcase-filter-group">
-      <p>{label}</p>
-      <div>
-        <a
-          className={!activeValue ? "showcase-filter is-active" : "showcase-filter"}
+    <div className="filter-stack__group">
+      <Kicker>{label}</Kicker>
+      <div className="choice-chip-row">
+        <ChoiceChip
+          active={!activeValue}
           href={buildShowcaseHref(search, { [paramName]: null }, basePath)}
         >
           All
-        </a>
+        </ChoiceChip>
         {options.map((option) => (
-          <a
-            className={
-              activeValue === option.value
-                ? "showcase-filter is-active"
-                : "showcase-filter"
-            }
-            href={buildShowcaseHref(search, { [paramName]: option.value }, basePath)}
+          <ChoiceChip
             key={option.value}
+            active={activeValue === option.value}
+            href={buildShowcaseHref(search, { [paramName]: option.value }, basePath)}
           >
             {option.label}
-          </a>
+          </ChoiceChip>
         ))}
       </div>
     </div>

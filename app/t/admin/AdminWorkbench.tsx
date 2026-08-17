@@ -71,6 +71,116 @@ type PromptLabExperimentDraft = {
   selectedAsWinner: boolean;
 };
 
+type LlmProvider =
+  | "openai"
+  | "openrouter"
+  | "portkey"
+  | "litellm"
+  | "vercel-ai-gateway"
+  | "custom-openai-compatible";
+
+type LlmCapability = "text" | "image" | "vision" | "embedding";
+type LlmApiFormat = "openai-compatible";
+type GenerationKind = "palette-plan" | "hd-preview";
+
+type RenderMode =
+  | "hd-render"
+  | "multi-angle-preview"
+  | "high-fidelity-render"
+  | "build-stage-visualization"
+  | "weathering-simulation"
+  | "weathering-split-preview"
+  | "material-finish-comparison";
+
+type LlmProfileDraft = {
+  name: string;
+  slug: string;
+  provider: LlmProvider;
+  capability: LlmCapability;
+  apiFormat: LlmApiFormat;
+  baseUrl: string;
+  keyEnvName: string;
+  modelId: string;
+  headersJson: string;
+  requestDefaultsJson: string;
+  timeoutMs: string;
+  priority: string;
+  notes: string;
+  isActive: boolean;
+};
+
+type PromptTemplateBindingDraft = {
+  promptTemplateId: string;
+  llmProfileId: string;
+  generationKind: GenerationKind | "none";
+  renderMode: RenderMode | "none";
+  parameterOverridesJson: string;
+  priority: string;
+  notes: string;
+  isDefault: boolean;
+  isActive: boolean;
+};
+
+type LlmRoutingConfig = {
+  profiles: Array<{
+    _id: Id<"llmProfiles">;
+    _creationTime: number;
+    name: string;
+    slug: string;
+    provider: LlmProvider;
+    capability: LlmCapability;
+    apiFormat: LlmApiFormat;
+    baseUrl: string;
+    keyEnvName: string;
+    modelId: string;
+    headersJson?: string;
+    requestDefaultsJson?: string;
+    timeoutMs?: number;
+    priority: number;
+    notes?: string;
+    isActive: boolean;
+  }>;
+  bindings: Array<{
+    _id: Id<"promptTemplateBindings">;
+    _creationTime: number;
+    promptTemplateId: Id<"promptTemplates">;
+    templateKind: string;
+    llmProfileId: Id<"llmProfiles">;
+    generationKind?: GenerationKind;
+    renderMode?: RenderMode;
+    parameterOverridesJson?: string;
+    priority: number;
+    notes?: string;
+    isDefault: boolean;
+    isActive: boolean;
+    profile: {
+      _id: Id<"llmProfiles">;
+      name: string;
+      slug: string;
+      provider: LlmProvider;
+      capability: LlmCapability;
+      modelId: string;
+      isActive: boolean;
+    } | null;
+    template: {
+      _id: Id<"promptTemplates">;
+      name: string;
+      slug: string;
+      kind: string;
+      version: string;
+      isActive: boolean;
+    } | null;
+  }>;
+  promptTemplates: Array<{
+    _id: Id<"promptTemplates">;
+    name: string;
+    slug: string;
+    kind: string;
+    version: string;
+    isActive: boolean;
+  }>;
+};
+
 type MoodTag =
   | "command-presence"
   | "stealth-tension"
@@ -93,6 +203,13 @@ type MaterialSpec = {
   allowedColorRoleSlugs: string[];
   forbiddenColorRoleSlugs: string[];
   renderBehavior: string;
+  semanticTags?: {
+    materialFamily?: string;
+    surface: string[];
+    optics: string[];
+    reflection: string[];
+    exclusions: string[];
+  };
 };
 
 type StyleSpec = {
@@ -106,6 +223,13 @@ type StyleSpec = {
   prohibitedEffects: string[];
   identityBoundary: string;
   renderBehavior: string;
+  semanticTags?: {
+    styleFamily?: string;
+    shapeLanguage: string[];
+    visualTone: string[];
+    surfaceLanguage: string[];
+    visualExclusions: string[];
+  };
 };
 
 type PriceRuleDraft = {
@@ -200,7 +324,14 @@ type CreatorPackDraft = {
 };
 
 type FlagTone = "neutral" | "cyan" | "green" | "amber" | "red";
-type AdminSectionId = "templates" | "prompt-lab" | "ops" | "access" | "commerce" | "catalog";
+type AdminSectionId =
+  | "templates"
+  | "prompt-lab"
+  | "llm"
+  | "ops"
+  | "access"
+  | "commerce"
+  | "catalog";
 
 type AdminSection = {
   id: AdminSectionId;
@@ -260,6 +391,68 @@ const defaultPromptLabExperimentDraft: PromptLabExperimentDraft = {
   selectedAsWinner: false,
 };
 
+const llmProviderOptions: Array<{ value: LlmProvider; label: string }> = [
+  { value: "openai", label: "OpenAI" },
+  { value: "openrouter", label: "OpenRouter" },
+  { value: "portkey", label: "Portkey" },
+  { value: "litellm", label: "LiteLLM" },
+  { value: "vercel-ai-gateway", label: "Vercel AI Gateway" },
+  { value: "custom-openai-compatible", label: "Custom Gateway" },
+];
+
+const llmCapabilityOptions: Array<{ value: LlmCapability; label: string }> = [
+  { value: "image", label: "Image" },
+  { value: "text", label: "Text" },
+  { value: "vision", label: "Vision" },
+  { value: "embedding", label: "Embedding" },
+];
+
+const generationKindOptions: Array<{ value: GenerationKind | "none"; label: string }> = [
+  { value: "none", label: "Any generation" },
+  { value: "palette-plan", label: "Palette plan" },
+  { value: "hd-preview", label: "HD preview" },
+];
+
+const renderModeOptions: Array<{ value: RenderMode | "none"; label: string }> = [
+  { value: "none", label: "Any render mode" },
+  { value: "hd-render", label: "HD render" },
+  { value: "multi-angle-preview", label: "Multi-angle preview" },
+  { value: "high-fidelity-render", label: "High-fidelity render" },
+  { value: "build-stage-visualization", label: "Build stage visualization" },
+  { value: "weathering-simulation", label: "Weathering simulation" },
+  { value: "weathering-split-preview", label: "Weathering split preview" },
+  { value: "material-finish-comparison", label: "Material finish comparison" },
+];
+
+const defaultLlmProfileDraft: LlmProfileDraft = {
+  name: "",
+  slug: "",
+  provider: "openai",
+  capability: "image",
+  apiFormat: "openai-compatible",
+  baseUrl: "https://api.openai.com/v1",
+  keyEnvName: "OPENAI_API_KEY",
+  modelId: "gpt-image-1",
+  headersJson: "",
+  requestDefaultsJson: "",
+  timeoutMs: "120000",
+  priority: "0",
+  notes: "",
+  isActive: true,
+};
+
+const defaultPromptTemplateBindingDraft: PromptTemplateBindingDraft = {
+  promptTemplateId: "none",
+  llmProfileId: "none",
+  generationKind: "none",
+  renderMode: "none",
+  parameterOverridesJson: "",
+  priority: "0",
+  notes: "",
+  isDefault: false,
+  isActive: true,
+};
+
 const adminSelectedTemplateStorageKey = "neotypelab.admin.selectedTemplateId";
 const promptLabDraftStorageKey = "neotypelab.admin.promptLabDraft";
 const promptLabExperimentDraftStorageKey = "neotypelab.admin.promptLabExperimentDraft";
@@ -288,6 +481,10 @@ export function AdminWorkbench() {
     api.admin.listPromptExperimentRuns,
     canManagePlatform ? {} : "skip"
   );
+  const llmRoutingConfig = useQuery(
+    api.admin.listLlmRoutingConfig,
+    canManagePlatform ? {} : "skip"
+  ) as LlmRoutingConfig | undefined;
   const priceRules = useQuery(api.admin.listPriceRules, canManagePlatform ? {} : "skip");
   const creditCampaigns = useQuery(
     api.creditCampaigns.listAdminCampaigns,
@@ -304,6 +501,10 @@ export function AdminWorkbench() {
   const composePromptLabPreview = useMutation(api.admin.composePromptLabPreview);
   const savePromptExperimentRun = useMutation(api.admin.savePromptExperimentRun);
   const updatePromptExperimentRun = useMutation(api.admin.updatePromptExperimentRun);
+  const createLlmProfile = useMutation(api.admin.createLlmProfile);
+  const updateLlmProfile = useMutation(api.admin.updateLlmProfile);
+  const createPromptTemplateBinding = useMutation(api.admin.createPromptTemplateBinding);
+  const updatePromptTemplateBinding = useMutation(api.admin.updatePromptTemplateBinding);
   const updatePriceRule = useMutation(api.admin.updatePriceRule);
   const reviewFeedback = useMutation(api.admin.reviewFeedback);
   const updateStylePreset = useMutation(api.admin.updateStylePreset);
@@ -330,6 +531,15 @@ export function AdminWorkbench() {
     useState<PromptLabExperimentDraft>(() => readStoredPromptLabExperimentDraft());
   const [promptLabResult, setPromptLabResult] = useState<PromptLabResult | null>(null);
   const [copiedPromptKey, setCopiedPromptKey] = useState<string | null>(null);
+  const [newLlmProfileDraft, setNewLlmProfileDraft] = useState<LlmProfileDraft>(
+    defaultLlmProfileDraft
+  );
+  const [llmProfileDrafts, setLlmProfileDrafts] = useState<Record<string, LlmProfileDraft>>({});
+  const [newPromptTemplateBindingDraft, setNewPromptTemplateBindingDraft] =
+    useState<PromptTemplateBindingDraft>(defaultPromptTemplateBindingDraft);
+  const [promptTemplateBindingDrafts, setPromptTemplateBindingDrafts] = useState<
+    Record<string, PromptTemplateBindingDraft>
+  >({});
   const [priceRuleDrafts, setPriceRuleDrafts] = useState<Record<string, PriceRuleDraft>>({});
   const [newCreditCampaignDraft, setNewCreditCampaignDraft] = useState<CreditCampaignDraft>(
     defaultCreditCampaignDraft
@@ -367,6 +577,14 @@ export function AdminWorkbench() {
       description: "Compose project prompts, copy them to vendor web tools, and log A/B results.",
       metric: `${promptExperimentRuns?.length ?? 0}`,
       tone: "amber",
+    },
+    {
+      id: "llm",
+      label: "LLM Routing",
+      eyebrow: "Gateways",
+      description: "Bind API key env names, OpenAI-compatible gateways, and prompt templates.",
+      metric: `${llmRoutingConfig?.profiles.length ?? 0}/${llmRoutingConfig?.bindings.length ?? 0}`,
+      tone: "cyan",
     },
     {
       id: "ops",
@@ -1958,6 +2176,28 @@ export function AdminWorkbench() {
         />
       ) : null}
 
+      {activeAdminSection === "llm" ? (
+        <LlmRoutingPanel
+          busyKey={busyKey}
+          config={llmRoutingConfig}
+          createLlmProfile={createLlmProfile}
+          createPromptTemplateBinding={createPromptTemplateBinding}
+          newBindingDraft={newPromptTemplateBindingDraft}
+          newProfileDraft={newLlmProfileDraft}
+          profileDrafts={llmProfileDrafts}
+          bindingDrafts={promptTemplateBindingDrafts}
+          setBindingDrafts={setPromptTemplateBindingDrafts}
+          setBusyKey={setBusyKey}
+          setErrorMessage={setErrorMessage}
+          setNewBindingDraft={setNewPromptTemplateBindingDraft}
+          setNewProfileDraft={setNewLlmProfileDraft}
+          setProfileDrafts={setLlmProfileDrafts}
+          setStatusMessage={setStatusMessage}
+          updateLlmProfile={updateLlmProfile}
+          updatePromptTemplateBinding={updatePromptTemplateBinding}
+        />
+      ) : null}
+
       {activeAdminSection === "catalog" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -2892,6 +3132,627 @@ function MetricCard({
       <p className="mt-3 text-4xl font-semibold text-ink-primary">{value}</p>
       <p className="mt-2 text-sm leading-6 text-ink-secondary">{detail}</p>
     </article>
+  );
+}
+
+function LlmRoutingPanel({
+  bindingDrafts,
+  busyKey,
+  config,
+  createLlmProfile,
+  createPromptTemplateBinding,
+  newBindingDraft,
+  newProfileDraft,
+  profileDrafts,
+  setBindingDrafts,
+  setBusyKey,
+  setErrorMessage,
+  setNewBindingDraft,
+  setNewProfileDraft,
+  setProfileDrafts,
+  setStatusMessage,
+  updateLlmProfile,
+  updatePromptTemplateBinding,
+}: {
+  bindingDrafts: Record<string, PromptTemplateBindingDraft>;
+  busyKey: string | null;
+  config: LlmRoutingConfig | undefined;
+  createLlmProfile: ReturnType<typeof useMutation<typeof api.admin.createLlmProfile>>;
+  createPromptTemplateBinding: ReturnType<
+    typeof useMutation<typeof api.admin.createPromptTemplateBinding>
+  >;
+  newBindingDraft: PromptTemplateBindingDraft;
+  newProfileDraft: LlmProfileDraft;
+  profileDrafts: Record<string, LlmProfileDraft>;
+  setBindingDrafts: React.Dispatch<React.SetStateAction<Record<string, PromptTemplateBindingDraft>>>;
+  setBusyKey: (key: string | null) => void;
+  setErrorMessage: (message: string | null) => void;
+  setNewBindingDraft: React.Dispatch<React.SetStateAction<PromptTemplateBindingDraft>>;
+  setNewProfileDraft: React.Dispatch<React.SetStateAction<LlmProfileDraft>>;
+  setProfileDrafts: React.Dispatch<React.SetStateAction<Record<string, LlmProfileDraft>>>;
+  setStatusMessage: (message: string | null) => void;
+  updateLlmProfile: ReturnType<typeof useMutation<typeof api.admin.updateLlmProfile>>;
+  updatePromptTemplateBinding: ReturnType<
+    typeof useMutation<typeof api.admin.updatePromptTemplateBinding>
+  >;
+}) {
+  const profiles = config?.profiles ?? [];
+  const bindings = config?.bindings ?? [];
+  const templates = config?.promptTemplates ?? [];
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
+      <section className="border-2 border-line-primary bg-surface p-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-blue">LLM profiles</p>
+            <h3 className="mt-2 text-2xl font-semibold">API key env names and gateways</h3>
+          </div>
+          <FlagPill label={`${profiles.length} profiles`} tone="cyan" />
+        </div>
+
+        <div className="mt-5 rounded-[22px] border border-line-secondary bg-panel p-5">
+          <p className="text-[11px] uppercase tracking-[0.26em] text-ink-muted">
+            Create profile
+          </p>
+          <div className="mt-4">
+            <LlmProfileFields
+              draft={newProfileDraft}
+              onChange={(patch) =>
+                setNewProfileDraft((current) => ({
+                  ...current,
+                  ...patch,
+                }))
+              }
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <ActionButton
+              onClick={() =>
+                void runAdminAction({
+                  key: "llm-profile-create",
+                  action: async () => {
+                    await createLlmProfile(buildLlmProfilePayload(newProfileDraft));
+                    setNewProfileDraft(defaultLlmProfileDraft);
+                  },
+                  success: `Created LLM profile ${newProfileDraft.name || newProfileDraft.modelId}.`,
+                  setBusyKey,
+                  setErrorMessage,
+                  setStatusMessage,
+                })
+              }
+              busy={busyKey === "llm-profile-create"}
+            >
+              Create Profile
+            </ActionButton>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {config === undefined ? (
+            <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+              Loading LLM routing profiles.
+            </div>
+          ) : profiles.length === 0 ? (
+            <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+              No LLM profiles configured yet.
+            </div>
+          ) : (
+            profiles.map((profile) => {
+              const draft = profileDrafts[profile._id] ?? createLlmProfileDraft(profile);
+              return (
+                <article
+                  key={profile._id}
+                  className="rounded-[22px] border border-line-secondary bg-panel p-5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap gap-2">
+                        <FlagPill label={profile.provider} tone="cyan" />
+                        <FlagPill label={profile.capability} tone="amber" />
+                        <FlagPill
+                          label={profile.isActive ? "active" : "inactive"}
+                          tone={profile.isActive ? "green" : "red"}
+                        />
+                      </div>
+                      <h4 className="mt-3 text-xl font-semibold">{profile.name}</h4>
+                      <p className="mt-1 break-all font-mono text-xs text-ink-secondary">
+                        {profile.baseUrl} · {profile.keyEnvName}
+                      </p>
+                    </div>
+                    <div className="rounded-[18px] border border-line-secondary bg-main p-3">
+                      <MetaRow label="Model" value={profile.modelId} />
+                      <MetaRow label="Priority" value={`${profile.priority}`} />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <LlmProfileFields
+                      draft={draft}
+                      onChange={(patch) =>
+                        setProfileDrafts((current) => ({
+                          ...current,
+                          [profile._id]: {
+                            ...draft,
+                            ...patch,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <ActionButton
+                      onClick={() =>
+                        void runAdminAction({
+                          key: `llm-profile-${profile._id}`,
+                          action: async () => {
+                            await updateLlmProfile({
+                              profileId: profile._id,
+                              ...buildLlmProfilePayload(draft),
+                            });
+                          },
+                          success: `Saved LLM profile ${draft.name}.`,
+                          setBusyKey,
+                          setErrorMessage,
+                          setStatusMessage,
+                        })
+                      }
+                      busy={busyKey === `llm-profile-${profile._id}`}
+                    >
+                      Save Profile
+                    </ActionButton>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setProfileDrafts((current) => ({
+                          ...current,
+                          [profile._id]: {
+                            ...draft,
+                            isActive: !draft.isActive,
+                          },
+                        }))
+                      }
+                      className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
+                    >
+                      {draft.isActive ? "Disable" : "Enable"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      <section className="border-2 border-line-primary bg-surface p-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-teal">
+              Template bindings
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold">Prompt to provider routing</h3>
+          </div>
+          <FlagPill label={`${bindings.length} bindings`} tone="green" />
+        </div>
+
+        <div className="mt-5 rounded-[22px] border border-line-secondary bg-panel p-5">
+          <p className="text-[11px] uppercase tracking-[0.26em] text-ink-muted">
+            Create binding
+          </p>
+          <div className="mt-4">
+            <PromptTemplateBindingFields
+              draft={newBindingDraft}
+              profiles={profiles}
+              templates={templates}
+              showTemplate
+              onChange={(patch) =>
+                setNewBindingDraft((current) => ({
+                  ...current,
+                  ...patch,
+                }))
+              }
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <ActionButton
+              onClick={() =>
+                void runAdminAction({
+                  key: "prompt-binding-create",
+                  action: async () => {
+                    await createPromptTemplateBinding(
+                      buildPromptTemplateBindingCreatePayload(newBindingDraft)
+                    );
+                    setNewBindingDraft(defaultPromptTemplateBindingDraft);
+                  },
+                  success: "Created prompt template binding.",
+                  setBusyKey,
+                  setErrorMessage,
+                  setStatusMessage,
+                })
+              }
+              busy={busyKey === "prompt-binding-create"}
+              disabled={templates.length === 0 || profiles.length === 0}
+            >
+              Create Binding
+            </ActionButton>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          {config === undefined ? (
+            <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+              Loading prompt template bindings.
+            </div>
+          ) : bindings.length === 0 ? (
+            <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
+              No template bindings configured yet.
+            </div>
+          ) : (
+            bindings.map((binding) => {
+              const draft =
+                bindingDrafts[binding._id] ?? createPromptTemplateBindingDraft(binding);
+              return (
+                <article
+                  key={binding._id}
+                  className="rounded-[22px] border border-line-secondary bg-panel p-5"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap gap-2">
+                        <FlagPill label={binding.templateKind} tone="cyan" />
+                        <FlagPill
+                          label={binding.isDefault ? "default" : "override"}
+                          tone={binding.isDefault ? "green" : "neutral"}
+                        />
+                        <FlagPill
+                          label={binding.isActive ? "active" : "inactive"}
+                          tone={binding.isActive ? "green" : "red"}
+                        />
+                      </div>
+                      <h4 className="mt-3 text-lg font-semibold">
+                        {binding.template?.name ?? "Missing template"}
+                      </h4>
+                      <p className="mt-1 text-sm text-ink-secondary">
+                        {binding.profile?.name ?? "Missing profile"} ·{" "}
+                        {binding.renderMode ?? binding.generationKind ?? "all jobs"}
+                      </p>
+                    </div>
+                    <FlagPill label={`priority ${binding.priority}`} tone="amber" />
+                  </div>
+                  <div className="mt-4">
+                    <PromptTemplateBindingFields
+                      draft={draft}
+                      profiles={profiles}
+                      templates={templates}
+                      onChange={(patch) =>
+                        setBindingDrafts((current) => ({
+                          ...current,
+                          [binding._id]: {
+                            ...draft,
+                            ...patch,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <ActionButton
+                      onClick={() =>
+                        void runAdminAction({
+                          key: `prompt-binding-${binding._id}`,
+                          action: async () => {
+                            await updatePromptTemplateBinding({
+                              bindingId: binding._id,
+                              ...buildPromptTemplateBindingUpdatePayload(draft),
+                            });
+                          },
+                          success: "Saved prompt template binding.",
+                          setBusyKey,
+                          setErrorMessage,
+                          setStatusMessage,
+                        })
+                      }
+                      busy={busyKey === `prompt-binding-${binding._id}`}
+                    >
+                      Save Binding
+                    </ActionButton>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBindingDrafts((current) => ({
+                          ...current,
+                          [binding._id]: {
+                            ...draft,
+                            isActive: !draft.isActive,
+                          },
+                        }))
+                      }
+                      className="rounded-[16px] border border-line-secondary px-4 py-2 text-sm text-ink-secondary transition-colors hover:bg-hover-subtle hover:text-ink-primary"
+                    >
+                      {draft.isActive ? "Disable" : "Enable"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LlmProfileFields({
+  draft,
+  onChange,
+}: {
+  draft: LlmProfileDraft;
+  onChange: (patch: Partial<LlmProfileDraft>) => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Profile Name">
+          <Input
+            value={draft.name}
+            onChange={(event) => onChange({ name: event.target.value })}
+            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Slug">
+          <Input
+            value={draft.slug}
+            onChange={(event) => onChange({ slug: event.target.value })}
+            placeholder="optional"
+            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Provider">
+          <Select
+            value={draft.provider}
+            onValueChange={(value) => onChange({ provider: value as LlmProvider })}
+          >
+            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+              {llmProviderOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Capability">
+          <Select
+            value={draft.capability}
+            onValueChange={(value) => onChange({ capability: value as LlmCapability })}
+          >
+            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+              {llmCapabilityOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Base URL">
+          <Input
+            value={draft.baseUrl}
+            onChange={(event) => onChange({ baseUrl: event.target.value })}
+            className="border-line-secondary bg-main font-mono text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="API Key Env Name">
+          <Input
+            value={draft.keyEnvName}
+            onChange={(event) => onChange({ keyEnvName: event.target.value })}
+            className="border-line-secondary bg-main font-mono text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Model ID">
+          <Input
+            value={draft.modelId}
+            onChange={(event) => onChange({ modelId: event.target.value })}
+            className="border-line-secondary bg-main font-mono text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Priority">
+          <Input
+            type="number"
+            value={draft.priority}
+            onChange={(event) => onChange({ priority: event.target.value })}
+            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Timeout MS">
+          <Input
+            type="number"
+            value={draft.timeoutMs}
+            onChange={(event) => onChange({ timeoutMs: event.target.value })}
+            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+          />
+        </Field>
+        <Field label="Active">
+          <label className="flex h-11 items-center gap-3 rounded-[16px] border border-line-secondary bg-main px-3 text-sm text-ink-primary">
+            <input
+              type="checkbox"
+              checked={draft.isActive}
+              onChange={(event) => onChange({ isActive: event.target.checked })}
+              className="h-4 w-4 accent-[#1F6F89]"
+            />
+            Active route candidate
+          </label>
+        </Field>
+      </div>
+      <Field label="Headers JSON">
+        <Textarea
+          value={draft.headersJson}
+          onChange={(event) => onChange({ headersJson: event.target.value })}
+          placeholder='{"HTTP-Referer":"https://neotypelab.app"}'
+          className="min-h-[88px] border-line-secondary bg-main font-mono text-xs text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-blue"
+        />
+      </Field>
+      <Field label="Request Defaults JSON">
+        <Textarea
+          value={draft.requestDefaultsJson}
+          onChange={(event) => onChange({ requestDefaultsJson: event.target.value })}
+          placeholder='{"size":"1024x1024","quality":"high"}'
+          className="min-h-[110px] border-line-secondary bg-main font-mono text-xs text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-blue"
+        />
+      </Field>
+      <Field label="Notes">
+        <Textarea
+          value={draft.notes}
+          onChange={(event) => onChange({ notes: event.target.value })}
+          className="min-h-[80px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-blue"
+        />
+      </Field>
+    </div>
+  );
+}
+
+function PromptTemplateBindingFields({
+  draft,
+  onChange,
+  profiles,
+  showTemplate = false,
+  templates,
+}: {
+  draft: PromptTemplateBindingDraft;
+  onChange: (patch: Partial<PromptTemplateBindingDraft>) => void;
+  profiles: LlmRoutingConfig["profiles"];
+  showTemplate?: boolean;
+  templates: LlmRoutingConfig["promptTemplates"];
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {showTemplate ? (
+          <Field label="Prompt Template">
+            <Select
+              value={draft.promptTemplateId}
+              onValueChange={(value) => onChange({ promptTemplateId: value })}
+            >
+              <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+                <SelectItem value="none">Select template</SelectItem>
+                {templates.map((template) => (
+                  <SelectItem key={template._id} value={template._id}>
+                    {template.name} · {template.kind}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        ) : null}
+        <Field label="LLM Profile">
+          <Select
+            value={draft.llmProfileId}
+            onValueChange={(value) => onChange({ llmProfileId: value })}
+          >
+            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+              <SelectItem value="none">Select profile</SelectItem>
+              {profiles.map((profile) => (
+                <SelectItem key={profile._id} value={profile._id}>
+                  {profile.name} · {profile.provider}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Generation Kind">
+          <Select
+            value={draft.generationKind}
+            onValueChange={(value) =>
+              onChange({ generationKind: value as GenerationKind | "none" })
+            }
+          >
+            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+              {generationKindOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Render Mode">
+          <Select
+            value={draft.renderMode}
+            onValueChange={(value) => onChange({ renderMode: value as RenderMode | "none" })}
+          >
+            <SelectTrigger className="h-11 border-line-secondary bg-main text-ink-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-line-secondary bg-panel text-ink-primary">
+              {renderModeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Field label="Priority">
+          <Input
+            type="number"
+            value={draft.priority}
+            onChange={(event) => onChange({ priority: event.target.value })}
+            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
+          />
+        </Field>
+        <Field label="Flags">
+          <div className="grid gap-2">
+            <label className="flex min-h-11 items-center gap-3 rounded-[16px] border border-line-secondary bg-main px-3 text-sm text-ink-primary">
+              <input
+                type="checkbox"
+                checked={draft.isDefault}
+                onChange={(event) => onChange({ isDefault: event.target.checked })}
+                className="h-4 w-4 accent-[#24794F]"
+              />
+              Default binding
+            </label>
+            <label className="flex min-h-11 items-center gap-3 rounded-[16px] border border-line-secondary bg-main px-3 text-sm text-ink-primary">
+              <input
+                type="checkbox"
+                checked={draft.isActive}
+                onChange={(event) => onChange({ isActive: event.target.checked })}
+                className="h-4 w-4 accent-[#1F6F89]"
+              />
+              Active binding
+            </label>
+          </div>
+        </Field>
+      </div>
+      <Field label="Parameter Overrides JSON">
+        <Textarea
+          value={draft.parameterOverridesJson}
+          onChange={(event) => onChange({ parameterOverridesJson: event.target.value })}
+          placeholder='{"quality":"medium"}'
+          className="min-h-[110px] border-line-secondary bg-main font-mono text-xs text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-teal"
+        />
+      </Field>
+      <Field label="Notes">
+        <Textarea
+          value={draft.notes}
+          onChange={(event) => onChange({ notes: event.target.value })}
+          className="min-h-[80px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-teal"
+        />
+      </Field>
+    </div>
   );
 }
 
@@ -3886,7 +4747,7 @@ function isMaterialSpec(value: unknown): value is MaterialSpec {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  const spec = value as Partial<MaterialSpec>;
+  const spec = value as Partial<MaterialSpec> & { semanticTags?: unknown };
   return (
     hasString(spec.reflectivity) &&
     hasString(spec.roughness) &&
@@ -3898,7 +4759,26 @@ function isMaterialSpec(value: unknown): value is MaterialSpec {
     hasOptionalString(spec.weatheringInteraction) &&
     hasStringArray(spec.allowedColorRoleSlugs) &&
     hasStringArray(spec.forbiddenColorRoleSlugs) &&
-    hasString(spec.renderBehavior)
+    hasString(spec.renderBehavior) &&
+    hasOptionalMaterialSemanticTags(spec.semanticTags)
+  );
+}
+
+function hasOptionalMaterialSemanticTags(value: unknown): value is MaterialSpec["semanticTags"] {
+  if (value === undefined) {
+    return true;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const tags = value as Partial<NonNullable<MaterialSpec["semanticTags"]>>;
+  return (
+    hasOptionalString(tags.materialFamily) &&
+    hasStringArray(tags.surface) &&
+    hasStringArray(tags.optics) &&
+    hasStringArray(tags.reflection) &&
+    hasStringArray(tags.exclusions)
   );
 }
 
@@ -3906,7 +4786,7 @@ function isStyleSpec(value: unknown): value is StyleSpec {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
   }
-  const spec = value as Partial<StyleSpec>;
+  const spec = value as Partial<StyleSpec> & { semanticTags?: unknown };
   return (
     hasString(spec.colorRelationship) &&
     hasString(spec.decalStyle) &&
@@ -3917,7 +4797,26 @@ function isStyleSpec(value: unknown): value is StyleSpec {
     hasStringArray(spec.personalityTags) &&
     hasStringArray(spec.prohibitedEffects) &&
     hasString(spec.identityBoundary) &&
-    hasString(spec.renderBehavior)
+    hasString(spec.renderBehavior) &&
+    hasOptionalStyleSemanticTags(spec.semanticTags)
+  );
+}
+
+function hasOptionalStyleSemanticTags(value: unknown): value is StyleSpec["semanticTags"] {
+  if (value === undefined) {
+    return true;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const tags = value as Partial<NonNullable<StyleSpec["semanticTags"]>>;
+  return (
+    hasOptionalString(tags.styleFamily) &&
+    hasStringArray(tags.shapeLanguage) &&
+    hasStringArray(tags.visualTone) &&
+    hasStringArray(tags.surfaceLanguage) &&
+    hasStringArray(tags.visualExclusions)
   );
 }
 
@@ -4327,6 +5226,103 @@ function defaultCreatorPackDraft(): CreatorPackDraft {
 function emptyToUndefined(value: string) {
   const normalized = value.trim();
   return normalized === "" ? undefined : normalized;
+}
+
+function createLlmProfileDraft(profile: LlmRoutingConfig["profiles"][number]): LlmProfileDraft {
+  return {
+    name: profile.name,
+    slug: profile.slug,
+    provider: profile.provider,
+    capability: profile.capability,
+    apiFormat: profile.apiFormat,
+    baseUrl: profile.baseUrl,
+    keyEnvName: profile.keyEnvName,
+    modelId: profile.modelId,
+    headersJson: profile.headersJson ?? "",
+    requestDefaultsJson: profile.requestDefaultsJson ?? "",
+    timeoutMs: profile.timeoutMs === undefined ? "" : String(profile.timeoutMs),
+    priority: String(profile.priority),
+    notes: profile.notes ?? "",
+    isActive: profile.isActive,
+  };
+}
+
+function createPromptTemplateBindingDraft(
+  binding: LlmRoutingConfig["bindings"][number]
+): PromptTemplateBindingDraft {
+  return {
+    promptTemplateId: binding.promptTemplateId,
+    llmProfileId: binding.llmProfileId,
+    generationKind: binding.generationKind ?? "none",
+    renderMode: binding.renderMode ?? "none",
+    parameterOverridesJson: binding.parameterOverridesJson ?? "",
+    priority: String(binding.priority),
+    notes: binding.notes ?? "",
+    isDefault: binding.isDefault,
+    isActive: binding.isActive,
+  };
+}
+
+function buildLlmProfilePayload(draft: LlmProfileDraft) {
+  return {
+    name: draft.name.trim(),
+    slug: emptyToUndefined(draft.slug),
+    provider: draft.provider,
+    capability: draft.capability,
+    apiFormat: draft.apiFormat,
+    baseUrl: draft.baseUrl.trim(),
+    keyEnvName: draft.keyEnvName.trim(),
+    modelId: draft.modelId.trim(),
+    headersJson: emptyToUndefined(draft.headersJson),
+    requestDefaultsJson: emptyToUndefined(draft.requestDefaultsJson),
+    timeoutMs: parseOptionalAdminNumber(draft.timeoutMs, "Timeout"),
+    priority: parseAdminNumber(draft.priority, "Priority"),
+    notes: emptyToUndefined(draft.notes),
+    isActive: draft.isActive,
+  };
+}
+
+function buildPromptTemplateBindingCreatePayload(draft: PromptTemplateBindingDraft) {
+  if (draft.promptTemplateId === "none") {
+    throw new Error("Select a prompt template before creating a binding");
+  }
+  return {
+    promptTemplateId: draft.promptTemplateId as Id<"promptTemplates">,
+    ...buildPromptTemplateBindingUpdatePayload(draft),
+  };
+}
+
+function buildPromptTemplateBindingUpdatePayload(draft: PromptTemplateBindingDraft) {
+  if (draft.llmProfileId === "none") {
+    throw new Error("Select an LLM profile before saving a binding");
+  }
+  return {
+    llmProfileId: draft.llmProfileId as Id<"llmProfiles">,
+    generationKind:
+      draft.generationKind === "none" ? undefined : draft.generationKind,
+    renderMode: draft.renderMode === "none" ? undefined : draft.renderMode,
+    parameterOverridesJson: emptyToUndefined(draft.parameterOverridesJson),
+    priority: parseAdminNumber(draft.priority, "Priority"),
+    notes: emptyToUndefined(draft.notes),
+    isDefault: draft.isDefault,
+    isActive: draft.isActive,
+  };
+}
+
+function parseOptionalAdminNumber(value: string, label: string) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  return parseAdminNumber(trimmed, label);
+}
+
+function parseAdminNumber(value: string, label: string) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} must be a number`);
+  }
+  return parsed;
 }
 
 function FlagPill({

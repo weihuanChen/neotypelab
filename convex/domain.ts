@@ -19,6 +19,15 @@ export const vMaterialSpec = v.object({
   allowedColorRoleSlugs: v.array(v.string()),
   forbiddenColorRoleSlugs: v.array(v.string()),
   renderBehavior: v.string(),
+  semanticTags: v.optional(
+    v.object({
+      materialFamily: v.optional(v.string()),
+      surface: v.array(v.string()),
+      optics: v.array(v.string()),
+      reflection: v.array(v.string()),
+      exclusions: v.array(v.string()),
+    })
+  ),
 });
 export type MaterialSpec = Infer<typeof vMaterialSpec>;
 
@@ -51,6 +60,15 @@ export const vStyleSpec = v.object({
   prohibitedEffects: v.array(v.string()),
   identityBoundary: v.string(),
   renderBehavior: v.string(),
+  semanticTags: v.optional(
+    v.object({
+      styleFamily: v.optional(v.string()),
+      shapeLanguage: v.array(v.string()),
+      visualTone: v.array(v.string()),
+      surfaceLanguage: v.array(v.string()),
+      visualExclusions: v.array(v.string()),
+    })
+  ),
 });
 export type StyleSpec = Infer<typeof vStyleSpec>;
 
@@ -210,6 +228,30 @@ export const vCreditActionType = v.union(
 );
 export type CreditActionType = Infer<typeof vCreditActionType>;
 
+export const vOrderStatus = v.union(
+  v.literal("pending"),
+  v.literal("paid"),
+  v.literal("completed"),
+  v.literal("canceled"),
+  v.literal("refunded")
+);
+export type OrderStatus = Infer<typeof vOrderStatus>;
+
+export const vOrderItemType = v.union(
+  v.literal("credit-pack"),
+  v.literal("spray-plan-export"),
+  v.literal("paint"),
+  v.literal("service")
+);
+export type OrderItemType = Infer<typeof vOrderItemType>;
+
+export const vSprayPlanStatus = v.union(
+  v.literal("draft"),
+  v.literal("ready"),
+  v.literal("archived")
+);
+export type SprayPlanStatus = Infer<typeof vSprayPlanStatus>;
+
 export const vFeedbackCategory = v.union(
   v.literal("missing-base-model"),
   v.literal("style-request"),
@@ -229,11 +271,37 @@ export type FeedbackStatus = Infer<typeof vFeedbackStatus>;
 export const vGenerationProvider = v.union(
   v.literal("internal"),
   v.literal("openai"),
+  v.literal("openrouter"),
+  v.literal("portkey"),
+  v.literal("litellm"),
+  v.literal("vercel-ai-gateway"),
+  v.literal("custom-openai-compatible"),
   v.literal("replicate"),
   v.literal("fal"),
   v.literal("manual")
 );
 export type GenerationProvider = Infer<typeof vGenerationProvider>;
+
+export const vLlmProvider = v.union(
+  v.literal("openai"),
+  v.literal("openrouter"),
+  v.literal("portkey"),
+  v.literal("litellm"),
+  v.literal("vercel-ai-gateway"),
+  v.literal("custom-openai-compatible")
+);
+export type LlmProvider = Infer<typeof vLlmProvider>;
+
+export const vLlmCapability = v.union(
+  v.literal("text"),
+  v.literal("image"),
+  v.literal("vision"),
+  v.literal("embedding")
+);
+export type LlmCapability = Infer<typeof vLlmCapability>;
+
+export const vLlmApiFormat = v.union(v.literal("openai-compatible"));
+export type LlmApiFormat = Infer<typeof vLlmApiFormat>;
 
 export const vAssetKind = v.union(
   v.literal("preview"),

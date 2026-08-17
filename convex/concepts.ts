@@ -10,6 +10,7 @@ import {
 } from "./domain";
 import { internalQuery, mutation, query } from "./functions";
 import { QueryCtx } from "./types";
+import { nextArchiveNumber } from "./archiveNumbers";
 
 export const listMine = query({
   args: {},
@@ -98,6 +99,7 @@ export const listLibrary = query({
         return {
           _id: concept._id,
           _creationTime: concept._creationTime,
+          recordNumber: concept.recordNumber,
           title: concept.title,
           notes: concept.notes,
           status: concept.status,
@@ -349,8 +351,10 @@ export const createDraft = mutation({
   ) {
     const viewer = ctx.viewerX();
     const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
+    const recordNumber = await nextArchiveNumber(ctx, "prototype");
     return await ctx.db.insert("concepts", {
       userId: viewer._id,
+      recordNumber,
       title,
       baseModelId,
       stylePresetId,

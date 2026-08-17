@@ -69,17 +69,29 @@ export function buildShowcaseHref(
   if (nextSearch.sort && nextSearch.sort !== defaultShowcaseSort) {
     params.set("sort", nextSearch.sort);
   }
+  if (nextSearch.view) {
+    params.set("view", nextSearch.view);
+  }
   if (nextSearch.baseModel) {
     params.set("baseModel", nextSearch.baseModel);
   }
   if (nextSearch.style) {
     params.set("style", nextSearch.style);
   }
+  if (nextSearch.material) {
+    params.set("material", nextSearch.material);
+  }
+  if (nextSearch.weathering) {
+    params.set("weathering", nextSearch.weathering);
+  }
   if (nextSearch.category) {
     params.set("category", nextSearch.category);
   }
   if (nextSearch.creator) {
     params.set("creator", nextSearch.creator);
+  }
+  if (nextSearch.q) {
+    params.set("q", nextSearch.q);
   }
 
   const query = params.toString();

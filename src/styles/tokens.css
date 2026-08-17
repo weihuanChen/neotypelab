@@ -1,0 +1,84 @@
+:root {
+  color-scheme: light;
+
+  --color-paper: oklch(96.4% 0.018 82);
+  --color-paper-2: oklch(94.1% 0.022 82);
+  --color-paper-3: oklch(90.6% 0.028 80);
+  --color-ink: oklch(18% 0.018 70);
+  --color-ink-2: oklch(32% 0.016 72);
+  --color-muted: oklch(48% 0.018 75);
+  --color-rule: oklch(84% 0.022 80);
+  --color-rule-2: oklch(71% 0.024 78);
+  --color-accent: oklch(62% 0.155 55);
+  --color-accent-ink: oklch(98% 0.01 82);
+  --color-focus: oklch(58% 0.17 55);
+  --color-danger: oklch(48% 0.14 28);
+  --color-success: oklch(46% 0.055 170);
+  --color-info: oklch(44% 0.05 230);
+
+  --font-display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --font-label: "IM Fell English SC", "IM Fell English", serif;
+  --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-display: clamp(2.25rem, 4vw + 1rem, 3.75rem);
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 180ms;
+  --dur-base: 240ms;
+
+  --rule-hair: 1px;
+  --radius-card: 0;
+  --radius-pill: 0;
+  --radius-input: 0;
+
+  --bg-main: var(--color-paper);
+  --bg-surface: var(--color-paper-2);
+  --bg-panel: var(--color-paper-3);
+  --bg-elevated: var(--color-paper);
+  --bg-hover-surface: var(--color-paper);
+  --bg-hover-panel: var(--color-paper-2);
+  --bg-hover-subtle: color-mix(in oklch, var(--color-ink) 4%, transparent);
+
+  --line-primary: var(--color-ink);
+  --line-secondary: var(--color-rule-2);
+  --line-guide: var(--color-rule);
+  --line-subtle: color-mix(in oklch, var(--color-ink) 12%, transparent);
+  --line-muted: var(--color-rule);
+  --line-active: var(--color-ink);
+
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-ink-2);
+  --text-muted: var(--color-muted);
+
+  --accent-orange: var(--color-accent);
+  --accent-teal: var(--color-success);
+  --accent-blue: var(--color-info);
+  --accent-red: var(--color-danger);
+
+  --spike-bg: var(--color-paper);
+  --spike-surface: var(--color-paper-2);
+  --spike-panel: var(--color-paper-3);
+  --spike-line: var(--color-rule-2);
+  --spike-line-strong: var(--color-ink);
+  --spike-text: var(--color-ink);
+  --spike-muted: var(--color-muted);
+  --spike-accent: var(--color-accent);
+  --spike-blue: var(--color-info);
+  --spike-orange: var(--color-accent);
+}

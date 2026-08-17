@@ -25,8 +25,8 @@ export function PublicUnavailable({
         <a className="showcase-button" href="/showcase">
           Back to Showcase
         </a>
-        <a className="showcase-button is-ghost" href="/t/library">
-          Open Terminal
+        <a className="showcase-button is-ghost" href="/library">
+          Open Library
         </a>
       </div>
     </section>
@@ -62,7 +62,7 @@ export function SeoLandingView({ landing }: { landing: SeoLandingData }) {
             <Metric label="Remixes" value={`${landing.aggregate.remixes}`} />
           </div>
           <div className="prototype-action-row">
-            <a className="showcase-button is-warm" href={`/t/create?recommendedBaseModel=${landing.baseModel.slug}&recommendedStyle=${landing.stylePreset.slug}`}>
+            <a className="showcase-button is-warm" href={`/create?recommendedBaseModel=${landing.baseModel.slug}&recommendedStyle=${landing.stylePreset.slug}`}>
               Launch Create
             </a>
             <a className="showcase-button is-ghost" href="/showcase">
@@ -264,7 +264,7 @@ export function CreatorPackView({ pack }: { pack: CreatorPackData }) {
                   <PublicConceptCard
                     concept={concept}
                     key={concept._id}
-                    remixHref={`/t/create?remix=${concept._id}&creatorPack=${pack.slug}&creatorPackVariant=remix-seed`}
+                    remixHref={`/create?remix=${concept._id}&creatorPack=${pack.slug}&creatorPackVariant=remix-seed`}
                   />
                 ))}
               </div>
@@ -548,7 +548,7 @@ function PublicConceptCard({
               Remix
             </a>
           ) : (
-            <a className="showcase-button is-warm" href={`/t/create?remix=${concept._id}`}>
+            <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
               Remix
             </a>
           )}
@@ -715,5 +715,5 @@ function buildCreateHref(pack: CreatorPackData) {
   params.set("creatorPack", pack.slug);
   params.set("creatorPackVariant", "baseline");
 
-  return `/t/create?${params.toString()}`;
+  return `/create?${params.toString()}`;
 }

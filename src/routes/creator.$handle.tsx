@@ -4,6 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildCreatorHubStructuredData } from "@/lib/structuredData";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   CreatorHubView,
   PublicUnavailable,
@@ -83,18 +84,19 @@ function CreatorHubRoute() {
   const snapshot = Route.useLoaderData();
 
   return (
-    <main className="public-page">
-      <StructuredData data={snapshot.structuredData} />
-      <PublicTopbar handle={snapshot.profile?.pilot.handle} title="Creator hub" />
-      {snapshot.profile ? (
-        <CreatorHubView profile={snapshot.profile} />
-      ) : (
-        <PublicUnavailable
-          message={snapshot.message}
-          title="This creator hub is not available."
-        />
-      )}
-    </main>
+    <AppShell title="Creator hub">
+      <main className="public-page">
+        <StructuredData data={snapshot.structuredData} />
+        {snapshot.profile ? (
+          <CreatorHubView profile={snapshot.profile} />
+        ) : (
+          <PublicUnavailable
+            message={snapshot.message}
+            title="This creator hub is not available."
+          />
+        )}
+      </main>
+    </AppShell>
   );
 }
 
@@ -135,31 +137,6 @@ function buildCreatorHubDescription(profile: CreatorHubData) {
     `${profile.creatorPackCollection.length} creator packs`,
     `${profile.styleCollection.length} creator styles`,
   ].join(" / ");
-}
-
-function PublicTopbar({
-  handle,
-  title,
-}: {
-  handle?: string;
-  title: string;
-}) {
-  return (
-    <section className="showcase-topbar">
-      <div>
-        <p className="showcase-kicker">NeotypeLab Public</p>
-        <h1>{title}</h1>
-      </div>
-      <div className="showcase-topbar__actions">
-        <a className="showcase-button is-ghost" href="/showcase">
-          Showcase
-        </a>
-        <a className="showcase-button" href={handle ? `/pilot/${handle}` : "/showcase"}>
-          Pilot Profile
-        </a>
-      </div>
-    </section>
-  );
 }
 
 function StructuredData({ data }: { data: unknown }) {

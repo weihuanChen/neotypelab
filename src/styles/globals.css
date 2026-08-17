@@ -34,35 +34,32 @@
 
     --radius: 0.5rem;
 
-    /* V2 Bright Retro-Futurist Variables */
-    --bg-main: #F4F0E6;
-    --bg-surface: #FBF7ED;
-    --bg-panel: #E8E0D0;
-    --bg-elevated: #FFFDF6;
+    /* Almanac paper system — source of truth is src/styles/tokens.css */
+    --bg-main: var(--color-paper);
+    --bg-surface: var(--color-paper-2);
+    --bg-panel: var(--color-paper-3);
+    --bg-elevated: var(--color-paper);
 
-    /* V2 Structural Lines */
-    --line-primary: #2f3533;
-    --line-secondary: #a9a08f;
-    --line-guide: #d3ccbe;
+    --line-primary: var(--color-ink);
+    --line-secondary: var(--color-rule-2);
+    --line-guide: var(--color-rule);
 
-    /* V2 Bright Hover System */
-    --bg-hover-surface: #FFFFFF;
-    --bg-hover-panel: #F5EFE4;
-    --bg-hover-subtle: rgba(0, 0, 0, 0.03);
+    --bg-hover-surface: var(--color-paper);
+    --bg-hover-panel: var(--color-paper-2);
+    --bg-hover-subtle: color-mix(in oklch, var(--color-ink) 4%, transparent);
 
-    /* Legacy Structural (Deprecated but kept for safety during migration) */
-    --line-subtle: rgba(35, 40, 45, 0.10);
-    --line-muted: #C9BFAE;
-    --line-active: #2F3A3D;
+    --line-subtle: color-mix(in oklch, var(--color-ink) 12%, transparent);
+    --line-muted: var(--color-rule);
+    --line-active: var(--color-ink);
 
-    --text-primary: #202426;
-    --text-secondary: #3B403D;
-    --text-muted: #5B544A;
+    --text-primary: var(--color-ink);
+    --text-secondary: var(--color-ink-2);
+    --text-muted: var(--color-muted);
 
-    --accent-orange: #E46F2D;
-    --accent-teal: #2A8C8C;
-    --accent-blue: #3B6D8C;
-    --accent-red: #B84A3A;
+    --accent-orange: var(--color-accent);
+    --accent-teal: var(--color-success);
+    --accent-blue: var(--color-info);
+    --accent-red: var(--color-danger);
   }
 
   @media (prefers-color-scheme: dark) {

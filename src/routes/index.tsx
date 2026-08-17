@@ -1,59 +1,53 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/src/components/app-shell/AppShell";
+import { ExploreLanding } from "@/src/components/showcase/ExploreLanding";
+import {
+  buildShowcaseStructuredData,
+  getShowcaseSnapshot,
+  parseShowcaseSearch,
+} from "@/src/lib/showcaseRouteData";
 
 export const Route = createFileRoute("/")({
+  validateSearch: parseShowcaseSearch,
+  loader: () => getShowcaseSnapshot(),
   head: () => ({
     meta: [
       { title: "NeotypeLab" },
       {
         name: "description",
         content:
-          "Discover public repaint prototypes and open the authenticated NeotypeLab creation terminal.",
+          "Explore public mecha repaint prototypes and start a structured create session.",
       },
+      { property: "og:title", content: "NeotypeLab" },
+      {
+        property: "og:description",
+        content:
+          "Explore public mecha repaint prototypes and start a structured create session.",
+      },
+      { property: "og:type", content: "website" },
     ],
+    links: [{ rel: "canonical", href: "/" }],
   }),
   component: Home,
 });
 
 function Home() {
-  return (
-    <main className="spike-page">
-      <section className="spike-hero">
-        <p className="spike-kicker">NeotypeLab</p>
-        <h1>Structured repaint concepts, public surfaces, and operator tools.</h1>
-        <p>
-          Explore creator-ready prototype surfaces, fork public builds into the
-          create workflow, and keep generated concepts backed by Convex.
-        </p>
-        <div className="spike-actions">
-          <Link className="spike-button" to="/showcase">
-            Open showcase
-          </Link>
-          <Link className="spike-button" to="/t/create">
-            Start creating
-          </Link>
-          <Link className="spike-button spike-button--ghost" to="/t/library">
-            Open library
-          </Link>
-        </div>
-      </section>
+  const snapshot = Route.useLoaderData();
+  const search = Route.useSearch();
+  const structuredData = buildShowcaseStructuredData(snapshot);
 
-      <section className="spike-grid" aria-label="Production surfaces">
-        <article className="spike-panel">
-          <p className="spike-kicker">01</p>
-          <h2>Public Showcase</h2>
-          <p>SEO-ready prototype, pilot, creator, and pack surfaces render on Workers.</p>
-        </article>
-        <article className="spike-panel">
-          <p className="spike-kicker">02</p>
-          <h2>Create Terminal</h2>
-          <p>Authenticated create sessions write concepts, jobs, and recommendations to Convex.</p>
-        </article>
-        <article className="spike-panel">
-          <p className="spike-kicker">03</p>
-          <h2>Operator Library</h2>
-          <p>Private concepts, saved public builds, and generation ledgers stay in sync.</p>
-        </article>
-      </section>
-    </main>
+  return (
+    <AppShell
+      description="Discover spray-ready repaint prototypes, then open or remix the systems behind them."
+      title="Explore"
+    >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData),
+        }}
+      />
+      <ExploreLanding search={search} snapshot={snapshot} />
+    </AppShell>
   );
 }

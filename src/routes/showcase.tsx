@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShowcaseFeed } from "@/src/components/showcase/ShowcaseFeed";
+import { AppShell } from "@/src/components/app-shell/AppShell";
+import { ShowcaseLanding } from "@/src/components/showcase/ShowcaseLanding";
 import {
   buildShowcaseStructuredData,
   getShowcaseSnapshot,
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/showcase")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "/showcase" }],
   }),
   component: ShowcaseRoute,
 });
@@ -36,28 +38,19 @@ function ShowcaseRoute() {
   const structuredData = buildShowcaseStructuredData(snapshot);
 
   return (
-    <main className="showcase-page">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
-      />
-      <section className="showcase-topbar">
-        <div>
-          <p className="showcase-kicker">NeotypeLab Public</p>
-          <h1>Published prototype showcase</h1>
-        </div>
-        <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/">
-            Home
-          </a>
-          <a className="showcase-button" href="/t/showcase">
-            Open Terminal
-          </a>
-        </div>
-      </section>
-      <ShowcaseFeed search={search} snapshot={snapshot} />
-    </main>
+    <AppShell
+      description="Curated public repaint prototypes selected from the community."
+      title="Showcase"
+    >
+      <main className="showcase-page">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData),
+          }}
+        />
+        <ShowcaseLanding search={search} snapshot={snapshot} />
+      </main>
+    </AppShell>
   );
 }

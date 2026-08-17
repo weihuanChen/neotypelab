@@ -4,6 +4,10 @@ import {
   internalQuery,
   query,
 } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./_generated/server";
+import { vGenerationProvider } from "./domain";
+import type { GenerationProvider } from "./domain";
 
 export const listViewerJobs = query({
   args: {},
@@ -130,6 +134,8 @@ export const getJobForExecution = internalQuery({
       return null;
     }
 
+    const renderMode = safeRenderMode(job.inputSnapshotJson, job.outputSummaryJson);
+    const simulationStage = safeSimulationStage(job.inputSnapshotJson, job.outputSummaryJson);
     const [prompt, concept, user] = await Promise.all([
       ctx.db.get(job.promptCompositionId),
       ctx.db.get(job.conceptId),
@@ -140,27 +146,211 @@ export const getJobForExecution = internalQuery({
       return null;
     }
 
+    const template = prompt.promptTemplateId ? await ctx.db.get(prompt.promptTemplateId) : null;
+    const llmRoute = await selectImageLlmRoute(ctx, {
+      generationKind: job.kind,
+      promptTemplateId: prompt.promptTemplateId,
+      renderMode,
+      templateKind: template?.kind,
+    });
+
     return {
       generationJobId: job._id,
       kind: job.kind,
-      renderMode: safeRenderMode(job.inputSnapshotJson, job.outputSummaryJson),
+      renderMode,
       materialComparisonVariants: safeMaterialComparisonVariants(
         job.inputSnapshotJson,
         prompt.inputSnapshotJson
       ),
-      simulationStage: safeSimulationStage(job.inputSnapshotJson, job.outputSummaryJson),
+      simulationStage,
       status: job.status,
       concept,
       prompt: {
         _id: prompt._id,
         composedPrompt: prompt.composedPrompt,
         negativePrompt: prompt.negativePrompt,
+        promptTemplateId: prompt.promptTemplateId,
+        templateKind: template?.kind,
+        templateName: template?.name,
         templateVersion: safeTemplateVersion(prompt.outputSummaryJson),
       },
+      llmRoute,
       user,
     };
   },
 });
+
+async function selectImageLlmRoute(
+  ctx: QueryCtx,
+  input: {
+    generationKind: "palette-plan" | "hd-preview";
+    promptTemplateId?: Id<"promptTemplates">;
+    renderMode?:
+      | "hd-render"
+      | "multi-angle-preview"
+      | "high-fidelity-render"
+      | "build-stage-visualization"
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison";
+    templateKind?: "palette-plan" | "style-suggestion" | "repaint-concept" | "hd-render";
+  }
+) {
+  if (input.promptTemplateId !== undefined) {
+    const bindings = await ctx.db
+      .query("promptTemplateBindings")
+      .withIndex("by_template", (q) => q.eq("promptTemplateId", input.promptTemplateId!))
+      .collect();
+    const candidates = (
+      await Promise.all(
+        bindings
+          .filter((binding) => isBindingEligible(binding, input))
+          .map(async (binding) => {
+            const profile = await ctx.db.get(binding.llmProfileId);
+            if (profile === null || !profile.isActive || profile.capability !== "image") {
+              return null;
+            }
+            return { binding, profile };
+          })
+      )
+    ).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+
+    const selected = candidates.sort((a, b) => {
+      const scoreDelta = bindingScore(b.binding) - bindingScore(a.binding);
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+      const priorityDelta = b.binding.priority - a.binding.priority;
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      return b.profile.priority - a.profile.priority;
+    })[0];
+
+    if (selected) {
+      return serializeLlmRoute(selected.profile, selected.binding);
+    }
+  }
+
+  const fallbackProfile = (
+    await ctx.db
+      .query("llmProfiles")
+      .withIndex("by_capability", (q) => q.eq("capability", "image"))
+      .collect()
+  )
+    .filter((profile) => profile.isActive)
+    .sort((a, b) => b.priority - a.priority)[0];
+
+  return fallbackProfile ? serializeLlmRoute(fallbackProfile, null) : null;
+}
+
+function isBindingEligible(
+  binding: {
+    generationKind?: "palette-plan" | "hd-preview";
+    isActive: boolean;
+    renderMode?:
+      | "hd-render"
+      | "multi-angle-preview"
+      | "high-fidelity-render"
+      | "build-stage-visualization"
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison";
+    templateKind: "palette-plan" | "style-suggestion" | "repaint-concept" | "hd-render";
+  },
+  input: {
+    generationKind: "palette-plan" | "hd-preview";
+    renderMode?:
+      | "hd-render"
+      | "multi-angle-preview"
+      | "high-fidelity-render"
+      | "build-stage-visualization"
+      | "weathering-simulation"
+      | "weathering-split-preview"
+      | "material-finish-comparison";
+    templateKind?: "palette-plan" | "style-suggestion" | "repaint-concept" | "hd-render";
+  }
+) {
+  if (!binding.isActive) {
+    return false;
+  }
+  if (input.templateKind !== undefined && binding.templateKind !== input.templateKind) {
+    return false;
+  }
+  if (binding.generationKind !== undefined && binding.generationKind !== input.generationKind) {
+    return false;
+  }
+  return binding.renderMode === undefined || binding.renderMode === input.renderMode;
+}
+
+function bindingScore(binding: {
+  generationKind?: "palette-plan" | "hd-preview";
+  isDefault: boolean;
+  renderMode?:
+    | "hd-render"
+    | "multi-angle-preview"
+    | "high-fidelity-render"
+    | "build-stage-visualization"
+    | "weathering-simulation"
+    | "weathering-split-preview"
+    | "material-finish-comparison";
+}) {
+  return (
+    (binding.isDefault ? 8 : 0) +
+    (binding.renderMode !== undefined ? 4 : 0) +
+    (binding.generationKind !== undefined ? 2 : 0)
+  );
+}
+
+function serializeLlmRoute(
+  profile: {
+    _id: Id<"llmProfiles">;
+    apiFormat: "openai-compatible";
+    baseUrl: string;
+    headersJson?: string;
+    keyEnvName: string;
+    modelId: string;
+    name: string;
+    provider:
+      | "openai"
+      | "openrouter"
+      | "portkey"
+      | "litellm"
+      | "vercel-ai-gateway"
+      | "custom-openai-compatible";
+    requestDefaultsJson?: string;
+    slug: string;
+    timeoutMs?: number;
+  },
+  binding: {
+    _id: Id<"promptTemplateBindings">;
+    parameterOverridesJson?: string;
+    priority: number;
+  } | null
+) {
+  return {
+    profile: {
+      _id: profile._id,
+      apiFormat: profile.apiFormat,
+      baseUrl: profile.baseUrl,
+      headersJson: profile.headersJson,
+      keyEnvName: profile.keyEnvName,
+      modelId: profile.modelId,
+      name: profile.name,
+      provider: profile.provider,
+      requestDefaultsJson: profile.requestDefaultsJson,
+      slug: profile.slug,
+      timeoutMs: profile.timeoutMs,
+    },
+    binding: binding
+      ? {
+          _id: binding._id,
+          parameterOverridesJson: binding.parameterOverridesJson,
+          priority: binding.priority,
+        }
+      : null,
+  };
+}
 
 export const markJobRunning = internalMutation({
   args: {
@@ -220,7 +410,7 @@ export const markJobSucceeded = internalMutation({
     generationJobId: v.id("generationJobs"),
     conceptId: v.id("concepts"),
     promptCompositionId: v.id("promptCompositions"),
-    provider: v.union(v.literal("internal"), v.literal("openai")),
+    provider: vGenerationProvider,
     providerJobId: v.optional(v.string()),
     asset: v.object({
       userId: v.id("users"),
@@ -301,7 +491,7 @@ export const markJobFailed = internalMutation({
   args: {
     generationJobId: v.id("generationJobs"),
     errorMessage: v.string(),
-    provider: v.union(v.literal("internal"), v.literal("openai")),
+    provider: vGenerationProvider,
   },
   handler: async (ctx, { generationJobId, errorMessage, provider }) => {
     const job = await ctx.db.get(generationJobId);
@@ -406,7 +596,7 @@ function safeOutputSummary(summaryJson?: string) {
       }>;
       mimeType?: string;
       phase?: string;
-      provider?: "internal" | "openai";
+      provider?: GenerationProvider;
       renderMode?:
         | "hd-render"
         | "multi-angle-preview"

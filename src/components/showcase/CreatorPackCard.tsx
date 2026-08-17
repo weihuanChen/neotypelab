@@ -104,12 +104,12 @@ function CreatorPackCardView({
           ) : previewConcept ? (
             <a
               className="showcase-button is-warm"
-              href={`/t/create?remix=${previewConcept._id}&creatorPack=${pack.slug}&creatorPackVariant=remix-seed`}
+              href={`/create?remix=${previewConcept._id}&creatorPack=${pack.slug}&creatorPackVariant=remix-seed`}
             >
               Remix Entry
             </a>
           ) : (
-            <a className="showcase-button is-accent" href={`/t/create?creatorPack=${pack.slug}`}>
+            <a className="showcase-button is-accent" href={`/create?creatorPack=${pack.slug}`}>
               Open In Create
             </a>
           )}

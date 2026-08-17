@@ -60,10 +60,14 @@ export function parseShowcaseSearch(search: Record<string, unknown>): ShowcaseSe
 
   return {
     sort: sort === defaultShowcaseSort ? undefined : sort,
+    view: search.view === "trending" ? "trending" : undefined,
     baseModel: parseOptionalSearchValue(search.baseModel),
     style: parseOptionalSearchValue(search.style),
+    material: parseOptionalSearchValue(search.material),
+    weathering: parseOptionalSearchValue(search.weathering),
     category: parseOptionalSearchValue(search.category),
     creator: parseOptionalSearchValue(search.creator),
+    q: parseOptionalSearchValue(search.q),
   };
 }
 

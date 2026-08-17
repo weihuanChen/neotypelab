@@ -3,11 +3,13 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
+import type { GenerationProvider } from "./domain";
 
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-1";
+const DEFAULT_IMAGE_TIMEOUT_MS = 120000;
 let cachedPublicAssetBaseUrl: Promise<string | undefined> | undefined;
 
 type StabilizeConceptPreviewResult =
@@ -43,6 +45,77 @@ type MaterialComparisonVariant = {
   difficultyLevel?: string;
   sheenLevel?: string;
   role?: "current" | "comparison";
+};
+
+type GenerationKind = "palette-plan" | "hd-preview";
+
+type RenderMode =
+  | "hd-render"
+  | "multi-angle-preview"
+  | "high-fidelity-render"
+  | "build-stage-visualization"
+  | "weathering-simulation"
+  | "weathering-split-preview"
+  | "material-finish-comparison";
+
+type SimulationStage = "primer-pass" | "decal-pass" | "weathering-pass";
+
+type OpenAICompatibleProvider =
+  | "openai"
+  | "openrouter"
+  | "portkey"
+  | "litellm"
+  | "vercel-ai-gateway"
+  | "custom-openai-compatible";
+
+type LlmRoute = {
+  profile: {
+    _id: Id<"llmProfiles">;
+    apiFormat: "openai-compatible";
+    baseUrl: string;
+    headersJson?: string;
+    keyEnvName: string;
+    modelId: string;
+    name: string;
+    provider: OpenAICompatibleProvider;
+    requestDefaultsJson?: string;
+    slug: string;
+    timeoutMs?: number;
+  };
+  binding: {
+    _id: Id<"promptTemplateBindings">;
+    parameterOverridesJson?: string;
+    priority: number;
+  } | null;
+};
+
+type ExternalRouteProfile = Omit<LlmRoute["profile"], "_id"> & {
+  _id?: Id<"llmProfiles">;
+};
+
+type ExternalImageRoute = {
+  mode: "openai-compatible";
+  provider: OpenAICompatibleProvider;
+  profile: ExternalRouteProfile;
+  binding: LlmRoute["binding"];
+};
+
+type ImageGenerationRoute =
+  | {
+      mode: "internal";
+      provider: "internal";
+    }
+  | ExternalImageRoute;
+
+type RouteSummary = {
+  baseUrl: string;
+  bindingId?: Id<"promptTemplateBindings">;
+  bindingPriority?: number;
+  modelId: string;
+  profileId?: Id<"llmProfiles">;
+  profileName: string;
+  profileSlug: string;
+  provider: OpenAICompatibleProvider;
 };
 
 export const rerunJob = action({
@@ -128,18 +201,21 @@ export const executeQueuedJob = internalAction({
       simulationStage: job.simulationStage,
     });
 
+    const route = resolveImageGenerationRoute(job.llmRoute);
+    let attemptedProvider: GenerationProvider = route.provider;
+
     try {
-      const provider = resolveProvider();
       const generated = await generateImage({
         kind: job.kind,
         renderMode: job.renderMode,
         simulationStage: job.simulationStage,
         materialComparisonVariants: job.materialComparisonVariants,
-        provider,
+        route,
         prompt: job.prompt.composedPrompt,
         negativePrompt: job.prompt.negativePrompt,
         title: job.concept.title,
       });
+      attemptedProvider = generated.provider;
 
       const uploaded = await uploadToR2({
         buffer: generated.buffer,
@@ -151,7 +227,7 @@ export const executeQueuedJob = internalAction({
         generationJobId,
         conceptId: job.concept._id,
         promptCompositionId: job.prompt._id,
-        provider,
+        provider: generated.provider,
         providerJobId: generated.providerJobId,
         asset: {
           userId: job.user._id,
@@ -186,8 +262,12 @@ export const executeQueuedJob = internalAction({
                       : job.renderMode === "material-finish-comparison"
                         ? "MATERIAL FINISH COMPARISON STABILIZED"
                         : "HD RENDER STABILIZED"
-              : "OUTPUT STABILIZED",
-          provider,
+                      : "OUTPUT STABILIZED",
+          provider: generated.provider,
+          llmRoute: generated.routeSummary,
+          promptTemplateId: job.prompt.promptTemplateId,
+          promptTemplateKind: job.prompt.templateKind,
+          promptTemplateName: job.prompt.templateName,
           templateVersion: job.prompt.templateVersion,
           revisedPrompt: generated.revisedPrompt,
           mimeType: generated.contentType,
@@ -198,7 +278,7 @@ export const executeQueuedJob = internalAction({
       await ctx.runMutation(internal.generation.markJobFailed, {
         generationJobId,
         errorMessage: message,
-        provider: resolveProvider(),
+        provider: attemptedProvider,
       });
       await ctx.runMutation(internal.generation.refundFailedJobCredits, {
         generationJobId,
@@ -212,32 +292,31 @@ async function generateImage({
   renderMode,
   simulationStage,
   materialComparisonVariants,
-  provider,
+  route,
   prompt,
   negativePrompt,
   title,
 }: {
-  kind: "palette-plan" | "hd-preview";
-  renderMode?:
-    | "hd-render"
-    | "multi-angle-preview"
-    | "high-fidelity-render"
-    | "build-stage-visualization"
-    | "weathering-simulation"
-    | "weathering-split-preview"
-    | "material-finish-comparison";
-  simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass";
+  kind: GenerationKind;
+  renderMode?: RenderMode;
+  simulationStage?: SimulationStage;
   materialComparisonVariants?: MaterialComparisonVariant[];
-  provider: "internal" | "openai";
+  route: ImageGenerationRoute;
   prompt: string;
   negativePrompt?: string | null;
   title: string;
 }) {
-  if (provider === "openai") {
-    return await generateWithOpenAI({ prompt, negativePrompt, renderMode, simulationStage });
+  if (route.mode === "openai-compatible") {
+    return await generateWithOpenAICompatibleImage({
+      prompt,
+      negativePrompt,
+      renderMode,
+      simulationStage,
+      route,
+    });
   }
 
-  return generateInternalPreview({
+  const generated = generateInternalPreview({
     kind,
     renderMode,
     simulationStage,
@@ -245,72 +324,314 @@ async function generateImage({
     prompt,
     title,
   });
+  return {
+    ...generated,
+    provider: "internal" as const,
+    routeSummary: undefined,
+  };
 }
 
-async function generateWithOpenAI({
+async function generateWithOpenAICompatibleImage({
   prompt,
+  negativePrompt,
   renderMode,
   simulationStage,
+  route,
 }: {
   prompt: string;
   negativePrompt?: string | null;
-  renderMode?:
-    | "hd-render"
-    | "multi-angle-preview"
-    | "high-fidelity-render"
-    | "build-stage-visualization"
-    | "weathering-simulation"
-    | "weathering-split-preview"
-    | "material-finish-comparison";
-  simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass";
+  renderMode?: RenderMode;
+  simulationStage?: SimulationStage;
+  route: ExternalImageRoute;
 }) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env[route.profile.keyEnvName];
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+    throw new Error(
+      `LLM profile "${route.profile.name}" requires ${route.profile.keyEnvName}, but it is not configured`
+    );
   }
 
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_IMAGE_MODEL ?? DEFAULT_OPENAI_IMAGE_MODEL,
-      prompt,
-      size: "1024x1024",
-      quality:
-        renderMode === "high-fidelity-render" ||
-        renderMode === "build-stage-visualization" ||
-        renderMode === "weathering-simulation" ||
-        renderMode === "weathering-split-preview" ||
-        renderMode === "material-finish-comparison"
-          ? "high"
-          : "medium",
-      output_format: "png",
-      background: "opaque",
-    }),
-  });
+  const timeoutMs = route.profile.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(buildOpenAICompatibleImageUrl(route.profile.baseUrl), {
+      method: "POST",
+      headers: buildOpenAICompatibleHeaders(route, apiKey),
+      body: JSON.stringify(
+        buildOpenAICompatibleImageBody({
+          negativePrompt,
+          prompt,
+          renderMode,
+          route,
+          simulationStage,
+        })
+      ),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`LLM image generation timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`OpenAI image generation failed: ${response.status} ${body}`);
+    throw new Error(
+      `${route.profile.name} image generation failed: ${response.status} ${truncateErrorBody(
+        body
+      )}`
+    );
   }
 
   const payload = (await response.json()) as {
-    data?: Array<{ b64_json?: string; revised_prompt?: string }>;
+    data?: Array<{ b64_json?: string; revised_prompt?: string; url?: string }>;
+    id?: string;
   };
   const image = payload.data?.[0];
-  if (!image?.b64_json) {
-    throw new Error("OpenAI image generation returned no image payload");
+  if (!image) {
+    throw new Error(`${route.profile.name} image generation returned no image payload`);
+  }
+
+  if (image.b64_json) {
+    return {
+      provider: route.provider,
+      routeSummary: summarizeRoute(route),
+      providerJobId: getProviderRequestId(response, payload.id),
+      revisedPrompt: image.revised_prompt,
+      contentType: "image/png",
+      buffer: Buffer.from(image.b64_json, "base64"),
+    };
+  }
+
+  if (image.url) {
+    const imageResponse = await fetch(image.url);
+    if (!imageResponse.ok) {
+      const body = await imageResponse.text();
+      throw new Error(
+        `${route.profile.name} image download failed: ${imageResponse.status} ${truncateErrorBody(
+          body
+        )}`
+      );
+    }
+
+    return {
+      provider: route.provider,
+      routeSummary: summarizeRoute(route),
+      providerJobId: getProviderRequestId(response, payload.id),
+      revisedPrompt: image.revised_prompt,
+      contentType: imageResponse.headers.get("content-type") ?? "image/png",
+      buffer: Buffer.from(await imageResponse.arrayBuffer()),
+    };
+  }
+
+  throw new Error(`${route.profile.name} image generation returned no usable image payload`);
+}
+
+function resolveImageGenerationRoute(llmRoute?: LlmRoute | null): ImageGenerationRoute {
+  if (llmRoute !== undefined && llmRoute !== null) {
+    return {
+      mode: "openai-compatible",
+      provider: llmRoute.profile.provider,
+      profile: llmRoute.profile,
+      binding: llmRoute.binding,
+    };
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      mode: "openai-compatible",
+      provider: "openai",
+      profile: {
+        apiFormat: "openai-compatible",
+        baseUrl: "https://api.openai.com/v1",
+        keyEnvName: "OPENAI_API_KEY",
+        modelId: process.env.OPENAI_IMAGE_MODEL ?? DEFAULT_OPENAI_IMAGE_MODEL,
+        name: "OpenAI env fallback",
+        provider: "openai",
+        slug: "openai-env-fallback",
+      },
+      binding: null,
+    };
   }
 
   return {
-    providerJobId: response.headers.get("x-request-id") ?? undefined,
-    revisedPrompt: image.revised_prompt,
-    contentType: "image/png",
-    buffer: Buffer.from(image.b64_json, "base64"),
+    mode: "internal",
+    provider: "internal",
   };
+}
+
+function buildOpenAICompatibleImageUrl(baseUrl: string) {
+  return `${baseUrl.replace(/\/+$/, "")}/images/generations`;
+}
+
+function buildOpenAICompatibleHeaders(route: ExternalImageRoute, apiKey: string) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+  const customHeaders = parseJsonObjectOrEmpty(route.profile.headersJson, "LLM profile headers");
+  for (const [key, value] of Object.entries(customHeaders)) {
+    if (typeof value !== "string") {
+      throw new Error(`LLM profile header "${key}" must be a string`);
+    }
+    headers[key] = interpolateTemplateString(value, {
+      apiKey,
+      modelId: route.profile.modelId,
+    });
+  }
+  return headers;
+}
+
+function buildOpenAICompatibleImageBody({
+  negativePrompt,
+  prompt,
+  renderMode,
+  route,
+  simulationStage,
+}: {
+  negativePrompt?: string | null;
+  prompt: string;
+  renderMode?: RenderMode;
+  route: ExternalImageRoute;
+  simulationStage?: SimulationStage;
+}) {
+  const defaultBody: Record<string, unknown> = {
+    model: route.profile.modelId,
+    prompt,
+    size: "1024x1024",
+    quality: getDefaultImageQuality(renderMode),
+    output_format: "png",
+    background: "opaque",
+  };
+  const profileDefaults = parseJsonObjectOrEmpty(
+    route.profile.requestDefaultsJson,
+    "LLM profile request defaults"
+  );
+  const bindingOverrides = parseJsonObjectOrEmpty(
+    route.binding?.parameterOverridesJson,
+    "Prompt template binding overrides"
+  );
+  const body = interpolateJsonValue(
+    mergeJsonObjects(defaultBody, profileDefaults, bindingOverrides),
+    {
+      modelId: route.profile.modelId,
+      negativePrompt: negativePrompt ?? "",
+      prompt,
+      renderMode: renderMode ?? "",
+      simulationStage: simulationStage ?? "",
+    }
+  );
+
+  if (!isPlainObject(body)) {
+    throw new Error("LLM image request body must be a JSON object");
+  }
+
+  body.prompt = prompt;
+  return body;
+}
+
+function getDefaultImageQuality(renderMode?: RenderMode) {
+  return renderMode === "high-fidelity-render" ||
+    renderMode === "build-stage-visualization" ||
+    renderMode === "weathering-simulation" ||
+    renderMode === "weathering-split-preview" ||
+    renderMode === "material-finish-comparison"
+    ? "high"
+    : "medium";
+}
+
+function parseJsonObjectOrEmpty(value: string | undefined, label: string) {
+  if (value === undefined || value.trim().length === 0) {
+    return {};
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch {
+    throw new Error(`${label} must be valid JSON`);
+  }
+  if (!isPlainObject(parsed)) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+  return parsed;
+}
+
+function mergeJsonObjects(...objects: Array<Record<string, unknown>>) {
+  const output: Record<string, unknown> = {};
+  for (const object of objects) {
+    for (const [key, value] of Object.entries(object)) {
+      const existing = output[key];
+      if (isPlainObject(existing) && isPlainObject(value)) {
+        output[key] = mergeJsonObjects(existing, value);
+      } else {
+        output[key] = value;
+      }
+    }
+  }
+  return output;
+}
+
+function interpolateJsonValue(
+  value: unknown,
+  values: Record<string, string>
+): unknown {
+  if (typeof value === "string") {
+    return interpolateTemplateString(value, values);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => interpolateJsonValue(item, values));
+  }
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, interpolateJsonValue(item, values)])
+    );
+  }
+  return value;
+}
+
+function interpolateTemplateString(value: string, values: Record<string, string>) {
+  return value
+    .replace(/\{\{env:([A-Za-z][A-Za-z0-9_]*)\}\}/g, (_, name: string) => process.env[name] ?? "")
+    .replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function summarizeRoute(route: ExternalImageRoute): RouteSummary {
+  return {
+    baseUrl: route.profile.baseUrl,
+    bindingId: route.binding?._id,
+    bindingPriority: route.binding?.priority,
+    modelId: route.profile.modelId,
+    profileId: route.profile._id,
+    profileName: route.profile.name,
+    profileSlug: route.profile.slug,
+    provider: route.provider,
+  };
+}
+
+function getProviderRequestId(response: Response, payloadId?: string) {
+  return (
+    response.headers.get("x-request-id") ??
+    response.headers.get("x-openai-request-id") ??
+    response.headers.get("x-portkey-request-id") ??
+    response.headers.get("x-litellm-call-id") ??
+    payloadId ??
+    undefined
+  );
+}
+
+function truncateErrorBody(value: string) {
+  const trimmed = value.trim();
+  return trimmed.length > 1000 ? `${trimmed.slice(0, 1000)}...` : trimmed;
 }
 
 function generateInternalPreview({
@@ -321,16 +642,9 @@ function generateInternalPreview({
   prompt,
   title,
 }: {
-  kind: "palette-plan" | "hd-preview";
-  renderMode?:
-    | "hd-render"
-    | "multi-angle-preview"
-    | "high-fidelity-render"
-    | "build-stage-visualization"
-    | "weathering-simulation"
-    | "weathering-split-preview"
-    | "material-finish-comparison";
-  simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass";
+  kind: GenerationKind;
+  renderMode?: RenderMode;
+  simulationStage?: SimulationStage;
   materialComparisonVariants?: MaterialComparisonVariant[];
   prompt: string;
   title: string;
@@ -440,7 +754,7 @@ function generateInternalPreview({
     )
     .join("\n")}
   <rect x="112" y="812" width="800" height="96" rx="18" fill="#0D1117" stroke="#3A4654"/>
-  <text x="144" y="868" fill="#FFB84D" font-size="20" font-family="monospace">OPENAI_API_KEY not configured. Internal renderer used for end-to-end execution.</text>
+  <text x="144" y="868" fill="#FFB84D" font-size="20" font-family="monospace">No external image route configured. Internal renderer used for execution.</text>
 </svg>`;
 
   return {
@@ -863,7 +1177,7 @@ function truncateLabel(value: string, maxLength: number) {
 }
 
 function getSimulationStageLabel(
-  simulationStage?: "primer-pass" | "decal-pass" | "weathering-pass"
+  simulationStage?: SimulationStage
 ) {
   if (simulationStage === "primer-pass") {
     return "Primer Pass";
@@ -878,14 +1192,7 @@ function getSimulationStageLabel(
 }
 
 function getRenderLayoutSpec(
-  renderMode?:
-    | "hd-render"
-    | "multi-angle-preview"
-    | "high-fidelity-render"
-    | "build-stage-visualization"
-    | "weathering-simulation"
-    | "weathering-split-preview"
-    | "material-finish-comparison"
+  renderMode?: RenderMode
 ) {
   if (renderMode === "multi-angle-preview") {
     return "2x2 contact sheet: FRONT, SIDE, REAR, and THREE-QUARTER panels with locked palette mapping.";
@@ -1004,13 +1311,25 @@ function normalizeBaseUrl(value: string | undefined) {
   return value.trim().replace(/\/+$/, "");
 }
 
-function resolveProvider(): "internal" | "openai" {
-  return process.env.OPENAI_API_KEY ? "openai" : "internal";
+function buildAssetKey(handle: string, generationJobId: string, contentType: string) {
+  const extension = getImageExtension(contentType);
+  return `generated/${handle}/${generationJobId}-${randomUUID()}.${extension}`;
 }
 
-function buildAssetKey(handle: string, generationJobId: string, contentType: string) {
-  const extension = contentType === "image/png" ? "png" : "svg";
-  return `generated/${handle}/${generationJobId}-${randomUUID()}.${extension}`;
+function getImageExtension(contentType: string) {
+  if (contentType.includes("png")) {
+    return "png";
+  }
+  if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+    return "jpg";
+  }
+  if (contentType.includes("webp")) {
+    return "webp";
+  }
+  if (contentType.includes("svg")) {
+    return "svg";
+  }
+  return "bin";
 }
 
 function getRequiredEnv(name: string) {

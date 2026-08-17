@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
+import { AppShell } from "@/src/components/app-shell/AppShell";
 import { PilotPublicView } from "@/src/components/pilot/PilotPublicView";
 import type {
   PilotMeta,
@@ -102,31 +103,19 @@ function PilotRoute() {
   const handle = getHandleFromSnapshot(snapshot);
 
   return (
-    <main className="pilot-page">
-      {snapshot.structuredData ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(snapshot.structuredData),
-          }}
-        />
-      ) : null}
-      <section className="showcase-topbar">
-        <div>
-          <p className="showcase-kicker">NeotypeLab Public</p>
-          <h1>Pilot profile</h1>
-        </div>
-        <div className="showcase-topbar__actions">
-          <a className="showcase-button is-ghost" href="/showcase">
-            Showcase
-          </a>
-          <a className="showcase-button" href="/t/library">
-            Open Terminal
-          </a>
-        </div>
-      </section>
-      <PilotPublicView handle={handle} snapshot={snapshot} />
-    </main>
+    <AppShell title="Pilot profile">
+      <main className="pilot-page">
+        {snapshot.structuredData ? (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(snapshot.structuredData),
+            }}
+          />
+        ) : null}
+        <PilotPublicView handle={handle} snapshot={snapshot} />
+      </main>
+    </AppShell>
   );
 }
 

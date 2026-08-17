@@ -25,10 +25,14 @@ export type ShowcaseSort =
 
 export type ShowcaseSearch = {
   sort?: ShowcaseSort;
+  view?: "trending";
   baseModel?: string;
   style?: string;
+  material?: string;
+  weathering?: string;
   category?: string;
   creator?: string;
+  q?: string;
 };
 
 export type ShowcaseData = {

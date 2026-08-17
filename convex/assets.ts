@@ -2,6 +2,9 @@ import { v } from "convex/values";
 import { vAssetKind } from "./domain";
 import { internalMutation, mutation, query } from "./functions";
 
+const MAX_FEEDBACK_SCREENSHOT_BYTES = 10 * 1024 * 1024;
+const FEEDBACK_SCREENSHOT_TYPES = new Set(["image/jpeg", "image/png"]);
+
 export const listMine = query({
   args: {},
   async handler(ctx) {
@@ -43,6 +46,48 @@ export const createReference = mutation({
       contentType,
       byteSize,
       publicUrl,
+      status: "active",
+    });
+  },
+});
+
+export const generateFeedbackUploadUrl = mutation({
+  args: {},
+  async handler(ctx) {
+    ctx.viewerX();
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const registerFeedbackScreenshot = mutation({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  async handler(ctx, { storageId }) {
+    const viewer = ctx.viewerX();
+    const metadata = await ctx.storage.getMetadata(storageId);
+
+    if (!metadata) {
+      throw new Error("The uploaded screenshot could not be found");
+    }
+    if (!FEEDBACK_SCREENSHOT_TYPES.has(metadata.contentType ?? "")) {
+      await ctx.storage.delete(storageId);
+      throw new Error("Feedback screenshots must be PNG or JPG files");
+    }
+    if (metadata.size > MAX_FEEDBACK_SCREENSHOT_BYTES) {
+      await ctx.storage.delete(storageId);
+      throw new Error("Feedback screenshots must be 10 MB or smaller");
+    }
+
+    const publicUrl = await ctx.storage.getUrl(storageId);
+    return await ctx.db.insert("assets", {
+      userId: viewer._id,
+      key: storageId,
+      bucket: "convex-storage",
+      kind: "reference",
+      contentType: metadata.contentType ?? undefined,
+      byteSize: metadata.size,
+      publicUrl: publicUrl ?? undefined,
       status: "active",
     });
   },

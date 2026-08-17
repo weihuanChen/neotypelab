@@ -4,6 +4,7 @@ import { vConceptVisibility, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
+import { nextArchiveNumber } from "./archiveNumbers";
 
 const MAX_NOTES_LENGTH = 100;
 
@@ -162,8 +163,10 @@ export const initializePrototype = mutation({
       remixSource: sourceConcept?.title ?? "",
     }, sourceConcept ? `Remix Source: ${sourceConcept.title}` : undefined);
 
+    const recordNumber = await nextArchiveNumber(ctx, "prototype");
     const conceptId = await ctx.db.insert("concepts", {
       userId: viewer._id,
+      recordNumber,
       title,
       notes: sanitizedNotes,
       baseModelId: baseModel._id,
