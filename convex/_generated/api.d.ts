@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as adminAccess from "../adminAccess.js";
+import type * as adminUsers from "../adminUsers.js";
 import type * as archiveNumbers from "../archiveNumbers.js";
 import type * as assets from "../assets.js";
 import type * as baseModelHierarchy from "../baseModelHierarchy.js";
@@ -37,6 +38,7 @@ import type * as paintMappingEngine from "../paintMappingEngine.js";
 import type * as paintMappingPlans from "../paintMappingPlans.js";
 import type * as promptCompiler from "../promptCompiler.js";
 import type * as promptEngine from "../promptEngine.js";
+import type * as promptTemplateVariables from "../promptTemplateVariables.js";
 import type * as prototypeTools from "../prototypeTools.js";
 import type * as prototypes from "../prototypes.js";
 import type * as recommendationFeedback from "../recommendationFeedback.js";
@@ -60,6 +62,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   adminAccess: typeof adminAccess;
+  adminUsers: typeof adminUsers;
   archiveNumbers: typeof archiveNumbers;
   assets: typeof assets;
   baseModelHierarchy: typeof baseModelHierarchy;
@@ -87,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   paintMappingPlans: typeof paintMappingPlans;
   promptCompiler: typeof promptCompiler;
   promptEngine: typeof promptEngine;
+  promptTemplateVariables: typeof promptTemplateVariables;
   prototypeTools: typeof prototypeTools;
   prototypes: typeof prototypes;
   recommendationFeedback: typeof recommendationFeedback;

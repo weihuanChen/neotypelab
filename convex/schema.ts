@@ -8,6 +8,10 @@ import {
   vConceptVisibility,
   vCreditActionType,
   vFeedbackCategory,
+  vFeedbackPriority,
+  vFeedbackResolutionOutcome,
+  vFeedbackRootCause,
+  vFeedbackSource,
   vFeedbackStatus,
   vGenerationKind,
   vGenerationProvider,
@@ -23,6 +27,7 @@ import {
   vPaintFinishRenderPriority,
   vPromptCompositionStatus,
   vPromptTemplateKind,
+  vPromptTemplateVersionStatus,
   vRecommendationFeedbackKind,
   vRenderMode,
   vSimulationStage,
@@ -53,10 +58,20 @@ const schema = defineSchema({
     isFeaturedCreator: v.optional(v.boolean()),
     creatorTagline: v.optional(v.string()),
     creatorSpecialties: v.optional(v.array(v.string())),
+    searchText: v.optional(v.string()),
+    lastActiveAt: v.optional(v.number()),
+    hasOpenFlag: v.optional(v.boolean()),
   })
     .index("by_email", ["email"])
     .index("by_tokenIdentifier", ["tokenIdentifier"])
-    .index("by_handle", ["handle"]),
+    .index("by_handle", ["handle"])
+    .index("by_accountStatus", ["accountStatus"])
+    .index("by_planType", ["planType"])
+    .index("by_hasOpenFlag", ["hasOpenFlag"])
+    .searchIndex("search_users", {
+      searchField: "searchText",
+      filterFields: ["accountStatus", "planType", "hasOpenFlag"],
+    }),
 
   ipSeries: defineTable({
     name: v.string(),
@@ -310,6 +325,21 @@ const schema = defineSchema({
     referenceTable: v.optional(v.string()),
     referenceId: v.optional(v.string()),
     description: v.optional(v.string()),
+    sourceType: v.optional(v.union(
+      v.literal("purchased"),
+      v.literal("promotional"),
+      v.literal("admin-grant"),
+      v.literal("admin-adjustment"),
+      v.literal("refund"),
+      v.literal("activation-code"),
+      v.literal("generation-spend"),
+      v.literal("starter")
+    )),
+    reasonCode: v.optional(v.string()),
+    operatorUserId: v.optional(v.id("users")),
+    campaignId: v.optional(v.id("creditCampaigns")),
+    expiresAt: v.optional(v.number()),
+    internalNote: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_user_actionType", ["userId", "actionType"]),
@@ -520,9 +550,29 @@ const schema = defineSchema({
     negativePromptTemplate: v.optional(v.string()),
     notePolicy: v.optional(v.string()),
     isActive: v.boolean(),
+    publishedVersionId: v.optional(v.id("promptTemplateVersions")),
+    updatedAt: v.optional(v.number()),
+    updatedByUserId: v.optional(v.id("users")),
   })
     .index("by_slug", ["slug"])
     .index("by_kind", ["kind"]),
+
+  promptTemplateVersions: defineTable({
+    promptTemplateId: v.id("promptTemplates"),
+    version: v.string(),
+    status: vPromptTemplateVersionStatus,
+    systemPrompt: v.string(),
+    userPromptTemplate: v.string(),
+    negativePromptTemplate: v.optional(v.string()),
+    notePolicy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+    createdByUserId: v.optional(v.id("users")),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_template", ["promptTemplateId"])
+    .index("by_template_status", ["promptTemplateId", "status"]),
 
   llmProfiles: defineTable({
     name: v.string(),
@@ -569,6 +619,7 @@ const schema = defineSchema({
     conceptId: v.optional(v.id("concepts")),
     generationJobId: v.optional(v.id("generationJobs")),
     promptTemplateId: v.optional(v.id("promptTemplates")),
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
     status: vPromptCompositionStatus,
     composedPrompt: v.string(),
     negativePrompt: v.optional(v.string()),
@@ -579,11 +630,14 @@ const schema = defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_conceptId", ["conceptId"])
-    .index("by_generationJobId", ["generationJobId"]),
+    .index("by_generationJobId", ["generationJobId"])
+    .index("by_promptTemplateId", ["promptTemplateId"])
+    .index("by_promptTemplateVersionId", ["promptTemplateVersionId"]),
 
   promptExperimentRuns: defineTable({
     userId: v.id("users"),
     promptTemplateId: v.optional(v.id("promptTemplates")),
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
     templateKind: vPromptTemplateKind,
     templateName: v.string(),
     templateVersion: v.string(),
@@ -616,7 +670,9 @@ const schema = defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
-    .index("by_templateKind", ["templateKind"]),
+    .index("by_templateKind", ["templateKind"])
+    .index("by_promptTemplateId", ["promptTemplateId"])
+    .index("by_promptTemplateVersionId", ["promptTemplateVersionId"]),
 
   generationJobs: defineTable({
     userId: v.id("users"),
@@ -637,7 +693,8 @@ const schema = defineSchema({
   })
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"])
-    .index("by_conceptId", ["conceptId"]),
+    .index("by_conceptId", ["conceptId"])
+    .index("by_promptCompositionId", ["promptCompositionId"]),
 
   renderOutputs: defineTable({
     userId: v.id("users"),
@@ -662,15 +719,66 @@ const schema = defineSchema({
     status: vFeedbackStatus,
     title: v.optional(v.string()),
     message: v.string(),
+    priority: v.optional(vFeedbackPriority),
+    source: v.optional(vFeedbackSource),
     relatedGenerationJobId: v.optional(v.id("generationJobs")),
     relatedAssetId: v.optional(v.id("assets")),
     baseModelId: v.optional(v.id("baseModels")),
     stylePresetId: v.optional(v.id("stylePresets")),
+    materialPresetId: v.optional(v.id("materialPresets")),
     conceptId: v.optional(v.id("concepts")),
     sourcePage: v.optional(v.string()),
+    contextSnapshotJson: v.optional(v.string()),
+    rootCause: v.optional(vFeedbackRootCause),
+    resolutionOutcome: v.optional(vFeedbackResolutionOutcome),
+    assigneeUserId: v.optional(v.id("users")),
+    internalNote: v.optional(v.string()),
+    userResponseDraft: v.optional(v.string()),
+    userResponse: v.optional(v.string()),
+    responseSentAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    resolutionExperimentRunId: v.optional(v.id("promptExperimentRuns")),
+    // Legacy only. Never return this field to the user-facing queries.
     adminNotes: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_status", ["status"])
+    .index("by_assignee", ["assigneeUserId"]),
+
+  userActivityEvents: defineTable({
+    userId: v.id("users"),
+    eventType: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    summary: v.string(),
+    metadataJson: v.optional(v.string()),
+    occurredAt: v.number(),
+    idempotencyKey: v.optional(v.string()),
+  })
+    .index("by_user_occurredAt", ["userId", "occurredAt"])
+    .index("by_entity", ["entityType", "entityId"])
+    .index("by_idempotencyKey", ["idempotencyKey"]),
+
+  userAdminNotes: defineTable({
+    userId: v.id("users"),
+    authorUserId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_author", ["authorUserId"]),
+
+  userFlags: defineTable({
+    userId: v.id("users"),
+    status: v.union(v.literal("open"), v.literal("resolved")),
+    severity: v.union(v.literal("low"), v.literal("normal"), v.literal("high")),
+    reason: v.string(),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    resolvedAt: v.optional(v.number()),
+  })
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"]),
 

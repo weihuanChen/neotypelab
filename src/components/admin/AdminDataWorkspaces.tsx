@@ -1,14 +1,19 @@
 import { useQuery } from "convex/react";
+import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 
-export function GenerationLogsWorkspace() {
+export function GenerationLogsWorkspace({ initialRunId }: { initialRunId?: string }) {
+  const navigate = useNavigate();
   const jobs = useQuery(api.admin.listGenerationJobsAdmin);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialRunId ?? null);
   useEffect(() => {
     if (!selectedId && jobs?.[0]) setSelectedId(jobs[0]._id);
   }, [jobs, selectedId]);
+  useEffect(() => {
+    if (initialRunId) setSelectedId(initialRunId);
+  }, [initialRunId]);
   const selected = jobs?.find((item) => item._id === selectedId) ?? null;
 
   return (
@@ -18,7 +23,7 @@ export function GenerationLogsWorkspace() {
         <section className="admin-data-table" aria-label="Generation jobs">
           <div className="admin-table-head admin-generation-row"><span>Status</span><span>Type</span><span>Kit</span><span>User</span><span>Time</span></div>
           {jobs === undefined ? <DataEmpty label="Loading generation jobs." /> : jobs.length === 0 ? <DataEmpty label="No generation jobs yet." /> : jobs.map((job) => (
-            <button className={cn("admin-table-row admin-generation-row", selectedId === job._id && "is-active")} key={job._id} onClick={() => setSelectedId(job._id)} type="button">
+            <button className={cn("admin-table-row admin-generation-row", selectedId === job._id && "is-active")} key={job._id} onClick={() => { setSelectedId(job._id); void navigate({ to: "/admin/generations", search: { run: job._id }, replace: true }); }} type="button">
               <StatusText status={job.status} /><span>{formatKind(job.kind)}</span><span>{job.model?.name ?? "—"}</span><span>{job.user?.handle ? `@${job.user.handle}` : job.user?.fullName ?? "—"}</span><time>{formatTime(job._creationTime)}</time>
             </button>
           ))}

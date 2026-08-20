@@ -37,18 +37,24 @@ export type FeedbackCategory = (typeof categoryOptions)[number]["value"];
 
 export type FeedbackWorkbenchSearch = {
   conceptId?: string;
+  generationJobId?: string;
   type?: FeedbackCategory;
+  source?: "prototype" | "generation-result" | "showcase" | "library";
 };
 
 export function parseFeedbackSearch(
   search: Record<string, unknown>
 ): FeedbackWorkbenchSearch {
   const conceptId = parseOptionalSearchValue(search.conceptId);
+  const generationJobId = parseOptionalSearchValue(search.generationJobId);
   const type = parseOptionalSearchValue(search.type);
+  const source = parseOptionalSearchValue(search.source);
 
   return {
     conceptId,
+    generationJobId,
     type: isFeedbackCategory(type) ? type : undefined,
+    source: isFeedbackSource(source) ? source : undefined,
   };
 }
 
@@ -69,6 +75,9 @@ export function FeedbackWorkbench({
   const [conceptId, setConceptId] = useState<string | null>(
     search.conceptId ?? null
   );
+  const [generationJobId, setGenerationJobId] = useState<string | null>(
+    search.generationJobId ?? null
+  );
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -83,13 +92,23 @@ export function FeedbackWorkbench({
   const receiptRef = useRef<HTMLElement>(null);
   const attachedContext = useQuery(
     api.feedback.getContext,
-    conceptId ? { conceptId } : "skip"
+    conceptId || generationJobId
+      ? {
+          conceptId: conceptId ?? undefined,
+          generationJobId: generationJobId ?? undefined,
+        }
+      : "skip"
   );
   const selectedCategory = categoryOptions.find(
     (option) => option.value === category
   );
   const recentReports = useMemo(() => reports?.slice(0, 4) ?? [], [reports]);
   const messageRemaining = 500 - message.length;
+  const submissionSource = search.source ?? (conceptId
+    ? "prototype"
+    : generationJobId
+      ? "generation-result"
+      : "standalone");
 
   useEffect(() => {
     setCategory(search.type ?? null);
@@ -98,6 +117,10 @@ export function FeedbackWorkbench({
   useEffect(() => {
     setConceptId(search.conceptId ?? null);
   }, [search.conceptId]);
+
+  useEffect(() => {
+    setGenerationJobId(search.generationJobId ?? null);
+  }, [search.generationJobId]);
 
   useEffect(() => {
     if (submittedReport) {
@@ -161,16 +184,21 @@ export function FeedbackWorkbench({
         category,
         title: title.trim(),
         message: message.trim(),
-        conceptId:
-          conceptId && attachedContext
-            ? (conceptId as Id<"concepts">)
-            : undefined,
+        conceptId: attachedContext?.concept?._id,
+        relatedGenerationJobId: attachedContext?.generationJob?._id,
         kitVariantId: attachedContext?.kitVariant?._id,
         stylePresetId: attachedContext?.stylePreset?._id,
         relatedAssetId,
-        sourcePage: conceptId
-          ? `/feedback?conceptId=${encodeURIComponent(conceptId)}`
-          : "/feedback",
+        source: submissionSource,
+        sourcePage: submissionSource === "prototype" && conceptId
+          ? `/prototype/${encodeURIComponent(conceptId)}`
+          : submissionSource === "showcase"
+            ? "/showcase"
+            : submissionSource === "library"
+              ? "/library"
+              : generationJobId
+                ? `/library?generationJobId=${encodeURIComponent(generationJobId)}`
+                : "/feedback",
       });
 
       setSubmittedReport({
@@ -302,9 +330,16 @@ export function FeedbackWorkbench({
                   <em>Optional</em>
                 </div>
                 <CompactContextSummary
-                  context={attachedContext}
-                  loading={Boolean(conceptId && attachedContext === undefined)}
-                  onRemove={() => setConceptId(null)}
+                  context={attachedContext ? {
+                    title: attachedContext.concept?.title ?? "Generation run",
+                    kitVariant: attachedContext.kitVariant,
+                    stylePreset: attachedContext.stylePreset,
+                  } : attachedContext}
+                  loading={Boolean((conceptId || generationJobId) && attachedContext === undefined)}
+                  onRemove={() => {
+                    setConceptId(null);
+                    setGenerationJobId(null);
+                  }}
                 />
               </section>
 
@@ -419,7 +454,7 @@ export function FeedbackWorkbench({
             <span>{attachedContext ? "Linked" : "Optional"}</span>
           </header>
 
-          {conceptId && attachedContext === undefined ? (
+          {(conceptId || generationJobId) && attachedContext === undefined ? (
             <div className="feedback-context__empty" aria-live="polite">
               <strong>Loading prototype context.</strong>
               <p>Checking the linked build and generation image.</p>
@@ -429,7 +464,7 @@ export function FeedbackWorkbench({
               <div className="feedback-context__preview">
                 {attachedContext.previewAsset?.publicUrl ? (
                   <img
-                    alt={`${attachedContext.title} generated prototype`}
+                    alt={`${attachedContext.concept?.title ?? "Generation run"} generated prototype`}
                     src={attachedContext.previewAsset.publicUrl}
                   />
                 ) : (
@@ -438,12 +473,14 @@ export function FeedbackWorkbench({
               </div>
               <div className="feedback-context__body">
                 <p className="feedback-context__record">
-                  {formatPrototypeReference(
-                    attachedContext.recordNumber,
-                    attachedContext._id
-                  )}
+                  {attachedContext.concept
+                    ? formatPrototypeReference(
+                        attachedContext.concept.recordNumber,
+                        attachedContext.concept._id
+                      )
+                    : `RUN / ${attachedContext.generationJob?._id.slice(-6).toUpperCase()}`}
                 </p>
-                <h3>{attachedContext.title}</h3>
+                <h3>{attachedContext.concept?.title ?? "Generation result"}</h3>
                 <ContextField
                   label="Kit"
                   value={attachedContext.kitVariant?.name ?? "Not specified"}
@@ -461,6 +498,7 @@ export function FeedbackWorkbench({
                   type="button"
                   onClick={() => {
                     setConceptId(null);
+                    setGenerationJobId(null);
                     setPickerOpen(false);
                   }}
                 >
@@ -623,6 +661,12 @@ function isFeedbackCategory(value: string | undefined): value is FeedbackCategor
   return categoryOptions.some((option) => option.value === value);
 }
 
+function isFeedbackSource(
+  value: string | undefined
+): value is NonNullable<FeedbackWorkbenchSearch["source"]> {
+  return ["prototype", "generation-result", "showcase", "library"].includes(value ?? "");
+}
+
 function parseOptionalSearchValue(value: unknown) {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
@@ -637,11 +681,14 @@ export function formatStatus(status: string) {
   if (status === "open") {
     return "Received";
   }
-  if (status === "triaged") {
+  if (status === "triaged" || status === "reviewing") {
     return "Reviewing";
   }
   if (status === "resolved") {
     return "Resolved";
+  }
+  if (status === "rejected") {
+    return "Rejected";
   }
   return status;
 }

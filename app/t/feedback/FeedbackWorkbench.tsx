@@ -379,7 +379,7 @@ export function FeedbackWorkbench() {
                     {report.concept ? <p>Prototype: {report.concept.title}</p> : null}
                     {report.kitVariant ? <p>Kit Variant: {report.kitVariant.name}</p> : null}
                     {report.stylePreset ? <p>Style DNA: {report.stylePreset.name}</p> : null}
-                    {report.adminNotes ? <p>Admin Notes: {report.adminNotes}</p> : null}
+                    {report.userResponse ? <p>Admin response: {report.userResponse}</p> : null}
                   </div>
                 </article>
               ))

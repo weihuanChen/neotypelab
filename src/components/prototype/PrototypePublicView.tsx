@@ -276,7 +276,7 @@ function PrototypeActions({ concept }: { concept: SharedPrototype }) {
         ) : null}
         <a
           className="showcase-button is-ghost"
-          href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&type=generation-quality`}
+          href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&type=generation-quality&source=prototype`}
         >
           Report generation issue
         </a>

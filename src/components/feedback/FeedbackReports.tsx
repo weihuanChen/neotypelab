@@ -136,10 +136,15 @@ export function FeedbackReportDetail({ feedbackId }: { feedbackId: string }) {
             </section>
           ) : null}
 
-          {report.adminNotes ? (
+          {report.userResponse ? (
             <section className="feedback-detail__response">
-              <span>Review note</span>
-              <p>{report.adminNotes}</p>
+              <span>Admin response</span>
+              <p>{report.userResponse}</p>
+              {report.responseSentAt ? (
+                <time dateTime={new Date(report.responseSentAt).toISOString()}>
+                  {formatReportDate(report.responseSentAt)}
+                </time>
+              ) : null}
             </section>
           ) : null}
         </article>
@@ -175,6 +180,28 @@ export function FeedbackReportDetail({ feedbackId }: { feedbackId: string }) {
               <dt>Style DNA</dt>
               <dd>{report.stylePreset?.name ?? "Not specified"}</dd>
             </div>
+            <div>
+              <dt>Material</dt>
+              <dd>{report.materialPreset?.name ?? "Not specified"}</dd>
+            </div>
+            <div>
+              <dt>Source</dt>
+              <dd>{formatSource(report.source)}</dd>
+            </div>
+            {report.generationJob ? (
+              <div>
+                <dt>Generation</dt>
+                <dd>
+                  R-{report.generationJob._id.slice(-4).toUpperCase()} / {report.generationJob.provider ?? "Provider pending"}
+                </dd>
+              </div>
+            ) : null}
+            {report.resolutionOutcome ? (
+              <div>
+                <dt>Outcome</dt>
+                <dd>{formatOutcome(report.resolutionOutcome)}</dd>
+              </div>
+            ) : null}
           </dl>
           <a className="feedback-detail__new" href="/feedback">
             Send another report →
@@ -183,6 +210,20 @@ export function FeedbackReportDetail({ feedbackId }: { feedbackId: string }) {
       </div>
     </main>
   );
+}
+
+function formatSource(source: string) {
+  return ({
+    prototype: "Prototype page",
+    "generation-result": "Generation result",
+    standalone: "Standalone feedback",
+    showcase: "Showcase",
+    library: "Library",
+  } as Record<string, string>)[source] ?? source;
+}
+
+function formatOutcome(outcome: string) {
+  return outcome.split("-").map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
 }
 
 function FeedbackReportsLoading({ label }: { label: string }) {

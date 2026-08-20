@@ -27,8 +27,10 @@ export const store = mutation({
     const shouldBootstrapAsAdmin = isSuperAdminEmail(email);
 
     const nameFallback = emailUserName(email);
+    const fullName = identity.name ?? nameFallback;
+    const handleSeed = identity.nickname ?? nameFallback;
     const userFields = {
-      fullName: identity.name ?? nameFallback,
+      fullName,
       tokenIdentifier: identity.tokenIdentifier,
       email,
       pictureUrl: identity.pictureUrl,
@@ -37,6 +39,8 @@ export const store = mutation({
       onboardingCompleted: false,
       planType: "free" as const,
       accountStatus: "active" as const,
+      searchText: buildUserSearchText(fullName, email, handleSeed),
+      lastActiveAt: Date.now(),
     };
 
     if (user === null) {
@@ -55,7 +59,7 @@ export const store = mutation({
       const userId = await ctx.db.insert("users", {
         ...userFields,
         isAdmin: shouldBootstrapAsAdmin,
-        handle: await getUniqueHandle(ctx, identity.nickname ?? nameFallback),
+        handle: await getUniqueHandle(ctx, handleSeed),
       });
       user = await ctx.db.get(userId);
       if (user === null) {
@@ -135,6 +139,10 @@ export const adminAccessStatus = query({
 
 function emailUserName(email: string) {
   return email.split("@")[0];
+}
+
+function buildUserSearchText(fullName: string, email: string, handle: string) {
+  return `${fullName} ${email} ${handle}`.trim().toLowerCase();
 }
 
 async function getUniqueHandle(

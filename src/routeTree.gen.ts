@@ -20,7 +20,10 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as TTemplatesRouteImport } from './routes/t_.templates'
+import { Route as TTemplateRouteImport } from './routes/t_.template'
 import { Route as TShowcaseRouteImport } from './routes/t_.showcase'
+import { Route as TPromptLabRouteImport } from './routes/t_.prompt-lab'
 import { Route as TModelsRouteImport } from './routes/t_.models'
 import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as TFeedbackRouteImport } from './routes/t_.feedback'
@@ -121,9 +124,24 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const TTemplatesRoute = TTemplatesRouteImport.update({
+  id: '/t_/templates',
+  path: '/t/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TTemplateRoute = TTemplateRouteImport.update({
+  id: '/t_/template',
+  path: '/t/template',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TShowcaseRoute = TShowcaseRouteImport.update({
   id: '/t_/showcase',
   path: '/t/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TPromptLabRoute = TPromptLabRouteImport.update({
+  id: '/t_/prompt-lab',
+  path: '/t/prompt-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TModelsRoute = TModelsRouteImport.update({
@@ -403,7 +421,10 @@ export interface FileRoutesByFullPath {
   '/t/feedback': typeof TFeedbackRoute
   '/t/library': typeof TLibraryRoute
   '/t/models': typeof TModelsRoute
+  '/t/prompt-lab': typeof TPromptLabRoute
   '/t/showcase': typeof TShowcaseRoute
+  '/t/template': typeof TTemplateRoute
+  '/t/templates': typeof TTemplatesRoute
   '/admin/': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -460,7 +481,10 @@ export interface FileRoutesByTo {
   '/t/feedback': typeof TFeedbackRoute
   '/t/library': typeof TLibraryRoute
   '/t/models': typeof TModelsRoute
+  '/t/prompt-lab': typeof TPromptLabRoute
   '/t/showcase': typeof TShowcaseRoute
+  '/t/template': typeof TTemplateRoute
+  '/t/templates': typeof TTemplatesRoute
   '/admin': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -519,7 +543,10 @@ export interface FileRoutesById {
   '/t_/feedback': typeof TFeedbackRoute
   '/t_/library': typeof TLibraryRoute
   '/t_/models': typeof TModelsRoute
+  '/t_/prompt-lab': typeof TPromptLabRoute
   '/t_/showcase': typeof TShowcaseRoute
+  '/t_/template': typeof TTemplateRoute
+  '/t_/templates': typeof TTemplatesRoute
   '/admin/': typeof AdminIndexRoute
   '/$baseModelSlug/$stylePresetSlug/opengraph-image': typeof BaseModelSlugStylePresetSlugOpengraphImageRoute
   '/creator-pack_/$slug/opengraph-image': typeof CreatorPackSlugOpengraphImageRoute
@@ -579,7 +606,10 @@ export interface FileRouteTypes {
     | '/t/feedback'
     | '/t/library'
     | '/t/models'
+    | '/t/prompt-lab'
     | '/t/showcase'
+    | '/t/template'
+    | '/t/templates'
     | '/admin/'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -636,7 +666,10 @@ export interface FileRouteTypes {
     | '/t/feedback'
     | '/t/library'
     | '/t/models'
+    | '/t/prompt-lab'
     | '/t/showcase'
+    | '/t/template'
+    | '/t/templates'
     | '/admin'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack/$slug/opengraph-image'
@@ -694,7 +727,10 @@ export interface FileRouteTypes {
     | '/t_/feedback'
     | '/t_/library'
     | '/t_/models'
+    | '/t_/prompt-lab'
     | '/t_/showcase'
+    | '/t_/template'
+    | '/t_/templates'
     | '/admin/'
     | '/$baseModelSlug/$stylePresetSlug/opengraph-image'
     | '/creator-pack_/$slug/opengraph-image'
@@ -739,7 +775,10 @@ export interface RootRouteChildren {
   TFeedbackRoute: typeof TFeedbackRoute
   TLibraryRoute: typeof TLibraryRoute
   TModelsRoute: typeof TModelsRoute
+  TPromptLabRoute: typeof TPromptLabRoute
   TShowcaseRoute: typeof TShowcaseRoute
+  TTemplateRoute: typeof TTemplateRoute
+  TTemplatesRoute: typeof TTemplatesRoute
   CreatorPackSlugOpengraphImageRoute: typeof CreatorPackSlugOpengraphImageRoute
   CreatorHandleOpengraphImageRoute: typeof CreatorHandleOpengraphImageRoute
   PilotHandleOpengraphImageRoute: typeof PilotHandleOpengraphImageRoute
@@ -829,11 +868,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/t_/templates': {
+      id: '/t_/templates'
+      path: '/t/templates'
+      fullPath: '/t/templates'
+      preLoaderRoute: typeof TTemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/t_/template': {
+      id: '/t_/template'
+      path: '/t/template'
+      fullPath: '/t/template'
+      preLoaderRoute: typeof TTemplateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/t_/showcase': {
       id: '/t_/showcase'
       path: '/t/showcase'
       fullPath: '/t/showcase'
       preLoaderRoute: typeof TShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/t_/prompt-lab': {
+      id: '/t_/prompt-lab'
+      path: '/t/prompt-lab'
+      fullPath: '/t/prompt-lab'
+      preLoaderRoute: typeof TPromptLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/t_/models': {
@@ -1233,7 +1293,10 @@ const rootRouteChildren: RootRouteChildren = {
   TFeedbackRoute: TFeedbackRoute,
   TLibraryRoute: TLibraryRoute,
   TModelsRoute: TModelsRoute,
+  TPromptLabRoute: TPromptLabRoute,
   TShowcaseRoute: TShowcaseRoute,
+  TTemplateRoute: TTemplateRoute,
+  TTemplatesRoute: TTemplatesRoute,
   CreatorPackSlugOpengraphImageRoute: CreatorPackSlugOpengraphImageRoute,
   CreatorHandleOpengraphImageRoute: CreatorHandleOpengraphImageRoute,
   PilotHandleOpengraphImageRoute: PilotHandleOpengraphImageRoute,

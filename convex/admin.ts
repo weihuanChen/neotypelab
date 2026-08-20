@@ -16,6 +16,10 @@ import {
   UserAccountStatus,
   UserPlan,
   vCreditActionType,
+  vFeedbackPriority,
+  vFeedbackResolutionOutcome,
+  vFeedbackRootCause,
+  vFeedbackStatus,
   vGenerationKind,
   vLlmApiFormat,
   vLlmCapability,
@@ -34,6 +38,9 @@ import { mutation, query } from "./functions";
 import { MutationCtx, QueryCtx } from "./types";
 import { normalizeStringForSearch, slugify } from "./utils";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
+import {
+  promptTemplateVariableDefinitions,
+} from "./promptTemplateVariables";
 
 export const overview = query({
   args: {},
@@ -170,7 +177,12 @@ export const listPromptTemplates = query({
   async handler(ctx) {
     requireSuperAdmin(ctx);
 
-    return (await ctx.db.query("promptTemplates").collect())
+    const [templates, versions] = await Promise.all([
+      ctx.db.query("promptTemplates").collect(),
+      ctx.db.query("promptTemplateVersions").collect(),
+    ]);
+
+    return templates
       .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
       .map((template) => ({
         _id: template._id,
@@ -184,7 +196,161 @@ export const listPromptTemplates = query({
         negativePromptTemplate: template.negativePromptTemplate,
         notePolicy: template.notePolicy,
         isActive: template.isActive,
+        versions: versions
+          .filter((version) => version.promptTemplateId === template._id)
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .map((version) => ({
+            _id: version._id,
+            version: version.version,
+            status: version.status,
+            updatedAt: version.updatedAt,
+          })),
       }));
+  },
+});
+
+export const listPromptTemplateWorkspace = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+
+    const [templates, versions, bindings, profiles, compositions, jobs, experimentRuns] =
+      await Promise.all([
+        ctx.db.query("promptTemplates").collect(),
+        ctx.db.query("promptTemplateVersions").collect(),
+        ctx.db.query("promptTemplateBindings").collect(),
+        ctx.db.query("llmProfiles").collect(),
+        ctx.db.query("promptCompositions").collect(),
+        ctx.db.query("generationJobs").collect(),
+        ctx.db.query("promptExperimentRuns").collect(),
+      ]);
+    const now = Date.now();
+    const profileById = new Map(profiles.map((profile) => [profile._id, profile]));
+    const jobByCompositionId = new Map(
+      jobs
+        .filter((job) => job.promptCompositionId !== undefined)
+        .map((job) => [job.promptCompositionId!, job])
+    );
+
+    return templates
+      .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
+      .map((template) => {
+        const templateVersions = versions
+          .filter((version) => version.promptTemplateId === template._id)
+          .sort((a, b) => b.updatedAt - a.updatedAt);
+        const templateCompositions = compositions.filter(
+          (composition) => composition.promptTemplateId === template._id
+        );
+        const recentCompositions = templateCompositions.filter(
+          (composition) => composition._creationTime >= now - 24 * 60 * 60 * 1000
+        );
+        const failedJobs = templateCompositions
+          .map((composition) => jobByCompositionId.get(composition._id))
+          .filter(
+            (job): job is NonNullable<typeof job> => job !== undefined && job.status === "failed"
+          )
+          .sort((a, b) => b._creationTime - a._creationTime);
+        const latestExperiment = experimentRuns
+          .filter((run) => run.promptTemplateId === template._id)
+          .sort((a, b) => b._creationTime - a._creationTime)
+          .at(0);
+        const templateBindings = bindings
+          .filter((binding) => binding.promptTemplateId === template._id)
+          .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || b.priority - a.priority)
+          .map((binding) => {
+            const profile = profileById.get(binding.llmProfileId);
+            return {
+              _id: binding._id,
+              generationKind: binding.generationKind,
+              renderMode: binding.renderMode,
+              isActive: binding.isActive,
+              isDefault: binding.isDefault,
+              profileName: profile?.name ?? "Missing profile",
+              modelId: profile?.modelId ?? "Unresolved model",
+            };
+          });
+        const latestUpdatedAt = Math.max(
+          template.updatedAt ?? template._creationTime,
+          ...templateVersions.map((version) => version.updatedAt)
+        );
+        const publishedVersion = template.publishedVersionId
+          ? templateVersions.find((version) => version._id === template.publishedVersionId)
+          : templateVersions.find((version) => version.status === "published");
+        const availableVariables = promptTemplateVariableDefinitions.filter((definition) =>
+          definition.kinds.includes(template.kind)
+        );
+
+        return {
+          _id: template._id,
+          _creationTime: template._creationTime,
+          name: template.name,
+          slug: template.slug,
+          kind: template.kind,
+          isActive: template.isActive,
+          publishedVersionId: publishedVersion?._id,
+          updatedAt: latestUpdatedAt,
+          current: {
+            version: template.version,
+            systemPrompt: template.systemPrompt,
+            userPromptTemplate: template.userPromptTemplate,
+            negativePromptTemplate: template.negativePromptTemplate,
+            notePolicy: template.notePolicy,
+          },
+          versions:
+            templateVersions.length > 0
+              ? templateVersions.map((version) => ({
+                  _id: version._id,
+                  version: version.version,
+                  status: version.status,
+                  systemPrompt: version.systemPrompt,
+                  userPromptTemplate: version.userPromptTemplate,
+                  negativePromptTemplate: version.negativePromptTemplate,
+                  notePolicy: version.notePolicy,
+                  createdAt: version.createdAt,
+                  updatedAt: version.updatedAt,
+                  publishedAt: version.publishedAt,
+                  usedVariables: extractTemplateVariables(version.userPromptTemplate),
+                }))
+              : [
+                  {
+                    _id: null,
+                    version: template.version,
+                    status: "published" as const,
+                    systemPrompt: template.systemPrompt,
+                    userPromptTemplate: template.userPromptTemplate,
+                    negativePromptTemplate: template.negativePromptTemplate,
+                    notePolicy: template.notePolicy,
+                    createdAt: template._creationTime,
+                    updatedAt: template.updatedAt ?? template._creationTime,
+                    publishedAt: template._creationTime,
+                    usedVariables: extractTemplateVariables(template.userPromptTemplate),
+                  },
+                ],
+          variables: availableVariables.map((definition) => ({
+            ...definition,
+            token: `{{${definition.key}}}`,
+          })),
+          usage: {
+            last24h: recentCompositions.length,
+            total: templateCompositions.length,
+            lastFailureAt: failedJobs[0]?._creationTime,
+            lastFailure: failedJobs[0]?.errorMessage,
+            latestExperimentAt: latestExperiment?._creationTime,
+            latestExperimentStatus: latestExperiment?.status,
+          },
+          bindings: templateBindings,
+        };
+      });
+  },
+});
+
+export const getPromptTemplateVersion = query({
+  args: {
+    promptTemplateVersionId: v.id("promptTemplateVersions"),
+  },
+  async handler(ctx, { promptTemplateVersionId }) {
+    requireSuperAdmin(ctx);
+    return await ctx.db.get(promptTemplateVersionId);
   },
 });
 
@@ -646,6 +812,7 @@ export const listPriceRules = query({
 export const composePromptLabPreview = mutation({
   args: {
     promptTemplateId: v.id("promptTemplates"),
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
     baseModelId: v.optional(v.id("baseModels")),
     kitVariantId: v.optional(v.id("baseModels")),
     stylePresetId: v.optional(v.id("stylePresets")),
@@ -686,6 +853,7 @@ export const listPromptExperimentRuns = query({
           templateName: run.templateName,
           templateVersion: run.templateVersion,
           promptTemplateId: run.promptTemplateId,
+          promptTemplateVersionId: run.promptTemplateVersionId,
           composedPrompt: run.composedPrompt,
           negativePrompt: run.negativePrompt,
           source: run.source,
@@ -719,9 +887,145 @@ export const listPromptExperimentRuns = query({
   },
 });
 
+export const listPromptExperimentRunRegistry = query({
+  args: {
+    page: v.number(),
+    pageSize: v.number(),
+    search: v.optional(v.string()),
+    promptTemplateId: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    status: v.optional(
+      v.union(
+        v.literal("ready-for-web"),
+        v.literal("tested"),
+        v.literal("selected"),
+        v.literal("rejected"),
+        v.literal("archived")
+      )
+    ),
+    selectedRunId: v.optional(v.string()),
+  },
+  async handler(ctx, args) {
+    requireSuperAdmin(ctx);
+
+    const allRuns = await ctx.db.query("promptExperimentRuns").collect();
+    const normalizedTemplateId = args.promptTemplateId
+      ? ctx.db.normalizeId("promptTemplates", args.promptTemplateId)
+      : null;
+    const normalizedSelectedRunId = args.selectedRunId
+      ? ctx.db.normalizeId("promptExperimentRuns", args.selectedRunId)
+      : null;
+    const search = normalizeAdminSearch(args.search);
+    const provider = args.provider?.trim().toLowerCase();
+    const pageSize = Math.min(100, Math.max(1, Math.round(args.pageSize)));
+
+    const providers = Array.from(
+      new Set(
+        allRuns
+          .map((run) => cleanOptionalString(run.providerLabel))
+          .filter((value): value is string => value !== undefined)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+    const filtered = allRuns
+      .filter((run) => {
+        if (args.promptTemplateId && normalizedTemplateId === null) return false;
+        if (normalizedTemplateId && run.promptTemplateId !== normalizedTemplateId) return false;
+        if (args.status && run.status !== args.status) return false;
+        if (provider && run.providerLabel?.trim().toLowerCase() !== provider) return false;
+        if (!search) return true;
+        return normalizeAdminSearch(
+          [
+            run.templateName,
+            run.templateVersion,
+            run.templateKind,
+            run.providerLabel,
+            run.modelLabel,
+            run.outputNotes,
+            run.parameterNotes,
+            ...run.failureTags,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        ).includes(search);
+      })
+      .sort((a, b) => b._creationTime - a._creationTime);
+    const filteredTotal = filtered.length;
+    const pageCount = Math.ceil(filteredTotal / pageSize);
+    const pageIndex = Math.min(
+      Math.max(0, Math.round(args.page)),
+      Math.max(0, pageCount - 1)
+    );
+    const pageRuns = filtered.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+    const selectedRun = normalizedSelectedRunId
+      ? allRuns.find((run) => run._id === normalizedSelectedRunId) ?? null
+      : null;
+    const runUsers = Array.from(
+      new Set(
+        [...pageRuns, ...(selectedRun ? [selectedRun] : [])].map((run) => run.userId)
+      )
+    );
+    const users = await Promise.all(runUsers.map((userId) => ctx.db.get(userId)));
+    const userById = new Map(
+      users.filter((user) => user !== null).map((user) => [user!._id, user!])
+    );
+    const serialize = (run: (typeof allRuns)[number]) => {
+      const actor = userById.get(run.userId);
+      return {
+        _id: run._id,
+        _creationTime: run._creationTime,
+        templateKind: run.templateKind,
+        templateName: run.templateName,
+        templateVersion: run.templateVersion,
+        promptTemplateId: run.promptTemplateId,
+        promptTemplateVersionId: run.promptTemplateVersionId,
+        composedPrompt: run.composedPrompt,
+        negativePrompt: run.negativePrompt,
+        source: run.source,
+        status: run.status,
+        providerLabel: run.providerLabel,
+        modelLabel: run.modelLabel,
+        vendorUrl: run.vendorUrl,
+        parameterNotes: run.parameterNotes,
+        outputImageUrl: run.outputImageUrl,
+        outputNotes: run.outputNotes,
+        failureTags: run.failureTags,
+        styleHitScore: run.styleHitScore,
+        silhouetteScore: run.silhouetteScore,
+        paintabilityScore: run.paintabilityScore,
+        promptAdherenceScore: run.promptAdherenceScore,
+        visualImpactScore: run.visualImpactScore,
+        overallScore: run.overallScore,
+        selectedAsWinner: run.selectedAsWinner,
+        inputSnapshot: safeParseJson(run.inputSnapshotJson),
+        templateSnapshot: safeParseJson(run.templateSnapshotJson),
+        actor: actor
+          ? {
+              _id: actor._id,
+              fullName: actor.fullName,
+              email: actor.email,
+              handle: actor.handle,
+            }
+          : null,
+      };
+    };
+
+    return {
+      page: pageRuns.map(serialize),
+      selectedRun: selectedRun ? serialize(selectedRun) : null,
+      pageIndex,
+      pageSize,
+      pageCount,
+      filteredTotal,
+      allTotal: allRuns.length,
+      providers,
+    };
+  },
+});
+
 export const savePromptExperimentRun = mutation({
   args: {
     promptTemplateId: v.id("promptTemplates"),
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
     baseModelId: v.optional(v.id("baseModels")),
     kitVariantId: v.optional(v.id("baseModels")),
     stylePresetId: v.optional(v.id("stylePresets")),
@@ -753,9 +1057,10 @@ export const savePromptExperimentRun = mutation({
     const runId = await ctx.db.insert("promptExperimentRuns", {
       userId: viewer._id,
       promptTemplateId: payload.template._id,
+      promptTemplateVersionId: payload.templateVersionId,
       templateKind: payload.template.kind,
       templateName: payload.template.name,
-      templateVersion: payload.template.version,
+      templateVersion: payload.templateSnapshot.version,
       templateSnapshotJson: JSON.stringify(payload.templateSnapshot),
       inputSnapshotJson: JSON.stringify(payload.inputSnapshot),
       composedPrompt: payload.composedPrompt,
@@ -790,8 +1095,9 @@ export const savePromptExperimentRun = mutation({
       detailsJson: JSON.stringify({
         runId,
         promptTemplateId: payload.template._id,
+        promptTemplateVersionId: payload.templateVersionId,
         templateKind: payload.template.kind,
-        templateVersion: payload.template.version,
+        templateVersion: payload.templateSnapshot.version,
         providerLabel: args.providerLabel,
         modelLabel: args.modelLabel,
         selectedAsWinner,
@@ -1039,11 +1345,25 @@ export const listFeedbackPipeline = query({
 
     const enriched = await Promise.all(
       reports.map(async (report) => {
-        const [baseModel, stylePreset, concept, generationJob, queueItem] = await Promise.all([
+        const [
+          baseModel,
+          stylePreset,
+          materialPreset,
+          concept,
+          generationJob,
+          attachment,
+          resolutionExperiment,
+          queueItem,
+        ] = await Promise.all([
           report.baseModelId ? ctx.db.get(report.baseModelId) : null,
           report.stylePresetId ? ctx.db.get(report.stylePresetId) : null,
+          report.materialPresetId ? ctx.db.get(report.materialPresetId) : null,
           report.conceptId ? ctx.db.get(report.conceptId) : null,
           report.relatedGenerationJobId ? ctx.db.get(report.relatedGenerationJobId) : null,
+          report.relatedAssetId ? ctx.db.get(report.relatedAssetId) : null,
+          report.resolutionExperimentRunId
+            ? ctx.db.get(report.resolutionExperimentRunId)
+            : null,
           ctx.db
             .query("adminQueue")
             .withIndex("by_itemType_itemId", (q) =>
@@ -1057,11 +1377,23 @@ export const listFeedbackPipeline = query({
         return {
           _id: report._id,
           _creationTime: report._creationTime,
+          recordNumber: report.recordNumber,
           category: report.category,
-          status: report.status,
-          message: report.message,
+          status: normalizeAdminFeedbackStatus(report.status),
+          priority: report.priority ?? priorityFromLegacyQueue(queueItem?.priority),
+          title: report.title ?? legacyFeedbackTitle(report.message),
+          message: report.title ? report.message : legacyFeedbackMessage(report.message),
+          source: report.source ?? inferAdminFeedbackSource(report),
           sourcePage: report.sourcePage,
-          adminNotes: report.adminNotes,
+          contextSnapshot: safeParseJson(report.contextSnapshotJson),
+          rootCause: report.rootCause,
+          resolutionOutcome: report.resolutionOutcome,
+          internalNote: report.internalNote ?? report.adminNotes,
+          adminNotes: report.internalNote ?? report.adminNotes,
+          userResponseDraft: report.userResponseDraft ?? report.userResponse,
+          userResponse: report.userResponse,
+          responseSentAt: report.responseSentAt,
+          resolvedAt: report.resolvedAt,
           reporter: userById.get(report.userId)
             ? {
                 _id: report.userId,
@@ -1078,11 +1410,40 @@ export const listFeedbackPipeline = query({
                 name: stylePreset.name,
               }
             : null,
+          materialPreset: materialPreset
+            ? {
+                _id: materialPreset._id,
+                name: materialPreset.name,
+              }
+            : null,
           concept: concept
             ? {
                 _id: concept._id,
+                recordNumber: concept.recordNumber,
                 title: concept.title,
                 status: concept.status,
+              }
+            : null,
+          attachment: attachment?.publicUrl
+            ? {
+                _id: attachment._id,
+                publicUrl: attachment.publicUrl,
+                contentType: attachment.contentType,
+              }
+            : null,
+          resolutionExperiment: resolutionExperiment
+            ? {
+                _id: resolutionExperiment._id,
+                templateName: resolutionExperiment.templateName,
+                templateVersion: resolutionExperiment.templateVersion,
+                status: resolutionExperiment.status,
+              }
+            : null,
+          assignee: report.assigneeUserId && userById.get(report.assigneeUserId)
+            ? {
+                _id: report.assigneeUserId,
+                fullName: userById.get(report.assigneeUserId)!.fullName,
+                handle: userById.get(report.assigneeUserId)!.handle,
               }
             : null,
           generationJob: generationJob
@@ -1107,10 +1468,11 @@ export const listFeedbackPipeline = query({
     );
 
     return enriched.sort((a, b) => {
-      const queuePriorityA = a.queue?.priority ?? 999;
-      const queuePriorityB = b.queue?.priority ?? 999;
+      const priorityWeight = { high: 0, normal: 1, low: 2 } as const;
+      const queuePriorityA = priorityWeight[a.priority];
+      const queuePriorityB = priorityWeight[b.priority];
       if (a.status !== b.status) {
-        const weight = { open: 0, triaged: 1, resolved: 2 } as const;
+        const weight = { open: 0, reviewing: 1, resolved: 2, rejected: 3 } as const;
         return weight[a.status] - weight[b.status];
       }
       if (queuePriorityA !== queuePriorityB) {
@@ -1118,6 +1480,53 @@ export const listFeedbackPipeline = query({
       }
       return b._creationTime - a._creationTime;
     });
+  },
+});
+
+export const getFeedbackPromptLabContext = query({
+  args: { feedbackId: v.string() },
+  async handler(ctx, { feedbackId }) {
+    requireSuperAdmin(ctx);
+    const normalizedId = ctx.db.normalizeId("feedbackReports", feedbackId);
+    const report = normalizedId ? await ctx.db.get(normalizedId) : null;
+    if (!report) return null;
+
+    const generationJob = report.relatedGenerationJobId
+      ? await ctx.db.get(report.relatedGenerationJobId)
+      : null;
+    const inputSnapshot = safeParseJson(generationJob?.inputSnapshotJson);
+    const input = isRecord(inputSnapshot) ? inputSnapshot : {};
+    const moodTags = Array.isArray(input.moodTags)
+      ? input.moodTags.filter((value): value is MoodTag =>
+          typeof value === "string" && [
+            "command-presence",
+            "stealth-tension",
+            "industrial-hazard",
+            "reactor-glow",
+            "field-fatigue",
+            "ceremonial-clean",
+          ].includes(value)
+        )
+      : [];
+    const weatheringLevel: "clean" | "light" | "heavy" = input.weatheringLevel === "light" || input.weatheringLevel === "heavy"
+      ? input.weatheringLevel
+      : "clean";
+
+    return {
+      _id: report._id,
+      reference: report.recordNumber
+        ? `FB-${String(report.recordNumber).padStart(4, "0")}`
+        : `FB-${report._id.slice(-4).toUpperCase()}`,
+      title: report.title ?? legacyFeedbackTitle(report.message),
+      message: report.title ? report.message : legacyFeedbackMessage(report.message),
+      kitVariantId: report.baseModelId,
+      stylePresetId: report.stylePresetId,
+      materialPresetId: report.materialPresetId,
+      conceptId: report.conceptId,
+      generationJobId: report.relatedGenerationJobId,
+      moodTags,
+      weatheringLevel,
+    };
   },
 });
 
@@ -1138,7 +1547,7 @@ export const listCatalogData = query({
       kitVariantsRaw
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((model) => summarizeBaseModelWithHierarchy(ctx, model))
-    ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
+    );
 
     return {
       kitVariants,
@@ -1307,7 +1716,7 @@ export const listCreatorPacksAdmin = query({
       kitVariantsRaw
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((model) => summarizeBaseModelWithHierarchy(ctx, model))
-    ).then((items) => items.filter((item): item is NonNullable<typeof item> => item !== null));
+    );
     return {
       packs: await Promise.all(
         packs
@@ -1475,6 +1884,8 @@ export const adjustUserCredits = mutation({
       referenceTable: "users",
       referenceId: userId,
       description,
+      sourceType: "admin-adjustment",
+      operatorUserId: viewer._id,
     });
 
     await writeAdminAuditLog(ctx, {
@@ -1502,13 +1913,34 @@ export const reviewFeedback = mutation({
   args: {
     feedbackId: v.id("feedbackReports"),
     adminNotes: v.optional(v.string()),
-    status: v.union(v.literal("open"), v.literal("triaged"), v.literal("resolved")),
-    queueStatus: v.union(v.literal("open"), v.literal("in-review"), v.literal("done")),
-    priority: v.optional(v.number()),
+    internalNote: v.optional(v.string()),
+    userResponse: v.optional(v.string()),
+    status: vFeedbackStatus,
+    queueStatus: v.optional(v.union(v.literal("open"), v.literal("in-review"), v.literal("done"))),
+    priority: v.optional(v.union(vFeedbackPriority, v.number())),
+    rootCause: v.optional(vFeedbackRootCause),
+    resolutionOutcome: v.optional(vFeedbackResolutionOutcome),
+    assigneeUserId: v.optional(v.id("users")),
     assignToSelf: v.optional(v.boolean()),
+    sendResponse: v.optional(v.boolean()),
+    resolutionExperimentRunId: v.optional(v.id("promptExperimentRuns")),
   },
-  async handler(ctx, { feedbackId, adminNotes, status, queueStatus, priority, assignToSelf }) {
+  async handler(ctx, args) {
     const { viewer } = requireSuperAdmin(ctx);
+    const {
+      feedbackId,
+      adminNotes,
+      internalNote,
+      userResponse,
+      rootCause,
+      resolutionOutcome,
+      assigneeUserId,
+      assignToSelf,
+      sendResponse,
+      resolutionExperimentRunId,
+    } = args;
+    const status = normalizeAdminFeedbackStatus(args.status);
+    const priority = normalizeAdminFeedbackPriority(args.priority);
     const report = await ctx.db.get(feedbackId);
     if (report === null) {
       throw new Error("Feedback report not found");
@@ -1521,9 +1953,34 @@ export const reviewFeedback = mutation({
       )
       .unique();
 
+    if (sendResponse && !userResponse?.trim()) {
+      throw new Error("Add a user response before sending it");
+    }
+    if ((status === "resolved" || status === "rejected") && !resolutionOutcome) {
+      throw new Error("Choose a resolution outcome before closing the report");
+    }
+    if (resolutionExperimentRunId && !(await ctx.db.get(resolutionExperimentRunId))) {
+      throw new Error("The selected Prompt Lab experiment no longer exists");
+    }
+
+    const queueStatus = args.queueStatus ?? (
+      status === "open" ? "open" : status === "reviewing" ? "in-review" : "done"
+    );
+    const now = Date.now();
     await ctx.db.patch(feedbackId, {
       status,
-      adminNotes,
+      priority,
+      internalNote: internalNote ?? adminNotes,
+      userResponseDraft: userResponse?.trim() || undefined,
+      userResponse: sendResponse
+        ? userResponse?.trim() || undefined
+        : report.userResponse,
+      rootCause,
+      resolutionOutcome,
+      assigneeUserId: assignToSelf ? viewer._id : assigneeUserId,
+      responseSentAt: sendResponse ? now : report.responseSentAt,
+      resolvedAt: status === "resolved" || status === "rejected" ? report.resolvedAt ?? now : undefined,
+      resolutionExperimentRunId,
     });
 
     if (queueItem !== null) {
@@ -1539,7 +1996,7 @@ export const reviewFeedback = mutation({
         queuePatch.assignedToUserId = viewer._id;
       }
       if (priority !== undefined) {
-        queuePatch.priority = priority;
+        queuePatch.priority = feedbackPriorityToQueue(priority);
       }
       if (adminNotes !== undefined) {
         queuePatch.summary = queueItem.summary;
@@ -1557,7 +2014,11 @@ export const reviewFeedback = mutation({
         status,
         queueStatus,
         priority,
+        rootCause,
+        resolutionOutcome,
         assignToSelf: Boolean(assignToSelf),
+        sendResponse: Boolean(sendResponse),
+        resolutionExperimentRunId,
       }),
     });
   },
@@ -2117,6 +2578,19 @@ export const updateUserAccess = mutation({
 
     await ctx.db.patch(userId, patch);
 
+    const changedFields = Object.keys(patch);
+    if (changedFields.length > 0) {
+      await ctx.db.insert("userActivityEvents", {
+        userId,
+        eventType: "account-access-updated",
+        entityType: "user",
+        entityId: userId,
+        summary: `Account access updated: ${changedFields.join(", ")}`,
+        metadataJson: JSON.stringify(patch),
+        occurredAt: Date.now(),
+      });
+    }
+
     await writeAdminAuditLog(ctx, {
       actorUserId: viewer._id,
       action: "update-user-access",
@@ -2215,6 +2689,234 @@ export const updatePromptTemplate = mutation({
         version,
         kind,
         isActive,
+      }),
+    });
+  },
+});
+
+export const createPromptTemplateDraft = mutation({
+  args: {
+    promptTemplateId: v.id("promptTemplates"),
+  },
+  async handler(ctx, { promptTemplateId }) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const template = await ctx.db.get(promptTemplateId);
+    if (template === null) {
+      throw new Error("Prompt template not found");
+    }
+
+    await ensurePromptTemplateVersionHistory(ctx, template, viewer._id);
+    const versions = await ctx.db
+      .query("promptTemplateVersions")
+      .withIndex("by_template", (q) => q.eq("promptTemplateId", promptTemplateId))
+      .collect();
+    const existingDraft = versions
+      .filter((version) => version.status === "draft")
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .at(0);
+    if (existingDraft) {
+      return { versionId: existingDraft._id, version: existingDraft.version, reused: true };
+    }
+
+    const published = versions.find((version) => version.status === "published");
+    const now = Date.now();
+    const version = nextPromptTemplateVersion(
+      versions.map((item) => item.version),
+      published?.version ?? template.version
+    );
+    const versionId = await ctx.db.insert("promptTemplateVersions", {
+      promptTemplateId,
+      version,
+      status: "draft",
+      systemPrompt: published?.systemPrompt ?? template.systemPrompt,
+      userPromptTemplate: published?.userPromptTemplate ?? template.userPromptTemplate,
+      negativePromptTemplate:
+        published?.negativePromptTemplate ?? template.negativePromptTemplate,
+      notePolicy: published?.notePolicy ?? template.notePolicy,
+      createdAt: now,
+      updatedAt: now,
+      createdByUserId: viewer._id,
+      updatedByUserId: viewer._id,
+    });
+    await ctx.db.patch(promptTemplateId, { updatedAt: now, updatedByUserId: viewer._id });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "create-prompt-template-draft",
+      entityType: "promptTemplateVersion",
+      entityId: versionId,
+      detailsJson: JSON.stringify({ promptTemplateId, versionId, version }),
+    });
+    return { versionId, version, reused: false };
+  },
+});
+
+export const updatePromptTemplateDraft = mutation({
+  args: {
+    promptTemplateVersionId: v.id("promptTemplateVersions"),
+    systemPrompt: v.string(),
+    userPromptTemplate: v.string(),
+    negativePromptTemplate: v.optional(v.string()),
+    notePolicy: v.optional(v.string()),
+  },
+  async handler(
+    ctx,
+    {
+      promptTemplateVersionId,
+      systemPrompt,
+      userPromptTemplate,
+      negativePromptTemplate,
+      notePolicy,
+    }
+  ) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const version = await ctx.db.get(promptTemplateVersionId);
+    if (version === null) {
+      throw new Error("Prompt template version not found");
+    }
+    if (version.status !== "draft") {
+      throw new Error("Only draft versions can be edited");
+    }
+    validatePromptTemplateContent(systemPrompt, userPromptTemplate);
+    const now = Date.now();
+    await ctx.db.patch(promptTemplateVersionId, {
+      systemPrompt,
+      userPromptTemplate,
+      negativePromptTemplate,
+      notePolicy,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+    await ctx.db.patch(version.promptTemplateId, {
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-prompt-template-draft",
+      entityType: "promptTemplateVersion",
+      entityId: promptTemplateVersionId,
+      detailsJson: JSON.stringify({
+        promptTemplateId: version.promptTemplateId,
+        promptTemplateVersionId,
+        version: version.version,
+        usedVariables: extractTemplateVariables(userPromptTemplate),
+      }),
+    });
+    return {
+      updatedAt: now,
+      usedVariables: extractTemplateVariables(userPromptTemplate),
+    };
+  },
+});
+
+export const publishPromptTemplateVersion = mutation({
+  args: {
+    promptTemplateVersionId: v.id("promptTemplateVersions"),
+  },
+  async handler(ctx, { promptTemplateVersionId }) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const version = await ctx.db.get(promptTemplateVersionId);
+    if (version === null) {
+      throw new Error("Prompt template version not found");
+    }
+    if (version.status !== "draft") {
+      throw new Error("Only a draft version can be published");
+    }
+    const template = await ctx.db.get(version.promptTemplateId);
+    if (template === null) {
+      throw new Error("Prompt template not found");
+    }
+    validatePromptTemplateContent(version.systemPrompt, version.userPromptTemplate);
+    const availableVariableKeys = new Set(
+      promptTemplateVariableDefinitions
+        .filter((definition) => definition.kinds.includes(template.kind))
+        .map((definition) => definition.key)
+    );
+    const unresolvedVariables = extractTemplateVariables(version.userPromptTemplate).filter(
+      (variable) => !availableVariableKeys.has(variable)
+    );
+    if (unresolvedVariables.length > 0) {
+      throw new Error(
+        `Cannot publish with unsupported variables: ${unresolvedVariables
+          .map((variable) => `{{${variable}}}`)
+          .join(", ")}`
+      );
+    }
+
+    const versions = await ctx.db
+      .query("promptTemplateVersions")
+      .withIndex("by_template", (q) => q.eq("promptTemplateId", template._id))
+      .collect();
+    const now = Date.now();
+    for (const current of versions) {
+      if (current.status === "published" && current._id !== promptTemplateVersionId) {
+        await ctx.db.patch(current._id, {
+          status: "archived",
+          updatedAt: now,
+          updatedByUserId: viewer._id,
+        });
+      }
+    }
+    await ctx.db.patch(promptTemplateVersionId, {
+      status: "published",
+      publishedAt: now,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+    await ctx.db.patch(template._id, {
+      version: version.version,
+      systemPrompt: version.systemPrompt,
+      userPromptTemplate: version.userPromptTemplate,
+      negativePromptTemplate: version.negativePromptTemplate,
+      notePolicy: version.notePolicy,
+      isActive: true,
+      publishedVersionId: promptTemplateVersionId,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "publish-prompt-template-version",
+      entityType: "promptTemplateVersion",
+      entityId: promptTemplateVersionId,
+      detailsJson: JSON.stringify({
+        promptTemplateId: template._id,
+        promptTemplateVersionId,
+        version: version.version,
+      }),
+    });
+    return { publishedAt: now, version: version.version };
+  },
+});
+
+export const archivePromptTemplateVersion = mutation({
+  args: {
+    promptTemplateVersionId: v.id("promptTemplateVersions"),
+  },
+  async handler(ctx, { promptTemplateVersionId }) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const version = await ctx.db.get(promptTemplateVersionId);
+    if (version === null) {
+      throw new Error("Prompt template version not found");
+    }
+    if (version.status === "published") {
+      throw new Error("Published versions cannot be archived directly");
+    }
+    const now = Date.now();
+    await ctx.db.patch(promptTemplateVersionId, {
+      status: "archived",
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "archive-prompt-template-version",
+      entityType: "promptTemplateVersion",
+      entityId: promptTemplateVersionId,
+      detailsJson: JSON.stringify({
+        promptTemplateId: version.promptTemplateId,
+        promptTemplateVersionId,
+        version: version.version,
       }),
     });
   },
@@ -2638,6 +3340,7 @@ async function composePromptLabPayload(
   ctx: MutationCtx | QueryCtx,
   input: {
     promptTemplateId: Id<"promptTemplates">;
+    promptTemplateVersionId?: Id<"promptTemplateVersions">;
     baseModelId?: Id<"baseModels">;
     kitVariantId?: Id<"baseModels">;
     stylePresetId?: Id<"stylePresets">;
@@ -2652,6 +3355,7 @@ async function composePromptLabPayload(
   const selectedKitVariantId = input.kitVariantId ?? input.baseModelId;
   const [
     template,
+    templateVersion,
     kitVariant,
     stylePreset,
     materialPreset,
@@ -2659,6 +3363,7 @@ async function composePromptLabPayload(
     paintMappings,
   ] = await Promise.all([
     ctx.db.get(input.promptTemplateId),
+    input.promptTemplateVersionId ? ctx.db.get(input.promptTemplateVersionId) : null,
     selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
     input.stylePresetId ? ctx.db.get(input.stylePresetId) : null,
     input.materialPresetId ? ctx.db.get(input.materialPresetId) : null,
@@ -2669,6 +3374,10 @@ async function composePromptLabPayload(
   if (template === null) {
     throw new Error("Prompt template not found");
   }
+  if (templateVersion !== null && templateVersion.promptTemplateId !== template._id) {
+    throw new Error("Prompt template version does not belong to the selected template");
+  }
+  const promptSource = templateVersion ?? template;
 
   const sanitizedMoodTags = Array.from(new Set(input.moodTags ?? []));
   const sanitizedNotes = cleanOptionalString(input.notes);
@@ -2725,8 +3434,8 @@ async function composePromptLabPayload(
     weatheringLevel: input.weatheringLevel,
   };
   const composedPrompt = appendPromptFallbackLines(
-    applyTemplate(template.userPromptTemplate, values),
-    template.userPromptTemplate,
+    applyTemplate(promptSource.userPromptTemplate, values),
+    promptSource.userPromptTemplate,
     {
       stylePreset: `Style DNA: ${values.stylePreset}`,
       materialPreset: `Material Profile: ${values.materialPreset}`,
@@ -2738,8 +3447,8 @@ async function composePromptLabPayload(
       remixSource: values.remixSource ? `Remix Source: ${values.remixSource}` : "",
     }
   );
-  const negativePrompt = template.negativePromptTemplate;
-  const usedVariables = extractTemplateVariables(template.userPromptTemplate);
+  const negativePrompt = promptSource.negativePromptTemplate;
+  const usedVariables = extractTemplateVariables(promptSource.userPromptTemplate);
   const availableVariables = Object.keys(values).sort();
   const unresolvedVariables = usedVariables.filter((variable) => !(variable in values));
   const emptySelectionWarnings = [
@@ -2793,16 +3502,19 @@ async function composePromptLabPayload(
     name: template.name,
     slug: template.slug,
     kind: template.kind,
-    version: template.version,
-    systemPrompt: template.systemPrompt,
-    userPromptTemplate: template.userPromptTemplate,
-    negativePromptTemplate: template.negativePromptTemplate,
-    notePolicy: template.notePolicy,
+    versionId: templateVersion?._id,
+    version: promptSource.version,
+    versionStatus: templateVersion?.status ?? "published",
+    systemPrompt: promptSource.systemPrompt,
+    userPromptTemplate: promptSource.userPromptTemplate,
+    negativePromptTemplate: promptSource.negativePromptTemplate,
+    notePolicy: promptSource.notePolicy,
     isActive: template.isActive,
   };
 
   return {
     template,
+    templateVersionId: templateVersion?._id,
     templateSnapshot,
     inputSnapshot,
     composedPrompt,
@@ -2811,7 +3523,7 @@ async function composePromptLabPayload(
     usedVariables,
     availableVariables,
     copyBlocks: {
-      systemPrompt: template.systemPrompt,
+      systemPrompt: promptSource.systemPrompt,
       userPrompt: composedPrompt,
       negativePrompt: negativePrompt ?? "",
     },
@@ -2838,6 +3550,68 @@ function appendPromptFallbackLines(
   return `${prompt}\n${appendedLines.join("\n")}`;
 }
 
+async function ensurePromptTemplateVersionHistory(
+  ctx: MutationCtx,
+  template: Doc<"promptTemplates">,
+  actorUserId: Id<"users">
+) {
+  const versions = await ctx.db
+    .query("promptTemplateVersions")
+    .withIndex("by_template", (q) => q.eq("promptTemplateId", template._id))
+    .collect();
+  const published = versions.find((version) => version.status === "published");
+  if (published) {
+    if (template.publishedVersionId !== published._id) {
+      await ctx.db.patch(template._id, { publishedVersionId: published._id });
+    }
+    return published._id;
+  }
+
+  const now = Date.now();
+  const publishedVersionId = await ctx.db.insert("promptTemplateVersions", {
+    promptTemplateId: template._id,
+    version: template.version,
+    status: "published",
+    systemPrompt: template.systemPrompt,
+    userPromptTemplate: template.userPromptTemplate,
+    negativePromptTemplate: template.negativePromptTemplate,
+    notePolicy: template.notePolicy,
+    createdAt: template._creationTime,
+    updatedAt: template.updatedAt ?? now,
+    publishedAt: template.updatedAt ?? template._creationTime,
+    createdByUserId: template.updatedByUserId ?? actorUserId,
+    updatedByUserId: template.updatedByUserId ?? actorUserId,
+  });
+  await ctx.db.patch(template._id, {
+    publishedVersionId,
+    updatedAt: template.updatedAt ?? now,
+    updatedByUserId: template.updatedByUserId ?? actorUserId,
+  });
+  return publishedVersionId;
+}
+
+function nextPromptTemplateVersion(existingVersions: string[], fallback: string) {
+  const parsed = [...existingVersions, fallback]
+    .map((version) => /^p(\d+)\.v(\d+)/i.exec(version))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map((match) => ({ major: Number(match[1]), minor: Number(match[2]) }))
+    .sort((a, b) => b.major - a.major || b.minor - a.minor)
+    .at(0);
+  if (!parsed) {
+    return `${fallback.replace(/\s+/g, "-")}-draft`;
+  }
+  return `p${parsed.major}.v${parsed.minor + 1}`;
+}
+
+function validatePromptTemplateContent(systemPrompt: string, userPromptTemplate: string) {
+  if (systemPrompt.trim().length === 0) {
+    throw new Error("System prompt cannot be empty");
+  }
+  if (userPromptTemplate.trim().length === 0) {
+    throw new Error("User prompt template cannot be empty");
+  }
+}
+
 function extractTemplateVariables(template: string) {
   return Array.from(template.matchAll(/\{\{(\w+)\}\}/g))
     .map((match) => match[1])
@@ -2857,12 +3631,53 @@ function cleanOptionalString(value?: string) {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-function safeParseJson(value: string) {
+function normalizeAdminFeedbackStatus(status: string) {
+  return status === "triaged" ? "reviewing" as const : status as "open" | "reviewing" | "resolved" | "rejected";
+}
+
+function normalizeAdminFeedbackPriority(priority?: string | number) {
+  if (typeof priority === "number") return priorityFromLegacyQueue(priority);
+  if (priority === "low" || priority === "normal" || priority === "high") return priority;
+  return "normal" as const;
+}
+
+function priorityFromLegacyQueue(priority?: number) {
+  if (priority !== undefined && priority <= 10) return "high" as const;
+  if (priority !== undefined && priority >= 30) return "low" as const;
+  return "normal" as const;
+}
+
+function feedbackPriorityToQueue(priority: "low" | "normal" | "high") {
+  return priority === "high" ? 10 : priority === "low" ? 30 : 20;
+}
+
+function inferAdminFeedbackSource(report: Doc<"feedbackReports">) {
+  if (report.relatedGenerationJobId) return "generation-result" as const;
+  if (report.conceptId) return "prototype" as const;
+  return "standalone" as const;
+}
+
+function legacyFeedbackTitle(message: string) {
+  const [firstLine] = message.split("\n");
+  return firstLine.length <= 80 ? firstLine : "Feedback report";
+}
+
+function legacyFeedbackMessage(message: string) {
+  const parts = message.split(/\n\s*\n/);
+  return parts.length > 1 ? parts.slice(1).join("\n\n") : message;
+}
+
+function safeParseJson(value?: string) {
+  if (!value) return null;
   try {
     return JSON.parse(value) as unknown;
   } catch {
     return null;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function hasExperimentEvidence(input: {

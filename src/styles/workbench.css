@@ -2213,6 +2213,14 @@
   color: var(--color-accent);
 }
 
+.feedback-status.is-reviewing {
+  color: var(--color-info);
+}
+
+.feedback-status.is-rejected {
+  color: var(--color-danger);
+}
+
 .feedback-status.is-resolved {
   color: var(--color-success);
 }

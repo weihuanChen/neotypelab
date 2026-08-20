@@ -206,6 +206,13 @@ export const vPromptTemplateKind = v.union(
 );
 export type PromptTemplateKind = Infer<typeof vPromptTemplateKind>;
 
+export const vPromptTemplateVersionStatus = v.union(
+  v.literal("draft"),
+  v.literal("published"),
+  v.literal("archived")
+);
+export type PromptTemplateVersionStatus = Infer<typeof vPromptTemplateVersionStatus>;
+
 export const vPromptCompositionStatus = v.union(
   v.literal("draft"),
   v.literal("ready"),
@@ -263,10 +270,50 @@ export type FeedbackCategory = Infer<typeof vFeedbackCategory>;
 
 export const vFeedbackStatus = v.union(
   v.literal("open"),
+  v.literal("reviewing"),
+  // Retained while existing records are migrated to "reviewing".
   v.literal("triaged"),
-  v.literal("resolved")
+  v.literal("resolved"),
+  v.literal("rejected")
 );
 export type FeedbackStatus = Infer<typeof vFeedbackStatus>;
+
+export const vFeedbackPriority = v.union(
+  v.literal("low"),
+  v.literal("normal"),
+  v.literal("high")
+);
+export type FeedbackPriority = Infer<typeof vFeedbackPriority>;
+
+export const vFeedbackSource = v.union(
+  v.literal("prototype"),
+  v.literal("generation-result"),
+  v.literal("standalone"),
+  v.literal("showcase"),
+  v.literal("library")
+);
+export type FeedbackSource = Infer<typeof vFeedbackSource>;
+
+export const vFeedbackRootCause = v.union(
+  v.literal("prompt"),
+  v.literal("style-dna"),
+  v.literal("material-preset"),
+  v.literal("model-kit"),
+  v.literal("generation-provider"),
+  v.literal("user-configuration"),
+  v.literal("unknown")
+);
+export type FeedbackRootCause = Infer<typeof vFeedbackRootCause>;
+
+export const vFeedbackResolutionOutcome = v.union(
+  v.literal("fixed"),
+  v.literal("planned"),
+  v.literal("unable-to-reproduce"),
+  v.literal("no-action"),
+  v.literal("duplicate"),
+  v.literal("unsupported")
+);
+export type FeedbackResolutionOutcome = Infer<typeof vFeedbackResolutionOutcome>;
 
 export const vGenerationProvider = v.union(
   v.literal("internal"),

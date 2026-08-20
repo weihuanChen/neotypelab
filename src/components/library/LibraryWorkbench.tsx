@@ -871,6 +871,13 @@ function LibraryConceptFocus({
             </GhostButton>
           ) : null}
           {(concept.status === "generated" || concept.status === "archived") ? <GhostButton href={`/create?remix=${concept._id}`}>Remix</GhostButton> : null}
+          {concept.generationJob ? (
+            <GhostButton
+              href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&generationJobId=${encodeURIComponent(concept.generationJob._id)}&type=generation-quality&source=library`}
+            >
+              Report issue
+            </GhostButton>
+          ) : null}
           {concept.generationJob?.status === "failed" ? (
             <GhostButton disabled={rerunningJobId === concept.generationJob._id} onClick={() => void onRetry(concept.generationJob!._id)}>
               {rerunningJobId === concept.generationJob._id ? "Re-dispatching" : "Retry generation"}
