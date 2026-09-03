@@ -7,6 +7,7 @@ import { mutation } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
+import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 
 const MAX_NOTES_LENGTH = 100;
 type RenderMode =
@@ -108,6 +109,7 @@ export const generateStyleSuggestion = mutation({
     const promptCompositionId = await ctx.db.insert("promptCompositions", {
       userId: viewer._id,
       promptTemplateId: template._id,
+      promptTemplateVersionId: template.promptTemplateVersionId,
       status: "consumed",
       composedPrompt: promptPreview,
       negativePrompt: template.negativePromptTemplate,
@@ -243,6 +245,7 @@ export const generatePalettePlan = mutation({
     const promptCompositionId = await ctx.db.insert("promptCompositions", {
       userId: viewer._id,
       promptTemplateId: template._id,
+      promptTemplateVersionId: template.promptTemplateVersionId,
       status: "consumed",
       composedPrompt: promptPreview,
       negativePrompt: template.negativePromptTemplate,
@@ -368,11 +371,7 @@ export const requestBuildStageVisualization = mutation({
 });
 
 async function getStyleSuggestionTemplate(ctx: MutationCtx) {
-  const activeTemplate = await ctx.db
-    .query("promptTemplates")
-    .withIndex("by_kind", (q) => q.eq("kind", "style-suggestion"))
-    .collect()
-    .then((items) => items.find((item) => item.isActive) ?? null);
+  const activeTemplate = await resolvePipelineTemplate(ctx, "style-suggestion");
   if (activeTemplate) {
     return activeTemplate;
   }
@@ -399,15 +398,12 @@ async function getStyleSuggestionTemplate(ctx: MutationCtx) {
     notePolicy: "Notes should refine intent, not replace the structured selector system.",
     isActive: true,
   });
-  return await ctx.db.get(templateId);
+  const created = await ctx.db.get(templateId);
+  return created ? { ...created, promptTemplateVersionId: undefined } : null;
 }
 
 async function getPalettePlanTemplate(ctx: MutationCtx) {
-  return await ctx.db
-    .query("promptTemplates")
-    .withIndex("by_kind", (q) => q.eq("kind", "palette-plan"))
-    .collect()
-    .then((items) => items.find((item) => item.isActive) ?? null);
+  return await resolvePipelineTemplate(ctx, "palette-plan");
 }
 
 async function queueConceptRender(
@@ -417,6 +413,7 @@ async function queueConceptRender(
   simulationStage?: SimulationStage
 ) {
   const viewer = ctx.viewerX();
+  await assertGenerationCapacity(ctx, viewer._id);
   const concept = await ctx.db.get(conceptId);
   if (concept === null || concept.userId !== viewer._id) {
     throw new Error("Concept not found");
@@ -447,11 +444,7 @@ async function queueConceptRender(
         .query("creditAccounts")
         .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
         .unique(),
-      ctx.db
-        .query("promptTemplates")
-        .withIndex("by_kind", (q) => q.eq("kind", "hd-render"))
-        .collect()
-        .then((items) => items.find((item) => item.isActive) ?? null),
+      resolvePipelineTemplate(ctx, "hd-render"),
       ctx.db
         .query("creditPriceRules")
         .withIndex("by_actionType", (q) => q.eq("actionType", getRenderActionType(renderMode)))
@@ -551,6 +544,7 @@ async function queueConceptRender(
     userId: viewer._id,
     conceptId: concept._id,
     promptTemplateId: template._id,
+    promptTemplateVersionId: template.promptTemplateVersionId,
     status: "ready",
     composedPrompt: promptPreviewWithFallback,
     negativePrompt: template.negativePromptTemplate,

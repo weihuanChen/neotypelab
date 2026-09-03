@@ -89,6 +89,11 @@ type LlmRoute = {
   } | null;
 };
 
+type LlmRoutePlan = {
+  primary: LlmRoute;
+  fallback?: LlmRoute | null;
+};
+
 type ExternalRouteProfile = Omit<LlmRoute["profile"], "_id"> & {
   _id?: Id<"llmProfiles">;
 };
@@ -124,6 +129,75 @@ export const rerunJob = action({
   },
   handler: async (ctx, { generationJobId }) => {
     await ctx.runAction(internal.generationNode.executeQueuedJob, { generationJobId });
+  },
+});
+
+export const testLlmProfileConnection = action({
+  args: {
+    profileId: v.id("llmProfiles"),
+  },
+  handler: async (ctx, { profileId }): Promise<{
+    ok: boolean;
+    status?: number;
+    latencyMs: number;
+    message: string;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Authentication is required");
+    const profile = await ctx.runQuery(internal.generation.getLlmProfileForConnectionTest, {
+      profileId,
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (profile === null) throw new Error("Provider profile not found");
+    const apiKey = process.env[profile.keyEnvName];
+    if (!apiKey) {
+      return {
+        ok: false,
+        latencyMs: 0,
+        message: `${profile.keyEnvName} is not configured`,
+      };
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const startedAt = Date.now();
+    try {
+      const customHeaders = parseJsonObjectOrEmpty(profile.headersJson, "Provider headers");
+      const response = await fetch(`${profile.baseUrl.replace(/\/+$/, "")}/models`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          ...Object.fromEntries(
+            Object.entries(customHeaders).filter(
+              (entry): entry is [string, string] => typeof entry[1] === "string"
+            )
+          ),
+        },
+        signal: controller.signal,
+      });
+      const latencyMs = Date.now() - startedAt;
+      return {
+        ok: response.ok,
+        status: response.status,
+        latencyMs,
+        message: response.ok
+          ? `Connected to ${profile.name}`
+          : `${profile.name} returned HTTP ${response.status}`,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - startedAt,
+        message:
+          error instanceof Error && error.name === "AbortError"
+            ? "Connection test timed out after 10 seconds"
+            : error instanceof Error
+              ? error.message
+              : "Connection test failed",
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   },
 });
 
@@ -201,19 +275,29 @@ export const executeQueuedJob = internalAction({
       simulationStage: job.simulationStage,
     });
 
-    const route = resolveImageGenerationRoute(job.llmRoute);
-    let attemptedProvider: GenerationProvider = route.provider;
+    const routes = resolveImageGenerationRoutes(
+      job.llmRoute,
+      job.generationPolicy.timeoutMs
+    );
+    let attemptedProvider: GenerationProvider = routes[0].provider;
 
     try {
-      const generated = await generateImage({
-        kind: job.kind,
-        renderMode: job.renderMode,
-        simulationStage: job.simulationStage,
-        materialComparisonVariants: job.materialComparisonVariants,
-        route,
-        prompt: job.prompt.composedPrompt,
-        negativePrompt: job.prompt.negativePrompt,
-        title: job.concept.title,
+      const generated = await generateWithPolicy({
+        routes,
+        fallbackBehavior: job.generationPolicy.fallbackBehavior,
+        maxRetryCount: job.generationPolicy.maxRetryCount,
+        onAttempt: (provider) => {
+          attemptedProvider = provider;
+        },
+        input: {
+          kind: job.kind,
+          renderMode: job.renderMode,
+          simulationStage: job.simulationStage,
+          materialComparisonVariants: job.materialComparisonVariants,
+          prompt: job.prompt.composedPrompt,
+          negativePrompt: job.prompt.negativePrompt,
+          title: job.concept.title,
+        },
       });
       attemptedProvider = generated.provider;
 
@@ -280,12 +364,43 @@ export const executeQueuedJob = internalAction({
         errorMessage: message,
         provider: attemptedProvider,
       });
-      await ctx.runMutation(internal.generation.refundFailedJobCredits, {
-        generationJobId,
-      });
+      if (job.generationPolicy.failureCreditPolicy === "auto-refund") {
+        await ctx.runMutation(internal.generation.refundFailedJobCredits, {
+          generationJobId,
+        });
+      }
     }
   },
 });
+
+async function generateWithPolicy({
+  fallbackBehavior,
+  input,
+  maxRetryCount,
+  onAttempt,
+  routes,
+}: {
+  fallbackBehavior: "secondary-provider" | "retry-primary" | "fail-job";
+  input: Omit<Parameters<typeof generateImage>[0], "route">;
+  maxRetryCount: number;
+  onAttempt: (provider: GenerationProvider) => void;
+  routes: ImageGenerationRoute[];
+}) {
+  const candidates = fallbackBehavior === "secondary-provider" ? routes : routes.slice(0, 1);
+  const retryCount = fallbackBehavior === "fail-job" ? 0 : maxRetryCount;
+  let lastError: unknown;
+  for (const route of candidates) {
+    for (let attempt = 0; attempt <= retryCount; attempt += 1) {
+      onAttempt(route.provider);
+      try {
+        return await generateImage({ ...input, route });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Generation failed");
+}
 
 async function generateImage({
   kind,
@@ -432,18 +547,26 @@ async function generateWithOpenAICompatibleImage({
   throw new Error(`${route.profile.name} image generation returned no usable image payload`);
 }
 
-function resolveImageGenerationRoute(llmRoute?: LlmRoute | null): ImageGenerationRoute {
-  if (llmRoute !== undefined && llmRoute !== null) {
-    return {
-      mode: "openai-compatible",
-      provider: llmRoute.profile.provider,
-      profile: llmRoute.profile,
-      binding: llmRoute.binding,
-    };
+function resolveImageGenerationRoutes(
+  llmRoutePlan: LlmRoutePlan | null | undefined,
+  defaultTimeoutMs: number
+): ImageGenerationRoute[] {
+  if (llmRoutePlan !== undefined && llmRoutePlan !== null) {
+    return [llmRoutePlan.primary, llmRoutePlan.fallback]
+      .filter((route): route is LlmRoute => route !== undefined && route !== null)
+      .map((route) => ({
+        mode: "openai-compatible" as const,
+        provider: route.profile.provider,
+        profile: {
+          ...route.profile,
+          timeoutMs: route.profile.timeoutMs ?? defaultTimeoutMs,
+        },
+        binding: route.binding,
+      }));
   }
 
   if (process.env.OPENAI_API_KEY) {
-    return {
+    return [{
       mode: "openai-compatible",
       provider: "openai",
       profile: {
@@ -454,15 +577,16 @@ function resolveImageGenerationRoute(llmRoute?: LlmRoute | null): ImageGeneratio
         name: "OpenAI env fallback",
         provider: "openai",
         slug: "openai-env-fallback",
+        timeoutMs: defaultTimeoutMs,
       },
       binding: null,
-    };
+    }];
   }
 
-  return {
+  return [{
     mode: "internal",
     provider: "internal",
-  };
+  }];
 }
 
 function buildOpenAICompatibleImageUrl(baseUrl: string) {

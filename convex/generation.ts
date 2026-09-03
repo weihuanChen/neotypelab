@@ -8,6 +8,24 @@ import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { vGenerationProvider } from "./domain";
 import type { GenerationProvider } from "./domain";
+import { canManagePlatform } from "./adminAccess";
+
+export const getLlmProfileForConnectionTest = internalQuery({
+  args: {
+    profileId: v.id("llmProfiles"),
+    tokenIdentifier: v.string(),
+  },
+  handler: async (ctx, { profileId, tokenIdentifier }) => {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+    if (viewer === null || !canManagePlatform(viewer)) {
+      throw new Error("Platform administrator access is required");
+    }
+    return await ctx.db.get(profileId);
+  },
+});
 
 export const listViewerJobs = query({
   args: {},
@@ -153,6 +171,7 @@ export const getJobForExecution = internalQuery({
       renderMode,
       templateKind: template?.kind,
     });
+    const generationPolicy = await readGenerationPolicy(ctx);
 
     return {
       generationJobId: job._id,
@@ -175,6 +194,7 @@ export const getJobForExecution = internalQuery({
         templateVersion: safeTemplateVersion(prompt.outputSummaryJson),
       },
       llmRoute,
+      generationPolicy,
       user,
     };
   },
@@ -196,6 +216,39 @@ async function selectImageLlmRoute(
     templateKind?: "palette-plan" | "style-suggestion" | "repaint-concept" | "hd-render";
   }
 ) {
+  const action = input.templateKind ??
+    (input.generationKind === "hd-preview" ? "hd-render" : "palette-plan");
+  const configuredRoutes = await ctx.db
+    .query("generationProviderRoutes")
+    .withIndex("by_action", (q) => q.eq("action", action))
+    .collect();
+  const configuredRoute = configuredRoutes.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  if (configuredRoute) {
+    const [primary, fallback] = await Promise.all([
+      ctx.db.get(configuredRoute.primaryProfileId),
+      configuredRoute.fallbackProfileId
+        ? ctx.db.get(configuredRoute.fallbackProfileId)
+        : null,
+    ]);
+    const eligiblePrimary =
+      primary !== null && primary.isActive && primary.capability === "image"
+        ? primary
+        : null;
+    const eligibleFallback =
+      fallback !== null && fallback.isActive && fallback.capability === "image"
+        ? fallback
+        : null;
+    if (eligiblePrimary || eligibleFallback) {
+      return {
+        primary: serializeLlmRoute(eligiblePrimary ?? eligibleFallback!, null),
+        fallback:
+          eligiblePrimary && eligibleFallback
+            ? serializeLlmRoute(eligibleFallback, null)
+            : null,
+      };
+    }
+  }
+
   if (input.promptTemplateId !== undefined) {
     const bindings = await ctx.db
       .query("promptTemplateBindings")
@@ -228,7 +281,7 @@ async function selectImageLlmRoute(
     })[0];
 
     if (selected) {
-      return serializeLlmRoute(selected.profile, selected.binding);
+      return { primary: serializeLlmRoute(selected.profile, selected.binding), fallback: null };
     }
   }
 
@@ -241,7 +294,54 @@ async function selectImageLlmRoute(
     .filter((profile) => profile.isActive)
     .sort((a, b) => b.priority - a.priority)[0];
 
-  return fallbackProfile ? serializeLlmRoute(fallbackProfile, null) : null;
+  return fallbackProfile
+    ? { primary: serializeLlmRoute(fallbackProfile, null), fallback: null }
+    : null;
+}
+
+async function readGenerationPolicy(ctx: QueryCtx): Promise<{
+  fallbackBehavior: "secondary-provider" | "retry-primary" | "fail-job";
+  maxRetryCount: number;
+  timeoutMs: number;
+  failureCreditPolicy: "auto-refund" | "manual-review" | "no-refund";
+}> {
+  const records = await ctx.db
+    .query("platformSettings")
+    .withIndex("by_key", (q) => q.eq("key", "generation"))
+    .collect();
+  const current = records.sort(
+    (a, b) => b.revision - a.revision || b.updatedAt - a.updatedAt
+  )[0];
+  let parsed: Record<string, unknown> = {};
+  if (current) {
+    try {
+      const candidate = JSON.parse(current.valueJson) as unknown;
+      if (typeof candidate === "object" && candidate !== null && !Array.isArray(candidate)) {
+        parsed = candidate as Record<string, unknown>;
+      }
+    } catch {
+      parsed = {};
+    }
+  }
+  return {
+    fallbackBehavior:
+      parsed.fallbackBehavior === "retry-primary" ||
+      parsed.fallbackBehavior === "fail-job"
+        ? parsed.fallbackBehavior
+        : "secondary-provider" as const,
+    maxRetryCount: boundedPolicyNumber(parsed.maxRetryCount, 0, 3, 1),
+    timeoutMs: boundedPolicyNumber(parsed.timeoutSeconds, 15, 300, 90) * 1000,
+    failureCreditPolicy:
+      parsed.failureCreditPolicy === "manual-review" ||
+      parsed.failureCreditPolicy === "no-refund"
+        ? parsed.failureCreditPolicy
+        : "auto-refund" as const,
+  };
+}
+
+function boundedPolicyNumber(value: unknown, min: number, max: number, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
 }
 
 function isBindingEligible(

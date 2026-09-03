@@ -5,6 +5,7 @@ import { mutation } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { nextArchiveNumber } from "./archiveNumbers";
+import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 
 const MAX_NOTES_LENGTH = 100;
 
@@ -35,6 +36,7 @@ export const initializePrototype = mutation({
     }
   ) {
     const viewer = ctx.viewerX();
+    await assertGenerationCapacity(ctx, viewer._id);
     const sanitizedNotes = notes?.trim() || undefined;
     const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
     const nextVisibility = visibility ?? "private";
@@ -64,11 +66,7 @@ export const initializePrototype = mutation({
           .query("creditAccounts")
           .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
           .unique(),
-        ctx.db
-          .query("promptTemplates")
-          .withIndex("by_kind", (q) => q.eq("kind", "repaint-concept"))
-          .collect()
-          .then((items) => items.find((item) => item.isActive) ?? null),
+        resolvePipelineTemplate(ctx, "repaint-concept"),
         ctx.db
           .query("creditPriceRules")
           .withIndex("by_actionType", (q) =>
@@ -193,6 +191,7 @@ export const initializePrototype = mutation({
       userId: viewer._id,
       conceptId,
       promptTemplateId: template._id,
+      promptTemplateVersionId: template.promptTemplateVersionId,
       status: "ready",
       composedPrompt: initialPrompt,
       negativePrompt: template.negativePromptTemplate,

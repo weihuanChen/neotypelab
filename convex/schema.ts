@@ -25,6 +25,7 @@ import {
   vOrderItemType,
   vOrderStatus,
   vPaintFinishRenderPriority,
+  vPipelineAction,
   vPromptCompositionStatus,
   vPromptTemplateKind,
   vPromptTemplateVersionStatus,
@@ -35,6 +36,7 @@ import {
   vSpecPresetStatus,
   vSpecPresetTestStatus,
   vStyleSpec,
+  vTemplateVersionPolicy,
   vSprayPlanStatus,
   vUserAccountStatus,
   vUserPlan,
@@ -613,6 +615,38 @@ const schema = defineSchema({
     .index("by_template", ["promptTemplateId"])
     .index("by_templateKind", ["templateKind"])
     .index("by_profile", ["llmProfileId"]),
+
+  pipelineTemplateBindings: defineTable({
+    action: vPipelineAction,
+    promptTemplateId: v.id("promptTemplates"),
+    versionPolicy: vTemplateVersionPolicy,
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
+    fallbackPromptTemplateId: v.optional(v.id("promptTemplates")),
+    effectiveFrom: v.number(),
+    isActive: v.boolean(),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_action", ["action"])
+    .index("by_template", ["promptTemplateId"]),
+
+  generationProviderRoutes: defineTable({
+    action: vPipelineAction,
+    primaryProfileId: v.id("llmProfiles"),
+    fallbackProfileId: v.optional(v.id("llmProfiles")),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_action", ["action"])
+    .index("by_primaryProfile", ["primaryProfileId"]),
+
+  platformSettings: defineTable({
+    key: v.string(),
+    valueJson: v.string(),
+    revision: v.number(),
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.id("users")),
+  }).index("by_key", ["key"]),
 
   promptCompositions: defineTable({
     userId: v.id("users"),

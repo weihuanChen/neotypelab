@@ -11,6 +11,7 @@ import {
   LlmCapability,
   LlmProvider,
   MoodTag,
+  PipelineAction,
   PromptTemplateKind,
   RenderMode,
   UserAccountStatus,
@@ -27,9 +28,11 @@ import {
   vMaterialSpec,
   vModelCatalogStatus,
   vMoodTag,
+  vPipelineAction,
   vPromptTemplateKind,
   vRenderMode,
   vStyleSpec,
+  vTemplateVersionPolicy,
   vUserAccountStatus,
   vUserPlan,
   vWeatheringLevel,
@@ -448,6 +451,425 @@ export const listLlmRoutingConfig = query({
   },
 });
 
+const settingsPipelineActions: PipelineAction[] = [
+  "repaint-concept",
+  "hd-render",
+  "palette-plan",
+  "style-suggestion",
+];
+
+type GenerationSettingsValue = {
+  fallbackBehavior: "secondary-provider" | "retry-primary" | "fail-job";
+  maxRetryCount: number;
+  timeoutSeconds: number;
+  failureCreditPolicy: "auto-refund" | "manual-review" | "no-refund";
+  concurrentJobsPerUser: number;
+};
+
+type PlatformDefaultsValue = {
+  weathering: "clean" | "light" | "moderate" | "heavy";
+  visibility: "private" | "unlisted" | "public";
+  mood: "none" | "heroic" | "industrial" | "cinematic";
+  imageCount: number;
+  generationQuality: "standard" | "high";
+  generationLanguage: "english" | "japanese" | "chinese";
+};
+
+type SystemSettingsValue = {
+  allowRegistrations: boolean;
+  allowPublicPrototypes: boolean;
+  allowRemix: boolean;
+  enableFeedback: boolean;
+  enableCreditRedemption: boolean;
+  enablePurchases: boolean;
+  maintenanceMode: boolean;
+};
+
+const defaultGenerationSettings: GenerationSettingsValue = {
+  fallbackBehavior: "secondary-provider",
+  maxRetryCount: 1,
+  timeoutSeconds: 90,
+  failureCreditPolicy: "auto-refund",
+  concurrentJobsPerUser: 2,
+};
+
+const defaultPlatformDefaults: PlatformDefaultsValue = {
+  weathering: "clean",
+  visibility: "private",
+  mood: "none",
+  imageCount: 1,
+  generationQuality: "standard",
+  generationLanguage: "english",
+};
+
+const defaultSystemSettings: SystemSettingsValue = {
+  allowRegistrations: true,
+  allowPublicPrototypes: true,
+  allowRemix: true,
+  enableFeedback: true,
+  enableCreditRedemption: true,
+  enablePurchases: false,
+  maintenanceMode: false,
+};
+
+export const getSettingsWorkspace = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+
+    const [profiles, templates, versions, bindings, routes, settings] = await Promise.all([
+      ctx.db.query("llmProfiles").collect(),
+      ctx.db.query("promptTemplates").collect(),
+      ctx.db.query("promptTemplateVersions").collect(),
+      ctx.db.query("pipelineTemplateBindings").collect(),
+      ctx.db.query("generationProviderRoutes").collect(),
+      ctx.db.query("platformSettings").collect(),
+    ]);
+    const settingsByKey = new Map(
+      [...settings]
+        .sort((a, b) => b.revision - a.revision || b.updatedAt - a.updatedAt)
+        .map((item) => [item.key, item])
+    );
+    const generationRecord = settingsByKey.get("generation");
+    const defaultsRecord = settingsByKey.get("defaults");
+    const systemRecord = settingsByKey.get("system");
+    const generation = normalizeGenerationSettings(
+      parseSettingsObject(generationRecord?.valueJson),
+      defaultGenerationSettings
+    );
+    const defaults = normalizePlatformDefaults(
+      parseSettingsObject(defaultsRecord?.valueJson),
+      defaultPlatformDefaults
+    );
+    const system = normalizeSystemSettings(
+      parseSettingsObject(systemRecord?.valueJson),
+      defaultSystemSettings
+    );
+    const profileById = new Map(profiles.map((profile) => [profile._id, profile]));
+    const templateById = new Map(templates.map((template) => [template._id, template]));
+    const versionById = new Map(versions.map((version) => [version._id, version]));
+
+    return {
+      generation: {
+        ...generation,
+        revision: generationRecord?.revision ?? 0,
+        updatedAt: generationRecord?.updatedAt,
+        routes: settingsPipelineActions.map((action) => {
+          const route = routes
+            .filter((item) => item.action === action)
+            .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+          return {
+            action,
+            primaryProfileId: route?.primaryProfileId,
+            fallbackProfileId: route?.fallbackProfileId,
+          };
+        }),
+      },
+      providers: profiles
+        .sort((a, b) => b.priority - a.priority || a.name.localeCompare(b.name))
+        .map((profile) => ({
+          _id: profile._id,
+          name: profile.name,
+          slug: profile.slug,
+          provider: profile.provider,
+          modelId: profile.modelId,
+          capability: profile.capability,
+          apiFormat: profile.apiFormat,
+          baseUrl: profile.baseUrl,
+          keyEnvName: profile.keyEnvName,
+          timeoutMs: profile.timeoutMs,
+          priority: profile.priority,
+          notes: profile.notes,
+          isActive: profile.isActive,
+          updatedAt: profile.updatedAt,
+        })),
+      bindings: settingsPipelineActions.map((action) => {
+        const binding = bindings
+          .filter((item) => item.action === action && item.isActive)
+          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        const template = binding ? templateById.get(binding.promptTemplateId) : undefined;
+        const version = binding?.promptTemplateVersionId
+          ? versionById.get(binding.promptTemplateVersionId)
+          : undefined;
+        const fallbackTemplate = binding?.fallbackPromptTemplateId
+          ? templateById.get(binding.fallbackPromptTemplateId)
+          : undefined;
+        return {
+          action,
+          bindingId: binding?._id,
+          promptTemplateId: binding?.promptTemplateId,
+          templateName: template?.name,
+          versionPolicy: binding?.versionPolicy ?? "follow-published",
+          promptTemplateVersionId: binding?.promptTemplateVersionId,
+          version: version?.version ?? template?.version,
+          fallbackPromptTemplateId: binding?.fallbackPromptTemplateId,
+          fallbackTemplateName: fallbackTemplate?.name,
+          effectiveFrom: binding?.effectiveFrom ?? 0,
+          updatedAt: binding?.updatedAt,
+        };
+      }),
+      templates: templates
+        .sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name))
+        .map((template) => ({
+          _id: template._id,
+          name: template.name,
+          kind: template.kind,
+          isActive: template.isActive,
+          publishedVersionId: template.publishedVersionId,
+          versions: versions
+            .filter((version) => version.promptTemplateId === template._id)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .map((version) => ({
+              _id: version._id,
+              version: version.version,
+              status: version.status,
+            })),
+        })),
+      defaults: {
+        ...defaults,
+        revision: defaultsRecord?.revision ?? 0,
+        updatedAt: defaultsRecord?.updatedAt,
+      },
+      system: {
+        ...system,
+        revision: systemRecord?.revision ?? 0,
+        updatedAt: systemRecord?.updatedAt,
+      },
+      environment: {
+        environment: process.env.CONVEX_DEPLOYMENT?.startsWith("prod:")
+          ? "Production"
+          : "Development",
+        applicationVersion: process.env.APP_VERSION ?? "0.1.0",
+        database: "Connected",
+        assetStorage: process.env.R2_BUCKET ? "R2 Connected" : "Not configured",
+      },
+      providerRouteHealth: settingsPipelineActions.map((action) => {
+        const route = routes
+          .filter((item) => item.action === action)
+          .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        return {
+          action,
+          primaryActive: route
+            ? profileById.get(route.primaryProfileId)?.isActive === true
+            : false,
+          fallbackActive: route?.fallbackProfileId
+            ? profileById.get(route.fallbackProfileId)?.isActive === true
+            : undefined,
+        };
+      }),
+    };
+  },
+});
+
+export const saveGenerationSettings = mutation({
+  args: {
+    expectedRevision: v.number(),
+    fallbackBehavior: v.union(
+      v.literal("secondary-provider"),
+      v.literal("retry-primary"),
+      v.literal("fail-job")
+    ),
+    maxRetryCount: v.number(),
+    timeoutSeconds: v.number(),
+    failureCreditPolicy: v.union(
+      v.literal("auto-refund"),
+      v.literal("manual-review"),
+      v.literal("no-refund")
+    ),
+    concurrentJobsPerUser: v.number(),
+    routes: v.array(
+      v.object({
+        action: vPipelineAction,
+        primaryProfileId: v.optional(v.id("llmProfiles")),
+        fallbackProfileId: v.optional(v.id("llmProfiles")),
+      })
+    ),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const generation = normalizeGenerationSettings(args, defaultGenerationSettings);
+    const now = Date.now();
+    const existingRoutes = await ctx.db.query("generationProviderRoutes").collect();
+
+    for (const route of args.routes) {
+      const matches = existingRoutes.filter((item) => item.action === route.action);
+      if (route.primaryProfileId === undefined) {
+        await Promise.all(matches.map((item) => ctx.db.delete(item._id)));
+        continue;
+      }
+      const [primary, fallback] = await Promise.all([
+        ctx.db.get(route.primaryProfileId),
+        route.fallbackProfileId ? ctx.db.get(route.fallbackProfileId) : null,
+      ]);
+      if (primary === null) throw new Error("Primary provider profile not found");
+      if (route.fallbackProfileId && fallback === null) {
+        throw new Error("Fallback provider profile not found");
+      }
+      if (route.fallbackProfileId === route.primaryProfileId) {
+        throw new Error("Fallback provider must differ from the primary provider");
+      }
+      const first = matches[0];
+      if (first) {
+        await ctx.db.patch(first._id, {
+          primaryProfileId: route.primaryProfileId,
+          fallbackProfileId: route.fallbackProfileId,
+          updatedAt: now,
+          updatedByUserId: viewer._id,
+        });
+        await Promise.all(matches.slice(1).map((item) => ctx.db.delete(item._id)));
+      } else {
+        await ctx.db.insert("generationProviderRoutes", {
+          action: route.action,
+          primaryProfileId: route.primaryProfileId,
+          fallbackProfileId: route.fallbackProfileId,
+          updatedAt: now,
+          updatedByUserId: viewer._id,
+        });
+      }
+    }
+
+    const revision = await writePlatformSettings(ctx, {
+      key: "generation",
+      expectedRevision: args.expectedRevision,
+      value: generation,
+      actorUserId: viewer._id,
+      now,
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-generation-settings",
+      entityType: "platformSettings",
+      entityId: "generation",
+      detailsJson: JSON.stringify({ revision, routes: args.routes }),
+    });
+    return { revision };
+  },
+});
+
+export const savePlatformDefaults = mutation({
+  args: {
+    expectedRevision: v.number(),
+    weathering: v.union(v.literal("clean"), v.literal("light"), v.literal("moderate"), v.literal("heavy")),
+    visibility: v.union(v.literal("private"), v.literal("unlisted"), v.literal("public")),
+    mood: v.union(v.literal("none"), v.literal("heroic"), v.literal("industrial"), v.literal("cinematic")),
+    imageCount: v.number(),
+    generationQuality: v.union(v.literal("standard"), v.literal("high")),
+    generationLanguage: v.union(v.literal("english"), v.literal("japanese"), v.literal("chinese")),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const value = normalizePlatformDefaults(args, defaultPlatformDefaults);
+    const revision = await writePlatformSettings(ctx, {
+      key: "defaults",
+      expectedRevision: args.expectedRevision,
+      value,
+      actorUserId: viewer._id,
+      now: Date.now(),
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-platform-defaults",
+      entityType: "platformSettings",
+      entityId: "defaults",
+      detailsJson: JSON.stringify({ revision, value }),
+    });
+    return { revision };
+  },
+});
+
+export const saveSystemSettings = mutation({
+  args: {
+    expectedRevision: v.number(),
+    allowRegistrations: v.boolean(),
+    allowPublicPrototypes: v.boolean(),
+    allowRemix: v.boolean(),
+    enableFeedback: v.boolean(),
+    enableCreditRedemption: v.boolean(),
+    enablePurchases: v.boolean(),
+    maintenanceMode: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const value = normalizeSystemSettings(args, defaultSystemSettings);
+    if (!value.allowPublicPrototypes) value.allowRemix = false;
+    const revision = await writePlatformSettings(ctx, {
+      key: "system",
+      expectedRevision: args.expectedRevision,
+      value,
+      actorUserId: viewer._id,
+      now: Date.now(),
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-system-settings",
+      entityType: "platformSettings",
+      entityId: "system",
+      detailsJson: JSON.stringify({ revision, value }),
+    });
+    return { revision };
+  },
+});
+
+export const savePipelineTemplateBinding = mutation({
+  args: {
+    action: vPipelineAction,
+    promptTemplateId: v.id("promptTemplates"),
+    versionPolicy: vTemplateVersionPolicy,
+    promptTemplateVersionId: v.optional(v.id("promptTemplateVersions")),
+    fallbackPromptTemplateId: v.optional(v.id("promptTemplates")),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const [template, version, fallbackTemplate] = await Promise.all([
+      ctx.db.get(args.promptTemplateId),
+      args.promptTemplateVersionId ? ctx.db.get(args.promptTemplateVersionId) : null,
+      args.fallbackPromptTemplateId ? ctx.db.get(args.fallbackPromptTemplateId) : null,
+    ]);
+    if (template === null) throw new Error("Prompt template not found");
+    if (template.kind !== args.action) {
+      throw new Error("Template kind must match the selected pipeline action");
+    }
+    if (args.versionPolicy === "pin-version") {
+      if (version === null || version.promptTemplateId !== args.promptTemplateId) {
+        throw new Error("Pinned version must belong to the selected template");
+      }
+    }
+    if (args.fallbackPromptTemplateId && fallbackTemplate?.kind !== args.action) {
+      throw new Error("Fallback template kind must match the selected pipeline action");
+    }
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("pipelineTemplateBindings")
+      .withIndex("by_action", (q) => q.eq("action", args.action))
+      .collect();
+    const patch = {
+      promptTemplateId: args.promptTemplateId,
+      versionPolicy: args.versionPolicy,
+      promptTemplateVersionId:
+        args.versionPolicy === "pin-version" ? args.promptTemplateVersionId : undefined,
+      fallbackPromptTemplateId: args.fallbackPromptTemplateId,
+      effectiveFrom: now,
+      isActive: true,
+      updatedAt: now,
+      updatedByUserId: viewer._id,
+    };
+    const bindingId = existing[0]
+      ? (await ctx.db.patch(existing[0]._id, patch), existing[0]._id)
+      : await ctx.db.insert("pipelineTemplateBindings", { action: args.action, ...patch });
+    for (const duplicate of existing.slice(1)) {
+      await ctx.db.patch(duplicate._id, { isActive: false, updatedAt: now, updatedByUserId: viewer._id });
+    }
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "update-pipeline-template-binding",
+      entityType: "pipelineTemplateBinding",
+      entityId: bindingId,
+      detailsJson: JSON.stringify({ ...args, bindingId }),
+    });
+    return bindingId;
+  },
+});
+
 export const createLlmProfile = mutation({
   args: {
     name: v.string(),
@@ -808,6 +1230,133 @@ export const listPriceRules = query({
     );
   },
 });
+
+export const getCreditsConsole = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+
+    const [accounts, transactions, orders, users, campaigns] = await Promise.all([
+      ctx.db.query("creditAccounts").collect(),
+      ctx.db.query("creditTransactions").collect(),
+      ctx.db.query("orders").collect(),
+      ctx.db.query("users").collect(),
+      ctx.db.query("creditCampaigns").collect(),
+    ]);
+    const userById = new Map(users.map((user) => [user._id, user]));
+    const campaignById = new Map(campaigns.map((campaign) => [campaign._id, campaign]));
+    const paidOrders = orders.filter(
+      (order) => order.status === "paid" || order.status === "completed"
+    );
+    const revenueByCurrency = new Map<string, number>();
+    for (const order of paidOrders) {
+      const currency = order.currency.toUpperCase();
+      revenueByCurrency.set(currency, (revenueByCurrency.get(currency) ?? 0) + order.totalMinor);
+    }
+
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const positiveTransactions = transactions.filter((transaction) => transaction.delta > 0);
+    const rewardSourceTypes = new Set([
+      "promotional",
+      "admin-grant",
+      "activation-code",
+      "starter",
+    ]);
+
+    return {
+      summary: {
+        circulatingCredits: accounts.reduce((sum, account) => sum + account.balance, 0),
+        lifetimeGranted: accounts.reduce((sum, account) => sum + account.lifetimeGranted, 0),
+        lifetimeSpent: accounts.reduce((sum, account) => sum + account.lifetimeSpent, 0),
+        accountCount: accounts.length,
+        activeAccountCount: accounts.filter(
+          (account) => (account.lastCreditEventAt ?? 0) >= thirtyDaysAgo
+        ).length,
+        transactionCount: transactions.length,
+        purchasedCredits: positiveTransactions
+          .filter((transaction) => transaction.sourceType === "purchased")
+          .reduce((sum, transaction) => sum + transaction.delta, 0),
+        rewardedCredits: positiveTransactions
+          .filter((transaction) =>
+            (transaction.sourceType !== undefined && rewardSourceTypes.has(transaction.sourceType)) ||
+            transaction.actionType === "starter-grant" ||
+            transaction.actionType === "campaign-code-redemption"
+          )
+          .reduce((sum, transaction) => sum + transaction.delta, 0),
+        refundedCredits: positiveTransactions
+          .filter((transaction) => transaction.sourceType === "refund")
+          .reduce((sum, transaction) => sum + transaction.delta, 0),
+        paidOrderCount: paidOrders.length,
+        revenueByCurrency: Array.from(revenueByCurrency.entries())
+          .sort(([currencyA], [currencyB]) => currencyA.localeCompare(currencyB))
+          .map(([currency, totalMinor]) => ({ currency, totalMinor })),
+      },
+      accounts: accounts
+        .sort((accountA, accountB) => accountB.balance - accountA.balance)
+        .slice(0, 50)
+        .map((account) => {
+          const user = userById.get(account.userId);
+          return {
+            _id: account._id,
+            balance: account.balance,
+            lifetimeGranted: account.lifetimeGranted,
+            lifetimeSpent: account.lifetimeSpent,
+            lastCreditEventAt: account.lastCreditEventAt,
+            user: user
+              ? {
+                  _id: user._id,
+                  fullName: user.fullName,
+                  email: user.email,
+                  handle: user.handle,
+                  planType: user.planType,
+                }
+              : null,
+          };
+        }),
+      transactions: transactions
+        .sort((transactionA, transactionB) => transactionB._creationTime - transactionA._creationTime)
+        .slice(0, 300)
+        .map((transaction) => {
+          const user = userById.get(transaction.userId);
+          const campaign = transaction.campaignId
+            ? campaignById.get(transaction.campaignId)
+            : undefined;
+          return {
+            _id: transaction._id,
+            _creationTime: transaction._creationTime,
+            actionType: transaction.actionType,
+            delta: transaction.delta,
+            creditAmount: transaction.creditAmount,
+            balanceAfter: transaction.balanceAfter,
+            sourceType: transaction.sourceType ?? inferCreditSourceType(transaction.actionType),
+            reasonCode: transaction.reasonCode,
+            description: transaction.description,
+            referenceTable: transaction.referenceTable,
+            referenceId: transaction.referenceId,
+            expiresAt: transaction.expiresAt,
+            user: user
+              ? {
+                  _id: user._id,
+                  fullName: user.fullName,
+                  email: user.email,
+                  handle: user.handle,
+                }
+              : null,
+            campaign: campaign ? { _id: campaign._id, name: campaign.name } : null,
+          };
+        }),
+    };
+  },
+});
+
+function inferCreditSourceType(actionType: CreditActionType) {
+  if (actionType === "starter-grant") return "starter" as const;
+  if (actionType === "campaign-code-redemption") return "activation-code" as const;
+  if (actionType === "generation-refund") return "refund" as const;
+  if (actionType === "admin-adjustment") return "admin-adjustment" as const;
+  return "generation-spend" as const;
+}
 
 export const composePromptLabPreview = mutation({
   args: {
@@ -3042,6 +3591,152 @@ function normalizeEnvName(value: string) {
     throw new Error("API key env name must look like OPENAI_API_KEY");
   }
   return trimmed;
+}
+
+function parseSettingsObject(value?: string): Record<string, unknown> {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function normalizeGenerationSettings(
+  source: Record<string, unknown>,
+  fallback: GenerationSettingsValue
+): GenerationSettingsValue {
+  return {
+    fallbackBehavior: isOneOf(source.fallbackBehavior, [
+      "secondary-provider",
+      "retry-primary",
+      "fail-job",
+    ])
+      ? source.fallbackBehavior
+      : fallback.fallbackBehavior,
+    maxRetryCount: boundedInteger(source.maxRetryCount, 0, 3, fallback.maxRetryCount),
+    timeoutSeconds: boundedInteger(source.timeoutSeconds, 15, 300, fallback.timeoutSeconds),
+    failureCreditPolicy: isOneOf(source.failureCreditPolicy, [
+      "auto-refund",
+      "manual-review",
+      "no-refund",
+    ])
+      ? source.failureCreditPolicy
+      : fallback.failureCreditPolicy,
+    concurrentJobsPerUser: boundedInteger(
+      source.concurrentJobsPerUser,
+      1,
+      10,
+      fallback.concurrentJobsPerUser
+    ),
+  };
+}
+
+function normalizePlatformDefaults(
+  source: Record<string, unknown>,
+  fallback: PlatformDefaultsValue
+): PlatformDefaultsValue {
+  return {
+    weathering: isOneOf(source.weathering, ["clean", "light", "moderate", "heavy"])
+      ? source.weathering
+      : fallback.weathering,
+    visibility: isOneOf(source.visibility, ["private", "unlisted", "public"])
+      ? source.visibility
+      : fallback.visibility,
+    mood: isOneOf(source.mood, ["none", "heroic", "industrial", "cinematic"])
+      ? source.mood
+      : fallback.mood,
+    imageCount: boundedInteger(source.imageCount, 1, 4, fallback.imageCount),
+    generationQuality: isOneOf(source.generationQuality, ["standard", "high"])
+      ? source.generationQuality
+      : fallback.generationQuality,
+    generationLanguage: isOneOf(source.generationLanguage, [
+      "english",
+      "japanese",
+      "chinese",
+    ])
+      ? source.generationLanguage
+      : fallback.generationLanguage,
+  };
+}
+
+function normalizeSystemSettings(
+  source: Record<string, unknown>,
+  fallback: SystemSettingsValue
+): SystemSettingsValue {
+  return {
+    allowRegistrations: booleanSetting(source.allowRegistrations, fallback.allowRegistrations),
+    allowPublicPrototypes: booleanSetting(
+      source.allowPublicPrototypes,
+      fallback.allowPublicPrototypes
+    ),
+    allowRemix: booleanSetting(source.allowRemix, fallback.allowRemix),
+    enableFeedback: booleanSetting(source.enableFeedback, fallback.enableFeedback),
+    enableCreditRedemption: booleanSetting(
+      source.enableCreditRedemption,
+      fallback.enableCreditRedemption
+    ),
+    enablePurchases: booleanSetting(source.enablePurchases, fallback.enablePurchases),
+    maintenanceMode: booleanSetting(source.maintenanceMode, fallback.maintenanceMode),
+  };
+}
+
+async function writePlatformSettings(
+  ctx: MutationCtx,
+  input: {
+    key: "generation" | "defaults" | "system";
+    expectedRevision: number;
+    value: GenerationSettingsValue | PlatformDefaultsValue | SystemSettingsValue;
+    actorUserId: Id<"users">;
+    now: number;
+  }
+) {
+  const records = await ctx.db
+    .query("platformSettings")
+    .withIndex("by_key", (q) => q.eq("key", input.key))
+    .collect();
+  const current = records.sort(
+    (a, b) => b.revision - a.revision || b.updatedAt - a.updatedAt
+  )[0];
+  const currentRevision = current?.revision ?? 0;
+  if (currentRevision !== Math.round(input.expectedRevision)) {
+    throw new Error("These settings changed in another session. Reload before saving again.");
+  }
+  const nextRevision = currentRevision + 1;
+  const valueJson = JSON.stringify(input.value);
+  if (current) {
+    await ctx.db.patch(current._id, {
+      valueJson,
+      revision: nextRevision,
+      updatedAt: input.now,
+      updatedByUserId: input.actorUserId,
+    });
+  } else {
+    await ctx.db.insert("platformSettings", {
+      key: input.key,
+      valueJson,
+      revision: nextRevision,
+      updatedAt: input.now,
+      updatedByUserId: input.actorUserId,
+    });
+  }
+  return nextRevision;
+}
+
+function boundedInteger(value: unknown, min: number, max: number, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function booleanSetting(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function isOneOf<const T extends string>(value: unknown, options: readonly T[]): value is T {
+  return typeof value === "string" && options.includes(value as T);
 }
 
 function normalizePriority(value?: number) {

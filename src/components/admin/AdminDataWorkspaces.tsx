@@ -82,16 +82,6 @@ export function AuditLogWorkspace() {
   );
 }
 
-export function SettingsWorkspace() {
-  const routing = useQuery(api.admin.listLlmRoutingConfig);
-  return (
-    <div className="admin-data-page">
-      <WorkspaceTitle eyebrow="System" title="Settings" description="Generation providers, model routing, and prompt-template bindings." />
-      {routing === undefined ? <DataEmpty label="Loading platform settings." /> : <div className="admin-settings-grid"><section><h3>LLM Profiles</h3>{routing.profiles.map((profile) => <article className="admin-settings-record" key={profile._id}><div><strong>{profile.name}</strong><span>{profile.provider} · {profile.modelId}</span></div><StatusText status={profile.isActive ? "active" : "inactive"} /></article>)}</section><section><h3>Template Bindings</h3>{routing.bindings.map((binding) => <article className="admin-settings-record" key={binding._id}><div><strong>{binding.template?.name ?? binding.templateKind}</strong><span>{binding.profile?.name ?? "Missing profile"} · priority {binding.priority}</span></div><StatusText status={binding.isActive ? "active" : "inactive"} /></article>)}</section></div>}
-    </div>
-  );
-}
-
 function WorkspaceTitle({ description, eyebrow, title }: { description: string; eyebrow: string; title: string }) { return <header className="admin-workspace-head"><p>{eyebrow}</p><h2>{title}</h2><span>{description}</span></header>; }
 function InspectorHead({ meta, title }: { meta: string; title: string }) { return <header className="admin-inspector-head"><h3>{title}</h3><p>{meta}</p></header>; }
 function InspectorRows({ rows }: { rows: Array<[string, string]> }) { return <dl className="admin-inspector-rows">{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>; }

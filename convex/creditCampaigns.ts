@@ -431,6 +431,9 @@ export const redeemActivationCode = mutation({
       referenceTable: "creditActivationCodes",
       referenceId: activationCode._id,
       description: `Redeemed activation code for ${campaign.name}`,
+      sourceType: "activation-code",
+      reasonCode: "campaign-code-redemption",
+      campaignId: campaign._id,
     });
 
     await ctx.db.insert("creditCodeRedemptions", {
@@ -447,8 +450,7 @@ export const redeemActivationCode = mutation({
     await ctx.db.patch(activationCode._id, {
       redemptionCount: nextCodeRedemptionCount,
       lastRedeemedAt: now,
-      isActive:
-        activationCode.isActive && nextCodeRedemptionCount < activationCode.maxRedemptions,
+      isActive: nextCodeRedemptionCount < activationCode.maxRedemptions,
     });
     await ctx.db.patch(campaign._id, {
       totalRedemptions: campaign.totalRedemptions + 1,

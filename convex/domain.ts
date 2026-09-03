@@ -206,6 +206,20 @@ export const vPromptTemplateKind = v.union(
 );
 export type PromptTemplateKind = Infer<typeof vPromptTemplateKind>;
 
+export const vPipelineAction = v.union(
+  v.literal("repaint-concept"),
+  v.literal("hd-render"),
+  v.literal("palette-plan"),
+  v.literal("style-suggestion")
+);
+export type PipelineAction = Infer<typeof vPipelineAction>;
+
+export const vTemplateVersionPolicy = v.union(
+  v.literal("follow-published"),
+  v.literal("pin-version")
+);
+export type TemplateVersionPolicy = Infer<typeof vTemplateVersionPolicy>;
+
 export const vPromptTemplateVersionStatus = v.union(
   v.literal("draft"),
   v.literal("published"),

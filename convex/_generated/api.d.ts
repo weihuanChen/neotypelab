@@ -36,6 +36,7 @@ import type * as packEngagement from "../packEngagement.js";
 import type * as paintBench from "../paintBench.js";
 import type * as paintMappingEngine from "../paintMappingEngine.js";
 import type * as paintMappingPlans from "../paintMappingPlans.js";
+import type * as pipelineSettings from "../pipelineSettings.js";
 import type * as promptCompiler from "../promptCompiler.js";
 import type * as promptEngine from "../promptEngine.js";
 import type * as promptTemplateVariables from "../promptTemplateVariables.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   paintBench: typeof paintBench;
   paintMappingEngine: typeof paintMappingEngine;
   paintMappingPlans: typeof paintMappingPlans;
+  pipelineSettings: typeof pipelineSettings;
   promptCompiler: typeof promptCompiler;
   promptEngine: typeof promptEngine;
   promptTemplateVariables: typeof promptTemplateVariables;

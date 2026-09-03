@@ -36,7 +36,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { href: "/admin/feedback", label: "Feedback" },
       { href: "/admin/users", label: "Users" },
-      { href: "/admin/credits", label: "Credits" },
+      { href: "/admin/credits", label: "Credits & Rewards" },
       { href: "/admin/orders", label: "Orders" },
     ],
   },

@@ -16,6 +16,13 @@ export type AdminUsersSearch = {
 
 export type AdminFeedbackSearch = { report?: string };
 export type AdminGenerationsSearch = { run?: string };
+export type AdminCreditsSearch = {
+  tab?: "overview" | "ledger" | "rewards" | "pricing";
+  campaign?: string;
+};
+export type AdminSettingsSearch = {
+  section?: "generation" | "providers" | "bindings" | "defaults" | "system";
+};
 
 export function parseAdminTemplatesSearch(
   search: Record<string, unknown>
@@ -53,6 +60,27 @@ export function parseAdminFeedbackSearch(search: Record<string, unknown>): Admin
 
 export function parseAdminGenerationsSearch(search: Record<string, unknown>): AdminGenerationsSearch {
   return { run: optionalSearchString(search.run) };
+}
+
+export function parseAdminCreditsSearch(search: Record<string, unknown>): AdminCreditsSearch {
+  const tab = optionalSearchString(search.tab);
+  return {
+    tab: tab === "ledger" || tab === "rewards" || tab === "pricing" ? tab : "overview",
+    campaign: optionalSearchString(search.campaign),
+  };
+}
+
+export function parseAdminSettingsSearch(search: Record<string, unknown>): AdminSettingsSearch {
+  const section = optionalSearchString(search.section);
+  return {
+    section:
+      section === "providers" ||
+      section === "bindings" ||
+      section === "defaults" ||
+      section === "system"
+        ? section
+        : "generation",
+  };
 }
 
 function optionalSearchString(value: unknown) {

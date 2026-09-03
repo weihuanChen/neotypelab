@@ -1,0 +1,776 @@
+.credits-console {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-sm);
+}
+
+.credits-console button,
+.credits-console input,
+.credits-console textarea {
+  border-radius: 0;
+}
+
+.credits-console__hero {
+  display: flex;
+  min-height: 7.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+  padding: 0.4rem 0 var(--space-md);
+}
+
+.credits-console__title {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.credits-console__title p,
+.credit-section-head p,
+.credit-workspace-title p,
+.reward-campaign-rail header p,
+.reward-inspector-head p,
+.reward-composer header p {
+  margin: 0;
+  color: var(--color-accent);
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.credits-console__title h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.05;
+}
+
+.credits-console__title > span {
+  max-width: 64ch;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.credits-console__pulse {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0.2rem 0.65rem;
+  min-width: 13rem;
+  border-left: var(--rule-hair) solid var(--color-rule-2);
+  padding-left: var(--space-md);
+}
+
+.credits-console__pulse > span {
+  width: 0.55rem;
+  height: 0.55rem;
+  grid-row: 1;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 0.22rem color-mix(in oklch, var(--color-success) 14%, transparent);
+}
+
+.credits-console__pulse div {
+  display: grid;
+}
+
+.credits-console__pulse small,
+.credits-console__pulse em {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-style: normal;
+}
+
+.credits-console__pulse strong {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.credits-console__pulse em {
+  grid-column: 2;
+  font-family: var(--font-mono);
+}
+
+.credits-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  border-right: var(--rule-hair) solid var(--color-rule-2);
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  border-left: var(--rule-hair) solid var(--color-rule-2);
+}
+
+.credits-metrics > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  border-right: var(--rule-hair) solid var(--color-rule);
+  padding: 0.85rem var(--space-sm);
+}
+
+.credits-metrics > div:last-child {
+  border-right: 0;
+}
+
+.credits-metrics dt {
+  color: var(--color-muted);
+  font-family: var(--font-label);
+  font-size: 0.67rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.credits-metrics dd {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: clamp(1.15rem, 2vw, 1.7rem);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.credits-metrics small {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credits-console__tabs {
+  display: flex;
+  min-width: 0;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+}
+
+.credits-console__tabs button {
+  display: inline-flex;
+  min-width: 8rem;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  border-right: var(--rule-hair) solid var(--color-rule-2);
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.76rem;
+  transition: background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+
+.credits-console__tabs button:hover {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+
+.credits-console__tabs button.is-active {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.credits-console__tabs svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.credits-console__message {
+  margin: 0;
+  border-bottom: var(--rule-hair) solid currentColor;
+  padding: 0.55rem var(--space-sm);
+  font-size: 0.74rem;
+}
+
+.credits-console__message.is-success { color: var(--color-success); }
+.credits-console__message.is-error { color: var(--color-danger); }
+
+.credits-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 0.75fr);
+  border: var(--rule-hair) solid var(--color-ink);
+}
+
+.credits-overview > section {
+  min-width: 0;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+  padding: var(--space-md);
+}
+
+.credits-overview > section:nth-child(odd) {
+  border-right: var(--rule-hair) solid var(--color-ink);
+}
+
+.credits-overview > section:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.credit-section-head,
+.credit-workspace-title,
+.reward-campaign-rail > header,
+.reward-composer > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.credit-section-head h3,
+.credit-workspace-title h3,
+.reward-campaign-rail header h3,
+.reward-inspector-head h3,
+.reward-composer header h3 {
+  margin: 0.18rem 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.credit-section-head > button,
+.reward-composer header > button {
+  border: 0;
+  border-bottom: var(--rule-hair) solid currentColor;
+  background: transparent;
+  padding: 0.2rem 0;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.credit-section-head > button:hover,
+.reward-composer header > button:hover {
+  color: var(--color-accent);
+}
+
+.credit-flow-chart {
+  display: grid;
+  height: 14rem;
+  grid-template-columns: repeat(14, minmax(1rem, 1fr));
+  align-items: end;
+  gap: 0.35rem;
+  margin-top: var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  background-image: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), var(--color-rule) 25%);
+}
+
+.credit-flow-day {
+  display: grid;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) 1.4rem;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.credit-flow-day__bars {
+  display: flex;
+  min-height: 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+}
+
+.credit-flow-day__bars span {
+  width: min(0.55rem, 45%);
+  min-height: 2px;
+  transition: height var(--dur-base) var(--ease-out);
+}
+
+.credit-flow-day__bars .is-inflow,
+.credit-flow-legend i.is-inflow { background: var(--color-accent); }
+.credit-flow-day__bars .is-outflow,
+.credit-flow-legend i.is-outflow { background: var(--color-success); }
+
+.credit-flow-day small {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+
+.credit-flow-legend {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+  color: var(--color-muted);
+  font-size: 0.68rem;
+}
+
+.credit-flow-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.credit-flow-legend i { width: 0.65rem; height: 0.2rem; }
+
+.credit-allocation-list,
+.credit-live-panel,
+.credit-pricing-panel {
+  display: grid;
+  align-content: start;
+}
+
+.credit-allocation-list {
+  margin-top: var(--space-sm);
+}
+
+.credit-allocation-list > div,
+.credit-price-preview,
+.credit-live-row {
+  display: flex;
+  min-height: 3.45rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+
+.credit-allocation-list span,
+.credit-price-preview > span,
+.credit-live-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.credit-allocation-list strong,
+.credit-live-row strong,
+.credit-price-preview > span {
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credit-allocation-list small,
+.credit-live-row span,
+.credit-live-row small,
+.credit-price-preview small {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+}
+
+.credit-allocation-list em,
+.credit-live-row em,
+.credit-price-preview strong {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-style: normal;
+}
+
+.credit-live-panel .credit-section-head,
+.credit-pricing-panel .credit-section-head { margin-bottom: var(--space-xs); }
+.credit-live-row > div:last-child { justify-items: end; }
+.credit-price-preview strong small { font-weight: 400; }
+
+.credit-workspace-title {
+  min-height: 4.3rem;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+  padding: var(--space-sm);
+}
+
+.credit-workspace-title > span {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.credit-ledger-workspace,
+.credit-pricing-workspace,
+.rewards-workspace {
+  min-width: 0;
+  border: var(--rule-hair) solid var(--color-ink);
+}
+
+.credit-ledger-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  background: var(--color-paper-2);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.credit-ledger-controls > label {
+  display: flex;
+  min-width: min(24rem, 100%);
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  color: var(--color-muted);
+}
+
+.credit-ledger-controls input {
+  width: 100%;
+  min-height: 2.3rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 0.75rem;
+}
+
+.credit-segmented {
+  display: inline-flex;
+  border: var(--rule-hair) solid var(--color-rule-2);
+}
+
+.credit-segmented button {
+  min-height: 2rem;
+  border: 0;
+  border-right: var(--rule-hair) solid var(--color-rule-2);
+  background: transparent;
+  padding: 0 0.75rem;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.68rem;
+}
+
+.credit-segmented button:last-child { border-right: 0; }
+.credit-segmented button.is-active { background: var(--color-ink); color: var(--color-paper); }
+
+.credit-ledger-table,
+.credit-pricing-table {
+  max-height: 48rem;
+  overflow: auto;
+}
+
+.credit-ledger-row {
+  display: grid;
+  min-width: 68rem;
+  grid-template-columns: 1.15fr 1fr 1.8fr 0.55fr 0.55fr 0.9fr;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 3.8rem;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  padding: 0 var(--space-sm);
+  font-size: 0.74rem;
+}
+
+.credit-ledger-row.is-head,
+.credit-pricing-row.is-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 2.5rem;
+  background: var(--color-paper-3);
+  color: var(--color-muted);
+  font-family: var(--font-label);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.credit-ledger-row > span {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credit-ledger-row > span > strong { font-weight: 500; }
+.credit-ledger-row small { overflow: hidden; color: var(--color-muted); font-size: 0.65rem; text-overflow: ellipsis; }
+.credit-ledger-row > strong,
+.credit-ledger-row > em,
+.credit-ledger-row > time { font-family: var(--font-mono); font-size: 0.7rem; font-style: normal; }
+.credit-ledger-row .is-positive { color: var(--color-success); }
+.credit-ledger-row .is-negative { color: var(--color-danger); }
+
+.credit-source {
+  width: fit-content;
+  font-family: var(--font-label);
+  font-size: 0.64rem;
+  font-weight: 400 !important;
+  text-transform: uppercase;
+}
+
+.credit-source.is-purchased { color: var(--color-info); }
+.credit-source.is-reward { color: var(--color-accent); }
+.credit-source.is-refund { color: var(--color-success); }
+.credit-source.is-spend { color: var(--color-danger); }
+
+.rewards-workspace {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.68fr) minmax(0, 2fr);
+  min-height: 45rem;
+}
+
+.reward-campaign-rail {
+  min-width: 0;
+  border-right: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-paper-2);
+}
+
+.reward-campaign-rail > header {
+  min-height: 4.3rem;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+  padding: var(--space-sm);
+}
+
+.reward-campaign-rail header > button {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  cursor: pointer;
+}
+
+.reward-campaign-rail header > button:hover { background: var(--color-accent); }
+
+.reward-campaign-row {
+  display: grid;
+  width: 100%;
+  min-height: 4.2rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  border: 0;
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  border-left: 2px solid transparent;
+  background: transparent;
+  padding: 0 var(--space-sm);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.reward-campaign-row:hover,
+.reward-campaign-row.is-active { background: var(--color-paper); }
+.reward-campaign-row.is-active { border-left-color: var(--color-accent); }
+.reward-campaign-row > span:nth-child(2) { display: grid; min-width: 0; gap: 0.2rem; }
+.reward-campaign-row strong { overflow: hidden; font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+.reward-campaign-row small { color: var(--color-muted); font-family: var(--font-mono); font-size: 0.62rem; }
+.reward-campaign-row em { color: var(--color-muted); font-family: var(--font-mono); font-size: 0.7rem; font-style: normal; }
+
+.reward-status-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+
+.reward-status-dot.is-live { background: var(--color-success); }
+.reward-status-dot.is-scheduled { background: var(--color-info); }
+.reward-status-dot.is-paused { background: var(--color-accent); }
+
+.reward-campaign-inspector { min-width: 0; background: var(--color-paper); }
+
+.reward-inspector-head {
+  display: flex;
+  min-height: 7.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+  padding: var(--space-md);
+}
+
+.reward-inspector-head > div { display: grid; gap: 0.2rem; }
+.reward-inspector-head h3 { font-size: 1.35rem; }
+.reward-inspector-head span { max-width: 60ch; color: var(--color-muted); font-size: 0.75rem; line-height: 1.45; }
+.reward-inspector-head > button,
+.reward-composer footer button,
+.reward-code-fields > button {
+  display: inline-flex;
+  min-height: 2.45rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-ink);
+  padding: 0 0.85rem;
+  color: var(--color-paper);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reward-inspector-head > button.is-danger { border-color: var(--color-danger); background: transparent; color: var(--color-danger); }
+.reward-inspector-head > button:hover,
+.reward-composer footer button:hover:not(:disabled),
+.reward-code-fields > button:hover:not(:disabled) { background: var(--color-accent); color: var(--color-paper); }
+
+.reward-campaign-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+}
+
+.reward-campaign-metrics > div { border-right: var(--rule-hair) solid var(--color-rule-2); padding: var(--space-sm); }
+.reward-campaign-metrics > div:last-child { border-right: 0; }
+.reward-campaign-metrics dt { color: var(--color-muted); font-family: var(--font-label); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.reward-campaign-metrics dd { margin: 0.35rem 0 0; font-family: var(--font-mono); font-size: 1.25rem; }
+.reward-campaign-metrics dd small { color: var(--color-muted); font-size: 0.65rem; }
+
+.reward-code-generator,
+.reward-code-inventory { padding: var(--space-md); }
+.reward-code-generator { border-bottom: var(--rule-hair) solid var(--color-ink); background: var(--color-paper-2); }
+
+.reward-code-fields {
+  display: grid;
+  grid-template-columns: 0.55fr 0.65fr 0.75fr 0.9fr 1.3fr auto;
+  align-items: end;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.credit-field { display: grid; min-width: 0; gap: 0.3rem; }
+.credit-field > span { color: var(--color-muted); font-family: var(--font-label); font-size: 0.64rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.credit-field input,
+.credit-field textarea {
+  width: 100%;
+  min-height: 2.45rem;
+  border: var(--rule-hair) solid var(--color-rule-2);
+  background: var(--color-paper);
+  padding: 0 0.6rem;
+  color: var(--color-ink);
+  font-size: 0.72rem;
+  outline: 0;
+}
+.credit-field textarea { min-height: 5.6rem; resize: vertical; padding-top: 0.6rem; line-height: 1.5; }
+.credit-field input:focus,
+.credit-field textarea:focus { border-color: var(--color-accent); }
+
+.reward-code-inventory .credit-section-head { margin-bottom: var(--space-xs); }
+.reward-code-row {
+  display: grid;
+  min-width: 46rem;
+  grid-template-columns: 2rem minmax(10rem, 1.5fr) 0.55fr 0.8fr 0.75fr 0.6fr;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 3rem;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-muted);
+  font-size: 0.68rem;
+}
+.reward-code-inventory { overflow-x: auto; }
+.reward-code-row code { color: var(--color-ink); font-family: var(--font-mono); font-size: 0.72rem; }
+.reward-code-copy { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border: 0; background: transparent; color: var(--color-muted); cursor: pointer; }
+.reward-code-copy:hover { color: var(--color-accent); }
+.reward-code-toggle { min-height: 1.8rem; border: var(--rule-hair) solid var(--color-rule-2); background: transparent; color: var(--color-muted); cursor: pointer; font-size: 0.65rem; }
+.reward-code-toggle.is-active { border-color: var(--color-success); color: var(--color-success); }
+
+.reward-composer { padding: var(--space-md); }
+.reward-composer > header { border-bottom: var(--rule-hair) solid var(--color-ink); padding-bottom: var(--space-sm); }
+.reward-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-sm); margin-top: var(--space-md); }
+.reward-form-grid .is-wide { grid-column: 1 / -1; }
+.reward-composer footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule-2); padding-top: var(--space-sm); }
+.reward-composer footer > span { color: var(--color-muted); font-size: 0.7rem; }
+
+.credit-pricing-note {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.55fr) minmax(0, 1.45fr);
+  gap: var(--space-md);
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  background: color-mix(in oklch, var(--color-accent) 6%, var(--color-paper-2));
+  padding: var(--space-sm);
+}
+.credit-pricing-note strong { font-size: 0.76rem; }
+.credit-pricing-note p { margin: 0; color: var(--color-muted); font-size: 0.72rem; line-height: 1.5; }
+
+.credit-pricing-row {
+  display: grid;
+  min-width: 58rem;
+  grid-template-columns: 1.15fr 1.5fr 0.7fr 0.7fr 0.45fr;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 4.4rem;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  padding: 0 var(--space-sm);
+}
+.credit-pricing-row > span { display: grid; gap: 0.15rem; }
+.credit-pricing-row > span strong { font-size: 0.76rem; }
+.credit-pricing-row > span small { color: var(--color-muted); font-family: var(--font-mono); font-size: 0.64rem; }
+.credit-pricing-row > p { margin: 0; color: var(--color-muted); font-size: 0.7rem; line-height: 1.45; }
+.credit-pricing-row > label { display: flex; align-items: center; gap: 0.35rem; }
+.credit-pricing-row > label input { width: 4rem; min-height: 2.1rem; border: var(--rule-hair) solid var(--color-rule-2); background: var(--color-paper); padding: 0 0.45rem; font-family: var(--font-mono); }
+.credit-pricing-row > label small { color: var(--color-muted); font-size: 0.62rem; }
+
+.credit-rule-switch { display: inline-flex; align-items: center; gap: 0.45rem; border: 0; background: transparent; color: var(--color-muted); cursor: pointer; font-size: 0.68rem; }
+.credit-rule-switch i { position: relative; width: 1.8rem; height: 0.95rem; border: var(--rule-hair) solid var(--color-rule-2); background: var(--color-paper-3); }
+.credit-rule-switch i::after { position: absolute; top: 2px; left: 2px; width: 0.58rem; height: 0.58rem; background: var(--color-muted); content: ""; transition: transform var(--dur-fast); }
+.credit-rule-switch.is-active { color: var(--color-success); }
+.credit-rule-switch.is-active i { border-color: var(--color-success); }
+.credit-rule-switch.is-active i::after { background: var(--color-success); transform: translateX(0.78rem); }
+.credit-rule-save { min-height: 2rem; border: var(--rule-hair) solid var(--color-ink); background: var(--color-ink); color: var(--color-paper); cursor: pointer; font-size: 0.68rem; }
+.credit-rule-save:disabled { border-color: var(--color-rule-2); background: transparent; color: var(--color-muted); cursor: not-allowed; opacity: 0.55; }
+
+.credit-state {
+  display: grid;
+  min-height: 7rem;
+  place-content: center;
+  justify-items: center;
+  gap: 0.45rem;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+}
+
+.credit-state svg,
+.reward-code-fields button svg,
+.reward-composer footer button svg { width: 0.85rem; height: 0.85rem; }
+
+.credits-console button:focus-visible,
+.credits-console input:focus-visible,
+.credits-console textarea:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.credits-console button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+@media (max-width: 1120px) {
+  .credits-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .credits-metrics > div:nth-child(3) { border-right: 0; }
+  .credits-metrics > div:nth-child(-n + 3) { border-bottom: var(--rule-hair) solid var(--color-rule); }
+  .credits-overview { grid-template-columns: minmax(0, 1fr); }
+  .credits-overview > section,
+  .credits-overview > section:nth-child(odd),
+  .credits-overview > section:nth-last-child(-n + 2) { border-right: 0; border-bottom: var(--rule-hair) solid var(--color-ink); }
+  .credits-overview > section:last-child { border-bottom: 0; }
+  .reward-code-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .credits-console__hero { min-height: auto; align-items: flex-start; flex-direction: column; }
+  .credits-console__pulse { width: 100%; border-top: var(--rule-hair) solid var(--color-rule); border-left: 0; padding: var(--space-sm) 0 0; }
+  .credits-console__tabs { overflow-x: auto; }
+  .credits-console__tabs button { min-width: 7.25rem; }
+  .rewards-workspace { grid-template-columns: minmax(0, 1fr); }
+  .reward-campaign-rail { max-height: 22rem; overflow: auto; border-right: 0; border-bottom: var(--rule-hair) solid var(--color-ink); }
+  .reward-inspector-head { min-height: auto; align-items: flex-start; flex-direction: column; }
+  .reward-campaign-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reward-campaign-metrics > div:nth-child(2) { border-right: 0; }
+  .reward-campaign-metrics > div:nth-child(-n + 2) { border-bottom: var(--rule-hair) solid var(--color-rule); }
+  .reward-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .credits-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .credits-metrics > div,
+  .credits-metrics > div:nth-child(3) { border-right: var(--rule-hair) solid var(--color-rule); border-bottom: var(--rule-hair) solid var(--color-rule); }
+  .credits-metrics > div:nth-child(even) { border-right: 0; }
+  .credits-metrics > div:last-child { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
+  .credit-flow-chart { gap: 0.18rem; }
+  .credit-ledger-controls { align-items: stretch; flex-direction: column; }
+  .credit-segmented { align-self: flex-start; }
+  .reward-code-fields,
+  .reward-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .reward-form-grid .is-wide { grid-column: auto; }
+  .reward-composer footer { align-items: stretch; flex-direction: column; }
+  .reward-inspector-head > button,
+  .reward-composer footer button,
+  .reward-code-fields > button { width: 100%; }
+  .credit-pricing-note { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-flow-day__bars span,
+  .credit-rule-switch i::after { transition: none; }
+}

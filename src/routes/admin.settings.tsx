@@ -1,4 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SettingsWorkspace } from "@/src/components/admin/AdminDataWorkspaces";
+import { SettingsWorkbench } from "@/src/components/admin/SettingsWorkbench";
+import { parseAdminSettingsSearch } from "@/src/components/admin/adminRouteSearch";
 
-export const Route = createFileRoute("/admin/settings")({ component: SettingsWorkspace });
+export const Route = createFileRoute("/admin/settings")({
+  validateSearch: parseAdminSettingsSearch,
+  head: () => ({
+    meta: [
+      { title: "Settings | NeotypeLab Admin" },
+      {
+        name: "description",
+        content: "Configure generation routing, providers, template bindings, defaults, and system behavior.",
+      },
+    ],
+  }),
+  component: SettingsRoute,
+});
+
+function SettingsRoute() {
+  return <SettingsWorkbench search={Route.useSearch()} />;
+}
