@@ -8,7 +8,7 @@ import {
   formatPrototypeReference,
   formatReportDate,
   formatStatus,
-} from "./FeedbackWorkbench";
+} from "./feedbackUtils";
 
 export function FeedbackReportsList() {
   const { results, status, loadMore } = usePaginatedQuery(

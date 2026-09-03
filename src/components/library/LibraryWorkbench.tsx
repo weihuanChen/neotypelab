@@ -43,6 +43,7 @@ import {
   useQuery,
 } from "convex/react";
 import { useState, useEffect } from "react";
+import type { LibrarySearch } from "./librarySearch";
 
 type PublishVisibility = "private" | "unlisted" | "public";
 type BuildStage = "primer-pass" | "decal-pass" | "weathering-pass";
@@ -56,10 +57,6 @@ type OperationalStatus =
   | "failed"
   | "archived";
 type StatusFilter = "all" | "draft" | "rendering" | "ready" | "failed";
-type LibrarySearch = {
-  filter?: "all" | "draft" | "generated" | "archived" | "saved" | "jobs";
-};
-
 export function LibraryWorkbench({ search: _search }: { search: LibrarySearch }) {
   return (
     <div className="library-page">
@@ -1311,25 +1308,4 @@ function formatMoodTagLabel(tag: string) {
     return "Ceremonial Clean";
   }
   return tag;
-}
-
-export function parseLibrarySearch(search: Record<string, unknown>): LibrarySearch {
-  return {
-    filter: parseLibraryFilter(search.filter),
-  };
-}
-
-function parseLibraryFilter(value: unknown): NonNullable<LibrarySearch["filter"]> {
-  if (
-    value === "all" ||
-    value === "draft" ||
-    value === "generated" ||
-    value === "archived" ||
-    value === "saved" ||
-    value === "jobs"
-  ) {
-    return value;
-  }
-
-  return "all";
 }

@@ -3,10 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
-import {
-  CreateWorkbench,
-  parseCreateSearch,
-} from "@/src/components/create/CreateWorkbench";
+import { CreateWorkbench } from "@/src/components/create/CreateWorkbench";
+import { parseCreateSearch } from "@/src/components/create/createSearch";
 
 export const Route = createFileRoute("/create")({
   validateSearch: parseCreateSearch,

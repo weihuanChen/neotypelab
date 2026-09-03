@@ -3,10 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
-import {
-  FeedbackWorkbench,
-  parseFeedbackSearch,
-} from "@/src/components/feedback/FeedbackWorkbench";
+import { FeedbackWorkbench } from "@/src/components/feedback/FeedbackWorkbench";
+import { parseFeedbackSearch } from "@/src/components/feedback/feedbackUtils";
 
 export const Route = createFileRoute("/feedback")({
   validateSearch: parseFeedbackSearch,

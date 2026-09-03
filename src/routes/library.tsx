@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
-import {
-  LibraryWorkbench,
-  parseLibrarySearch,
-} from "@/src/components/library/LibraryWorkbench";
+import { LibraryWorkbench } from "@/src/components/library/LibraryWorkbench";
+import { parseLibrarySearch } from "@/src/components/library/librarySearch";
 import { noIndexRobots } from "@/src/lib/appPaths";
 
 export const Route = createFileRoute("/library")({

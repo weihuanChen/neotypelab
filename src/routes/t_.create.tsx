@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { parseCreateSearch } from "@/src/components/create/CreateWorkbench";
+import { parseCreateSearch } from "@/src/components/create/createSearch";
 
 export const Route = createFileRoute("/t_/create")({
   validateSearch: parseCreateSearch,

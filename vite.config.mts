@@ -20,6 +20,9 @@ export default defineConfig({
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tanstackStart({
       srcDirectory: "src",
+      router: {
+        autoCodeSplitting: true,
+      },
     }),
     react(),
   ],
