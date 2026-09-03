@@ -17,7 +17,10 @@ export default defineConfig({
     },
   },
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    cloudflare({
+      inspectorPort: false,
+      viteEnvironment: { name: "ssr" },
+    }),
     tanstackStart({
       srcDirectory: "src",
       router: {

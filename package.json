@@ -19,7 +19,12 @@
     "cf-typegen": "wrangler types",
     "start": "vite preview",
     "start:next": "next start",
-    "lint": "tsc && next lint"
+    "lint": "tsc && next lint",
+    "test": "npm run test:integration",
+    "test:integration": "vitest run",
+    "test:integration:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test --project=public"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1047.0",
@@ -67,7 +72,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
-    "convex": "^1.13.2",
+    "convex": "^1.45.0",
     "convex-ents": "^0.9.5",
     "convex-helpers": "0.1.27",
     "date-fns": "^2.30.0",
@@ -92,6 +97,11 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "npm-run-all": "^4.1.5"
+    "@clerk/testing": "^2.2.33",
+    "@edge-runtime/vm": "^5.0.0",
+    "@playwright/test": "^1.62.1",
+    "convex-test": "^0.0.56",
+    "npm-run-all": "^4.1.5",
+    "vitest": "^4.1.11"
   }
 }

@@ -121,7 +121,12 @@ Before shipping a migration batch, run:
 ```bash
 npm run build
 npm run lint
+npm run test:integration
+npm run test:e2e:public
 ```
+
+See `docs/testing.md` for the test architecture, authenticated Playwright setup,
+and staging smoke-test boundary.
 
 Suggested smoke checks:
 
