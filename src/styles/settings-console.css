@@ -519,6 +519,10 @@
 
 .settings-provider-test > span { color: var(--color-muted); font-size: 0.64rem; }
 .settings-provider-test button:disabled { opacity: 0.45; cursor: not-allowed; }
+.settings-storage-test { align-items: flex-start; }
+.settings-storage-test__result { display: grid; gap: 0.25rem; }
+.settings-storage-test__result p { margin: 0; font-size: 0.68rem; }
+.settings-storage-test__result span { font-family: var(--font-mono); font-size: 0.62rem; }
 
 .settings-binding-workspace { grid-template-columns: minmax(28rem, 1.3fr) minmax(20rem, 0.7fr); }
 .settings-binding-table__head,

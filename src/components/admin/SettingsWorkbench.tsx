@@ -86,8 +86,27 @@ type WorkspaceData = {
     environment: string;
     applicationVersion: string;
     database: string;
-    assetStorage: string;
+    assetStorage: {
+      connectionConfigured: boolean;
+      publicBucket: string | null;
+      publicDeliveryConfigured: boolean;
+      privateBucket: string | null;
+      privateDeliveryConfigured: boolean;
+    };
   };
+};
+
+type R2ConnectionResult = {
+  ok: boolean;
+  message: string;
+  latencyMs: number;
+  buckets: Array<{
+    role: "public" | "private";
+    bucket: string;
+    ok: boolean;
+    latencyMs: number;
+    message: string;
+  }>;
 };
 
 type GenerationDraft = {
@@ -210,6 +229,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
   const createProvider = useMutation(api.admin.createLlmProfile);
   const updateProvider = useMutation(api.admin.updateLlmProfile);
   const testProvider = useAction(api.generationNode.testLlmProfileConnection);
+  const testR2 = useAction(api.generationNode.testR2Connection);
 
   const [generationDraft, setGenerationDraft] = useState<GenerationDraft | null>(null);
   const [defaultsDraft, setDefaultsDraft] = useState<DefaultsDraft | null>(null);
@@ -226,6 +246,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     message: string;
     latencyMs: number;
   } | null>(null);
+  const [r2ConnectionResult, setR2ConnectionResult] = useState<R2ConnectionResult | null>(null);
   const [riskDialog, setRiskDialog] = useState<RiskDialogState | null>(null);
 
   const selectedProvider = useMemo(
@@ -514,6 +535,19 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     }
   };
 
+  const handleTestR2Connection = async () => {
+    setBusy(true);
+    setR2ConnectionResult(null);
+    setErrorMessage(null);
+    try {
+      setR2ConnectionResult(await testR2({}));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "R2 connection test failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!workspace || !generationDraft || !defaultsDraft || !systemDraft) {
     return (
       <div className="settings-console settings-console--loading">
@@ -573,7 +607,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
               draft={providerDraft}
               onAdd={() => setSelectedProviderId("new")}
               onSelect={setSelectedProviderId}
-              onTest={handleTestConnection}
+              onTest={() => void handleTestConnection()}
               providers={workspace.providers}
               selectedId={selectedProviderId}
               setDraft={setProviderDraft}
@@ -595,8 +629,11 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
           ) : null}
           {section === "system" ? (
             <SystemSection
+              busy={busy}
               draft={systemDraft}
               environment={workspace.environment}
+              onTestR2={handleTestR2Connection}
+              r2ConnectionResult={r2ConnectionResult}
               setDraft={setSystemDraft}
             />
           ) : null}
@@ -958,7 +995,22 @@ function DefaultsSection({ draft, setDraft }: { draft: DefaultsDraft; setDraft: 
   );
 }
 
-function SystemSection({ draft, environment, setDraft }: { draft: SystemDraft; environment: WorkspaceData["environment"]; setDraft: (value: SystemDraft) => void }) {
+function SystemSection({
+  busy,
+  draft,
+  environment,
+  onTestR2,
+  r2ConnectionResult,
+  setDraft,
+}: {
+  busy: boolean;
+  draft: SystemDraft;
+  environment: WorkspaceData["environment"];
+  onTestR2: () => Promise<void>;
+  r2ConnectionResult: R2ConnectionResult | null;
+  setDraft: (value: SystemDraft) => void;
+}) {
+  const storage = environment.assetStorage;
   return (
     <div className="settings-section">
       <SettingsSectionHead eyebrow="System" title="Platform switches" description="Low-frequency controls for availability, public content and commerce." />
@@ -985,8 +1037,23 @@ function SystemSection({ draft, environment, setDraft }: { draft: SystemDraft; e
         <div><dt>Environment</dt><dd>{environment.environment}</dd></div>
         <div><dt>Application version</dt><dd>{environment.applicationVersion}</dd></div>
         <div><dt>Database</dt><dd><span className="settings-status-dot" />{environment.database}</dd></div>
-        <div><dt>Asset storage</dt><dd><span className={cn("settings-status-dot", environment.assetStorage === "Not configured" && "is-inactive")} />{environment.assetStorage}</dd></div>
+        <div><dt>R2 connection</dt><dd><span className={cn("settings-status-dot", !storage.connectionConfigured && "is-inactive")} />{storage.connectionConfigured ? "Configured" : "Not configured"}</dd></div>
+        <div><dt>Public bucket</dt><dd><span className={cn("settings-status-dot", !storage.publicBucket && "is-inactive")} />{storage.publicBucket ?? "Not configured"}</dd></div>
+        <div><dt>Public delivery</dt><dd><span className={cn("settings-status-dot", !storage.publicDeliveryConfigured && "is-inactive")} />{storage.publicDeliveryConfigured ? "Base URL configured" : "Not configured"}</dd></div>
+        <div><dt>Private bucket</dt><dd><span className={cn("settings-status-dot", !storage.privateBucket && "is-inactive")} />{storage.privateBucket ?? "Not configured"}</dd></div>
+        <div><dt>Private delivery</dt><dd><span className={cn("settings-status-dot", !storage.privateDeliveryConfigured && "is-inactive")} />{storage.privateDeliveryConfigured ? "Signed URLs ready" : "Not configured"}</dd></div>
       </dl>
+      <div className="settings-provider-test settings-storage-test">
+        <button disabled={busy || !storage.connectionConfigured} onClick={() => void onTestR2()} type="button"><ReloadIcon />Test both buckets</button>
+        {r2ConnectionResult ? (
+          <div className="settings-storage-test__result">
+            <p className={r2ConnectionResult.ok ? "is-success" : "is-error"}>{r2ConnectionResult.message} · {r2ConnectionResult.latencyMs} ms</p>
+            {r2ConnectionResult.buckets.map((result) => (
+              <span className={result.ok ? "is-success" : "is-error"} key={result.role}>{result.role}: {result.message} · {result.latencyMs} ms</span>
+            ))}
+          </div>
+        ) : <span>Creates and removes one temporary object in each bucket.</span>}
+      </div>
     </div>
   );
 }

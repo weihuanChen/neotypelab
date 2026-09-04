@@ -108,6 +108,20 @@ Set secrets in Wrangler or the Cloudflare dashboard:
 - `OPENAI_API_KEY`
 - R2 credentials used by generation and asset stabilization
 
+R2 storage is separated by access boundary in every environment:
+
+- `R2_BUCKET_PUBLIC` stores public showcase and distribution assets.
+- `R2_PUBLIC_BASE_URL` is the delivery origin for public object URLs.
+- `R2_BUCKET_PRIVATE` stores user library assets.
+- private objects are delivered with short-lived S3 presigned URLs; the application
+  does not construct private URLs from a public base domain.
+- `R2_END_POINT`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` configure the
+  shared S3-compatible connection.
+
+Platform administrators can run a read/write/delete check against both buckets
+from the Environment section in Admin Settings. The test objects use the
+`_connectivity-tests/` prefix and are removed before the check finishes.
+
 Convex stays deployed separately:
 
 ```bash

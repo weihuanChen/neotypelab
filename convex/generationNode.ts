@@ -1,16 +1,19 @@
 "use node";
 
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
 import type { GenerationProvider } from "./domain";
+import { getPublicR2ObjectUrl } from "./r2Config";
+import {
+  checkR2StorageConnectivity,
+  uploadR2Object,
+} from "./r2Storage";
 
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-1";
 const DEFAULT_IMAGE_TIMEOUT_MS = 120000;
-let cachedPublicAssetBaseUrl: Promise<string | undefined> | undefined;
 
 type StabilizeConceptPreviewResult =
   | {
@@ -201,6 +204,36 @@ export const testLlmProfileConnection = action({
   },
 });
 
+export const testR2Connection = action({
+  args: {},
+  handler: async (ctx): Promise<{
+    ok: boolean;
+    latencyMs: number;
+    message: string;
+    buckets: Array<{
+      role: "public" | "private";
+      bucket: string;
+      ok: boolean;
+      latencyMs: number;
+      message: string;
+    }>;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Authentication is required");
+    await ctx.runQuery(internal.generation.assertPlatformAdminForConnectionTest, {
+      tokenIdentifier: identity.tokenIdentifier,
+    });
+    const buckets = await checkR2StorageConnectivity();
+    const ok = buckets.every((bucket) => bucket.ok);
+    return {
+      ok,
+      latencyMs: Math.max(...buckets.map((bucket) => bucket.latencyMs)),
+      message: ok ? "Both R2 buckets passed all checks" : "One or more R2 checks failed",
+      buckets,
+    };
+  },
+});
+
 export const stabilizeConceptPreviewAsset = action({
   args: {
     conceptId: v.id("concepts"),
@@ -232,10 +265,10 @@ export const stabilizeConceptPreviewAsset = action({
       };
     }
 
-    const publicUrl = await resolvePublicAssetUrl(preview.key);
+    const publicUrl = getPublicR2ObjectUrl(preview.key);
     if (!publicUrl) {
       throw new Error(
-        "No public asset delivery URL is configured. Set R2_PUBLIC_BASE_URL or enable the bucket managed domain."
+        "No public asset delivery URL is configured. Set R2_PUBLIC_BASE_URL."
       );
     }
 
@@ -301,7 +334,7 @@ export const executeQueuedJob = internalAction({
       });
       attemptedProvider = generated.provider;
 
-      const uploaded = await uploadToR2({
+      const uploaded = await uploadR2Object("public", {
         buffer: generated.buffer,
         contentType: generated.contentType,
         key: buildAssetKey(job.user.handle, job.generationJobId, generated.contentType),
@@ -1330,111 +1363,6 @@ function getRenderLayoutSpec(
   return undefined;
 }
 
-async function uploadToR2({
-  buffer,
-  contentType,
-  key,
-}: {
-  buffer: Buffer;
-  contentType: string;
-  key: string;
-}) {
-  const bucket = getRequiredEnv("R2_BUCKET");
-  const client = new S3Client({
-    region: "auto",
-    endpoint: getRequiredEnv("R2_END_POINT"),
-    forcePathStyle: true,
-    credentials: {
-      accessKeyId: getRequiredEnv("R2_ACCESS_KEY_ID"),
-      secretAccessKey: getRequiredEnv("R2_SECRET_ACCESS_KEY"),
-    },
-  });
-
-  const result = await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: contentType,
-    })
-  );
-
-  return {
-    key,
-    bucket,
-    etag: result.ETag,
-    publicUrl: await resolvePublicAssetUrl(key),
-  };
-}
-
-async function resolvePublicAssetUrl(key: string) {
-  const baseUrl = await resolvePublicAssetBaseUrl();
-  if (!baseUrl) {
-    return undefined;
-  }
-  return `${baseUrl}/${key}`;
-}
-
-async function resolvePublicAssetBaseUrl() {
-  if (cachedPublicAssetBaseUrl) {
-    return cachedPublicAssetBaseUrl;
-  }
-
-  cachedPublicAssetBaseUrl = (async () => {
-    const configuredBaseUrl = normalizeBaseUrl(process.env.R2_PUBLIC_BASE_URL);
-    if (configuredBaseUrl) {
-      return configuredBaseUrl;
-    }
-
-    const accountId = process.env.ACCOUNT_ID;
-    const bucket = process.env.R2_BUCKET;
-    const apiToken = process.env.R2_TOKEN;
-
-    if (!accountId || !bucket || !apiToken) {
-      return undefined;
-    }
-
-    try {
-      const response = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${accountId}/r2/buckets/${bucket}/domains/managed`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        return undefined;
-      }
-
-      const payload = (await response.json()) as {
-        result?: {
-          domain?: string;
-          enabled?: boolean;
-        };
-      };
-
-      if (!payload.result?.enabled || !payload.result.domain) {
-        return undefined;
-      }
-
-      return normalizeBaseUrl(`https://${payload.result.domain}`);
-    } catch {
-      return undefined;
-    }
-  })();
-
-  return cachedPublicAssetBaseUrl;
-}
-
-function normalizeBaseUrl(value: string | undefined) {
-  if (!value) {
-    return undefined;
-  }
-  return value.trim().replace(/\/+$/, "");
-}
-
 function buildAssetKey(handle: string, generationJobId: string, contentType: string) {
   const extension = getImageExtension(contentType);
   return `generated/${handle}/${generationJobId}-${randomUUID()}.${extension}`;
@@ -1454,14 +1382,6 @@ function getImageExtension(contentType: string) {
     return "svg";
   }
   return "bin";
-}
-
-function getRequiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is not configured`);
-  }
-  return value;
 }
 
 function wrapText(input: string, maxLineLength: number) {

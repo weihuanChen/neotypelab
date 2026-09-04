@@ -22,4 +22,4 @@ There is no committed test runner or `npm test` script yet. For now, contributor
 Git history is not available in this checkout, so no repository-specific commit convention could be verified. Use short, imperative commit subjects such as `Add team settings member filter`. PRs should include a concise summary, note any schema or env changes, link the related issue, and attach screenshots or screen recordings for UI work.
 
 ## Security & Configuration Tips
-Keep secrets in `.env.local`, which is gitignored. Current local config relies on Convex and R2-related variables such as `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, and `R2_PUBLIC_BASE_URL`; document any new required keys in `README.md` and this guide when setup changes.
+Keep secrets in `.env.local`, which is gitignored. Current local config relies on Convex and R2-related variables such as `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `R2_BUCKET_PUBLIC`, `R2_BUCKET_PRIVATE`, `R2_END_POINT`, `R2_ACCESS_KEY_ID`, and `R2_PUBLIC_BASE_URL`; document any new required keys in `README.md` and this guide when setup changes.

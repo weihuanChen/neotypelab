@@ -27,6 +27,22 @@ export const getLlmProfileForConnectionTest = internalQuery({
   },
 });
 
+export const assertPlatformAdminForConnectionTest = internalQuery({
+  args: {
+    tokenIdentifier: v.string(),
+  },
+  handler: async (ctx, { tokenIdentifier }) => {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+    if (viewer === null || !canManagePlatform(viewer)) {
+      throw new Error("Platform administrator access is required");
+    }
+    return true;
+  },
+});
+
 export const listViewerJobs = query({
   args: {},
   handler: async (ctx) => {

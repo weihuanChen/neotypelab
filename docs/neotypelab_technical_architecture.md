@@ -173,11 +173,13 @@ Common environment variables:
 - `CLERK_SECRET_KEY`
 - `CLERK_JWT_ISSUER_DOMAIN`
 - `SUPER_ADMIN_EMAILS`
-- `R2_BUCKET`
+- `R2_BUCKET_PUBLIC`
+- `R2_BUCKET_PRIVATE`
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
-- `R2_ENDPOINT`
+- `R2_END_POINT`
 - `R2_PUBLIC_BASE_URL`
+- `R2_PRIVATE_BASE_URL` reserved for a future authenticated delivery Worker
 - generation provider keys such as `OPENAI_API_KEY`
 
 Rules:
@@ -186,6 +188,8 @@ Rules:
 - keep server-only keys out of client bundles
 - configure public `NEXT_PUBLIC_*` values for both build and Worker runtime
 - set Worker secrets through Wrangler or the Cloudflare dashboard
+- use `R2_PUBLIC_BASE_URL` only for public distribution objects
+- authorize private asset requests before returning a short-lived S3 presigned URL
 
 ---
 

@@ -41,7 +41,7 @@ export const createReference = mutation({
     return await ctx.db.insert("assets", {
       userId: ctx.viewerX()._id,
       key,
-      bucket: process.env.R2_BUCKET ?? "r2",
+      bucket: process.env.R2_BUCKET_PRIVATE ?? "r2",
       kind,
       contentType,
       byteSize,

@@ -44,6 +44,7 @@ import { getCreatorPackEngagementSnapshot } from "./packEngagement";
 import {
   promptTemplateVariableDefinitions,
 } from "./promptTemplateVariables";
+import { getR2ConfigurationStatus } from "./r2Config";
 
 export const overview = query({
   args: {},
@@ -641,7 +642,7 @@ export const getSettingsWorkspace = query({
           : "Development",
         applicationVersion: process.env.APP_VERSION ?? "0.1.0",
         database: "Connected",
-        assetStorage: process.env.R2_BUCKET ? "R2 Connected" : "Not configured",
+        assetStorage: getR2ConfigurationStatus(),
       },
       providerRouteHealth: settingsPipelineActions.map((action) => {
         const route = routes
