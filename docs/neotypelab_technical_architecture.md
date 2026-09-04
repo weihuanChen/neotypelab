@@ -191,6 +191,43 @@ Rules:
 - use `R2_PUBLIC_BASE_URL` only for public distribution objects
 - authorize private asset requests before returning a short-lived S3 presigned URL
 
+### Asset persistence model
+
+Asset persistence separates user-visible works from their versions and physical
+storage objects:
+
+- `mediaAssets` owns the logical image or file and points to its current version
+- `assetVersions` records generation, upload, edit, and upscale history
+- `storageObjects` records each physical `original`, `master`, `preview`, or
+  `thumbnail` rendition and its bucket role
+- `assetPublications` records explicit copies published to Showcase, templates,
+  or product static content
+
+The legacy `assets` table remains the compatibility surface during migration.
+New writes atomically create both the legacy row and the new asset graph, with
+cross-references on the legacy asset, concept, and generation job. Existing
+queries continue reading `assets` until the Library and Showcase read paths are
+migrated in later phases.
+
+### Entitlement resolution
+
+Account capabilities are resolved independently from credits and storage
+objects. `entitlementProfiles` contains the versioned Free, Pro, and Studio
+baselines, while `accountEntitlementGrants` contains time-bound subscription,
+promotion, feedback, early-adopter, and manual additions.
+
+The effective entitlement resolver applies these rules:
+
+- byte quota adjustments are additive and cannot reduce a result below zero
+- retention periods and maximum dimensions use the highest active value
+- capability flags are enabled when any active source enables them
+- grants outside their active window or with `revokedAt` do not participate
+- `users.entitlementProfileId` overrides the profile selected by `planType`
+- built-in defaults provide a deployment-safe fallback before profiles are seeded
+
+Credits remain a separate consumption ledger. Storage and generation code must
+read effective entitlements rather than branching on `planType`.
+
 ---
 
 ## 8. Deployment

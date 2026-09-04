@@ -378,3 +378,85 @@ export const vAssetStatus = v.union(
   v.literal("deleted")
 );
 export type AssetStatus = Infer<typeof vAssetStatus>;
+
+export const vMediaAssetKind = v.union(
+  v.literal("generated-image"),
+  v.literal("reference-image"),
+  v.literal("feedback-screenshot"),
+  v.literal("mask"),
+  v.literal("export")
+);
+export type MediaAssetKind = Infer<typeof vMediaAssetKind>;
+
+export const vMediaAssetStatus = v.union(
+  v.literal("active"),
+  v.literal("deleted")
+);
+export type MediaAssetStatus = Infer<typeof vMediaAssetStatus>;
+
+export const vAssetVersionOrigin = v.union(
+  v.literal("generated"),
+  v.literal("uploaded"),
+  v.literal("edited"),
+  v.literal("upscaled"),
+  v.literal("imported"),
+  v.literal("migrated")
+);
+export type AssetVersionOrigin = Infer<typeof vAssetVersionOrigin>;
+
+export const vAssetVersionStatus = v.union(
+  v.literal("processing"),
+  v.literal("ready"),
+  v.literal("failed"),
+  v.literal("deleted")
+);
+export type AssetVersionStatus = Infer<typeof vAssetVersionStatus>;
+
+export const vStorageBucketRole = v.union(
+  v.literal("public"),
+  v.literal("private"),
+  v.literal("convex")
+);
+export type StorageBucketRole = Infer<typeof vStorageBucketRole>;
+
+export const vAssetRendition = v.union(
+  v.literal("original"),
+  v.literal("master"),
+  v.literal("preview"),
+  v.literal("thumbnail"),
+  v.literal("source"),
+  v.literal("mask"),
+  v.literal("export")
+);
+export type AssetRendition = Infer<typeof vAssetRendition>;
+
+export const vStorageObjectStatus = v.union(
+  v.literal("pending"),
+  v.literal("ready"),
+  v.literal("deleting"),
+  v.literal("deleted"),
+  v.literal("failed")
+);
+export type StorageObjectStatus = Infer<typeof vStorageObjectStatus>;
+
+export const vAssetPublicationKind = v.union(
+  v.literal("showcase"),
+  v.literal("template"),
+  v.literal("static")
+);
+export type AssetPublicationKind = Infer<typeof vAssetPublicationKind>;
+
+export const vAssetPublicationStatus = v.union(
+  v.literal("published"),
+  v.literal("withdrawn")
+);
+export type AssetPublicationStatus = Infer<typeof vAssetPublicationStatus>;
+
+export const vEntitlementGrantSource = v.union(
+  v.literal("subscription"),
+  v.literal("promotion"),
+  v.literal("feedback"),
+  v.literal("manual"),
+  v.literal("early-adopter")
+);
+export type EntitlementGrantSource = Infer<typeof vEntitlementGrantSource>;

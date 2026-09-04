@@ -2,11 +2,17 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   vAssetKind,
+  vAssetPublicationKind,
+  vAssetPublicationStatus,
+  vAssetRendition,
   vAssetStatus,
+  vAssetVersionOrigin,
+  vAssetVersionStatus,
   vConceptInteractionKind,
   vConceptStatus,
   vConceptVisibility,
   vCreditActionType,
+  vEntitlementGrantSource,
   vFeedbackCategory,
   vFeedbackPriority,
   vFeedbackResolutionOutcome,
@@ -20,6 +26,8 @@ import {
   vLlmCapability,
   vLlmProvider,
   vMaterialSpec,
+  vMediaAssetKind,
+  vMediaAssetStatus,
   vModelCatalogStatus,
   vMoodTag,
   vOrderItemType,
@@ -36,6 +44,8 @@ import {
   vSpecPresetStatus,
   vSpecPresetTestStatus,
   vStyleSpec,
+  vStorageBucketRole,
+  vStorageObjectStatus,
   vTemplateVersionPolicy,
   vSprayPlanStatus,
   vUserAccountStatus,
@@ -63,6 +73,7 @@ const schema = defineSchema({
     searchText: v.optional(v.string()),
     lastActiveAt: v.optional(v.number()),
     hasOpenFlag: v.optional(v.boolean()),
+    entitlementProfileId: v.optional(v.id("entitlementProfiles")),
   })
     .index("by_email", ["email"])
     .index("by_tokenIdentifier", ["tokenIdentifier"])
@@ -433,6 +444,56 @@ const schema = defineSchema({
     .index("by_user_campaign", ["userId", "campaignId"])
     .index("by_user_code", ["userId", "activationCodeId"]),
 
+  entitlementProfiles: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    planType: vUserPlan,
+    revision: v.number(),
+    libraryQuotaBytes: v.number(),
+    temporaryOriginalQuotaBytes: v.number(),
+    pinnedOriginalQuotaBytes: v.number(),
+    originalRetentionDays: v.number(),
+    versionRetentionDays: v.number(),
+    masterMaxDimensionPx: v.number(),
+    exportMaxDimensionPx: v.number(),
+    originalPermanentStorage: v.boolean(),
+    originalDownloadAllowed: v.boolean(),
+    originalPinAllowed: v.boolean(),
+    batchDownloadAllowed: v.boolean(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_planType", ["planType"])
+    .index("by_plan_revision", ["planType", "revision"]),
+
+  accountEntitlementGrants: defineTable({
+    userId: v.id("users"),
+    sourceType: vEntitlementGrantSource,
+    sourceReference: v.optional(v.string()),
+    libraryQuotaBytesDelta: v.optional(v.number()),
+    temporaryOriginalQuotaBytesDelta: v.optional(v.number()),
+    pinnedOriginalQuotaBytesDelta: v.optional(v.number()),
+    originalRetentionDays: v.optional(v.number()),
+    versionRetentionDays: v.optional(v.number()),
+    masterMaxDimensionPx: v.optional(v.number()),
+    exportMaxDimensionPx: v.optional(v.number()),
+    originalPermanentStorage: v.optional(v.boolean()),
+    originalDownloadAllowed: v.optional(v.boolean()),
+    originalPinAllowed: v.optional(v.boolean()),
+    batchDownloadAllowed: v.optional(v.boolean()),
+    startsAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    note: v.optional(v.string()),
+    createdByUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_startsAt", ["userId", "startsAt"])
+    .index("by_source", ["sourceType", "sourceReference"]),
+
   assets: defineTable({
     userId: v.id("users"),
     key: v.string(),
@@ -443,9 +504,91 @@ const schema = defineSchema({
     publicUrl: v.optional(v.string()),
     etag: v.optional(v.string()),
     status: vAssetStatus,
+    mediaAssetId: v.optional(v.id("mediaAssets")),
+    assetVersionId: v.optional(v.id("assetVersions")),
+    storageObjectId: v.optional(v.id("storageObjects")),
   })
     .index("by_userId", ["userId"])
-    .index("by_key", ["key"]),
+    .index("by_key", ["key"])
+    .index("by_mediaAssetId", ["mediaAssetId"])
+    .index("by_assetVersionId", ["assetVersionId"])
+    .index("by_storageObjectId", ["storageObjectId"]),
+
+  mediaAssets: defineTable({
+    userId: v.id("users"),
+    kind: vMediaAssetKind,
+    conceptId: v.optional(v.id("concepts")),
+    title: v.optional(v.string()),
+    currentVersionId: v.optional(v.id("assetVersions")),
+    status: vMediaAssetStatus,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_conceptId", ["conceptId"])
+    .index("by_concept_status", ["conceptId", "status"]),
+
+  assetVersions: defineTable({
+    mediaAssetId: v.id("mediaAssets"),
+    userId: v.id("users"),
+    version: v.number(),
+    parentVersionId: v.optional(v.id("assetVersions")),
+    generationJobId: v.optional(v.id("generationJobs")),
+    origin: vAssetVersionOrigin,
+    status: vAssetVersionStatus,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_mediaAssetId", ["mediaAssetId"])
+    .index("by_media_version", ["mediaAssetId", "version"])
+    .index("by_userId", ["userId"])
+    .index("by_generationJobId", ["generationJobId"]),
+
+  storageObjects: defineTable({
+    mediaAssetId: v.id("mediaAssets"),
+    assetVersionId: v.id("assetVersions"),
+    userId: v.id("users"),
+    legacyAssetId: v.optional(v.id("assets")),
+    bucketRole: vStorageBucketRole,
+    bucket: v.string(),
+    key: v.string(),
+    rendition: vAssetRendition,
+    contentType: v.optional(v.string()),
+    byteSize: v.optional(v.number()),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    checksum: v.optional(v.string()),
+    etag: v.optional(v.string()),
+    publicUrl: v.optional(v.string()),
+    status: vStorageObjectStatus,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_assetVersionId", ["assetVersionId"])
+    .index("by_version_rendition", ["assetVersionId", "rendition"])
+    .index("by_legacyAssetId", ["legacyAssetId"])
+    .index("by_bucket_key", ["bucket", "key"])
+    .index("by_status", ["status"]),
+
+  assetPublications: defineTable({
+    mediaAssetId: v.id("mediaAssets"),
+    assetVersionId: v.id("assetVersions"),
+    userId: v.id("users"),
+    conceptId: v.optional(v.id("concepts")),
+    kind: vAssetPublicationKind,
+    status: vAssetPublicationStatus,
+    publicPrefix: v.string(),
+    publishedAt: v.number(),
+    withdrawnAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_mediaAssetId", ["mediaAssetId"])
+    .index("by_assetVersionId", ["assetVersionId"])
+    .index("by_conceptId", ["conceptId"])
+    .index("by_kind_status", ["kind", "status"]),
 
   archiveCounters: defineTable({
     key: v.string(),
@@ -465,6 +608,8 @@ const schema = defineSchema({
     status: vConceptStatus,
     visibility: vConceptVisibility,
     previewAssetId: v.optional(v.id("assets")),
+    mediaAssetId: v.optional(v.id("mediaAssets")),
+    currentAssetVersionId: v.optional(v.id("assetVersions")),
     sourceConceptId: v.optional(v.id("concepts")),
     generationJobId: v.optional(v.id("generationJobs")),
     searchText: v.string(),
@@ -721,6 +866,8 @@ const schema = defineSchema({
     provider: v.optional(vGenerationProvider),
     providerJobId: v.optional(v.string()),
     outputAssetId: v.optional(v.id("assets")),
+    outputMediaAssetId: v.optional(v.id("mediaAssets")),
+    outputAssetVersionId: v.optional(v.id("assetVersions")),
     errorMessage: v.optional(v.string()),
     inputSnapshotJson: v.optional(v.string()),
     outputSummaryJson: v.optional(v.string()),
@@ -728,6 +875,8 @@ const schema = defineSchema({
     .index("by_user_status", ["userId", "status"])
     .index("by_status", ["status"])
     .index("by_conceptId", ["conceptId"])
+    .index("by_outputAssetId", ["outputAssetId"])
+    .index("by_outputMediaAssetId", ["outputMediaAssetId"])
     .index("by_promptCompositionId", ["promptCompositionId"]),
 
   renderOutputs: defineTable({

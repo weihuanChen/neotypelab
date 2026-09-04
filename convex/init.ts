@@ -7,6 +7,8 @@ import {
   ipSeriesSeeds,
 } from "./catalogHierarchy";
 import { internalMutation } from "./functions";
+import { DEFAULT_ENTITLEMENT_PROFILES } from "./entitlementPolicy";
+import type { MutationCtx } from "./types";
 
 export const init = internalMutation({
   args: {},
@@ -14,6 +16,8 @@ export const init = internalMutation({
     if ((await ctx.db.query("baseModels").first()) !== null) {
       throw new Error("Reference data is already seeded.");
     }
+
+    await ensureDefaultEntitlementProfiles(ctx);
 
     const materialPresetIdsBySlug = new Map<string, Id<"materialPresets">>();
     for (const preset of materialPresets) {
@@ -110,6 +114,35 @@ export const init = internalMutation({
     }
   },
 });
+
+export const seedEntitlementProfiles = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ensureDefaultEntitlementProfiles(ctx);
+  },
+});
+
+async function ensureDefaultEntitlementProfiles(ctx: MutationCtx) {
+  const now = Date.now();
+  const results: Array<{ slug: string; status: "created" | "existing" }> = [];
+  for (const profile of Object.values(DEFAULT_ENTITLEMENT_PROFILES)) {
+    const existing = await ctx.db
+      .query("entitlementProfiles")
+      .withIndex("by_slug", (q) => q.eq("slug", profile.slug))
+      .first();
+    if (existing) {
+      results.push({ slug: profile.slug, status: "existing" });
+      continue;
+    }
+    await ctx.db.insert("entitlementProfiles", {
+      ...profile,
+      createdAt: now,
+      updatedAt: now,
+    });
+    results.push({ slug: profile.slug, status: "created" });
+  }
+  return results;
+}
 
 const materialPresets = [
   {

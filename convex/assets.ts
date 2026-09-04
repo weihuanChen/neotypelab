@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { vAssetKind } from "./domain";
 import { internalMutation, mutation, query } from "./functions";
+import {
+  createAssetGraph,
+  legacyKindToMediaKind,
+  legacyKindToRendition,
+} from "./assetModel";
 
 const MAX_FEEDBACK_SCREENSHOT_BYTES = 10 * 1024 * 1024;
 const FEEDBACK_SCREENSHOT_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -38,16 +43,23 @@ export const createReference = mutation({
     publicUrl: v.optional(v.string()),
   },
   async handler(ctx, { key, kind, contentType, byteSize, publicUrl }) {
-    return await ctx.db.insert("assets", {
-      userId: ctx.viewerX()._id,
-      key,
-      bucket: process.env.R2_BUCKET_PRIVATE ?? "r2",
-      kind,
-      contentType,
-      byteSize,
-      publicUrl,
-      status: "active",
+    const result = await createAssetGraph(ctx, {
+      legacyAsset: {
+        userId: ctx.viewerX()._id,
+        key,
+        bucket: process.env.R2_BUCKET_PRIVATE ?? "r2",
+        kind,
+        contentType,
+        byteSize,
+        publicUrl,
+        status: "active",
+      },
+      mediaKind: legacyKindToMediaKind(kind),
+      rendition: legacyKindToRendition(kind),
+      origin: "uploaded",
+      bucketRole: "private",
     });
+    return result.legacyAssetId;
   },
 });
 
@@ -80,16 +92,23 @@ export const registerFeedbackScreenshot = mutation({
     }
 
     const publicUrl = await ctx.storage.getUrl(storageId);
-    return await ctx.db.insert("assets", {
-      userId: viewer._id,
-      key: storageId,
-      bucket: "convex-storage",
-      kind: "reference",
-      contentType: metadata.contentType ?? undefined,
-      byteSize: metadata.size,
-      publicUrl: publicUrl ?? undefined,
-      status: "active",
+    const result = await createAssetGraph(ctx, {
+      legacyAsset: {
+        userId: viewer._id,
+        key: storageId,
+        bucket: "convex-storage",
+        kind: "reference",
+        contentType: metadata.contentType ?? undefined,
+        byteSize: metadata.size,
+        publicUrl: publicUrl ?? undefined,
+        status: "active",
+      },
+      mediaKind: "feedback-screenshot",
+      rendition: "source",
+      origin: "uploaded",
+      bucketRole: "convex",
     });
+    return result.legacyAssetId;
   },
 });
 
@@ -99,8 +118,15 @@ export const setPublicUrl = internalMutation({
     publicUrl: v.string(),
   },
   async handler(ctx, { assetId, publicUrl }) {
+    const asset = await ctx.db.get(assetId);
     await ctx.db.patch(assetId, {
       publicUrl,
     });
+    if (asset?.storageObjectId) {
+      await ctx.db.patch(asset.storageObjectId, {
+        publicUrl,
+        updatedAt: Date.now(),
+      });
+    }
   },
 });

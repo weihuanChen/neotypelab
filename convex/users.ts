@@ -3,6 +3,7 @@ import { mutation, query } from "./functions";
 import { Id } from "./_generated/dataModel";
 import { MutationCtx } from "./types";
 import { slugify } from "./utils";
+import { resolveEffectiveEntitlements } from "./entitlements";
 
 const STARTER_CREDITS = 25;
 
@@ -80,10 +81,13 @@ export const viewer = query({
       return null;
     }
 
-    const creditAccount = await ctx
-      .db.query("creditAccounts")
-      .withIndex("by_userId", (q) => q.eq("userId", ctx.viewerX()._id))
-      .unique();
+    const [creditAccount, entitlements] = await Promise.all([
+      ctx.db
+        .query("creditAccounts")
+        .withIndex("by_userId", (q) => q.eq("userId", ctx.viewerX()._id))
+        .unique(),
+      resolveEffectiveEntitlements(ctx, ctx.viewerX()._id),
+    ]);
 
     return {
       _id: ctx.viewer._id,
@@ -102,6 +106,7 @@ export const viewer = query({
         lifetimeGranted: creditAccount?.lifetimeGranted ?? 0,
         lifetimeSpent: creditAccount?.lifetimeSpent ?? 0,
       },
+      entitlements,
     };
   },
 });

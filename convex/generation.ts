@@ -9,6 +9,7 @@ import type { QueryCtx } from "./_generated/server";
 import { vGenerationProvider } from "./domain";
 import type { GenerationProvider } from "./domain";
 import { canManagePlatform } from "./adminAccess";
+import { createAssetGraph } from "./assetModel";
 
 export const getLlmProfileForConnectionTest = internalQuery({
   args: {
@@ -545,8 +546,21 @@ export const markJobSucceeded = internalMutation({
     ctx,
     { generationJobId, conceptId, promptCompositionId, provider, providerJobId, asset, outputSummaryJson }
   ) => {
-    const job = await ctx.db.get(generationJobId);
-    const assetId = await ctx.db.insert("assets", asset);
+    const [job, concept] = await Promise.all([
+      ctx.db.get(generationJobId),
+      ctx.db.get(conceptId),
+    ]);
+    const assetRecords = await createAssetGraph(ctx, {
+      legacyAsset: asset,
+      mediaKind: "generated-image",
+      rendition: "original",
+      origin: "generated",
+      bucketRole: "public",
+      conceptId,
+      generationJobId,
+      title: concept?.title,
+    });
+    const assetId = assetRecords.legacyAssetId;
 
     const renderMode = safeRenderMode(job?.inputSnapshotJson, outputSummaryJson);
     const simulationStage = safeSimulationStage(job?.inputSnapshotJson, outputSummaryJson);
@@ -569,6 +583,8 @@ export const markJobSucceeded = internalMutation({
         provider,
         providerJobId,
         outputAssetId: assetId,
+        outputMediaAssetId: assetRecords.mediaAssetId,
+        outputAssetVersionId: assetRecords.assetVersionId,
         outputSummaryJson,
         errorMessage: undefined,
       }),
@@ -578,9 +594,13 @@ export const markJobSucceeded = internalMutation({
           ? {
               status: "generated",
               previewAssetId: assetId,
+              mediaAssetId: assetRecords.mediaAssetId,
+              currentAssetVersionId: assetRecords.assetVersionId,
             }
           : {
               status: "generated",
+              mediaAssetId: assetRecords.mediaAssetId,
+              currentAssetVersionId: assetRecords.assetVersionId,
             }
       ),
       ctx.db.patch(promptCompositionId, {
