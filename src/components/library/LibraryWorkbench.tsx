@@ -34,6 +34,8 @@ import {
   mapStatusTone,
 } from "@/src/components/ui/workbench";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { usePrivateAssetUrl } from "@/src/hooks/usePrivateAssetUrl";
 import {
   AuthLoading,
   Authenticated,
@@ -685,6 +687,7 @@ function LibraryConceptFocus({
       publicUrl?: string | null;
       key?: string | null;
       contentType?: string | null;
+      storageObjectId?: Id<"storageObjects">;
     } | null;
     generationJob?: {
       _id: string;
@@ -785,6 +788,10 @@ function LibraryConceptFocus({
   stabilizingConceptId: string | null;
   updatingConceptId: string | null;
 }) {
+  const privatePreviewUrl = usePrivateAssetUrl(
+    concept.previewAsset?.publicUrl ? null : concept.previewAsset?.storageObjectId
+  );
+  const previewUrl = concept.previewAsset?.publicUrl ?? privatePreviewUrl;
   const operationalStatus = getOperationalStatus(concept);
   const busy =
     concept.status !== "generated" ||
@@ -815,8 +822,8 @@ function LibraryConceptFocus({
         <span>N°.{recordNumber} / Prototype record</span>
       </div>
       <div className="workbench-focus__preview">
-        {concept.previewAsset?.publicUrl ? (
-          <img src={concept.previewAsset.publicUrl} alt={concept.title} />
+        {previewUrl ? (
+          <img src={previewUrl} alt={concept.title} />
         ) : (
           <div className="workbench-focus__preview-copy">
             <strong>{concept.title}</strong>

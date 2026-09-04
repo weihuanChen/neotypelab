@@ -228,6 +228,36 @@ The effective entitlement resolver applies these rules:
 Credits remain a separate consumption ledger. Storage and generation code must
 read effective entitlements rather than branching on `planType`.
 
+### Private Library ingestion
+
+AI model output is stored as an `original` object in `R2_BUCKET_PRIVATE` using
+a deterministic key derived from the user, concept, and generation job. The
+write flow reserves the legacy asset, version, and storage object as
+`processing`/`pending` before uploading, then atomically marks them ready with
+the generation job. Retries reuse the same version and object key. Failed
+uploads retain a recoverable failed record instead of creating duplicate asset
+graphs.
+
+Private URLs are never persisted. An authenticated action verifies object
+ownership, ready status, private bucket role, and effective Original download
+entitlement before issuing a 15-minute S3 presigned URL. The legacy public URL
+stabilizer rejects private storage objects.
+
+### Image rendition pipeline
+
+Each generated Original is processed once with Sharp before the generation job
+is completed. The private Library version receives three WebP renditions:
+
+- `master`: effective `masterMaxDimensionPx`, WebP quality 86
+- `preview`: maximum 1280px, WebP quality 80
+- `thumbnail`: maximum 512px, WebP quality 74
+
+Resizing preserves aspect ratio and never enlarges a smaller source. Original
+and derived objects record their actual width, height, byte size, SHA-256
+checksum, content type, and R2 ETag. All four deterministic object keys are
+reserved as pending before parallel upload. A job becomes successful only when
+the complete Master/Preview/Thumbnail set is recorded as ready.
+
 ---
 
 ## 8. Deployment

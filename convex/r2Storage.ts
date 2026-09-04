@@ -15,7 +15,7 @@ import {
   type R2BucketRole,
 } from "./r2Config";
 
-const DEFAULT_PRIVATE_DOWNLOAD_SECONDS = 15 * 60;
+export const PRIVATE_DOWNLOAD_URL_TTL_SECONDS = 15 * 60;
 const MAX_PRIVATE_DOWNLOAD_SECONDS = 60 * 60;
 
 export type R2UploadInput = {
@@ -52,9 +52,19 @@ export async function uploadR2Object(role: R2BucketRole, input: R2UploadInput) {
   };
 }
 
+export async function deleteR2Object(role: R2BucketRole, key: string) {
+  const config = getR2ConnectionConfig();
+  await createR2Client(config).send(
+    new DeleteObjectCommand({
+      Bucket: config.buckets[role],
+      Key: key,
+    })
+  );
+}
+
 export async function createPrivateR2DownloadUrl({
   key,
-  expiresInSeconds = DEFAULT_PRIVATE_DOWNLOAD_SECONDS,
+  expiresInSeconds = PRIVATE_DOWNLOAD_URL_TTL_SECONDS,
 }: {
   key: string;
   expiresInSeconds?: number;

@@ -9,7 +9,14 @@ import type { QueryCtx } from "./_generated/server";
 import { vGenerationProvider } from "./domain";
 import type { GenerationProvider } from "./domain";
 import { canManagePlatform } from "./adminAccess";
-import { createAssetGraph } from "./assetModel";
+import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
+import { resolveEffectiveEntitlements } from "./entitlements";
+
+const vWebRendition = v.union(
+  v.literal("master"),
+  v.literal("preview"),
+  v.literal("thumbnail")
+);
 
 export const getLlmProfileForConnectionTest = internalQuery({
   args: {
@@ -111,10 +118,18 @@ export const getViewerJobSnapshot = query({
       return null;
     }
 
-    const [concept, outputAsset, promptComposition] = await Promise.all([
+    const [concept, outputAsset, promptComposition, masterObject] = await Promise.all([
       job.conceptId ? ctx.db.get(job.conceptId) : null,
       job.outputAssetId ? ctx.db.get(job.outputAssetId) : null,
       job.promptCompositionId ? ctx.db.get(job.promptCompositionId) : null,
+      job.outputAssetVersionId
+        ? ctx.db
+            .query("storageObjects")
+            .withIndex("by_version_rendition", (q) =>
+              q.eq("assetVersionId", job.outputAssetVersionId!).eq("rendition", "master")
+            )
+            .first()
+        : null,
     ]);
 
     const outputSummary = safeOutputSummary(job.outputSummaryJson);
@@ -149,9 +164,11 @@ export const getViewerJobSnapshot = query({
       asset: outputAsset
         ? {
             _id: outputAsset._id,
-            key: outputAsset.key,
-            contentType: outputAsset.contentType,
-            publicUrl: outputAsset.publicUrl,
+            key: masterObject?.key ?? outputAsset.key,
+            contentType: masterObject?.contentType ?? outputAsset.contentType,
+            publicUrl: masterObject?.publicUrl ?? outputAsset.publicUrl,
+            storageObjectId: masterObject?._id ?? outputAsset.storageObjectId,
+            rendition: masterObject?.rendition ?? "original",
             status: outputAsset.status,
           }
         : null,
@@ -189,6 +206,7 @@ export const getJobForExecution = internalQuery({
       templateKind: template?.kind,
     });
     const generationPolicy = await readGenerationPolicy(ctx);
+    const entitlements = await resolveEffectiveEntitlements(ctx, user._id);
 
     return {
       generationJobId: job._id,
@@ -212,6 +230,9 @@ export const getJobForExecution = internalQuery({
       },
       llmRoute,
       generationPolicy,
+      assetPolicy: {
+        masterMaxDimensionPx: entitlements.masterMaxDimensionPx,
+      },
       user,
     };
   },
@@ -536,16 +557,31 @@ export const markJobSucceeded = internalMutation({
       kind: v.literal("preview"),
       contentType: v.string(),
       byteSize: v.number(),
+      width: v.number(),
+      height: v.number(),
+      checksum: v.string(),
       publicUrl: v.optional(v.string()),
       etag: v.optional(v.string()),
       status: v.literal("active"),
     }),
+    renditions: v.array(v.object({
+      rendition: vWebRendition,
+      key: v.string(),
+      bucket: v.string(),
+      contentType: v.literal("image/webp"),
+      byteSize: v.number(),
+      width: v.number(),
+      height: v.number(),
+      checksum: v.string(),
+      etag: v.optional(v.string()),
+    })),
     outputSummaryJson: v.string(),
   },
   handler: async (
     ctx,
-    { generationJobId, conceptId, promptCompositionId, provider, providerJobId, asset, outputSummaryJson }
+    { generationJobId, conceptId, promptCompositionId, provider, providerJobId, asset, renditions, outputSummaryJson }
   ) => {
+    assertCompleteWebRenditions(renditions);
     const [job, concept] = await Promise.all([
       ctx.db.get(generationJobId),
       ctx.db.get(conceptId),
@@ -555,12 +591,26 @@ export const markJobSucceeded = internalMutation({
       mediaKind: "generated-image",
       rendition: "original",
       origin: "generated",
-      bucketRole: "public",
+      bucketRole: "private",
       conceptId,
       generationJobId,
       title: concept?.title,
+      width: asset.width,
+      height: asset.height,
+      checksum: asset.checksum,
     });
     const assetId = assetRecords.legacyAssetId;
+    const now = Date.now();
+    await upsertVersionStorageObjects(ctx, {
+      mediaAssetId: assetRecords.mediaAssetId,
+      assetVersionId: assetRecords.assetVersionId,
+      userId: asset.userId,
+      objects: renditions.map((rendition) => ({
+        ...rendition,
+        bucketRole: "private" as const,
+        status: "ready" as const,
+      })),
+    });
 
     const renderMode = safeRenderMode(job?.inputSnapshotJson, outputSummaryJson);
     const simulationStage = safeSimulationStage(job?.inputSnapshotJson, outputSummaryJson);
@@ -578,6 +628,35 @@ export const markJobSucceeded = internalMutation({
         : null;
 
     await Promise.all([
+      ctx.db.patch(assetId, {
+        userId: asset.userId,
+        key: asset.key,
+        bucket: asset.bucket,
+        kind: asset.kind,
+        contentType: asset.contentType,
+        byteSize: asset.byteSize,
+        etag: asset.etag,
+        status: asset.status,
+        publicUrl: undefined,
+      }),
+      ctx.db.patch(assetRecords.assetVersionId, {
+        status: "ready",
+        updatedAt: now,
+      }),
+      ctx.db.patch(assetRecords.storageObjectId, {
+        bucketRole: "private",
+        bucket: asset.bucket,
+        key: asset.key,
+        contentType: asset.contentType,
+        byteSize: asset.byteSize,
+        width: asset.width,
+        height: asset.height,
+        checksum: asset.checksum,
+        etag: asset.etag,
+        publicUrl: undefined,
+        status: "ready",
+        updatedAt: now,
+      }),
       ctx.db.patch(generationJobId, {
         status: "succeeded",
         provider,
@@ -623,6 +702,118 @@ export const markJobSucceeded = internalMutation({
   },
 });
 
+export const prepareJobAssetUpload = internalMutation({
+  args: {
+    generationJobId: v.id("generationJobs"),
+    conceptId: v.id("concepts"),
+    asset: v.object({
+      userId: v.id("users"),
+      key: v.string(),
+      bucket: v.string(),
+      kind: v.literal("preview"),
+      contentType: v.string(),
+      byteSize: v.number(),
+      width: v.number(),
+      height: v.number(),
+      checksum: v.string(),
+      status: v.literal("active"),
+    }),
+    renditions: v.array(v.object({
+      rendition: vWebRendition,
+      key: v.string(),
+      bucket: v.string(),
+      contentType: v.literal("image/webp"),
+      byteSize: v.number(),
+      width: v.number(),
+      height: v.number(),
+      checksum: v.string(),
+    })),
+  },
+  handler: async (ctx, { generationJobId, conceptId, asset, renditions }) => {
+    assertCompleteWebRenditions(renditions);
+    const [job, concept] = await Promise.all([
+      ctx.db.get(generationJobId),
+      ctx.db.get(conceptId),
+    ]);
+    if (!job || !concept || job.userId !== asset.userId || concept.userId !== asset.userId) {
+      throw new Error("Generation upload ownership could not be verified");
+    }
+    const records = await createAssetGraph(ctx, {
+      legacyAsset: asset,
+      mediaKind: "generated-image",
+      rendition: "original",
+      origin: "generated",
+      bucketRole: "private",
+      conceptId,
+      generationJobId,
+      title: concept.title,
+      width: asset.width,
+      height: asset.height,
+      checksum: asset.checksum,
+      versionStatus: "processing",
+      storageStatus: "pending",
+    });
+    await upsertVersionStorageObjects(ctx, {
+      mediaAssetId: records.mediaAssetId,
+      assetVersionId: records.assetVersionId,
+      userId: asset.userId,
+      objects: renditions.map((rendition) => ({
+        ...rendition,
+        bucketRole: "private" as const,
+        status: "pending" as const,
+      })),
+    });
+    await ctx.db.patch(generationJobId, {
+      outputAssetId: records.legacyAssetId,
+      outputMediaAssetId: records.mediaAssetId,
+      outputAssetVersionId: records.assetVersionId,
+    });
+    return records;
+  },
+});
+
+function assertCompleteWebRenditions(
+  renditions: Array<{ rendition: "master" | "preview" | "thumbnail" }>
+) {
+  const names = new Set(renditions.map((rendition) => rendition.rendition));
+  if (
+    renditions.length !== 3 ||
+    !names.has("master") ||
+    !names.has("preview") ||
+    !names.has("thumbnail")
+  ) {
+    throw new Error("Master, preview, and thumbnail renditions are required");
+  }
+}
+
+export const markJobAssetUploadFailed = internalMutation({
+  args: {
+    generationJobId: v.id("generationJobs"),
+  },
+  handler: async (ctx, { generationJobId }) => {
+    const job = await ctx.db.get(generationJobId);
+    if (!job || job.status === "succeeded") return;
+    const now = Date.now();
+    const version = job.outputAssetVersionId
+      ? await ctx.db.get(job.outputAssetVersionId)
+      : null;
+    const objects = version
+      ? await ctx.db
+          .query("storageObjects")
+          .withIndex("by_assetVersionId", (q) => q.eq("assetVersionId", version._id))
+          .collect()
+      : [];
+    await Promise.all([
+      version
+        ? ctx.db.patch(version._id, { status: "failed", updatedAt: now })
+        : Promise.resolve(),
+      ...objects.map((object) =>
+        ctx.db.patch(object._id, { status: "failed", updatedAt: now })
+      ),
+    ]);
+  },
+});
+
 export const markJobFailed = internalMutation({
   args: {
     generationJobId: v.id("generationJobs"),
@@ -632,6 +823,9 @@ export const markJobFailed = internalMutation({
   handler: async (ctx, { generationJobId, errorMessage, provider }) => {
     const job = await ctx.db.get(generationJobId);
     if (job === null) {
+      return;
+    }
+    if (job.status === "succeeded") {
       return;
     }
 
@@ -655,6 +849,9 @@ export const refundFailedJobCredits = internalMutation({
   handler: async (ctx, { generationJobId }) => {
     const job = await ctx.db.get(generationJobId);
     if (job === null) {
+      return;
+    }
+    if (job.status !== "failed") {
       return;
     }
 

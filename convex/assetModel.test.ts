@@ -8,6 +8,20 @@ import { seedUser } from "@/tests/convexTestHelpers";
 const modules = import.meta.glob("./**/*.ts");
 type Backend = TestConvex<typeof schema>;
 
+function testRenditions(bucket: string) {
+  return ([
+    { rendition: "master", width: 2048, height: 2048, byteSize: 800_000 },
+    { rendition: "preview", width: 1280, height: 1280, byteSize: 250_000 },
+    { rendition: "thumbnail", width: 512, height: 512, byteSize: 60_000 },
+  ] as const).map((item) => ({
+    ...item,
+    key: `generated/${item.rendition}.webp`,
+    bucket,
+    contentType: "image/webp" as const,
+    checksum: `${item.rendition}-checksum`,
+  }));
+}
+
 describe("asset model compatibility", () => {
   let t: Backend;
 
@@ -141,10 +155,20 @@ describe("asset model compatibility", () => {
         kind: "preview",
         contentType: "image/png",
         byteSize: 4096,
+        width: 2048,
+        height: 2048,
+        checksum: "original-checksum",
         status: "active",
       },
+      renditions: testRenditions("private-library"),
       outputSummaryJson: JSON.stringify({ phase: "succeeded" }),
     });
+    const [jobSnapshot, library] = await Promise.all([
+      user.client.query(api.generation.getViewerJobSnapshot, {
+        generationJobId: seeded.generationJobId,
+      }),
+      user.client.query(api.concepts.listLibrary, {}),
+    ]);
 
     const state = await t.run(async (ctx) => {
       const job = await ctx.db.get(seeded.generationJobId);
@@ -153,7 +177,15 @@ describe("asset model compatibility", () => {
       const storageObject = legacyAsset?.storageObjectId
         ? await ctx.db.get(legacyAsset.storageObjectId)
         : null;
-      return { job, concept, legacyAsset, storageObject };
+      const storageObjects = job?.outputAssetVersionId
+        ? await ctx.db
+            .query("storageObjects")
+            .withIndex("by_assetVersionId", (q) =>
+              q.eq("assetVersionId", job.outputAssetVersionId!)
+            )
+            .collect()
+        : [];
+      return { job, concept, legacyAsset, storageObject, storageObjects };
     });
 
     expect(state.job).toMatchObject({
@@ -168,9 +200,127 @@ describe("asset model compatibility", () => {
       currentAssetVersionId: state.legacyAsset?.assetVersionId,
     });
     expect(state.storageObject).toMatchObject({
-      bucketRole: "public",
+      bucketRole: "private",
       rendition: "original",
       status: "ready",
     });
+    expect(state.storageObjects).toHaveLength(4);
+    expect(state.storageObjects.map((object) => object.rendition).sort()).toEqual([
+      "master",
+      "original",
+      "preview",
+      "thumbnail",
+    ]);
+    expect(jobSnapshot?.asset).toMatchObject({
+      rendition: "master",
+      key: "generated/master.webp",
+    });
+    expect(library[0]?.previewAsset).toMatchObject({
+      rendition: "master",
+      key: "generated/master.webp",
+    });
+  });
+
+  it("prepares generation uploads idempotently and recovers failed records", async () => {
+    const user = await seedUser(t, {
+      tokenIdentifier: "retry-user",
+      email: "retry@example.test",
+    });
+    const seeded = await t.run(async (ctx) => {
+      const conceptId = await ctx.db.insert("concepts", {
+        userId: user.userId,
+        title: "Retry concept",
+        weatheringLevel: "clean",
+        status: "draft",
+        visibility: "private",
+        searchText: "retry concept",
+      });
+      const promptCompositionId = await ctx.db.insert("promptCompositions", {
+        userId: user.userId,
+        conceptId,
+        status: "ready",
+        composedPrompt: "Retry generation",
+        inputSnapshotJson: "{}",
+      });
+      const generationJobId = await ctx.db.insert("generationJobs", {
+        userId: user.userId,
+        conceptId,
+        promptCompositionId,
+        kind: "palette-plan",
+        status: "running",
+        requestedCredits: 1,
+      });
+      return { conceptId, promptCompositionId, generationJobId };
+    });
+    const input = {
+      generationJobId: seeded.generationJobId,
+      conceptId: seeded.conceptId,
+      asset: {
+        userId: user.userId,
+        key: `users/${user.userId}/assets/${seeded.conceptId}/versions/${seeded.generationJobId}/original.png`,
+        bucket: "private-library",
+        kind: "preview" as const,
+        contentType: "image/png",
+        byteSize: 4096,
+        width: 2048,
+        height: 2048,
+        checksum: "original-checksum",
+        status: "active" as const,
+      },
+      renditions: testRenditions("private-library"),
+    };
+
+    const first = await t.mutation(internal.generation.prepareJobAssetUpload, input);
+    const second = await t.mutation(internal.generation.prepareJobAssetUpload, input);
+    await t.mutation(internal.generation.markJobAssetUploadFailed, {
+      generationJobId: seeded.generationJobId,
+    });
+    const failedState = await t.run(async (ctx) => ({
+      version: await ctx.db.get(first.assetVersionId),
+      object: await ctx.db.get(first.storageObjectId),
+    }));
+    const retry = await t.mutation(internal.generation.prepareJobAssetUpload, input);
+    const retryState = await t.run(async (ctx) => ({
+      version: await ctx.db.get(first.assetVersionId),
+      object: await ctx.db.get(first.storageObjectId),
+    }));
+    await t.mutation(internal.generation.markJobSucceeded, {
+      generationJobId: seeded.generationJobId,
+      conceptId: seeded.conceptId,
+      promptCompositionId: seeded.promptCompositionId,
+      provider: "internal",
+      asset: {
+        ...input.asset,
+        etag: "retry-etag",
+      },
+      renditions: input.renditions.map((rendition) => ({
+        ...rendition,
+        etag: `${rendition.rendition}-etag`,
+      })),
+      outputSummaryJson: JSON.stringify({ phase: "succeeded" }),
+    });
+    const state = await t.run(async (ctx) => ({
+      assets: await ctx.db.query("assets").collect(),
+      versions: await ctx.db.query("assetVersions").collect(),
+      objects: await ctx.db.query("storageObjects").collect(),
+    }));
+
+    expect(second).toEqual(first);
+    expect(retry).toEqual(first);
+    expect(failedState.version?.status).toBe("failed");
+    expect(failedState.object?.status).toBe("failed");
+    expect(retryState.version?.status).toBe("processing");
+    expect(retryState.object?.status).toBe("pending");
+    expect(state.assets).toHaveLength(1);
+    expect(state.versions).toHaveLength(1);
+    expect(state.objects).toHaveLength(4);
+    expect(state.versions[0].status).toBe("ready");
+    expect(state.objects).toEqual(expect.arrayContaining([expect.objectContaining({
+      bucketRole: "private",
+      rendition: "original",
+      status: "ready",
+      etag: "retry-etag",
+    })]));
+    expect(state.objects.every((object) => object.status === "ready")).toBe(true);
   });
 });

@@ -1,16 +1,16 @@
 "use node";
 
-import { randomUUID } from "crypto";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalAction } from "./_generated/server";
 import type { GenerationProvider } from "./domain";
-import { getPublicR2ObjectUrl } from "./r2Config";
+import { getPublicR2ObjectUrl, getR2ConnectionConfig } from "./r2Config";
 import {
   checkR2StorageConnectivity,
   uploadR2Object,
 } from "./r2Storage";
+import { createImageRenditions } from "./imageRenditions";
 
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-1";
 const DEFAULT_IMAGE_TIMEOUT_MS = 120000;
@@ -35,6 +35,7 @@ type ViewerConceptPreviewAsset = {
   assetId: Id<"assets">;
   key: string;
   publicUrl?: string;
+  bucketRole: "public" | "private" | "convex" | "legacy";
   visibility: "private" | "unlisted" | "public";
   status: "draft" | "generated" | "archived";
 };
@@ -256,6 +257,12 @@ export const stabilizeConceptPreviewAsset = action({
       throw new Error("Preview asset not found for this concept");
     }
 
+    if (preview.bucketRole !== "public") {
+      throw new Error(
+        "Private originals cannot be exposed through the public asset delivery URL"
+      );
+    }
+
     if (preview.publicUrl) {
       return {
         status: "already-configured" as const,
@@ -334,10 +341,69 @@ export const executeQueuedJob = internalAction({
       });
       attemptedProvider = generated.provider;
 
-      const uploaded = await uploadR2Object("public", {
-        buffer: generated.buffer,
-        contentType: generated.contentType,
-        key: buildAssetKey(job.user.handle, job.generationJobId, generated.contentType),
+      const processed = await createImageRenditions(
+        generated.buffer,
+        job.assetPolicy.masterMaxDimensionPx
+      );
+      const keys = buildAssetVersionKeys(
+        job.user._id,
+        job.concept._id,
+        job.generationJobId,
+        generated.contentType
+      );
+      const privateBucket = getR2ConnectionConfig().buckets.private;
+      const renditionRecords = processed.renditions.map((rendition) => ({
+        rendition: rendition.rendition,
+        key: keys[rendition.rendition],
+        bucket: privateBucket,
+        contentType: rendition.contentType,
+        byteSize: rendition.byteSize,
+        width: rendition.width,
+        height: rendition.height,
+        checksum: rendition.checksum,
+      }));
+      await ctx.runMutation(internal.generation.prepareJobAssetUpload, {
+        generationJobId,
+        conceptId: job.concept._id,
+        asset: {
+          userId: job.user._id,
+          key: keys.original,
+          bucket: privateBucket,
+          kind: "preview",
+          contentType: generated.contentType,
+          byteSize: generated.buffer.byteLength,
+          width: processed.original.width,
+          height: processed.original.height,
+          checksum: processed.original.checksum,
+          status: "active",
+        },
+        renditions: renditionRecords,
+      });
+      const uploadResults = await Promise.allSettled([
+        uploadR2Object("private", {
+          buffer: generated.buffer,
+          contentType: generated.contentType,
+          key: keys.original,
+        }),
+        ...processed.renditions.map((rendition) =>
+          uploadR2Object("private", {
+            buffer: rendition.buffer,
+            contentType: rendition.contentType,
+            key: keys[rendition.rendition],
+          })
+        ),
+      ]);
+      const failedUpload = uploadResults.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      );
+      if (failedUpload) {
+        throw failedUpload.reason;
+      }
+      const [uploaded, ...uploadedRenditions] = uploadResults.map((result) => {
+        if (result.status !== "fulfilled") {
+          throw new Error("Asset upload did not complete");
+        }
+        return result.value;
       });
 
       await ctx.runMutation(internal.generation.markJobSucceeded, {
@@ -353,10 +419,16 @@ export const executeQueuedJob = internalAction({
           kind: "preview",
           contentType: generated.contentType,
           byteSize: generated.buffer.byteLength,
-          publicUrl: uploaded.publicUrl,
+          width: processed.original.width,
+          height: processed.original.height,
+          checksum: processed.original.checksum,
           etag: uploaded.etag,
           status: "active",
         },
+        renditions: renditionRecords.map((rendition, index) => ({
+          ...rendition,
+          etag: uploadedRenditions[index]?.etag,
+        })),
         outputSummaryJson: JSON.stringify({
           phase: "succeeded",
           generationKind: job.kind,
@@ -392,6 +464,13 @@ export const executeQueuedJob = internalAction({
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown generation failure";
+      try {
+        await ctx.runMutation(internal.generation.markJobAssetUploadFailed, {
+          generationJobId,
+        });
+      } catch {
+        // The job failure below remains the source of truth for retry and refund behavior.
+      }
       await ctx.runMutation(internal.generation.markJobFailed, {
         generationJobId,
         errorMessage: message,
@@ -1363,9 +1442,20 @@ function getRenderLayoutSpec(
   return undefined;
 }
 
-function buildAssetKey(handle: string, generationJobId: string, contentType: string) {
+function buildAssetVersionKeys(
+  userId: string,
+  conceptId: string,
+  generationJobId: string,
+  contentType: string
+) {
   const extension = getImageExtension(contentType);
-  return `generated/${handle}/${generationJobId}-${randomUUID()}.${extension}`;
+  const prefix = `users/${userId}/assets/${conceptId}/versions/${generationJobId}`;
+  return {
+    original: `${prefix}/original.${extension}`,
+    master: `${prefix}/master.webp`,
+    preview: `${prefix}/preview.webp`,
+    thumbnail: `${prefix}/thumbnail.webp`,
+  };
 }
 
 function getImageExtension(contentType: string) {

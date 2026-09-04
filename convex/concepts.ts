@@ -77,6 +77,7 @@ export const listLibrary = query({
           materialPreset,
           generationJob,
           previewAsset,
+          masterObject,
           sourceConcept,
           remixCount,
         ] =
@@ -86,6 +87,14 @@ export const listLibrary = query({
             concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
             concept.generationJobId ? ctx.db.get(concept.generationJobId) : null,
             concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
+            concept.currentAssetVersionId
+              ? ctx.db
+                  .query("storageObjects")
+                  .withIndex("by_version_rendition", (q) =>
+                    q.eq("assetVersionId", concept.currentAssetVersionId!).eq("rendition", "master")
+                  )
+                  .first()
+              : null,
             concept.sourceConceptId ? getConceptSourceSummary(ctx, concept.sourceConceptId) : null,
             ctx.db
               .query("concepts")
@@ -150,9 +159,11 @@ export const listLibrary = query({
           previewAsset: previewAsset
             ? {
                 _id: previewAsset._id,
-                key: previewAsset.key,
-                contentType: previewAsset.contentType,
-                publicUrl: previewAsset.publicUrl,
+                key: masterObject?.key ?? previewAsset.key,
+                contentType: masterObject?.contentType ?? previewAsset.contentType,
+                publicUrl: masterObject?.publicUrl ?? previewAsset.publicUrl,
+                storageObjectId: masterObject?._id ?? previewAsset.storageObjectId,
+                rendition: masterObject?.rendition ?? "original",
                 status: previewAsset.status,
               }
             : null,
@@ -296,6 +307,9 @@ export const getViewerConceptPreviewAsset = internalQuery({
     if (previewAsset === null) {
       return null;
     }
+    const storageObject = previewAsset.storageObjectId
+      ? await ctx.db.get(previewAsset.storageObjectId)
+      : null;
 
     return {
       conceptId: concept._id,
@@ -303,6 +317,7 @@ export const getViewerConceptPreviewAsset = internalQuery({
       assetId: previewAsset._id,
       key: previewAsset.key,
       publicUrl: previewAsset.publicUrl,
+      bucketRole: storageObject?.bucketRole ?? ("legacy" as const),
       visibility: concept.visibility,
       status: concept.status,
     };

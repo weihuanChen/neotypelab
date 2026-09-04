@@ -19,6 +19,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
 import { cn } from "@/lib/utils";
+import { usePrivateAssetUrl } from "@/src/hooks/usePrivateAssetUrl";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -225,6 +226,12 @@ export function CreateWorkbench({
     api.shopping.getViewerConceptShoppingList,
     result ? { conceptId: result.conceptId } : "skip"
   );
+  const privateOriginalUrl = usePrivateAssetUrl(
+    liveJob?.status === "succeeded" && !liveJob.asset?.publicUrl
+      ? liveJob.asset?.storageObjectId
+      : null
+  );
+  const generatedImageUrl = liveJob?.asset?.publicUrl ?? privateOriginalUrl;
 
   const selectedKitVariant =
     catalog?.kitVariants.find((item) => item._id === selectedKitVariantId) ?? null;
@@ -709,8 +716,8 @@ export function CreateWorkbench({
       <aside className="workbench-focus-col">
         <FocusPanel>
           <div className="workbench-focus__preview">
-            {liveJob?.asset?.publicUrl ? (
-              <img src={liveJob.asset.publicUrl} alt={`${result?.title ?? "Prototype"} preview`} />
+            {generatedImageUrl ? (
+              <img src={generatedImageUrl} alt={`${result?.title ?? "Prototype"} preview`} />
             ) : (
               <div
                 className={cn(

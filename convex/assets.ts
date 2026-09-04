@@ -1,11 +1,12 @@
 import { v } from "convex/values";
 import { vAssetKind } from "./domain";
-import { internalMutation, mutation, query } from "./functions";
+import { internalMutation, internalQuery, mutation, query } from "./functions";
 import {
   createAssetGraph,
   legacyKindToMediaKind,
   legacyKindToRendition,
 } from "./assetModel";
+import { resolveEffectiveEntitlements } from "./entitlements";
 
 const MAX_FEEDBACK_SCREENSHOT_BYTES = 10 * 1024 * 1024;
 const FEEDBACK_SCREENSHOT_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -30,6 +31,7 @@ export const listMine = query({
       kind: asset.kind,
       status: asset.status,
       publicUrl: asset.publicUrl,
+      storageObjectId: asset.storageObjectId,
     }));
   },
 });
@@ -128,5 +130,39 @@ export const setPublicUrl = internalMutation({
         updatedAt: Date.now(),
       });
     }
+  },
+});
+
+export const authorizePrivateDownload = internalQuery({
+  args: {
+    storageObjectId: v.id("storageObjects"),
+    tokenIdentifier: v.string(),
+  },
+  async handler(ctx, { storageObjectId, tokenIdentifier }) {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+    if (!viewer) return null;
+
+    const object = await ctx.db.get(storageObjectId);
+    if (
+      !object ||
+      object.userId !== viewer._id ||
+      object.bucketRole !== "private" ||
+      object.status !== "ready"
+    ) {
+      return null;
+    }
+    const entitlements = await resolveEffectiveEntitlements(ctx, viewer._id);
+    if (object.rendition === "original" && !entitlements.originalDownloadAllowed) {
+      return null;
+    }
+    return {
+      bucket: object.bucket,
+      key: object.key,
+      rendition: object.rendition,
+      contentType: object.contentType,
+    };
   },
 });
