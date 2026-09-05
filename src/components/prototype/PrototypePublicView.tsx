@@ -203,8 +203,8 @@ function PrototypePublicViewBody({
         </div>
 
         <div className="prototype-hero-panel__media">
-          {concept.previewAsset?.publicUrl ? (
-            <img src={concept.previewAsset.publicUrl} alt={concept.title} />
+          {concept.previewAsset?.masterUrl ?? concept.previewAsset?.publicUrl ? (
+            <img src={concept.previewAsset.masterUrl ?? concept.previewAsset.publicUrl} alt={concept.title} />
           ) : (
             <div className="prototype-media-placeholder">
               <p>Preview unavailable</p>

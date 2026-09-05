@@ -90,6 +90,7 @@ type WorkspaceData = {
       connectionConfigured: boolean;
       publicBucket: string | null;
       publicDeliveryConfigured: boolean;
+      publicCachePurgeConfigured: boolean;
       privateBucket: string | null;
       privateDeliveryConfigured: boolean;
     };
@@ -1040,6 +1041,7 @@ function SystemSection({
         <div><dt>R2 connection</dt><dd><span className={cn("settings-status-dot", !storage.connectionConfigured && "is-inactive")} />{storage.connectionConfigured ? "Configured" : "Not configured"}</dd></div>
         <div><dt>Public bucket</dt><dd><span className={cn("settings-status-dot", !storage.publicBucket && "is-inactive")} />{storage.publicBucket ?? "Not configured"}</dd></div>
         <div><dt>Public delivery</dt><dd><span className={cn("settings-status-dot", !storage.publicDeliveryConfigured && "is-inactive")} />{storage.publicDeliveryConfigured ? "Base URL configured" : "Not configured"}</dd></div>
+        <div><dt>Showcase cache purge</dt><dd><span className={cn("settings-status-dot", !storage.publicCachePurgeConfigured && "is-inactive")} />{storage.publicCachePurgeConfigured ? "Ready" : "Not configured"}</dd></div>
         <div><dt>Private bucket</dt><dd><span className={cn("settings-status-dot", !storage.privateBucket && "is-inactive")} />{storage.privateBucket ?? "Not configured"}</dd></div>
         <div><dt>Private delivery</dt><dd><span className={cn("settings-status-dot", !storage.privateDeliveryConfigured && "is-inactive")} />{storage.privateDeliveryConfigured ? "Signed URLs ready" : "Not configured"}</dd></div>
       </dl>

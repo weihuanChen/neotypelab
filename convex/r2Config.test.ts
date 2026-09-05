@@ -14,6 +14,8 @@ const configuredEnvironment = {
   R2_BUCKET_PUBLIC: "neotypelab-dev-showcase",
   R2_BUCKET_PRIVATE: "neotypelab-dev-library",
   R2_PUBLIC_BASE_URL: "https://assets.example.test/",
+  CLOUDFLARE_CACHE_PURGE_ZONE_ID: "zone-id",
+  CLOUDFLARE_CACHE_PURGE_TOKEN: "purge-token",
 };
 
 describe("R2 configuration", () => {
@@ -34,6 +36,7 @@ describe("R2 configuration", () => {
       connectionConfigured: true,
       publicBucket: "neotypelab-dev-showcase",
       publicDeliveryConfigured: true,
+      publicCachePurgeConfigured: true,
       privateBucket: "neotypelab-dev-library",
       privateDeliveryConfigured: true,
     });

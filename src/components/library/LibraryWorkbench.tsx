@@ -99,7 +99,7 @@ export function LibraryWorkbench({ search: _search }: { search: LibrarySearch })
 function AuthenticatedLibraryWorkbench() {
   const concepts = useQuery(api.concepts.listLibrary);
   const savedConcepts = useQuery(api.concepts.listSavedPublicConcepts);
-  const updateConcept = useMutation(api.concepts.update);
+  const setConceptVisibility = useAction(api.publicationNode.setConceptVisibility);
   const createSprayPlan = useMutation(api.sprayPlans.createFromConcept);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
   const requestMultiAnglePreview = useMutation(api.prototypeTools.requestMultiAnglePreview);
@@ -108,7 +108,6 @@ function AuthenticatedLibraryWorkbench() {
   const requestWeatheringSimulation = useMutation(api.prototypeTools.requestWeatheringSimulation);
   const requestWeatheringSplitPreview = useMutation(api.prototypeTools.requestWeatheringSplitPreview);
   const requestMaterialFinishComparison = useMutation(api.prototypeTools.requestMaterialFinishComparison);
-  const stabilizeConceptPreviewAsset = useAction(api.generationNode.stabilizeConceptPreviewAsset);
   const paintPlans = useQuery(
     api.paintMappingPlans.listForViewerConcepts,
     concepts ? { conceptIds: concepts.map((concept) => concept._id) } : "skip"
@@ -143,7 +142,6 @@ function AuthenticatedLibraryWorkbench() {
       | "material-finish-comparison";
     stage?: BuildStage;
   } | null>(null);
-  const [stabilizingConceptId, setStabilizingConceptId] = useState<string | null>(null);
   const [updatingConceptId, setUpdatingConceptId] = useState<string | null>(null);
   const [creatingSprayPlanId, setCreatingSprayPlanId] = useState<string | null>(null);
   const [publishIntent, setPublishIntent] = useState<{
@@ -151,7 +149,7 @@ function AuthenticatedLibraryWorkbench() {
     conceptTitle: string;
     nextVisibility: PublishVisibility;
     currentVisibility: PublishVisibility;
-    previewUrlAvailable: boolean;
+    publicationReady: boolean;
     currentStatus: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -184,7 +182,7 @@ function AuthenticatedLibraryWorkbench() {
     setUpdatingConceptId(conceptId);
     setErrorMessage(null);
     try {
-      await updateConcept({ conceptId: conceptId as never, visibility });
+      await setConceptVisibility({ conceptId: conceptId as never, visibility });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update visibility");
     } finally {
@@ -210,7 +208,7 @@ function AuthenticatedLibraryWorkbench() {
     conceptTitle: string;
     nextVisibility: PublishVisibility;
     currentVisibility: PublishVisibility;
-    previewUrlAvailable: boolean;
+    publicationReady: boolean;
     currentStatus: string;
   }) {
     setErrorMessage(null);
@@ -224,20 +222,6 @@ function AuthenticatedLibraryWorkbench() {
 
     await onVisibilityChange(publishIntent.conceptId, publishIntent.nextVisibility);
     setPublishIntent(null);
-  }
-
-  async function onStabilizePreviewAsset(conceptId: string) {
-    setStabilizingConceptId(conceptId);
-    setErrorMessage(null);
-    try {
-      await stabilizeConceptPreviewAsset({ conceptId: conceptId as never });
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to stabilize public preview URL"
-      );
-    } finally {
-      setStabilizingConceptId(null);
-    }
   }
 
   async function onRequestRender(
@@ -505,7 +489,6 @@ function AuthenticatedLibraryWorkbench() {
             onRequestRender={onRequestRender}
             onCreateSprayPlan={onCreateSprayPlan}
             onRetry={onRetry}
-            onStabilizePreviewAsset={onStabilizePreviewAsset}
             openPublishReview={openPublishReview}
             paintPlan={paintPlanByConceptId.get(selectedConcept._id)}
             recommendation={recommendationsByConceptId.get(selectedConcept._id)}
@@ -513,7 +496,6 @@ function AuthenticatedLibraryWorkbench() {
             renderingState={renderingState}
             rerunningJobId={rerunningJobId}
             shopping={shoppingByConceptId.get(selectedConcept._id)}
-            stabilizingConceptId={stabilizingConceptId}
             updatingConceptId={updatingConceptId}
           />
               ) : (
@@ -581,8 +563,8 @@ function AuthenticatedLibraryWorkbench() {
                   <MetaRow label="Next visibility" value={publishIntent.nextVisibility} />
                   <MetaRow label="Concept status" value={publishIntent.currentStatus} />
                   <MetaRow
-                    label="Public preview URL"
-                    value={publishIntent.previewUrlAvailable ? "ready" : "missing"}
+                    label="Web renditions"
+                    value={publishIntent.publicationReady ? "ready" : "missing"}
                   />
                 </div>
               </div>
@@ -614,10 +596,9 @@ function AuthenticatedLibraryWorkbench() {
                 </div>
               ) : null}
 
-              {publishIntent.nextVisibility !== "private" && !publishIntent.previewUrlAvailable ? (
+              {publishIntent.nextVisibility !== "private" && !publishIntent.publicationReady ? (
                 <div className="rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
-                  A public preview URL is required before this concept can be shared. Generate or stabilize a public
-                  preview asset first.
+                  Master, preview, and thumbnail must finish processing before this concept can be shared.
                 </div>
               ) : null}
             </div>
@@ -634,7 +615,7 @@ function AuthenticatedLibraryWorkbench() {
                 (publishIntent.nextVisibility !== "private" &&
                   publishIntent.currentStatus !== "generated" &&
                   publishIntent.currentStatus !== "archived") ||
-                (publishIntent.nextVisibility !== "private" && !publishIntent.previewUrlAvailable)
+                (publishIntent.nextVisibility !== "private" && !publishIntent.publicationReady)
               }
               onClick={() => {
                 void confirmPublishReview();
@@ -663,7 +644,6 @@ function LibraryConceptFocus({
   onRequestRender,
   onCreateSprayPlan,
   onRetry,
-  onStabilizePreviewAsset,
   openPublishReview,
   paintPlan,
   recommendation,
@@ -671,7 +651,6 @@ function LibraryConceptFocus({
   renderingState,
   rerunningJobId,
   shopping,
-  stabilizingConceptId,
   updatingConceptId,
 }: {
   concept: {
@@ -683,6 +662,7 @@ function LibraryConceptFocus({
     notes?: string | null;
     moodTags: string[];
     remixCount: number;
+    publicationReady: boolean;
     previewAsset?: {
       publicUrl?: string | null;
       key?: string | null;
@@ -734,13 +714,12 @@ function LibraryConceptFocus({
   ) => Promise<void>;
   onCreateSprayPlan: (conceptId: string) => Promise<void>;
   onRetry: (jobId: string) => Promise<void>;
-  onStabilizePreviewAsset: (conceptId: string) => Promise<void>;
   openPublishReview: (input: {
     conceptId: string;
     conceptTitle: string;
     nextVisibility: PublishVisibility;
     currentVisibility: PublishVisibility;
-    previewUrlAvailable: boolean;
+    publicationReady: boolean;
     currentStatus: string;
   }) => void;
   paintPlan?: {
@@ -785,7 +764,6 @@ function LibraryConceptFocus({
     };
     notes: string[];
   };
-  stabilizingConceptId: string | null;
   updatingConceptId: string | null;
 }) {
   const privatePreviewUrl = usePrivateAssetUrl(
@@ -912,7 +890,7 @@ function LibraryConceptFocus({
                     conceptTitle: concept.title,
                     nextVisibility: option,
                     currentVisibility: concept.visibility,
-                    previewUrlAvailable: Boolean(concept.previewAsset?.publicUrl),
+                    publicationReady: concept.publicationReady,
                     currentStatus: concept.status,
                   });
                 }}
@@ -931,19 +909,6 @@ function LibraryConceptFocus({
           {(concept.status === "generated" || concept.status === "archived") &&
           concept.visibility !== "private" ? (
             <GhostButton href={`/create?remix=${concept._id}`}>Remix in create</GhostButton>
-          ) : null}
-          {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
-            <GhostButton
-              disabled={stabilizingConceptId === concept._id}
-              loading={stabilizingConceptId === concept._id}
-              onClick={() => {
-                void onStabilizePreviewAsset(concept._id);
-              }}
-            >
-              {stabilizingConceptId === concept._id
-                ? "Stabilizing preview"
-                : "Stabilize public preview"}
-            </GhostButton>
           ) : null}
           <GhostButton
             disabled={busy}

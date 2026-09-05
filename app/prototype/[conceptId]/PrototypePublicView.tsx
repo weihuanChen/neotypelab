@@ -164,9 +164,9 @@ export function PrototypePublicView({ conceptId }: { conceptId: string }) {
         <div className="space-y-6">
           <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[#161B22]">
             <div className="aspect-[4/3] bg-[#0D1117]">
-              {concept.previewAsset?.publicUrl ? (
+              {concept.previewAsset?.masterUrl ?? concept.previewAsset?.publicUrl ? (
                 <img
-                  src={concept.previewAsset.publicUrl}
+                  src={concept.previewAsset.masterUrl ?? concept.previewAsset.publicUrl}
                   alt={concept.title}
                   className="h-full w-full object-cover"
                 />

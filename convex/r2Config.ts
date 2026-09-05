@@ -31,12 +31,16 @@ export function getR2ConfigurationStatus(environment: Environment = process.env)
   const publicBucket = normalizedEnvironmentValue(environment, "R2_BUCKET_PUBLIC");
   const privateBucket = normalizedEnvironmentValue(environment, "R2_BUCKET_PRIVATE");
   const publicBaseUrl = normalizedEnvironmentValue(environment, "R2_PUBLIC_BASE_URL");
+  const publicCachePurgeConfigured =
+    hasEnvironmentValue(environment, "CLOUDFLARE_CACHE_PURGE_ZONE_ID") &&
+    hasEnvironmentValue(environment, "CLOUDFLARE_CACHE_PURGE_TOKEN");
 
   return {
     connectionConfigured:
       endpointConfigured && credentialsConfigured && Boolean(publicBucket && privateBucket),
     publicBucket: publicBucket ?? null,
     publicDeliveryConfigured: Boolean(publicBaseUrl),
+    publicCachePurgeConfigured,
     privateBucket: privateBucket ?? null,
     privateDeliveryConfigured:
       endpointConfigured && credentialsConfigured && Boolean(privateBucket),

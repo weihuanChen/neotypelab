@@ -11,10 +11,12 @@ import { buildPaintPlan } from "./paintMappingEngine";
 import { query } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { QueryCtx } from "./types";
+import { getPublishedRenditions } from "./publications";
 
 type ShareableConcept = Doc<"concepts"> & {
   visibility: "public" | "unlisted";
   status: "generated" | "archived";
+  activePublicationId: Id<"assetPublications">;
 };
 
 type ConceptEngagementSnapshot = {
@@ -50,6 +52,8 @@ type ConceptShareCard = {
   } | null;
   previewAsset: {
     publicUrl?: string;
+    thumbnailUrl?: string;
+    masterUrl?: string;
     key: string;
     contentType?: string;
   } | null;
@@ -66,18 +70,18 @@ export const listPublicConcepts = query({
       .collect();
 
     const generatedConcepts = concepts
-      .filter((concept) => concept.status === "generated" || concept.status === "archived")
+      .filter(isPublicConcept)
       .sort((a, b) => b._creationTime - a._creationTime)
       .slice(0, 24);
 
     return await Promise.all(
       generatedConcepts.map(async (concept) => {
-        const [baseModel, stylePreset, materialPreset, previewAsset, owner, remixCount, engagement] =
+        const [baseModel, stylePreset, materialPreset, publishedAssets, owner, remixCount, engagement] =
           await Promise.all([
             concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
             concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
             concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
-            concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
+            getPublishedRenditions(ctx, concept),
             ctx.db.get(concept.userId),
             listShareableRemixes(ctx, concept._id).then((items) => items.length),
             getConceptEngagementSnapshot(ctx, concept._id),
@@ -113,11 +117,13 @@ export const listPublicConcepts = query({
                 finishType: materialPreset.finishType,
               }
             : null,
-          previewAsset: previewAsset
+          previewAsset: publishedAssets?.preview
             ? {
-                publicUrl: previewAsset.publicUrl,
-                key: previewAsset.key,
-                contentType: previewAsset.contentType,
+                publicUrl: publishedAssets.preview.publicUrl,
+                thumbnailUrl: publishedAssets.thumbnail?.publicUrl,
+                masterUrl: publishedAssets.master?.publicUrl,
+                key: publishedAssets.preview.key,
+                contentType: publishedAssets.preview.contentType,
               }
             : null,
           remixCount,
@@ -137,7 +143,7 @@ export const listPublicConceptsForSitemap = query({
       .collect();
 
     return concepts
-      .filter((concept) => concept.status === "generated" || concept.status === "archived")
+      .filter(isPublicConcept)
       .sort((a, b) => b._creationTime - a._creationTime)
       .map((concept) => ({
         _id: concept._id,
@@ -157,7 +163,7 @@ export const listPublicProfilesForSitemap = query({
           .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
           .collect()
           .then((items) =>
-            items.filter((concept) => concept.status === "generated" || concept.status === "archived")
+            items.filter(isPublicConcept)
           );
 
         if (publicConcepts.length === 0) {
@@ -194,7 +200,7 @@ export const listCreatorHubsForSitemap = query({
             .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
             .collect()
             .then((items) =>
-              items.filter((concept) => concept.status === "generated" || concept.status === "archived")
+              items.filter(isPublicConcept)
             ),
           ctx.db
             .query("creatorPacks")
@@ -246,7 +252,7 @@ export const listRankedPublicCreators = query({
           .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
           .collect()
           .then((items) =>
-            items.filter((concept) => concept.status === "generated" || concept.status === "archived")
+            items.filter(isPublicConcept)
           );
 
         if (publicConcepts.length === 0) {
@@ -319,7 +325,7 @@ export const getSharedConcept = query({
       baseModel,
       stylePreset,
       materialPreset,
-      previewAsset,
+      publishedAssets,
       owner,
       colorRoles,
       paintMappings,
@@ -331,7 +337,7 @@ export const getSharedConcept = query({
       concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
-      concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
+      getPublishedRenditions(ctx, concept),
       ctx.db.get(concept.userId),
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
       ctx.db.query("paintMappings").collect(),
@@ -388,11 +394,13 @@ export const getSharedConcept = query({
             finishType: materialPreset.finishType,
           }
         : null,
-      previewAsset: previewAsset
+      previewAsset: publishedAssets?.preview
         ? {
-            publicUrl: previewAsset.publicUrl,
-            key: previewAsset.key,
-            contentType: previewAsset.contentType,
+            publicUrl: publishedAssets.preview.publicUrl,
+            thumbnailUrl: publishedAssets.thumbnail?.publicUrl,
+            masterUrl: publishedAssets.master?.publicUrl,
+            key: publishedAssets.preview.key,
+            contentType: publishedAssets.preview.contentType,
           }
         : null,
       sourceConcept,
@@ -487,7 +495,7 @@ export const getPublicProfile = query({
         .collect()
         .then((items) =>
           items
-            .filter((concept) => concept.status === "generated" || concept.status === "archived")
+            .filter(isPublicConcept)
             .sort((a, b) => b._creationTime - a._creationTime)
         ),
       ctx.db
@@ -522,7 +530,7 @@ export const getPublicProfile = query({
         .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
         .collect()
         .then((items) =>
-          items.filter((concept) => concept.status === "generated" || concept.status === "archived")
+          items.filter(isPublicConcept)
         ),
     ]);
 
@@ -672,7 +680,7 @@ export const getPublicProfile = query({
           .then((items) =>
             items.filter(
               (concept) =>
-                (concept.status === "generated" || concept.status === "archived") &&
+                isPublicConcept(concept) &&
                 pack.stylePresetIds.includes(concept.stylePresetId as Id<"stylePresets">)
             )
           );
@@ -824,7 +832,7 @@ export const getSeoLandingPage = query({
         (concept) =>
           concept.baseModelId === baseModel._id &&
           concept.stylePresetId === stylePreset._id &&
-          (concept.status === "generated" || concept.status === "archived")
+          isPublicConcept(concept)
       )
       .sort((a, b) => b._creationTime - a._creationTime);
 
@@ -929,7 +937,7 @@ export const getCreatorPackBySlug = query({
       .then((items) =>
         items.filter(
           (concept) =>
-            (concept.status === "generated" || concept.status === "archived") &&
+            isPublicConcept(concept) &&
             creatorPack.stylePresetIds.includes(concept.stylePresetId as Id<"stylePresets">)
         )
       );
@@ -1030,7 +1038,7 @@ export const listPublicCreatorPacks = query({
           .then((items) =>
             items.filter(
               (concept) =>
-                (concept.status === "generated" || concept.status === "archived") &&
+                isPublicConcept(concept) &&
                 pack.stylePresetIds.includes(concept.stylePresetId as Id<"stylePresets">)
             )
           );
@@ -1206,19 +1214,12 @@ async function getConceptShareCard(
     return null;
   }
 
-  const [baseModel, stylePreset, materialPreset, previewAsset, owner, engagement, remixCount]: [
-    Doc<"baseModels"> | null,
-    Doc<"stylePresets"> | null,
-    Doc<"materialPresets"> | null,
-    Doc<"assets"> | null,
-    Doc<"users"> | null,
-    ConceptEngagementSnapshot,
-    number,
-  ] = await Promise.all([
+  const [baseModel, stylePreset, materialPreset, publishedAssets, owner, engagement, remixCount] =
+    await Promise.all([
     concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
     concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
     concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
-    concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
+    getPublishedRenditions(ctx, concept),
     ctx.db.get(concept.userId),
     getConceptEngagementSnapshot(ctx, concept._id) as Promise<ConceptEngagementSnapshot>,
     listShareableRemixes(ctx, concept._id).then((items: ConceptShareCard[]) => items.length),
@@ -1254,11 +1255,13 @@ async function getConceptShareCard(
           finishType: materialPreset.finishType,
         }
       : null,
-    previewAsset: previewAsset
+    previewAsset: publishedAssets?.preview
       ? {
-          publicUrl: previewAsset.publicUrl,
-          key: previewAsset.key,
-          contentType: previewAsset.contentType,
+          publicUrl: publishedAssets.preview.publicUrl,
+          thumbnailUrl: publishedAssets.thumbnail?.publicUrl,
+          masterUrl: publishedAssets.master?.publicUrl,
+          key: publishedAssets.preview.key,
+          contentType: publishedAssets.preview.contentType,
         }
       : null,
     remixCount,
@@ -1271,6 +1274,7 @@ function isShareableConcept(
 ): concept is ShareableConcept {
   return (
     concept !== null &&
+    concept.activePublicationId !== undefined &&
     (concept.visibility === "public" || concept.visibility === "unlisted") &&
     (concept.status === "generated" || concept.status === "archived")
   );
@@ -1281,6 +1285,7 @@ function isPublicConcept(
 ): concept is ShareableConcept & { visibility: "public" } {
   return (
     concept !== null &&
+    concept.activePublicationId !== undefined &&
     concept.visibility === "public" &&
     (concept.status === "generated" || concept.status === "archived")
   );

@@ -47,6 +47,8 @@ import type * as promptEngine from "../promptEngine.js";
 import type * as promptTemplateVariables from "../promptTemplateVariables.js";
 import type * as prototypeTools from "../prototypeTools.js";
 import type * as prototypes from "../prototypes.js";
+import type * as publicationNode from "../publicationNode.js";
+import type * as publications from "../publications.js";
 import type * as r2Config from "../r2Config.js";
 import type * as r2Storage from "../r2Storage.js";
 import type * as recommendationFeedback from "../recommendationFeedback.js";
@@ -107,6 +109,8 @@ declare const fullApi: ApiFromModules<{
   promptTemplateVariables: typeof promptTemplateVariables;
   prototypeTools: typeof prototypeTools;
   prototypes: typeof prototypes;
+  publicationNode: typeof publicationNode;
+  publications: typeof publications;
   r2Config: typeof r2Config;
   r2Storage: typeof r2Storage;
   recommendationFeedback: typeof recommendationFeedback;

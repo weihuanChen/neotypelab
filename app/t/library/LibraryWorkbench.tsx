@@ -28,7 +28,7 @@ export function LibraryWorkbench() {
   const concepts = useQuery(api.concepts.listLibrary);
   const savedConcepts = useQuery(api.concepts.listSavedPublicConcepts);
   const jobs = useQuery(api.generation.listViewerJobs);
-  const updateConcept = useMutation(api.concepts.update);
+  const setConceptVisibility = useAction(api.publicationNode.setConceptVisibility);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
   const requestMultiAnglePreview = useMutation(api.prototypeTools.requestMultiAnglePreview);
   const requestHighFidelityRender = useMutation(api.prototypeTools.requestHighFidelityRender);
@@ -36,7 +36,6 @@ export function LibraryWorkbench() {
   const requestWeatheringSimulation = useMutation(api.prototypeTools.requestWeatheringSimulation);
   const requestWeatheringSplitPreview = useMutation(api.prototypeTools.requestWeatheringSplitPreview);
   const requestMaterialFinishComparison = useMutation(api.prototypeTools.requestMaterialFinishComparison);
-  const stabilizeConceptPreviewAsset = useAction(api.generationNode.stabilizeConceptPreviewAsset);
   const paintPlans = useQuery(
     api.paintMappingPlans.listForViewerConcepts,
     concepts ? { conceptIds: concepts.map((concept) => concept._id) } : "skip"
@@ -71,14 +70,13 @@ export function LibraryWorkbench() {
       | "material-finish-comparison";
     stage?: BuildStage;
   } | null>(null);
-  const [stabilizingConceptId, setStabilizingConceptId] = useState<string | null>(null);
   const [updatingConceptId, setUpdatingConceptId] = useState<string | null>(null);
   const [publishIntent, setPublishIntent] = useState<{
     conceptId: string;
     conceptTitle: string;
     nextVisibility: PublishVisibility;
     currentVisibility: PublishVisibility;
-    previewUrlAvailable: boolean;
+    publicationReady: boolean;
     currentStatus: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -102,7 +100,7 @@ export function LibraryWorkbench() {
     setUpdatingConceptId(conceptId);
     setErrorMessage(null);
     try {
-      await updateConcept({ conceptId: conceptId as never, visibility });
+      await setConceptVisibility({ conceptId: conceptId as never, visibility });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update visibility");
     } finally {
@@ -115,7 +113,7 @@ export function LibraryWorkbench() {
     conceptTitle: string;
     nextVisibility: PublishVisibility;
     currentVisibility: PublishVisibility;
-    previewUrlAvailable: boolean;
+    publicationReady: boolean;
     currentStatus: string;
   }) {
     setErrorMessage(null);
@@ -129,20 +127,6 @@ export function LibraryWorkbench() {
 
     await onVisibilityChange(publishIntent.conceptId, publishIntent.nextVisibility);
     setPublishIntent(null);
-  }
-
-  async function onStabilizePreviewAsset(conceptId: string) {
-    setStabilizingConceptId(conceptId);
-    setErrorMessage(null);
-    try {
-      await stabilizeConceptPreviewAsset({ conceptId: conceptId as never });
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to stabilize public preview URL"
-      );
-    } finally {
-      setStabilizingConceptId(null);
-    }
   }
 
   async function onRequestRender(
@@ -308,20 +292,6 @@ export function LibraryWorkbench() {
                       compact
                     />
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
-                        <Button
-                          type="button"
-                          disabled={stabilizingConceptId === concept._id}
-                          onClick={() => {
-                            void onStabilizePreviewAsset(concept._id);
-                          }}
-                          className="h-11 rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
-                        >
-                          {stabilizingConceptId === concept._id
-                            ? "Stabilizing Preview"
-                            : "Stabilize Public Preview"}
-                        </Button>
-                      ) : null}
                       <Link
                         href={`/prototype/${concept._id}`}
                         className="inline-flex h-11 items-center justify-center rounded-[18px] border border-accent-blue bg-[#0E2430] px-4 text-sm font-medium text-ink-primary transition-colors hover:bg-white/10"
@@ -749,7 +719,7 @@ export function LibraryWorkbench() {
                                   conceptTitle: concept.title,
                                   nextVisibility: option,
                                   currentVisibility: concept.visibility,
-                                  previewUrlAvailable: Boolean(concept.previewAsset?.publicUrl),
+                                  publicationReady: concept.publicationReady,
                                   currentStatus: concept.status,
                                 });
                               }}
@@ -786,20 +756,6 @@ export function LibraryWorkbench() {
                         >
                           Remix in Create
                         </Link>
-                      ) : null}
-                      {!concept.previewAsset?.publicUrl && concept.previewAsset?.key ? (
-                        <Button
-                          type="button"
-                          disabled={stabilizingConceptId === concept._id}
-                          onClick={() => {
-                            void onStabilizePreviewAsset(concept._id);
-                          }}
-                          className="h-11 w-full rounded-[18px] border border-accent-teal bg-[#13241B] text-ink-primary hover:bg-white/10"
-                        >
-                          {stabilizingConceptId === concept._id
-                            ? "Stabilizing Public Preview"
-                            : "Stabilize Public Preview"}
-                        </Button>
                       ) : null}
                       <Button
                         type="button"
@@ -1044,8 +1000,8 @@ export function LibraryWorkbench() {
                   <MetaRow label="Next visibility" value={publishIntent.nextVisibility} />
                   <MetaRow label="Concept status" value={publishIntent.currentStatus} />
                   <MetaRow
-                    label="Public preview URL"
-                    value={publishIntent.previewUrlAvailable ? "ready" : "missing"}
+                    label="Web renditions"
+                    value={publishIntent.publicationReady ? "ready" : "missing"}
                   />
                 </div>
               </div>
@@ -1077,10 +1033,9 @@ export function LibraryWorkbench() {
                 </div>
               ) : null}
 
-              {publishIntent.nextVisibility !== "private" && !publishIntent.previewUrlAvailable ? (
+              {publishIntent.nextVisibility !== "private" && !publishIntent.publicationReady ? (
                 <div className="rounded-[18px] border border-accent-red bg-accent-red/10 p-4 text-sm text-accent-red">
-                  A public preview URL is required before this concept can be shared. Generate or stabilize a public
-                  preview asset first.
+                  Master, preview, and thumbnail must finish processing before this concept can be shared.
                 </div>
               ) : null}
             </div>
@@ -1097,7 +1052,7 @@ export function LibraryWorkbench() {
                 (publishIntent.nextVisibility !== "private" &&
                   publishIntent.currentStatus !== "generated" &&
                   publishIntent.currentStatus !== "archived") ||
-                (publishIntent.nextVisibility !== "private" && !publishIntent.previewUrlAvailable)
+                (publishIntent.nextVisibility !== "private" && !publishIntent.publicationReady)
               }
               onClick={() => {
                 void confirmPublishReview();

@@ -550,6 +550,7 @@ const schema = defineSchema({
     assetVersionId: v.id("assetVersions"),
     userId: v.id("users"),
     legacyAssetId: v.optional(v.id("assets")),
+    publicationId: v.optional(v.id("assetPublications")),
     bucketRole: vStorageBucketRole,
     bucket: v.string(),
     key: v.string(),
@@ -568,7 +569,9 @@ const schema = defineSchema({
     .index("by_userId", ["userId"])
     .index("by_assetVersionId", ["assetVersionId"])
     .index("by_version_rendition", ["assetVersionId", "rendition"])
+    .index("by_version_role_rendition", ["assetVersionId", "bucketRole", "rendition"])
     .index("by_legacyAssetId", ["legacyAssetId"])
+    .index("by_publicationId", ["publicationId"])
     .index("by_bucket_key", ["bucket", "key"])
     .index("by_status", ["status"]),
 
@@ -578,16 +581,19 @@ const schema = defineSchema({
     userId: v.id("users"),
     conceptId: v.optional(v.id("concepts")),
     kind: vAssetPublicationKind,
+    visibility: v.union(v.literal("public"), v.literal("unlisted")),
     status: vAssetPublicationStatus,
     publicPrefix: v.string(),
-    publishedAt: v.number(),
+    publishedAt: v.optional(v.number()),
     withdrawnAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_mediaAssetId", ["mediaAssetId"])
     .index("by_assetVersionId", ["assetVersionId"])
     .index("by_conceptId", ["conceptId"])
+    .index("by_concept_status", ["conceptId", "status"])
     .index("by_kind_status", ["kind", "status"]),
 
   archiveCounters: defineTable({
@@ -610,6 +616,7 @@ const schema = defineSchema({
     previewAssetId: v.optional(v.id("assets")),
     mediaAssetId: v.optional(v.id("mediaAssets")),
     currentAssetVersionId: v.optional(v.id("assetVersions")),
+    activePublicationId: v.optional(v.id("assetPublications")),
     sourceConceptId: v.optional(v.id("concepts")),
     generationJobId: v.optional(v.id("generationJobs")),
     searchText: v.string(),

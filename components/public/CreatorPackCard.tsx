@@ -37,6 +37,7 @@ type CreatorPackCardProps = {
       title: string;
       previewAsset: {
         publicUrl?: string;
+        thumbnailUrl?: string;
       } | null;
     } | null;
   };
@@ -54,9 +55,9 @@ export function CreatorPackCard({ pack, compact = false }: CreatorPackCardProps)
   return (
     <article className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20">
       <div className="aspect-[4/3] bg-[#0D1117]">
-        {pack.previewConcept?.previewAsset?.publicUrl ? (
+        {pack.previewConcept?.previewAsset?.thumbnailUrl ?? pack.previewConcept?.previewAsset?.publicUrl ? (
           <img
-            src={pack.previewConcept.previewAsset.publicUrl}
+            src={pack.previewConcept.previewAsset.thumbnailUrl ?? pack.previewConcept.previewAsset.publicUrl}
             alt={pack.previewConcept.title}
             className="h-full w-full object-cover"
           />

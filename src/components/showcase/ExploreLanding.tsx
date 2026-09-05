@@ -533,7 +533,7 @@ function normalizeConcept(concept: ShowcaseConcept, index: number): ExploreProto
     materialSlug: concept.materialPreset?.slug ?? "unknown-material",
     weathering: concept.weatheringLevel,
     creator: concept.owner?.handle ?? "NeotypeLab",
-    image: concept.previewAsset?.publicUrl ?? fallback.image,
+    image: concept.previewAsset?.thumbnailUrl ?? concept.previewAsset?.publicUrl ?? fallback.image,
     href: `/prototype/${concept._id}`,
     remixHref: `/create?remix=${concept._id}`,
     createdAt: concept._creationTime,

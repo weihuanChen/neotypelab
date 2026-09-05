@@ -180,6 +180,8 @@ Common environment variables:
 - `R2_END_POINT`
 - `R2_PUBLIC_BASE_URL`
 - `R2_PRIVATE_BASE_URL` reserved for a future authenticated delivery Worker
+- `CLOUDFLARE_CACHE_PURGE_ZONE_ID`
+- `CLOUDFLARE_CACHE_PURGE_TOKEN`
 - generation provider keys such as `OPENAI_API_KEY`
 
 Rules:
@@ -257,6 +259,27 @@ and derived objects record their actual width, height, byte size, SHA-256
 checksum, content type, and R2 ETag. All four deterministic object keys are
 reserved as pending before parallel upload. A job becomes successful only when
 the complete Master/Preview/Thumbnail set is recorded as ready.
+
+### Showcase publication
+
+Changing a concept from private to public or unlisted is an asset publication
+workflow rather than a direct visibility update. The workflow copies only the
+ready Master, Preview, and Thumbnail from the private Library version to the
+public Showcase bucket under an immutable version prefix. It records pending
+public storage objects before copying and switches `activePublicationId` only
+after the complete public set is ready. A failed replacement leaves the prior
+publication active.
+
+Public queries require an active `published` publication and resolve images
+from its public storage objects. Grid surfaces prefer Thumbnail, feeds use
+Preview, and prototype detail surfaces prefer Master. The legacy asset URL is
+maintained only for compatibility.
+
+Withdrawal hides the concept and clears its active publication before deleting
+public objects. Showcase UGC uses a one-hour cache lifetime; when dedicated
+cache-purge credentials are configured, withdrawal also purges the three public
+URLs immediately. Failed cleanup remains in `withdrawing` state so a later
+cleanup worker can retry it.
 
 ---
 

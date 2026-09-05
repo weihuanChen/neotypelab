@@ -53,9 +53,9 @@ function CreatorPackCardView({
   return (
     <article className="showcase-card showcase-card--pack">
       <div className="showcase-card__media">
-        {previewConcept?.previewAsset?.publicUrl ? (
+        {previewConcept?.previewAsset?.thumbnailUrl ?? previewConcept?.previewAsset?.publicUrl ? (
           <img
-            src={previewConcept.previewAsset.publicUrl}
+            src={previewConcept.previewAsset.thumbnailUrl ?? previewConcept.previewAsset.publicUrl}
             alt={previewConcept.title}
           />
         ) : (

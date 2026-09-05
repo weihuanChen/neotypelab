@@ -125,8 +125,11 @@ export const getViewerJobSnapshot = query({
       job.outputAssetVersionId
         ? ctx.db
             .query("storageObjects")
-            .withIndex("by_version_rendition", (q) =>
-              q.eq("assetVersionId", job.outputAssetVersionId!).eq("rendition", "master")
+            .withIndex("by_version_role_rendition", (q) =>
+              q
+                .eq("assetVersionId", job.outputAssetVersionId!)
+                .eq("bucketRole", "private")
+                .eq("rendition", "master")
             )
             .first()
         : null,

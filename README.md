@@ -122,6 +122,10 @@ Platform administrators can run a read/write/delete check against both buckets
 from the Environment section in Admin Settings. The test objects use the
 `_connectivity-tests/` prefix and are removed before the check finishes.
 
+Showcase withdrawal can purge custom-domain cache entries immediately when
+`CLOUDFLARE_CACHE_PURGE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN` are set in
+the Convex environment. Use a dedicated token with only cache purge access.
+
 Convex stays deployed separately:
 
 ```bash

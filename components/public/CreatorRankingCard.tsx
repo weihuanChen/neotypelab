@@ -23,6 +23,7 @@ type CreatorRankingCardProps = {
       title: string;
       previewAsset: {
         publicUrl?: string;
+        thumbnailUrl?: string;
       } | null;
     } | null;
   };
@@ -32,9 +33,9 @@ export function CreatorRankingCard({ creator }: CreatorRankingCardProps) {
   return (
     <article className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20">
       <div className="aspect-[4/3] bg-[#0D1117]">
-        {creator.leadConcept?.previewAsset?.publicUrl ? (
+        {creator.leadConcept?.previewAsset?.thumbnailUrl ?? creator.leadConcept?.previewAsset?.publicUrl ? (
           <img
-            src={creator.leadConcept.previewAsset.publicUrl}
+            src={creator.leadConcept.previewAsset.thumbnailUrl ?? creator.leadConcept.previewAsset.publicUrl}
             alt={creator.leadConcept.title}
             className="h-full w-full object-cover"
           />

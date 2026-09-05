@@ -270,9 +270,9 @@ export function ShowcaseFeed({ terminalMode = false }: { terminalMode?: boolean 
               className="overflow-hidden rounded-[28px] border border-line-secondary bg-surface"
             >
               <div className="aspect-[4/3] bg-main">
-                {concept.previewAsset?.publicUrl ? (
+                {concept.previewAsset?.thumbnailUrl ?? concept.previewAsset?.publicUrl ? (
                   <img
-                    src={concept.previewAsset.publicUrl}
+                    src={concept.previewAsset.thumbnailUrl ?? concept.previewAsset.publicUrl}
                     alt={concept.title}
                     className="h-full w-full object-cover"
                   />

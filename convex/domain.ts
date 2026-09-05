@@ -447,7 +447,10 @@ export const vAssetPublicationKind = v.union(
 export type AssetPublicationKind = Infer<typeof vAssetPublicationKind>;
 
 export const vAssetPublicationStatus = v.union(
+  v.literal("publishing"),
   v.literal("published"),
+  v.literal("withdrawing"),
+  v.literal("failed"),
   v.literal("withdrawn")
 );
 export type AssetPublicationStatus = Infer<typeof vAssetPublicationStatus>;

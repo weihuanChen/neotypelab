@@ -6,9 +6,9 @@ export function CreatorRankingCard({ creator }: { creator: RankedPublicCreator }
   return (
     <article className="showcase-card showcase-card--compact">
       <div className="showcase-card__media">
-        {leadConcept?.previewAsset?.publicUrl ? (
+        {leadConcept?.previewAsset?.thumbnailUrl ?? leadConcept?.previewAsset?.publicUrl ? (
           <img
-            src={leadConcept.previewAsset.publicUrl}
+            src={leadConcept.previewAsset.thumbnailUrl ?? leadConcept.previewAsset.publicUrl}
             alt={leadConcept.title}
           />
         ) : (

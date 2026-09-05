@@ -196,8 +196,11 @@ export async function upsertVersionStorageObjects(
   for (const object of input.objects) {
     const existing = await ctx.db
       .query("storageObjects")
-      .withIndex("by_version_rendition", (q) =>
-        q.eq("assetVersionId", input.assetVersionId).eq("rendition", object.rendition)
+      .withIndex("by_version_role_rendition", (q) =>
+        q
+          .eq("assetVersionId", input.assetVersionId)
+          .eq("bucketRole", object.bucketRole)
+          .eq("rendition", object.rendition)
       )
       .first();
     if (existing) {

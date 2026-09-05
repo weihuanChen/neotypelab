@@ -11,6 +11,7 @@ import {
 import { internalQuery, mutation, query } from "./functions";
 import { QueryCtx } from "./types";
 import { nextArchiveNumber } from "./archiveNumbers";
+import { getPublishedRenditions } from "./publications";
 
 export const listMine = query({
   args: {},
@@ -77,7 +78,7 @@ export const listLibrary = query({
           materialPreset,
           generationJob,
           previewAsset,
-          masterObject,
+          versionObjects,
           sourceConcept,
           remixCount,
         ] =
@@ -90,11 +91,11 @@ export const listLibrary = query({
             concept.currentAssetVersionId
               ? ctx.db
                   .query("storageObjects")
-                  .withIndex("by_version_rendition", (q) =>
-                    q.eq("assetVersionId", concept.currentAssetVersionId!).eq("rendition", "master")
+                  .withIndex("by_assetVersionId", (q) =>
+                    q.eq("assetVersionId", concept.currentAssetVersionId!)
                   )
-                  .first()
-              : null,
+                  .collect()
+              : [],
             concept.sourceConceptId ? getConceptSourceSummary(ctx, concept.sourceConceptId) : null,
             ctx.db
               .query("concepts")
@@ -104,6 +105,15 @@ export const listLibrary = query({
           ]);
 
         const kitVariantSummary = await summarizeBaseModelWithHierarchy(ctx, baseModel);
+        const privateReadyObjects = versionObjects.filter(
+          (object) => object.bucketRole === "private" && object.status === "ready"
+        );
+        const masterObject = privateReadyObjects.find(
+          (object) => object.rendition === "master"
+        );
+        const publicationReady = ["master", "preview", "thumbnail"].every((rendition) =>
+          privateReadyObjects.some((object) => object.rendition === rendition)
+        );
 
         return {
           _id: concept._id,
@@ -122,6 +132,7 @@ export const listLibrary = query({
           materialPresetId: concept.materialPresetId,
           sourceConcept,
           remixCount,
+          publicationReady,
           kitVariant: kitVariantSummary,
           baseModel: kitVariantSummary,
           stylePreset: stylePreset
@@ -192,6 +203,7 @@ export const listSavedPublicConcepts = query({
         if (
           concept === null ||
           concept.visibility !== "public" ||
+          concept.activePublicationId === undefined ||
           (concept.status !== "generated" && concept.status !== "archived")
         ) {
           return null;
@@ -201,7 +213,7 @@ export const listSavedPublicConcepts = query({
           baseModel,
           stylePreset,
           materialPreset,
-          previewAsset,
+          publishedAssets,
           owner,
           engagement,
           remixCount,
@@ -209,7 +221,7 @@ export const listSavedPublicConcepts = query({
           concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
           concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
           concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
-          concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
+          getPublishedRenditions(ctx, concept),
           ctx.db.get(concept.userId),
           getConceptEngagementSnapshot(ctx, concept._id),
           ctx.db
@@ -255,11 +267,13 @@ export const listSavedPublicConcepts = query({
                 finishType: materialPreset.finishType,
               }
             : null,
-          previewAsset: previewAsset
+          previewAsset: publishedAssets?.preview
             ? {
-                publicUrl: previewAsset.publicUrl,
-                key: previewAsset.key,
-                contentType: previewAsset.contentType,
+                publicUrl: publishedAssets.preview.publicUrl,
+                thumbnailUrl: publishedAssets.thumbnail?.publicUrl,
+                masterUrl: publishedAssets.master?.publicUrl,
+                key: publishedAssets.preview.key,
+                contentType: publishedAssets.preview.contentType,
               }
             : null,
           remixCount,
@@ -403,30 +417,8 @@ export const update = mutation({
     if (concept.userId !== ctx.viewerX()._id) {
       throw new Error("You can only update your own concepts");
     }
-    if (
-      args.visibility !== undefined &&
-      args.visibility !== "private" &&
-      concept.status !== "generated" &&
-      concept.status !== "archived"
-    ) {
-      throw new Error("Only generated or archived concepts can be published to shared surfaces");
-    }
-    if (
-      args.visibility !== undefined &&
-      args.visibility !== "private" &&
-      concept.previewAssetId === undefined
-    ) {
-      throw new Error("Publishable concepts require a stabilized preview asset first");
-    }
-    if (
-      args.visibility !== undefined &&
-      args.visibility !== "private" &&
-      concept.previewAssetId !== undefined
-    ) {
-      const previewAsset = await ctx.db.get(concept.previewAssetId);
-      if (previewAsset?.publicUrl === undefined) {
-        throw new Error("Publishable concepts require a public preview URL before they can be shared");
-      }
+    if (args.visibility !== undefined && args.visibility !== concept.visibility) {
+      throw new Error("Visibility changes must use the asset publication workflow");
     }
 
     const nextTitle = args.title ?? concept.title;

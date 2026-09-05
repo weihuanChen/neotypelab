@@ -1,6 +1,7 @@
 "use node";
 
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
@@ -60,6 +61,64 @@ export async function deleteR2Object(role: R2BucketRole, key: string) {
       Key: key,
     })
   );
+}
+
+export async function copyR2Object({
+  sourceRole,
+  sourceKey,
+  destinationRole,
+  destinationKey,
+  contentType,
+  cacheControl,
+}: {
+  sourceRole: R2BucketRole;
+  sourceKey: string;
+  destinationRole: R2BucketRole;
+  destinationKey: string;
+  contentType: string;
+  cacheControl?: string;
+}) {
+  const config = getR2ConnectionConfig();
+  const result = await createR2Client(config).send(
+    new CopyObjectCommand({
+      Bucket: config.buckets[destinationRole],
+      Key: destinationKey,
+      CopySource: encodeCopySource(config.buckets[sourceRole], sourceKey),
+      MetadataDirective: "REPLACE",
+      ContentType: contentType,
+      CacheControl: cacheControl,
+    })
+  );
+  return {
+    key: destinationKey,
+    bucket: config.buckets[destinationRole],
+    etag: result.CopyObjectResult?.ETag,
+    publicUrl:
+      destinationRole === "public" ? getPublicR2ObjectUrl(destinationKey) : undefined,
+  };
+}
+
+export async function purgePublicR2Urls(urls: string[]) {
+  const zoneId = process.env.CLOUDFLARE_CACHE_PURGE_ZONE_ID?.trim();
+  const token = process.env.CLOUDFLARE_CACHE_PURGE_TOKEN?.trim();
+  if (urls.length === 0 || !zoneId || !token) {
+    return { status: "skipped" as const };
+  }
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/zones/${encodeURIComponent(zoneId)}/purge_cache`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ files: urls }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Cloudflare cache purge failed with HTTP ${response.status}`);
+  }
+  return { status: "purged" as const };
 }
 
 export async function createPrivateR2DownloadUrl({
@@ -151,6 +210,13 @@ function createR2Client(config: ReturnType<typeof getR2ConnectionConfig>) {
       secretAccessKey: config.secretAccessKey,
     },
   });
+}
+
+function encodeCopySource(bucket: string, key: string) {
+  return `${encodeURIComponent(bucket)}/${key
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")}`;
 }
 
 function storageErrorMessage(error: unknown) {
