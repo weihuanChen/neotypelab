@@ -145,6 +145,9 @@ describe("asset model compatibility", () => {
       return { conceptId, promptCompositionId, generationJobId };
     });
 
+    await t.mutation(internal.storageAccounting.reserveGenerationStorage, {
+      generationJobId: seeded.generationJobId,
+    });
     await t.mutation(internal.generation.markJobSucceeded, {
       ...seeded,
       provider: "internal",
@@ -185,7 +188,17 @@ describe("asset model compatibility", () => {
             )
             .collect()
         : [];
-      return { job, concept, legacyAsset, storageObject, storageObjects };
+      const usage = await ctx.db
+        .query("accountStorageUsage")
+        .withIndex("by_userId", (q) => q.eq("userId", user.userId))
+        .unique();
+      const reservation = await ctx.db
+        .query("storageReservations")
+        .withIndex("by_generationJobId", (q) =>
+          q.eq("generationJobId", seeded.generationJobId)
+        )
+        .unique();
+      return { job, concept, legacyAsset, storageObject, storageObjects, usage, reservation };
     });
 
     expect(state.job).toMatchObject({
@@ -211,6 +224,20 @@ describe("asset model compatibility", () => {
       "preview",
       "thumbnail",
     ]);
+    expect(state.storageObjects.find((object) => object.rendition === "original"))
+      .toMatchObject({ accountingCategory: "temporary-original" });
+    expect(
+      state.storageObjects
+        .filter((object) => object.rendition !== "original")
+        .every((object) => object.accountingCategory === "optimized")
+    ).toBe(true);
+    expect(state.reservation?.status).toBe("settled");
+    expect(state.usage).toMatchObject({
+      optimizedUsedBytes: 1_110_000,
+      temporaryOriginalUsedBytes: 4096,
+      optimizedReservedBytes: 0,
+      temporaryOriginalReservedBytes: 0,
+    });
     expect(jobSnapshot?.asset).toMatchObject({
       rendition: "master",
       key: "generated/master.webp",
@@ -268,8 +295,15 @@ describe("asset model compatibility", () => {
         status: "active" as const,
       },
       renditions: testRenditions("private-library"),
+      originalAccountingCategory: "temporary-original" as const,
+      originalPermanentStorage: false,
+      originalRetentionDays: 7,
+      versionRetentionDays: 7,
     };
 
+    await t.mutation(internal.storageAccounting.reserveGenerationStorage, {
+      generationJobId: seeded.generationJobId,
+    });
     const first = await t.mutation(internal.generation.prepareJobAssetUpload, input);
     const second = await t.mutation(internal.generation.prepareJobAssetUpload, input);
     await t.mutation(internal.generation.markJobAssetUploadFailed, {

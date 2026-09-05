@@ -170,6 +170,8 @@ export const beginConceptPublication = internalMutation({
             userId: viewer._id,
             publicationId,
             bucketRole: "public",
+            accountingCategory: "unmetered",
+            retentionPolicy: "publication",
             bucket: publicBucket,
             key,
             rendition,

@@ -439,6 +439,37 @@ export const vStorageObjectStatus = v.union(
 );
 export type StorageObjectStatus = Infer<typeof vStorageObjectStatus>;
 
+export const vStorageAccountingCategory = v.union(
+  v.literal("optimized"),
+  v.literal("temporary-original"),
+  v.literal("pinned-original"),
+  v.literal("unmetered")
+);
+export type StorageAccountingCategory = Infer<typeof vStorageAccountingCategory>;
+
+export const vStorageReservationStatus = v.union(
+  v.literal("held"),
+  v.literal("settled"),
+  v.literal("released")
+);
+export type StorageReservationStatus = Infer<typeof vStorageReservationStatus>;
+
+export const vStorageRetentionPolicy = v.union(
+  v.literal("temporary-original"),
+  v.literal("permanent-original"),
+  v.literal("current-version"),
+  v.literal("version-history"),
+  v.literal("publication"),
+  v.literal("unmanaged")
+);
+export type StorageRetentionPolicy = Infer<typeof vStorageRetentionPolicy>;
+
+export const vStorageOrphanStatus = v.union(
+  v.literal("detected"),
+  v.literal("resolved")
+);
+export type StorageOrphanStatus = Infer<typeof vStorageOrphanStatus>;
+
 export const vAssetPublicationKind = v.union(
   v.literal("showcase"),
   v.literal("template"),

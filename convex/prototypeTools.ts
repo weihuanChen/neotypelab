@@ -8,6 +8,7 @@ import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
+import { reserveGenerationStorageForJob } from "./storageAccounting";
 
 const MAX_NOTES_LENGTH = 100;
 type RenderMode =
@@ -614,6 +615,7 @@ async function queueConceptRender(
         renderMode === "material-finish-comparison" ? materialComparisonVariants : undefined,
     }),
   });
+  await reserveGenerationStorageForJob(ctx, viewer._id, generationJobId);
 
   await ctx.db.patch(concept._id, {
     generationJobId,

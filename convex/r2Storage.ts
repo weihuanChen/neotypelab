@@ -3,11 +3,14 @@
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
+  GetBucketLifecycleConfigurationCommand,
   GetObjectCommand,
   ListObjectsV2Command,
+  PutBucketLifecycleConfigurationCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import type { LifecycleRule } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import {
@@ -61,6 +64,69 @@ export async function deleteR2Object(role: R2BucketRole, key: string) {
       Key: key,
     })
   );
+}
+
+export async function listR2Objects({
+  role,
+  prefix,
+  continuationToken,
+  maxKeys = 100,
+}: {
+  role: R2BucketRole;
+  prefix: string;
+  continuationToken?: string;
+  maxKeys?: number;
+}) {
+  const config = getR2ConnectionConfig();
+  const result = await createR2Client(config).send(
+    new ListObjectsV2Command({
+      Bucket: config.buckets[role],
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+      MaxKeys: Math.min(500, Math.max(1, Math.round(maxKeys))),
+    })
+  );
+  return {
+    bucket: config.buckets[role],
+    keys: (result.Contents ?? []).flatMap((object) => object.Key ? [object.Key] : []),
+    nextContinuationToken: result.NextContinuationToken,
+  };
+}
+
+export async function ensureTemporaryOriginalLifecycleFallback(days = 365) {
+  const fallbackDays = Math.min(3650, Math.max(180, Math.round(days)));
+  const config = getR2ConnectionConfig();
+  const client = createR2Client(config);
+  let rules: LifecycleRule[] = [];
+  try {
+    const current = await client.send(
+      new GetBucketLifecycleConfigurationCommand({ Bucket: config.buckets.private })
+    );
+    rules = current.Rules ?? [];
+  } catch (error) {
+    const statusCode = (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+      ?.httpStatusCode;
+    if (statusCode !== 404) throw error;
+  }
+  const id = "neotypelab-temporary-original-fallback";
+  const retainedRules = rules.filter((rule) => rule.ID !== id);
+  await client.send(
+    new PutBucketLifecycleConfigurationCommand({
+      Bucket: config.buckets.private,
+      LifecycleConfiguration: {
+        Rules: [
+          ...retainedRules,
+          {
+            ID: id,
+            Status: "Enabled",
+            Filter: { Prefix: "temporary-originals/" },
+            Expiration: { Days: fallbackDays },
+          },
+        ],
+      },
+    })
+  );
+  return { bucket: config.buckets.private, id, days: fallbackDays };
 }
 
 export async function copyR2Object({

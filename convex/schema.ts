@@ -45,7 +45,11 @@ import {
   vSpecPresetTestStatus,
   vStyleSpec,
   vStorageBucketRole,
+  vStorageAccountingCategory,
   vStorageObjectStatus,
+  vStorageOrphanStatus,
+  vStorageRetentionPolicy,
+  vStorageReservationStatus,
   vTemplateVersionPolicy,
   vSprayPlanStatus,
   vUserAccountStatus,
@@ -494,6 +498,39 @@ const schema = defineSchema({
     .index("by_user_startsAt", ["userId", "startsAt"])
     .index("by_source", ["sourceType", "sourceReference"]),
 
+  accountStorageUsage: defineTable({
+    userId: v.id("users"),
+    optimizedUsedBytes: v.number(),
+    temporaryOriginalUsedBytes: v.number(),
+    pinnedOriginalUsedBytes: v.number(),
+    optimizedReservedBytes: v.number(),
+    temporaryOriginalReservedBytes: v.number(),
+    pinnedOriginalReservedBytes: v.number(),
+    updatedAt: v.number(),
+    reconciledAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
+
+  storageReservations: defineTable({
+    userId: v.id("users"),
+    generationJobId: v.id("generationJobs"),
+    status: vStorageReservationStatus,
+    optimizedBytes: v.number(),
+    temporaryOriginalBytes: v.number(),
+    pinnedOriginalBytes: v.number(),
+    actualOptimizedBytes: v.optional(v.number()),
+    actualTemporaryOriginalBytes: v.optional(v.number()),
+    actualPinnedOriginalBytes: v.optional(v.number()),
+    heldUntil: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    settledAt: v.optional(v.number()),
+    releasedAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_generationJobId", ["generationJobId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_status_heldUntil", ["status", "heldUntil"]),
+
   assets: defineTable({
     userId: v.id("users"),
     key: v.string(),
@@ -537,6 +574,9 @@ const schema = defineSchema({
     generationJobId: v.optional(v.id("generationJobs")),
     origin: vAssetVersionOrigin,
     status: vAssetVersionStatus,
+    retentionDaysSnapshot: v.optional(v.number()),
+    supersededAt: v.optional(v.number()),
+    retainUntil: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -551,6 +591,16 @@ const schema = defineSchema({
     userId: v.id("users"),
     legacyAssetId: v.optional(v.id("assets")),
     publicationId: v.optional(v.id("assetPublications")),
+    accountingCategory: v.optional(vStorageAccountingCategory),
+    retentionPolicy: v.optional(vStorageRetentionPolicy),
+    retentionDaysSnapshot: v.optional(v.number()),
+    retainUntil: v.optional(v.number()),
+    nextDeleteAttemptAt: v.optional(v.number()),
+    deleteAttemptCount: v.optional(v.number()),
+    deletionClaimedAt: v.optional(v.number()),
+    lastDeleteAttemptAt: v.optional(v.number()),
+    deleteError: v.optional(v.string()),
+    deletedAt: v.optional(v.number()),
     bucketRole: vStorageBucketRole,
     bucket: v.string(),
     key: v.string(),
@@ -573,7 +623,29 @@ const schema = defineSchema({
     .index("by_legacyAssetId", ["legacyAssetId"])
     .index("by_publicationId", ["publicationId"])
     .index("by_bucket_key", ["bucket", "key"])
+    .index("by_status", ["status"])
+    .index("by_status_nextDeleteAttemptAt", ["status", "nextDeleteAttemptAt"]),
+
+  storageOrphanReports: defineTable({
+    bucketRole: vStorageBucketRole,
+    bucket: v.string(),
+    key: v.string(),
+    status: vStorageOrphanStatus,
+    firstDetectedAt: v.number(),
+    lastSeenAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_bucket_key", ["bucket", "key"])
     .index("by_status", ["status"]),
+
+  storageAuditCursors: defineTable({
+    bucketRole: vStorageBucketRole,
+    bucket: v.string(),
+    prefix: v.string(),
+    continuationToken: v.optional(v.string()),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_bucket_prefix", ["bucket", "prefix"]),
 
   assetPublications: defineTable({
     mediaAssetId: v.id("mediaAssets"),

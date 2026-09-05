@@ -6,11 +6,12 @@ import {
 } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
-import { vGenerationProvider } from "./domain";
+import { vGenerationProvider, vStorageAccountingCategory } from "./domain";
 import type { GenerationProvider } from "./domain";
 import { canManagePlatform } from "./adminAccess";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
+import { settleGenerationStorageReservation } from "./storageAccounting";
 
 const vWebRendition = v.union(
   v.literal("master"),
@@ -235,6 +236,9 @@ export const getJobForExecution = internalQuery({
       generationPolicy,
       assetPolicy: {
         masterMaxDimensionPx: entitlements.masterMaxDimensionPx,
+        originalPermanentStorage: entitlements.originalPermanentStorage,
+        originalRetentionDays: entitlements.originalRetentionDays,
+        versionRetentionDays: entitlements.versionRetentionDays,
       },
       user,
     };
@@ -646,6 +650,10 @@ export const markJobSucceeded = internalMutation({
         status: "ready",
         updatedAt: now,
       }),
+      ctx.db.patch(assetRecords.mediaAssetId, {
+        currentVersionId: assetRecords.assetVersionId,
+        updatedAt: now,
+      }),
       ctx.db.patch(assetRecords.storageObjectId, {
         bucketRole: "private",
         bucket: asset.bucket,
@@ -702,8 +710,55 @@ export const markJobSucceeded = internalMutation({
           })
         : Promise.resolve(),
     ]);
+    await applySupersededVersionRetention(
+      ctx,
+      assetRecords.previousVersionId,
+      now
+    );
+    await settleGenerationStorageReservation(ctx, generationJobId, {
+      optimizedBytes: renditions.reduce((total, rendition) => total + rendition.byteSize, 0),
+      originalBytes: asset.byteSize,
+    });
   },
 });
+
+async function applySupersededVersionRetention(
+  ctx: Parameters<typeof settleGenerationStorageReservation>[0],
+  previousVersionId: Id<"assetVersions"> | undefined,
+  now: number
+) {
+  if (!previousVersionId) return;
+  const previousVersion = await ctx.db.get(previousVersionId);
+  if (!previousVersion) return;
+  const retentionDays = Math.max(0, previousVersion.retentionDaysSnapshot ?? 0);
+  const retainUntil = now + retentionDays * 24 * 60 * 60 * 1000;
+  const objects = await ctx.db
+    .query("storageObjects")
+    .withIndex("by_assetVersionId", (q) => q.eq("assetVersionId", previousVersionId))
+    .collect();
+  await Promise.all([
+    ctx.db.patch(previousVersionId, {
+      supersededAt: now,
+      retainUntil,
+      updatedAt: now,
+    }),
+    ...objects
+      .filter((object) => object.bucketRole === "private" && object.status === "ready")
+      .map((object) => {
+        const objectRetainUntil = object.retainUntil === undefined
+          ? retainUntil
+          : Math.min(object.retainUntil, retainUntil);
+        return ctx.db.patch(object._id, {
+          retentionPolicy: "version-history",
+          retentionDaysSnapshot: retentionDays,
+          retainUntil: objectRetainUntil,
+          nextDeleteAttemptAt: objectRetainUntil,
+          deleteError: undefined,
+          updatedAt: now,
+        });
+      }),
+  ]);
+}
 
 export const prepareJobAssetUpload = internalMutation({
   args: {
@@ -731,8 +786,30 @@ export const prepareJobAssetUpload = internalMutation({
       height: v.number(),
       checksum: v.string(),
     })),
+    originalAccountingCategory: vStorageAccountingCategory,
+    originalPermanentStorage: v.boolean(),
+    originalRetentionDays: v.number(),
+    versionRetentionDays: v.number(),
   },
-  handler: async (ctx, { generationJobId, conceptId, asset, renditions }) => {
+  handler: async (
+    ctx,
+    {
+      generationJobId,
+      conceptId,
+      asset,
+      renditions,
+      originalAccountingCategory,
+      originalPermanentStorage,
+      originalRetentionDays,
+      versionRetentionDays,
+    }
+  ) => {
+    if (
+      originalAccountingCategory !== "temporary-original" &&
+      originalAccountingCategory !== "pinned-original"
+    ) {
+      throw new Error("Generated Original requires an Original accounting category");
+    }
     assertCompleteWebRenditions(renditions);
     const [job, concept] = await Promise.all([
       ctx.db.get(generationJobId),
@@ -753,6 +830,15 @@ export const prepareJobAssetUpload = internalMutation({
       width: asset.width,
       height: asset.height,
       checksum: asset.checksum,
+      accountingCategory: originalAccountingCategory,
+      retentionPolicy: originalPermanentStorage
+        ? "permanent-original"
+        : "temporary-original",
+      retentionDaysSnapshot: originalRetentionDays,
+      retainUntil: originalPermanentStorage
+        ? undefined
+        : Date.now() + originalRetentionDays * 24 * 60 * 60 * 1000,
+      versionRetentionDaysSnapshot: versionRetentionDays,
       versionStatus: "processing",
       storageStatus: "pending",
     });

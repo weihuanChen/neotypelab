@@ -322,6 +322,9 @@ export const executeQueuedJob = internalAction({
     let attemptedProvider: GenerationProvider = routes[0].provider;
 
     try {
+      await ctx.runMutation(internal.storageAccounting.reserveGenerationStorage, {
+        generationJobId,
+      });
       const generated = await generateWithPolicy({
         routes,
         fallbackBehavior: job.generationPolicy.fallbackBehavior,
@@ -345,13 +348,25 @@ export const executeQueuedJob = internalAction({
         generated.buffer,
         job.assetPolicy.masterMaxDimensionPx
       );
+      const privateBucket = getR2ConnectionConfig().buckets.private;
+      const adjustedReservation = await ctx.runMutation(
+        internal.storageAccounting.adjustGenerationStorageReservation,
+        {
+          generationJobId,
+          optimizedBytes: processed.renditions.reduce(
+            (total, rendition) => total + rendition.byteSize,
+            0
+          ),
+          originalBytes: processed.original.byteSize,
+        }
+      );
       const keys = buildAssetVersionKeys(
         job.user._id,
         job.concept._id,
         job.generationJobId,
-        generated.contentType
+        generated.contentType,
+        adjustedReservation.originalAccountingCategory
       );
-      const privateBucket = getR2ConnectionConfig().buckets.private;
       const renditionRecords = processed.renditions.map((rendition) => ({
         rendition: rendition.rendition,
         key: keys[rendition.rendition],
@@ -378,6 +393,10 @@ export const executeQueuedJob = internalAction({
           status: "active",
         },
         renditions: renditionRecords,
+        originalAccountingCategory: adjustedReservation.originalAccountingCategory,
+        originalPermanentStorage: job.assetPolicy.originalPermanentStorage,
+        originalRetentionDays: job.assetPolicy.originalRetentionDays,
+        versionRetentionDays: job.assetPolicy.versionRetentionDays,
       });
       const uploadResults = await Promise.allSettled([
         uploadR2Object("private", {
@@ -476,6 +495,13 @@ export const executeQueuedJob = internalAction({
         errorMessage: message,
         provider: attemptedProvider,
       });
+      try {
+        await ctx.runMutation(internal.storageAccounting.releaseGenerationStorageReservation, {
+          generationJobId,
+        });
+      } catch {
+        // Expired reservations are also released by reconciliation and the cleanup job.
+      }
       if (job.generationPolicy.failureCreditPolicy === "auto-refund") {
         await ctx.runMutation(internal.generation.refundFailedJobCredits, {
           generationJobId,
@@ -1446,15 +1472,19 @@ function buildAssetVersionKeys(
   userId: string,
   conceptId: string,
   generationJobId: string,
-  contentType: string
+  contentType: string,
+  originalAccountingCategory: "temporary-original" | "pinned-original"
 ) {
   const extension = getImageExtension(contentType);
-  const prefix = `users/${userId}/assets/${conceptId}/versions/${generationJobId}`;
+  const versionPath = `users/${userId}/assets/${conceptId}/versions/${generationJobId}`;
+  const originalPrefix = originalAccountingCategory === "pinned-original"
+    ? "pinned-originals"
+    : "temporary-originals";
   return {
-    original: `${prefix}/original.${extension}`,
-    master: `${prefix}/master.webp`,
-    preview: `${prefix}/preview.webp`,
-    thumbnail: `${prefix}/thumbnail.webp`,
+    original: `${originalPrefix}/${versionPath}/original.${extension}`,
+    master: `library/${versionPath}/master.webp`,
+    preview: `library/${versionPath}/preview.webp`,
+    thumbnail: `library/${versionPath}/thumbnail.webp`,
   };
 }
 

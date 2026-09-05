@@ -281,6 +281,60 @@ cache-purge credentials are configured, withdrawal also purges the three public
 URLs immediately. Failed cleanup remains in `withdrawing` state so a later
 cleanup worker can retry it.
 
+### Storage accounting and reservations
+
+Storage quota enforcement is independent from Credits and plan names.
+`accountStorageUsage` records used and reserved bytes for optimized Library,
+temporary Original, and pinned Original storage. `storageReservations` keeps an
+idempotent ledger entry for every generation job.
+
+The initial generation transaction reserves 8 MiB of optimized output and 16
+MiB of Original capacity before debiting Credits or scheduling model work. Once
+image encoding finishes, the reservation is adjusted to the exact Original plus
+Master/Preview/Thumbnail sizes before any R2 upload starts. Successful jobs
+settle against actual bytes in the same database transaction that marks all
+objects ready; failed jobs release their reservation before credit refund logic
+continues.
+
+Every reservation check reconciles used bytes from private ready objects and
+releases expired holds first. Free and Pro Originals count as temporary;
+accounts with effective permanent Original storage count them as pinned.
+Public Showcase copies and Convex-managed feedback files are unmetered in the
+Library quota model. The `storageAccounting.viewerUsage` query returns used,
+reserved, quota, available, and over-quota values for each category.
+
+### Retention and deletion lifecycle
+
+Generated private objects use separate top-level prefixes so bucket fallback
+rules cannot touch permanent or browsing assets:
+
+- `temporary-originals/` contains Original files with a finite retention date
+- `pinned-originals/` contains entitlement-backed permanent Originals
+- `library/` contains Master, Preview, and Thumbnail renditions
+
+Each Original stores the effective retention policy, retention-days snapshot,
+and `retainUntil` at generation time. A new processing version does not replace
+`mediaAssets.currentVersionId`. Once the complete new version succeeds, the
+prior current version becomes history and receives its own version-retention
+deadline. The lifecycle claim mutation checks the current pointer again and
+will remove an accidental expiry from a current Master, Preview, or Thumbnail
+instead of deleting it.
+
+`crons.ts` runs the deletion sweep every 15 minutes. It recovers stale deletion
+claims, claims at most 100 due objects, deletes them through the Node R2 action,
+and then marks each result deleted or schedules exponential retry. Usage is
+reconciled after successful deletion. The daily orphan audit scans bounded
+pages under all three private prefixes and records R2 keys without live DB
+records in `storageOrphanReports`; it does not delete orphan candidates.
+Per-prefix continuation tokens in `storageAuditCursors` allow bounded daily
+scans to progress through large buckets across multiple runs.
+
+The private R2 bucket also carries a delayed lifecycle fallback on
+`temporary-originals/`. Its default is 365 days, well beyond the current 90-day
+maximum policy. Increase the fallback before introducing an entitlement with
+longer Original retention. Pinned Originals and `library/` are excluded from
+the bucket rule.
+
 ---
 
 ## 8. Deployment

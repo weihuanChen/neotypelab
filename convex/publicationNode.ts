@@ -19,6 +19,37 @@ const vConceptVisibility = v.union(
   v.literal("public")
 );
 
+type PublicationRendition = "master" | "preview" | "thumbnail";
+type BeginPublicationResult =
+  | {
+      mode: "ready";
+      publicationId: Id<"assetPublications">;
+      sourceObjects: never[];
+      destinationObjects: never[];
+      previousPublicationId: null;
+      previousObjects: never[];
+    }
+  | {
+      mode: "copy";
+      publicationId: Id<"assetPublications">;
+      sourceObjects: Array<{
+        rendition: PublicationRendition;
+        key: string;
+        contentType: string;
+      }>;
+      destinationObjects: Array<{
+        storageObjectId: Id<"storageObjects">;
+        rendition: PublicationRendition;
+        key: string;
+      }>;
+      previousPublicationId: Id<"assetPublications"> | null;
+      previousObjects: Array<{
+        storageObjectId: Id<"storageObjects">;
+        key: string;
+        publicUrl?: string;
+      }>;
+    };
+
 export const setConceptVisibility = action({
   args: {
     conceptId: v.id("concepts"),
@@ -51,12 +82,15 @@ export const setConceptVisibility = action({
       throw new Error("R2_PUBLIC_BASE_URL must be configured before publishing");
     }
     const publicBucket = getR2ConnectionConfig().buckets.public;
-    const publication = await ctx.runMutation(internal.publications.beginConceptPublication, {
+    const publication: BeginPublicationResult = await ctx.runMutation(
+      internal.publications.beginConceptPublication,
+      {
       conceptId,
       tokenIdentifier: identity.tokenIdentifier,
       visibility,
       publicBucket,
-    });
+      }
+    );
     if (publication.mode === "ready") {
       return { visibility, status: "published", cleanupPending: false };
     }
@@ -87,7 +121,12 @@ export const setConceptVisibility = action({
       })
     );
     const failedCopy = copyResults.find(
-      (result): result is PromiseRejectedResult => result.status === "rejected"
+      (result: PromiseSettledResult<{
+        storageObjectId: Id<"storageObjects">;
+        rendition: PublicationRendition;
+        etag?: string;
+        publicUrl: string;
+      }>): result is PromiseRejectedResult => result.status === "rejected"
     );
     if (failedCopy) {
       await Promise.allSettled(

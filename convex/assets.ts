@@ -7,6 +7,7 @@ import {
   legacyKindToRendition,
 } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
+import { reconcileAccountStorageUsage } from "./storageAccounting";
 
 const MAX_FEEDBACK_SCREENSHOT_BYTES = 10 * 1024 * 1024;
 const FEEDBACK_SCREENSHOT_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -45,9 +46,10 @@ export const createReference = mutation({
     publicUrl: v.optional(v.string()),
   },
   async handler(ctx, { key, kind, contentType, byteSize, publicUrl }) {
+    const userId = ctx.viewerX()._id;
     const result = await createAssetGraph(ctx, {
       legacyAsset: {
-        userId: ctx.viewerX()._id,
+        userId,
         key,
         bucket: process.env.R2_BUCKET_PRIVATE ?? "r2",
         kind,
@@ -61,6 +63,7 @@ export const createReference = mutation({
       origin: "uploaded",
       bucketRole: "private",
     });
+    await reconcileAccountStorageUsage(ctx, userId);
     return result.legacyAssetId;
   },
 });

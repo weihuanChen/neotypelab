@@ -6,6 +6,7 @@ import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { nextArchiveNumber } from "./archiveNumbers";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
+import { reserveGenerationStorageForJob } from "./storageAccounting";
 
 const MAX_NOTES_LENGTH = 100;
 
@@ -222,6 +223,7 @@ export const initializePrototype = mutation({
         label: "INITIALIZING STYLE DNA",
       }),
     });
+    await reserveGenerationStorageForJob(ctx, viewer._id, generationJobId);
 
     const composedPrompt = composePrompt(template.userPromptTemplate, {
       baseModel: modelPromptContext.promptText,

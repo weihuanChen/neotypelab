@@ -4,7 +4,9 @@ import type {
   AssetRendition,
   AssetVersionOrigin,
   MediaAssetKind,
+  StorageAccountingCategory,
   StorageBucketRole,
+  StorageRetentionPolicy,
 } from "./domain";
 
 type LegacyAssetInput = {
@@ -31,6 +33,11 @@ export type CreateAssetGraphInput = {
   width?: number;
   height?: number;
   checksum?: string;
+  accountingCategory?: StorageAccountingCategory;
+  retentionPolicy?: StorageRetentionPolicy;
+  retentionDaysSnapshot?: number;
+  retainUntil?: number;
+  versionRetentionDaysSnapshot?: number;
   versionStatus?: "processing" | "ready" | "failed" | "deleted";
   storageStatus?: "pending" | "ready" | "deleting" | "deleted" | "failed";
 };
@@ -56,12 +63,31 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
           input.versionStatus
             ? ctx.db.patch(existingVersion._id, {
                 status: input.versionStatus,
+                retentionDaysSnapshot:
+                  input.versionRetentionDaysSnapshot ??
+                  existingVersion.retentionDaysSnapshot,
                 updatedAt: now,
               })
             : Promise.resolve(),
           input.storageStatus
             ? ctx.db.patch(existingObject._id, {
                 status: input.storageStatus,
+                accountingCategory:
+                  input.accountingCategory ?? existingObject.accountingCategory,
+                retentionPolicy:
+                  input.retentionPolicy ?? existingObject.retentionPolicy,
+                retentionDaysSnapshot:
+                  input.retentionPolicy !== undefined
+                    ? input.retentionDaysSnapshot
+                    : existingObject.retentionDaysSnapshot,
+                retainUntil:
+                  input.retentionPolicy !== undefined
+                    ? input.retainUntil
+                    : existingObject.retainUntil,
+                nextDeleteAttemptAt:
+                  input.retentionPolicy !== undefined
+                    ? input.retainUntil
+                    : existingObject.nextDeleteAttemptAt,
                 updatedAt: now,
               })
             : Promise.resolve(),
@@ -71,6 +97,7 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
           mediaAssetId: existingVersion.mediaAssetId,
           assetVersionId: existingVersion._id,
           storageObjectId: existingObject._id,
+          previousVersionId: existingVersion.parentVersionId,
         };
       }
     }
@@ -107,7 +134,7 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
         createdAt: now,
         updatedAt: now,
       });
-  const previousVersion = await ctx.db
+  const latestVersion = await ctx.db
     .query("assetVersions")
     .withIndex("by_media_version", (q) => q.eq("mediaAssetId", mediaAssetId))
     .order("desc")
@@ -115,13 +142,14 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
   const assetVersionId = await ctx.db.insert("assetVersions", {
     mediaAssetId,
     userId: input.legacyAsset.userId,
-    version: (previousVersion?.version ?? 0) + 1,
-    parentVersionId: previousVersion?._id,
+    version: (latestVersion?.version ?? 0) + 1,
+    parentVersionId: existingMediaAsset?.currentVersionId ?? latestVersion?._id,
     generationJobId: input.generationJobId,
     origin: input.origin,
     status:
       input.versionStatus ??
       (input.legacyAsset.status === "active" ? "ready" : "deleted"),
+    retentionDaysSnapshot: input.versionRetentionDaysSnapshot,
     createdAt: now,
     updatedAt: now,
   });
@@ -131,6 +159,13 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
     userId: input.legacyAsset.userId,
     legacyAssetId,
     bucketRole: input.bucketRole,
+    accountingCategory:
+      input.accountingCategory ?? storageAccountingCategory(input.bucketRole, input.rendition),
+    retentionPolicy:
+      input.retentionPolicy ?? defaultRetentionPolicy(input.bucketRole, input.rendition),
+    retentionDaysSnapshot: input.retentionDaysSnapshot,
+    retainUntil: input.retainUntil,
+    nextDeleteAttemptAt: input.retainUntil,
     bucket: input.legacyAsset.bucket,
     key: input.legacyAsset.key,
     rendition: input.rendition,
@@ -149,10 +184,12 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
   });
 
   await Promise.all([
-    ctx.db.patch(mediaAssetId, {
-      currentVersionId: assetVersionId,
-      updatedAt: now,
-    }),
+    input.versionStatus === "processing"
+      ? ctx.db.patch(mediaAssetId, { updatedAt: now })
+      : ctx.db.patch(mediaAssetId, {
+          currentVersionId: assetVersionId,
+          updatedAt: now,
+        }),
     ctx.db.patch(legacyAssetId, {
       mediaAssetId,
       assetVersionId,
@@ -165,6 +202,7 @@ export async function createAssetGraph(ctx: MutationCtx, input: CreateAssetGraph
     mediaAssetId,
     assetVersionId,
     storageObjectId,
+    previousVersionId: existingMediaAsset?.currentVersionId ?? latestVersion?._id,
   };
 }
 
@@ -179,6 +217,10 @@ export type VersionStorageObjectInput = {
   height: number;
   checksum: string;
   etag?: string;
+  accountingCategory?: StorageAccountingCategory;
+  retentionPolicy?: StorageRetentionPolicy;
+  retentionDaysSnapshot?: number;
+  retainUntil?: number;
   status: "pending" | "ready" | "deleting" | "deleted" | "failed";
 };
 
@@ -206,6 +248,12 @@ export async function upsertVersionStorageObjects(
     if (existing) {
       await ctx.db.patch(existing._id, {
         ...object,
+        accountingCategory:
+          object.accountingCategory ??
+          storageAccountingCategory(object.bucketRole, object.rendition),
+        retentionPolicy:
+          object.retentionPolicy ?? defaultRetentionPolicy(object.bucketRole, object.rendition),
+        nextDeleteAttemptAt: object.retainUntil,
         publicUrl: object.bucketRole === "public" ? existing.publicUrl : undefined,
         updatedAt: now,
       });
@@ -218,12 +266,35 @@ export async function upsertVersionStorageObjects(
         assetVersionId: input.assetVersionId,
         userId: input.userId,
         ...object,
+        accountingCategory:
+          object.accountingCategory ??
+          storageAccountingCategory(object.bucketRole, object.rendition),
+        retentionPolicy:
+          object.retentionPolicy ?? defaultRetentionPolicy(object.bucketRole, object.rendition),
+        nextDeleteAttemptAt: object.retainUntil,
         createdAt: now,
         updatedAt: now,
       })
     );
   }
   return objectIds;
+}
+
+function storageAccountingCategory(
+  bucketRole: StorageBucketRole,
+  rendition: AssetRendition
+): StorageAccountingCategory {
+  if (bucketRole !== "private") return "unmetered";
+  return rendition === "original" ? "temporary-original" : "optimized";
+}
+
+function defaultRetentionPolicy(
+  bucketRole: StorageBucketRole,
+  rendition: AssetRendition
+): StorageRetentionPolicy {
+  if (bucketRole === "public") return "publication";
+  if (bucketRole !== "private") return "unmanaged";
+  return rendition === "original" ? "temporary-original" : "current-version";
 }
 
 export function legacyKindToMediaKind(

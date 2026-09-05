@@ -126,6 +126,11 @@ Showcase withdrawal can purge custom-domain cache entries immediately when
 `CLOUDFLARE_CACHE_PURGE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN` are set in
 the Convex environment. Use a dedicated token with only cache purge access.
 
+Private asset retention is enforced by the Convex lifecycle cron. R2 provides
+a delayed fallback only for the `temporary-originals/` prefix; never apply an
+expiration rule to `library/` or `pinned-originals/`. Run retention backfills
+before enabling lifecycle processing on an existing deployment.
+
 Convex stays deployed separately:
 
 ```bash
