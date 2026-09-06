@@ -2,6 +2,7 @@ import {
   CheckIcon,
   ExternalLinkIcon,
   MagnifyingGlassIcon,
+  PlusIcon,
   ReloadIcon,
 } from "@radix-ui/react-icons";
 import { useMutation, useQuery } from "convex/react";
@@ -41,6 +42,16 @@ type TriageDraft = {
   resolutionExperimentRunId: string;
 };
 
+type RewardDraft = {
+  credits: string;
+  storageGb: string;
+  originalRetentionDays: string;
+  expiryDays: string;
+  originalDownloadAllowed: boolean;
+  batchDownloadAllowed: boolean;
+  note: string;
+};
+
 const statusOptions: Array<{ value: FeedbackStatus; label: string }> = [
   { value: "open", label: "Open" },
   { value: "reviewing", label: "Reviewing" },
@@ -73,12 +84,22 @@ export function FeedbackTriageWorkbench({ initialReportId }: { initialReportId?:
   const users = useQuery(api.admin.listUsers, {});
   const experiments = useQuery(api.admin.listPromptExperimentRuns, {});
   const reviewFeedback = useMutation(api.admin.reviewFeedback);
+  const rewardFeedback = useMutation(api.admin.rewardFeedback);
   const [selectedId, setSelectedId] = useState<string | null>(initialReportId ?? null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<FeedbackStatus | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sort, setSort] = useState<"priority" | "newest" | "oldest">("priority");
   const [draft, setDraft] = useState<TriageDraft | null>(null);
+  const [rewardDraft, setRewardDraft] = useState<RewardDraft>({
+    credits: "200",
+    storageGb: "0",
+    originalRetentionDays: "0",
+    expiryDays: "30",
+    originalDownloadAllowed: false,
+    batchDownloadAllowed: false,
+    note: "",
+  });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
@@ -140,6 +161,7 @@ export function FeedbackTriageWorkbench({ initialReportId }: { initialReportId?:
       resolutionExperimentRunId: selected.resolutionExperiment?._id ?? "",
     });
     setMessage(null);
+    setRewardDraft({ credits: "200", storageGb: "0", originalRetentionDays: "0", expiryDays: "30", originalDownloadAllowed: false, batchDownloadAllowed: false, note: "" });
   }, [selected?._id]);
 
   useEffect(() => {
@@ -175,6 +197,30 @@ export function FeedbackTriageWorkbench({ initialReportId }: { initialReportId?:
         tone: "error",
         text: error instanceof Error ? error.message : "The report could not be updated.",
       });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function grantReward() {
+    if (!selected || selected.reward) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const expiryDays = Number(rewardDraft.expiryDays);
+      await rewardFeedback({
+        feedbackId: selected._id,
+        credits: Number(rewardDraft.credits),
+        storageGb: Number(rewardDraft.storageGb),
+        originalRetentionDays: Number(rewardDraft.originalRetentionDays),
+        originalDownloadAllowed: rewardDraft.originalDownloadAllowed,
+        batchDownloadAllowed: rewardDraft.batchDownloadAllowed,
+        expiresAt: expiryDays > 0 ? Date.now() + expiryDays * 24 * 60 * 60 * 1000 : undefined,
+        note: rewardDraft.note.trim() || undefined,
+      });
+      setMessage({ tone: "success", text: "Feedback reward granted." });
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof Error ? error.message : "The reward could not be granted." });
     } finally {
       setBusy(false);
     }
@@ -327,6 +373,26 @@ export function FeedbackTriageWorkbench({ initialReportId }: { initialReportId?:
                   <span>Internal note <em>Admin only</em></span>
                   <textarea value={draft.internalNote} onChange={(event) => setDraft({ ...draft, internalNote: event.target.value })} placeholder="Record diagnosis, reproduction details, or follow-up work." />
                 </label>
+              </InspectorSection>
+
+              <InspectorSection title="Reward">
+                {selected.reward ? (
+                  <div className="feedback-reward-issued">
+                    <CheckIcon />
+                    <div><strong>Reward issued</strong><span>{selected.reward.credits > 0 ? `${selected.reward.credits} credits` : "Entitlement grant"}{selected.reward.grantedAt ? ` · ${formatDateTime(selected.reward.grantedAt)}` : ""}</span></div>
+                  </div>
+                ) : (
+                  <div className="feedback-reward-form">
+                    <label><span>Credits</span><input min="0" max="10000" value={rewardDraft.credits} onChange={(event) => setRewardDraft({ ...rewardDraft, credits: event.target.value })} type="number" /></label>
+                    <label><span>Storage</span><input min="0" max="1000" step="0.01" value={rewardDraft.storageGb} onChange={(event) => setRewardDraft({ ...rewardDraft, storageGb: event.target.value })} type="number" /></label>
+                    <label><span>Original retention</span><input min="0" max="3650" value={rewardDraft.originalRetentionDays} onChange={(event) => setRewardDraft({ ...rewardDraft, originalRetentionDays: event.target.value })} type="number" /></label>
+                    <label><span>Expires after</span><input min="0" max="3650" value={rewardDraft.expiryDays} onChange={(event) => setRewardDraft({ ...rewardDraft, expiryDays: event.target.value })} type="number" /></label>
+                    <label className="is-check"><input checked={rewardDraft.originalDownloadAllowed} onChange={(event) => setRewardDraft({ ...rewardDraft, originalDownloadAllowed: event.target.checked })} type="checkbox" /><span>Original download</span></label>
+                    <label className="is-check"><input checked={rewardDraft.batchDownloadAllowed} onChange={(event) => setRewardDraft({ ...rewardDraft, batchDownloadAllowed: event.target.checked })} type="checkbox" /><span>Batch download</span></label>
+                    <label className="is-wide"><span>Internal note</span><textarea value={rewardDraft.note} onChange={(event) => setRewardDraft({ ...rewardDraft, note: event.target.value })} placeholder="Why this reward is being issued" /></label>
+                    <div className="feedback-reward-form__footer"><span>{Number(rewardDraft.expiryDays) > 0 ? `Entitlements expire in ${rewardDraft.expiryDays} days` : "Entitlements do not expire"}</span><button disabled={busy} onClick={() => void grantReward()} type="button"><PlusIcon />{busy ? "Granting" : "Grant reward"}</button></div>
+                  </div>
+                )}
               </InspectorSection>
 
               <InspectorSection title="Resolution">

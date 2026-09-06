@@ -359,7 +359,8 @@ const schema = defineSchema({
     internalNote: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
-    .index("by_user_actionType", ["userId", "actionType"]),
+    .index("by_user_actionType", ["userId", "actionType"])
+    .index("by_reference", ["referenceTable", "referenceId"]),
 
   orders: defineTable({
     userId: v.id("users"),
@@ -617,6 +618,7 @@ const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
+    .index("by_mediaAssetId", ["mediaAssetId"])
     .index("by_assetVersionId", ["assetVersionId"])
     .index("by_version_rendition", ["assetVersionId", "rendition"])
     .index("by_version_role_rendition", ["assetVersionId", "bucketRole", "rendition"])

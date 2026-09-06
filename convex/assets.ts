@@ -7,7 +7,10 @@ import {
   legacyKindToRendition,
 } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
-import { reconcileAccountStorageUsage } from "./storageAccounting";
+import {
+  assertPrivateStorageAdditionAllowed,
+  reconcileAccountStorageUsage,
+} from "./storageAccounting";
 
 const MAX_FEEDBACK_SCREENSHOT_BYTES = 10 * 1024 * 1024;
 const FEEDBACK_SCREENSHOT_TYPES = new Set(["image/jpeg", "image/png"]);
@@ -47,6 +50,12 @@ export const createReference = mutation({
   },
   async handler(ctx, { key, kind, contentType, byteSize, publicUrl }) {
     const userId = ctx.viewerX()._id;
+    if (!Number.isInteger(byteSize) || (byteSize ?? 0) <= 0) {
+      throw new Error("Private asset byte size is required for storage quota enforcement");
+    }
+    await assertPrivateStorageAdditionAllowed(ctx, userId, {
+      optimizedBytes: byteSize,
+    });
     const result = await createAssetGraph(ctx, {
       legacyAsset: {
         userId,

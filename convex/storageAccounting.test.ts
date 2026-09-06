@@ -150,6 +150,41 @@ describe("storage accounting", () => {
     });
   });
 
+  it("blocks direct imports that exceed Library quota", async () => {
+    const user = await seedUser(t, {
+      tokenIdentifier: "import-limit-user",
+      email: "import-limit@example.test",
+    });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    await t.run(async (ctx) => {
+      const free = await ctx.db
+        .query("entitlementProfiles")
+        .withIndex("by_slug", (q) => q.eq("slug", "free-default"))
+        .unique();
+      if (!free) throw new Error("Free profile not found");
+      await ctx.db.patch(free._id, { libraryQuotaBytes: MIB });
+    });
+
+    await expect(user.client.mutation(api.assets.createReference, {
+      key: "users/import-limit/source.png",
+      kind: "reference",
+      contentType: "image/png",
+      byteSize: 2 * MIB,
+    })).rejects.toThrow(/Optimized Library storage quota exceeded/);
+  });
+
+  it("requires direct imports to declare their byte size", async () => {
+    const user = await seedUser(t, {
+      tokenIdentifier: "import-size-user",
+      email: "import-size@example.test",
+    });
+    await expect(user.client.mutation(api.assets.createReference, {
+      key: "users/import-size/source.png",
+      kind: "reference",
+      contentType: "image/png",
+    })).rejects.toThrow(/byte size is required/);
+  });
+
   it("uses Pinned Original quota for permanent Original entitlements", async () => {
     const user = await seedUser(t, {
       tokenIdentifier: "studio-user",

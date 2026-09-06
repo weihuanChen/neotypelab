@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin/settings")({
       { title: "Settings | NeotypeLab Admin" },
       {
         name: "description",
-        content: "Configure generation routing, providers, template bindings, defaults, and system behavior.",
+        content: "Configure generation routing, providers, entitlement profiles, defaults, and system behavior.",
       },
     ],
   }),

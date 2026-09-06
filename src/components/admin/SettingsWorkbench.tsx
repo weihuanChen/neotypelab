@@ -32,6 +32,7 @@ type PipelineAction = "repaint-concept" | "hd-render" | "palette-plan" | "style-
 type ProviderId = Id<"llmProfiles">;
 type TemplateId = Id<"promptTemplates">;
 type TemplateVersionId = Id<"promptTemplateVersions">;
+type UserPlan = "free" | "pro" | "studio";
 
 type ProviderRecord = {
   _id: ProviderId;
@@ -82,6 +83,7 @@ type WorkspaceData = {
   templates: TemplateRecord[];
   defaults: DefaultsDraft & { revision: number; updatedAt?: number };
   system: SystemDraft & { revision: number; updatedAt?: number };
+  entitlements: Array<EntitlementProfileRecord>;
   environment: {
     environment: string;
     applicationVersion: string;
@@ -95,6 +97,43 @@ type WorkspaceData = {
       privateDeliveryConfigured: boolean;
     };
   };
+};
+
+type EntitlementProfileRecord = {
+  _id: Id<"entitlementProfiles"> | null;
+  name: string;
+  slug: string;
+  planType: UserPlan;
+  revision: number;
+  revisionCount: number;
+  updatedAt?: number;
+  libraryQuotaBytes: number;
+  temporaryOriginalQuotaBytes: number;
+  pinnedOriginalQuotaBytes: number;
+  originalRetentionDays: number;
+  versionRetentionDays: number;
+  masterMaxDimensionPx: number;
+  exportMaxDimensionPx: number;
+  originalPermanentStorage: boolean;
+  originalDownloadAllowed: boolean;
+  originalPinAllowed: boolean;
+  batchDownloadAllowed: boolean;
+  isActive: boolean;
+  revisions: Array<{ revision: number; slug: string; isActive: boolean; updatedAt: number }>;
+};
+
+type EntitlementDraft = {
+  libraryQuotaGb: number;
+  temporaryOriginalQuotaGb: number;
+  pinnedOriginalQuotaGb: number;
+  originalRetentionDays: number;
+  versionRetentionDays: number;
+  masterMaxDimensionPx: number;
+  exportMaxDimensionPx: number;
+  originalPermanentStorage: boolean;
+  originalDownloadAllowed: boolean;
+  originalPinAllowed: boolean;
+  batchDownloadAllowed: boolean;
 };
 
 type R2ConnectionResult = {
@@ -185,6 +224,7 @@ const sections: Array<{
   { id: "generation", label: "Generation", description: "Routing and job policy" },
   { id: "providers", label: "Providers", description: "Model capability profiles" },
   { id: "bindings", label: "Bindings", description: "Pipeline template map" },
+  { id: "entitlements", label: "Entitlements", description: "Free, Pro and Studio policy" },
   { id: "defaults", label: "Defaults", description: "Unspecified user choices" },
   { id: "system", label: "System", description: "Platform switches" },
 ];
@@ -226,6 +266,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
   const saveGeneration = useMutation(api.admin.saveGenerationSettings);
   const saveDefaults = useMutation(api.admin.savePlatformDefaults);
   const saveSystem = useMutation(api.admin.saveSystemSettings);
+  const saveEntitlement = useMutation(api.admin.saveEntitlementProfile);
   const saveBinding = useMutation(api.admin.savePipelineTemplateBinding);
   const createProvider = useMutation(api.admin.createLlmProfile);
   const updateProvider = useMutation(api.admin.updateLlmProfile);
@@ -235,6 +276,8 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
   const [generationDraft, setGenerationDraft] = useState<GenerationDraft | null>(null);
   const [defaultsDraft, setDefaultsDraft] = useState<DefaultsDraft | null>(null);
   const [systemDraft, setSystemDraft] = useState<SystemDraft | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<UserPlan>("free");
+  const [entitlementDraft, setEntitlementDraft] = useState<EntitlementDraft | null>(null);
   const [selectedProviderId, setSelectedProviderId] = useState<ProviderId | "new" | null>(null);
   const [providerDraft, setProviderDraft] = useState<ProviderDraft | null>(null);
   const [selectedAction, setSelectedAction] = useState<PipelineAction>("repaint-concept");
@@ -265,6 +308,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
   const selectedTemplate = compatibleTemplates.find(
     (template) => template._id === bindingDraft?.promptTemplateId
   );
+  const selectedEntitlement = workspace?.entitlements.find((profile) => profile.planType === selectedPlan) ?? null;
 
   useEffect(() => {
     if (!workspace) return;
@@ -280,6 +324,11 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     if (!workspace) return;
     setSystemDraft(stripSystemMeta(workspace.system));
   }, [workspace?.system.revision]);
+
+  useEffect(() => {
+    if (!selectedEntitlement) return;
+    setEntitlementDraft(entitlementToDraft(selectedEntitlement));
+  }, [selectedEntitlement]);
 
   useEffect(() => {
     if (!workspace) return;
@@ -322,6 +371,10 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
   const bindingDirty = Boolean(
     bindingDraft && !equalJson(bindingDraft, bindingToDraft(selectedAction, selectedBinding))
   );
+  const entitlementDirty = Boolean(
+    selectedEntitlement && entitlementDraft &&
+      !equalJson(entitlementDraft, entitlementToDraft(selectedEntitlement))
+  );
   const dirty =
     section === "generation"
       ? generationDirty
@@ -329,6 +382,8 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
         ? providerDirty
         : section === "bindings"
           ? bindingDirty
+          : section === "entitlements"
+            ? entitlementDirty
           : section === "defaults"
             ? defaultsDirty
             : systemDirty;
@@ -386,6 +441,18 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     await runOperation(async () => {
       await saveSystem({ expectedRevision: workspace.system.revision, ...systemDraft });
       setStatusMessage("System settings saved.");
+    });
+  };
+
+  const persistEntitlement = async () => {
+    if (!selectedEntitlement || !entitlementDraft) return;
+    await runOperation(async () => {
+      await saveEntitlement({
+        planType: selectedPlan,
+        expectedRevision: selectedEntitlement.revision,
+        ...entitlementDraft,
+      });
+      setStatusMessage(`${planLabel(selectedPlan)} entitlement revision saved.`);
     });
   };
 
@@ -468,6 +535,15 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
       });
       return;
     }
+    if (section === "entitlements") {
+      setRiskDialog({
+        title: `Publish a new ${planLabel(selectedPlan)} entitlement revision?`,
+        description: "Accounts that follow this plan will resolve the new quotas, retention periods, and capabilities immediately. Previous revisions remain available for explicitly pinned accounts.",
+        confirmLabel: "Publish entitlement revision",
+        run: persistEntitlement,
+      });
+      return;
+    }
     if (
       section === "system" &&
       workspace &&
@@ -514,6 +590,9 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     if (section === "bindings") {
       setBindingDraft(bindingToDraft(selectedAction, selectedBinding));
     }
+    if (section === "entitlements" && selectedEntitlement) {
+      setEntitlementDraft(entitlementToDraft(selectedEntitlement));
+    }
     setErrorMessage(null);
   };
 
@@ -549,7 +628,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
     }
   };
 
-  if (!workspace || !generationDraft || !defaultsDraft || !systemDraft) {
+  if (!workspace || !generationDraft || !defaultsDraft || !systemDraft || !entitlementDraft) {
     return (
       <div className="settings-console settings-console--loading">
         <p>System settings</p>
@@ -563,7 +642,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
       <header className="settings-console__head">
         <p>System configuration</p>
         <h2>Settings</h2>
-        <span>Generation providers, routing and system defaults.</span>
+        <span>Generation providers, entitlement policy and system defaults.</span>
       </header>
 
       <div className="settings-console__frame">
@@ -627,6 +706,18 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
           ) : null}
           {section === "defaults" ? (
             <DefaultsSection draft={defaultsDraft} setDraft={setDefaultsDraft} />
+          ) : null}
+          {section === "entitlements" ? (
+            <EntitlementsSection
+              draft={entitlementDraft}
+              profile={selectedEntitlement}
+              selectedPlan={selectedPlan}
+              setDraft={setEntitlementDraft}
+              setSelectedPlan={(plan) => {
+                if (entitlementDirty && !window.confirm("Discard the unsaved entitlement changes?")) return;
+                setSelectedPlan(plan);
+              }}
+            />
           ) : null}
           {section === "system" ? (
             <SystemSection
@@ -996,6 +1087,69 @@ function DefaultsSection({ draft, setDraft }: { draft: DefaultsDraft; setDraft: 
   );
 }
 
+function EntitlementsSection({
+  draft,
+  profile,
+  selectedPlan,
+  setDraft,
+  setSelectedPlan,
+}: {
+  draft: EntitlementDraft;
+  profile: EntitlementProfileRecord | null;
+  selectedPlan: UserPlan;
+  setDraft: (value: EntitlementDraft) => void;
+  setSelectedPlan: (value: UserPlan) => void;
+}) {
+  return (
+    <div className="settings-section settings-section--wide">
+      <SettingsSectionHead
+        eyebrow="Entitlements"
+        title="Account policy"
+        description="Plan defaults are resolved separately from credits and can be extended by account grants."
+        action={profile ? <span className="settings-revision-badge">Revision {profile.revision}</span> : null}
+      />
+      <div aria-label="Entitlement plan" className="settings-plan-tabs">
+        {(["free", "pro", "studio"] as const).map((plan) => (
+          <button
+            aria-pressed={selectedPlan === plan}
+            className={cn(selectedPlan === plan && "is-active")}
+            key={plan}
+            onClick={() => setSelectedPlan(plan)}
+            type="button"
+          >
+            <strong>{planLabel(plan)}</strong>
+            <span>{plan === "free" ? "Default account" : plan === "pro" ? "Creator workflow" : "Team workflow"}</span>
+          </button>
+        ))}
+      </div>
+      <div className="settings-entitlement-meta">
+        <span>Current slug</span><strong>{profile?.slug ?? "Built-in default"}</strong>
+        <span>Revision history</span><strong>{profile?.revisionCount ?? 0} stored</strong>
+        <span>Last updated</span><strong>{profile?.updatedAt ? formatSettingsDate(profile.updatedAt) : "Built-in policy"}</strong>
+      </div>
+      <SettingsDivider />
+      <SettingsSectionHead eyebrow="Storage" title="Quota and retention" description="Library and Original pools are measured independently." />
+      <div className="settings-form-grid">
+        <Field label="Library quota"><NumberInput min={0} max={10000} suffix="GB" value={draft.libraryQuotaGb} onChange={(value) => setDraft({ ...draft, libraryQuotaGb: value })} /></Field>
+        <Field label="Temporary Original quota"><NumberInput min={0} max={10000} suffix="GB" value={draft.temporaryOriginalQuotaGb} onChange={(value) => setDraft({ ...draft, temporaryOriginalQuotaGb: value })} /></Field>
+        <Field label="Pinned Original quota"><NumberInput min={0} max={10000} suffix="GB" value={draft.pinnedOriginalQuotaGb} onChange={(value) => setDraft({ ...draft, pinnedOriginalQuotaGb: value })} /></Field>
+        <Field label="Original retention"><NumberInput min={0} max={3650} suffix="days" value={draft.originalRetentionDays} onChange={(value) => setDraft({ ...draft, originalRetentionDays: value })} /></Field>
+        <Field label="Version retention"><NumberInput min={0} max={3650} suffix="days" value={draft.versionRetentionDays} onChange={(value) => setDraft({ ...draft, versionRetentionDays: value })} /></Field>
+        <Field label="Master maximum"><NumberInput min={512} max={16384} suffix="px" value={draft.masterMaxDimensionPx} onChange={(value) => setDraft({ ...draft, masterMaxDimensionPx: value })} /></Field>
+        <Field label="Export maximum"><NumberInput min={512} max={16384} suffix="px" value={draft.exportMaxDimensionPx} onChange={(value) => setDraft({ ...draft, exportMaxDimensionPx: value })} /></Field>
+      </div>
+      <SettingsDivider />
+      <SettingsToggleGroup label="Asset capabilities">
+        <SwitchRow checked={draft.originalDownloadAllowed} label="Original download" onChange={(checked) => setDraft({ ...draft, originalDownloadAllowed: checked })} />
+        <SwitchRow checked={draft.originalPinAllowed} label="Pin Original to library" onChange={(checked) => setDraft({ ...draft, originalPinAllowed: checked })} />
+        <SwitchRow checked={draft.originalPermanentStorage} description="Original assets can remain while quota is available." label="Permanent Original storage" onChange={(checked) => setDraft({ ...draft, originalPermanentStorage: checked })} />
+        <SwitchRow checked={draft.batchDownloadAllowed} label="Batch download" onChange={(checked) => setDraft({ ...draft, batchDownloadAllowed: checked })} />
+      </SettingsToggleGroup>
+      <p className="settings-section-footnote">Saving creates a new immutable revision. Credits and existing account grants are not changed.</p>
+    </div>
+  );
+}
+
 function SystemSection({
   busy,
   draft,
@@ -1091,6 +1245,34 @@ function stripGenerationMeta(value: WorkspaceData["generation"]): GenerationDraf
     concurrentJobsPerUser: value.concurrentJobsPerUser,
     routes: value.routes.map((route) => ({ ...route })),
   };
+}
+
+function entitlementToDraft(value: EntitlementProfileRecord): EntitlementDraft {
+  return {
+    libraryQuotaGb: bytesToGb(value.libraryQuotaBytes),
+    temporaryOriginalQuotaGb: bytesToGb(value.temporaryOriginalQuotaBytes),
+    pinnedOriginalQuotaGb: bytesToGb(value.pinnedOriginalQuotaBytes),
+    originalRetentionDays: value.originalRetentionDays,
+    versionRetentionDays: value.versionRetentionDays,
+    masterMaxDimensionPx: value.masterMaxDimensionPx,
+    exportMaxDimensionPx: value.exportMaxDimensionPx,
+    originalPermanentStorage: value.originalPermanentStorage,
+    originalDownloadAllowed: value.originalDownloadAllowed,
+    originalPinAllowed: value.originalPinAllowed,
+    batchDownloadAllowed: value.batchDownloadAllowed,
+  };
+}
+
+function bytesToGb(value: number) {
+  return Math.round((value / 1024 ** 3) * 100) / 100;
+}
+
+function planLabel(value: UserPlan) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatSettingsDate(value: number) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(value);
 }
 
 function stripDefaultsMeta(value: WorkspaceData["defaults"]): DefaultsDraft {

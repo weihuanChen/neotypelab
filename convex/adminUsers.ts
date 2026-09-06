@@ -3,6 +3,10 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { internalMutation, mutation, query } from "./functions";
+import { vEntitlementGrantSource } from "./domain";
+import { resolveEffectiveEntitlements } from "./entitlements";
+
+const GIB = 1024 ** 3;
 
 const vDirectoryFilter = v.union(
   v.literal("all"),
@@ -174,6 +178,138 @@ export const listNotes = query({
   },
 });
 
+export const getEntitlementAccess = query({
+  args: { userId: v.id("users") },
+  async handler(ctx, { userId }) {
+    requireSuperAdmin(ctx);
+    if (!await ctx.db.get(userId)) return null;
+    const now = Date.now();
+    const [effective, grants] = await Promise.all([
+      resolveEffectiveEntitlements(ctx, userId, now),
+      ctx.db
+        .query("accountEntitlementGrants")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(100),
+    ]);
+    return {
+      effective,
+      grants: grants.map((grant) => ({
+        ...grant,
+        active: grant.startsAt <= now && grant.revokedAt === undefined &&
+          (grant.expiresAt === undefined || grant.expiresAt > now),
+      })),
+    };
+  },
+});
+
+export const grantEntitlements = mutation({
+  args: {
+    userId: v.id("users"),
+    sourceType: vEntitlementGrantSource,
+    sourceReference: v.optional(v.string()),
+    storageGb: v.number(),
+    temporaryOriginalStorageGb: v.number(),
+    pinnedOriginalStorageGb: v.number(),
+    originalRetentionDays: v.number(),
+    versionRetentionDays: v.number(),
+    masterMaxDimensionPx: v.number(),
+    exportMaxDimensionPx: v.number(),
+    originalPermanentStorage: v.boolean(),
+    originalDownloadAllowed: v.boolean(),
+    originalPinAllowed: v.boolean(),
+    batchDownloadAllowed: v.boolean(),
+    expiresAt: v.optional(v.number()),
+    note: v.optional(v.string()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    if (!await ctx.db.get(args.userId)) throw new Error("Target user not found");
+    if (args.sourceType === "subscription") {
+      throw new Error("Subscription entitlements must be issued by the billing workflow");
+    }
+    const values = {
+      libraryQuotaBytesDelta: requireGrantGb(args.storageGb, 1_000, "Library storage"),
+      temporaryOriginalQuotaBytesDelta: requireGrantGb(args.temporaryOriginalStorageGb, 1_000, "Temporary Original storage"),
+      pinnedOriginalQuotaBytesDelta: requireGrantGb(args.pinnedOriginalStorageGb, 1_000, "Pinned Original storage"),
+      originalRetentionDays: requireGrantInteger(args.originalRetentionDays, 0, 3_650, "Original retention"),
+      versionRetentionDays: requireGrantInteger(args.versionRetentionDays, 0, 3_650, "Version retention"),
+      masterMaxDimensionPx: requireGrantDimension(args.masterMaxDimensionPx, "Master resolution"),
+      exportMaxDimensionPx: requireGrantDimension(args.exportMaxDimensionPx, "Export resolution"),
+    };
+    if (
+      Object.values(values).every((value) => value === 0) &&
+      !args.originalPermanentStorage && !args.originalDownloadAllowed &&
+      !args.originalPinAllowed && !args.batchDownloadAllowed
+    ) {
+      throw new Error("Choose at least one entitlement to grant");
+    }
+    if (args.expiresAt !== undefined && args.expiresAt <= Date.now()) {
+      throw new Error("Grant expiry must be in the future");
+    }
+    const sourceReference = optionalGrantText(args.sourceReference, 120, "Source reference");
+    const note = optionalGrantText(args.note, 1_000, "Grant note");
+    if (sourceReference) {
+      const duplicates = await ctx.db
+        .query("accountEntitlementGrants")
+        .withIndex("by_source", (q) =>
+          q.eq("sourceType", args.sourceType).eq("sourceReference", sourceReference)
+        )
+        .collect();
+      if (duplicates.length > 0) throw new Error("This source reference has already issued a grant");
+    }
+    const now = Date.now();
+    const grantId = await ctx.db.insert("accountEntitlementGrants", {
+      userId: args.userId,
+      sourceType: args.sourceType,
+      sourceReference,
+      libraryQuotaBytesDelta: values.libraryQuotaBytesDelta || undefined,
+      temporaryOriginalQuotaBytesDelta: values.temporaryOriginalQuotaBytesDelta || undefined,
+      pinnedOriginalQuotaBytesDelta: values.pinnedOriginalQuotaBytesDelta || undefined,
+      originalRetentionDays: values.originalRetentionDays || undefined,
+      versionRetentionDays: values.versionRetentionDays || undefined,
+      masterMaxDimensionPx: values.masterMaxDimensionPx || undefined,
+      exportMaxDimensionPx: values.exportMaxDimensionPx || undefined,
+      originalPermanentStorage: args.originalPermanentStorage || undefined,
+      originalDownloadAllowed: args.originalDownloadAllowed || undefined,
+      originalPinAllowed: args.originalPinAllowed || undefined,
+      batchDownloadAllowed: args.batchDownloadAllowed || undefined,
+      startsAt: now,
+      expiresAt: args.expiresAt,
+      note,
+      createdByUserId: viewer._id,
+      createdAt: now,
+    });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "grant-user-entitlements",
+      entityType: "accountEntitlementGrant",
+      entityId: grantId,
+      detailsJson: JSON.stringify({ userId: args.userId, sourceType: args.sourceType, expiresAt: args.expiresAt, values }),
+    });
+    return grantId;
+  },
+});
+
+export const revokeEntitlementGrant = mutation({
+  args: { grantId: v.id("accountEntitlementGrants") },
+  async handler(ctx, { grantId }) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const grant = await ctx.db.get(grantId);
+    if (!grant) throw new Error("Entitlement grant not found");
+    if (grant.revokedAt !== undefined) return;
+    const revokedAt = Date.now();
+    await ctx.db.patch(grantId, { revokedAt });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "revoke-user-entitlement-grant",
+      entityType: "accountEntitlementGrant",
+      entityId: grantId,
+      detailsJson: JSON.stringify({ userId: grant.userId, revokedAt }),
+    });
+  },
+});
+
 export const addNote = mutation({
   args: { userId: v.id("users"), body: v.string() },
   async handler(ctx, { body, userId }) {
@@ -293,6 +429,33 @@ function directoryUser(user: Doc<"users">, balance: number) {
     lastActiveAt: user.lastActiveAt ?? user._creationTime,
     creditBalance: balance,
   };
+}
+
+function requireGrantInteger(value: number, min: number, max: number, label: string) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${label} must be an integer between ${min} and ${max}`);
+  }
+  return value;
+}
+
+function requireGrantGb(value: number, max: number, label: string) {
+  if (!Number.isFinite(value) || value < 0 || value > max || Math.abs(Math.round(value * 100) - value * 100) > 1e-8) {
+    throw new Error(`${label} must be between 0 and ${max} GB with at most two decimal places`);
+  }
+  return Math.round(value * GIB);
+}
+
+function requireGrantDimension(value: number, label: string) {
+  if (value === 0) return 0;
+  return requireGrantInteger(value, 512, 16_384, label);
+}
+
+function optionalGrantText(value: string | undefined, maxLength: number, label: string) {
+  const normalized = value?.trim() || undefined;
+  if (normalized && normalized.length > maxLength) {
+    throw new Error(`${label} must be ${maxLength} characters or fewer`);
+  }
+  return normalized;
 }
 
 function inspectorUser(user: Doc<"users">) {

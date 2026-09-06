@@ -45,6 +45,8 @@ import {
   useQuery,
 } from "convex/react";
 import { useState, useEffect } from "react";
+import { DownloadIcon, LightningBoltIcon, TrashIcon } from "@radix-ui/react-icons";
+import type { FunctionReturnType } from "convex/server";
 import type { LibrarySearch } from "./librarySearch";
 
 type PublishVisibility = "private" | "unlisted" | "public";
@@ -59,6 +61,13 @@ type OperationalStatus =
   | "failed"
   | "archived";
 type StatusFilter = "all" | "draft" | "rendering" | "ready" | "failed";
+type CleanupMode = "delete-original" | "clean-old-versions" | "space-saver";
+type CleanupIntent = {
+  mediaAssetId: Id<"mediaAssets">;
+  conceptTitle: string;
+  mode: CleanupMode;
+  oldVersionCount: number;
+};
 export function LibraryWorkbench({ search: _search }: { search: LibrarySearch }) {
   return (
     <div className="library-page">
@@ -99,7 +108,10 @@ export function LibraryWorkbench({ search: _search }: { search: LibrarySearch })
 function AuthenticatedLibraryWorkbench() {
   const concepts = useQuery(api.concepts.listLibrary);
   const savedConcepts = useQuery(api.concepts.listSavedPublicConcepts);
+  const storageUsage = useQuery(api.storageAccounting.viewerUsage);
+  const entitlements = useQuery(api.entitlements.viewerEffective);
   const setConceptVisibility = useAction(api.publicationNode.setConceptVisibility);
+  const cleanPrivateAsset = useAction(api.assetMaintenanceNode.cleanPrivateAsset);
   const createSprayPlan = useMutation(api.sprayPlans.createFromConcept);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
   const requestMultiAnglePreview = useMutation(api.prototypeTools.requestMultiAnglePreview);
@@ -152,6 +164,8 @@ function AuthenticatedLibraryWorkbench() {
     publicationReady: boolean;
     currentStatus: string;
   } | null>(null);
+  const [cleanupIntent, setCleanupIntent] = useState<CleanupIntent | null>(null);
+  const [cleaningAssetId, setCleaningAssetId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
   const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
@@ -222,6 +236,27 @@ function AuthenticatedLibraryWorkbench() {
 
     await onVisibilityChange(publishIntent.conceptId, publishIntent.nextVisibility);
     setPublishIntent(null);
+  }
+
+  async function confirmStorageCleanup() {
+    if (!cleanupIntent) return;
+    const intent = cleanupIntent;
+    setCleanupIntent(null);
+    setCleaningAssetId(intent.mediaAssetId);
+    setErrorMessage(null);
+    try {
+      const result = await cleanPrivateAsset({
+        mediaAssetId: intent.mediaAssetId,
+        mode: intent.mode,
+      });
+      if (result.failed > 0) {
+        setErrorMessage(`${result.failed} storage object${result.failed === 1 ? "" : "s"} could not be deleted. Retry the cleanup.`);
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Storage cleanup failed");
+    } finally {
+      setCleaningAssetId(null);
+    }
   }
 
   async function onRequestRender(
@@ -382,6 +417,13 @@ function AuthenticatedLibraryWorkbench() {
         </dl>
       </header>
 
+      <StorageUsageStrip usage={storageUsage} />
+      {storageUsage && Object.values(storageUsage).some((category) => typeof category === "object" && category !== null && "overQuota" in category && category.overQuota) ? (
+        <WorkbenchNotice tone="danger">
+          <p>Your library is over its storage allowance. Existing work remains available, while new generations and imports are paused until storage is cleared or the allowance increases.</p>
+        </WorkbenchNotice>
+      ) : null}
+
       <nav className="library-scope-tabs" aria-label="Library scope">
         <button className={scope === "prototypes" ? "is-active" : ""} onClick={() => setScope("prototypes")} type="button">
           My prototypes <span>{concepts.length}</span>
@@ -497,6 +539,9 @@ function AuthenticatedLibraryWorkbench() {
             rerunningJobId={rerunningJobId}
             shopping={shoppingByConceptId.get(selectedConcept._id)}
             updatingConceptId={updatingConceptId}
+            cleaningAssetId={cleaningAssetId}
+            onCleanupRequest={setCleanupIntent}
+            originalDownloadAllowed={entitlements?.originalDownloadAllowed ?? false}
           />
               ) : (
                 <div className="library-inspector__empty"><Kicker>No selection</Kicker><p>Select a prototype to inspect its configuration and render state.</p></div>
@@ -631,7 +676,52 @@ function AuthenticatedLibraryWorkbench() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={cleanupIntent !== null}
+        onOpenChange={(open) => { if (!open) setCleanupIntent(null); }}
+      >
+        <AlertDialogContent className="border-line-secondary bg-panel text-ink-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{cleanupDialogCopy(cleanupIntent).title}</AlertDialogTitle>
+            <AlertDialogDescription>{cleanupDialogCopy(cleanupIntent).description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-line-secondary bg-transparent text-ink-primary hover:bg-hover-subtle hover:text-ink-primary">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="border border-accent-red bg-accent-red text-white hover:opacity-90" onClick={() => { void confirmStorageCleanup(); }}>
+              {cleanupDialogCopy(cleanupIntent).confirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+function StorageUsageStrip({ usage }: { usage: FunctionReturnType<typeof api.storageAccounting.viewerUsage> | undefined }) {
+  if (usage === undefined) {
+    return <div className="library-storage-strip is-loading"><span>Calculating storage usage</span></div>;
+  }
+  if (usage === null) return null;
+  const categories = [
+    { label: "Library", value: usage.optimized },
+    { label: "Temporary Original", value: usage.temporaryOriginal },
+    { label: "Pinned Original", value: usage.pinnedOriginal },
+  ];
+  return (
+    <section className="library-storage-strip" aria-label="Storage usage">
+      <div className="library-storage-strip__title"><span>Storage</span><small>Reserved space is included</small></div>
+      {categories.map(({ label, value }) => {
+        const consumed = value.usedBytes + value.reservedBytes;
+        const percentage = value.quotaBytes > 0 ? Math.min(100, consumed / value.quotaBytes * 100) : consumed > 0 ? 100 : 0;
+        return (
+          <div className={value.overQuota ? "library-storage-meter is-over" : "library-storage-meter"} key={label}>
+            <span><strong>{label}</strong><small>{formatStorageBytes(consumed)} / {formatStorageBytes(value.quotaBytes)}</small></span>
+            <i aria-hidden="true"><b style={{ width: `${percentage}%` }} /></i>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -652,6 +742,9 @@ function LibraryConceptFocus({
   rerunningJobId,
   shopping,
   updatingConceptId,
+  cleaningAssetId,
+  onCleanupRequest,
+  originalDownloadAllowed,
 }: {
   concept: {
     _id: string;
@@ -663,6 +756,20 @@ function LibraryConceptFocus({
     moodTags: string[];
     remixCount: number;
     publicationReady: boolean;
+    assetStorage?: {
+      mediaAssetId: Id<"mediaAssets">;
+      versionCount: number;
+      oldVersionCount: number;
+      oldVersionBytes: number;
+      currentOriginal?: {
+        storageObjectId: Id<"storageObjects">;
+        byteSize: number;
+        contentType?: string;
+        retainUntil?: number;
+        retentionPolicy?: string;
+        status: string;
+      } | null;
+    } | null;
     previewAsset?: {
       publicUrl?: string | null;
       key?: string | null;
@@ -765,7 +872,13 @@ function LibraryConceptFocus({
     notes: string[];
   };
   updatingConceptId: string | null;
+  cleaningAssetId: string | null;
+  onCleanupRequest: (intent: CleanupIntent) => void;
+  originalDownloadAllowed: boolean;
 }) {
+  const createPrivateDownloadUrl = useAction(api.assetNode.createPrivateDownloadUrl);
+  const [downloadingOriginal, setDownloadingOriginal] = useState(false);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const privatePreviewUrl = usePrivateAssetUrl(
     concept.previewAsset?.publicUrl ? null : concept.previewAsset?.storageObjectId
   );
@@ -776,6 +889,43 @@ function LibraryConceptFocus({
     concept.generationJob?.status === "queued" ||
     concept.generationJob?.status === "running" ||
     renderingState?.conceptId === concept._id;
+  const assetStorage = concept.assetStorage;
+  const original = assetStorage?.currentOriginal;
+  const storageBusy = cleaningAssetId === assetStorage?.mediaAssetId;
+
+  async function downloadOriginal() {
+    if (!original || original.status !== "ready") return;
+    setDownloadingOriginal(true);
+    setStorageError(null);
+    try {
+      const extension = original.contentType === "image/png" ? "png" : original.contentType === "image/jpeg" ? "jpg" : "webp";
+      const result = await createPrivateDownloadUrl({
+        storageObjectId: original.storageObjectId,
+        downloadFileName: `${concept.title}-original.${extension}`,
+      });
+      const anchor = document.createElement("a");
+      anchor.href = result.url;
+      anchor.download = "";
+      anchor.rel = "noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Original download failed");
+    } finally {
+      setDownloadingOriginal(false);
+    }
+  }
+
+  function requestCleanup(mode: CleanupMode) {
+    if (!assetStorage) return;
+    onCleanupRequest({
+      mediaAssetId: assetStorage.mediaAssetId,
+      conceptTitle: concept.title,
+      mode,
+      oldVersionCount: assetStorage.oldVersionCount,
+    });
+  }
 
   function renderLabel(
     mode: string,
@@ -843,6 +993,30 @@ function LibraryConceptFocus({
           <WorkbenchNotice tone="danger">
             <p>{errorMessage}</p>
           </WorkbenchNotice>
+        ) : null}
+        {storageError ? <WorkbenchNotice tone="danger"><p>{storageError}</p></WorkbenchNotice> : null}
+
+        {assetStorage ? (
+          <section className="library-asset-storage" aria-label="Asset storage">
+            <div className="library-asset-storage__head"><Kicker>Asset storage</Kicker><span>{assetStorage.versionCount} version{assetStorage.versionCount === 1 ? "" : "s"}</span></div>
+            <div className="library-original-row">
+              <div>
+                <strong>Original</strong>
+                <span>{original ? `${formatStorageBytes(original.byteSize)} · ${formatOriginalRetention(original)}` : "Removed · Master preserved"}</span>
+              </div>
+              {original ? (
+                <div className="library-original-row__actions">
+                  <button aria-label="Download Original" disabled={!originalDownloadAllowed || downloadingOriginal || original.status !== "ready"} onClick={() => { void downloadOriginal(); }} title={originalDownloadAllowed ? "Download Original" : "Original download is not included in the current entitlement"} type="button"><DownloadIcon /></button>
+                  <button aria-label="Delete Original" disabled={storageBusy || original.status === "deleting"} onClick={() => requestCleanup("delete-original")} title="Delete Original" type="button"><TrashIcon /></button>
+                </div>
+              ) : null}
+            </div>
+            <div className="library-version-row">
+              <div><strong>Old versions</strong><span>{assetStorage.oldVersionCount > 0 ? `${assetStorage.oldVersionCount} · ${formatStorageBytes(assetStorage.oldVersionBytes)}` : "No removable versions"}</span></div>
+              <button disabled={storageBusy || assetStorage.oldVersionCount === 0} onClick={() => requestCleanup("clean-old-versions")} type="button">Clean old versions</button>
+            </div>
+            <button className="library-space-saver" disabled={storageBusy || (!original && assetStorage.oldVersionCount === 0)} onClick={() => requestCleanup("space-saver")} type="button"><LightningBoltIcon />{storageBusy ? "Cleaning storage" : "Space Saver"}</button>
+          </section>
         ) : null}
 
         <div className="library-inspector__primary-actions">
@@ -1248,6 +1422,53 @@ function formatRelativeTime(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(
     new Date(timestamp)
   );
+}
+
+function formatStorageBytes(bytes: number) {
+  if (bytes >= 1024 ** 3) return `${Math.round(bytes / 1024 ** 3 * 100) / 100} GB`;
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2 * 10) / 10} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function formatOriginalRetention(original: {
+  retainUntil?: number;
+  retentionPolicy?: string;
+  status: string;
+}) {
+  if (original.status === "deleting") return "Deleting";
+  if (original.status === "failed") return "Unavailable";
+  if (original.retentionPolicy === "permanent-original" || original.retainUntil === undefined) {
+    return "Stored while quota is available";
+  }
+  const remainingMs = original.retainUntil - Date.now();
+  if (remainingMs <= 0) return "Scheduled for deletion";
+  const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+  if (remainingHours < 48) return `Expires in ${remainingHours}h`;
+  return `Expires in ${Math.ceil(remainingHours / 24)} days`;
+}
+
+function cleanupDialogCopy(intent: CleanupIntent | null) {
+  if (!intent) return { title: "Review storage cleanup", description: "", confirm: "Continue" };
+  if (intent.mode === "delete-original") {
+    return {
+      title: `Delete the Original for ${intent.conceptTitle}?`,
+      description: "The optimized Master, Preview, and Thumbnail remain available. The model output cannot be restored after deletion.",
+      confirm: "Delete Original",
+    };
+  }
+  if (intent.mode === "clean-old-versions") {
+    return {
+      title: `Clean ${intent.oldVersionCount} old version${intent.oldVersionCount === 1 ? "" : "s"}?`,
+      description: "Only superseded versions are removed. The current version and its web assets remain available.",
+      confirm: "Clean old versions",
+    };
+  }
+  return {
+    title: `Apply Space Saver to ${intent.conceptTitle}?`,
+    description: "This removes the current Original and all superseded versions. The current optimized Master, Preview, and Thumbnail remain available.",
+    confirm: "Apply Space Saver",
+  };
 }
 
 function formatBuildStageLabel(stage: BuildStage) {

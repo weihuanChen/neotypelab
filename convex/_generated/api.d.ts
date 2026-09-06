@@ -12,6 +12,8 @@ import type * as admin from "../admin.js";
 import type * as adminAccess from "../adminAccess.js";
 import type * as adminUsers from "../adminUsers.js";
 import type * as archiveNumbers from "../archiveNumbers.js";
+import type * as assetMaintenance from "../assetMaintenance.js";
+import type * as assetMaintenanceNode from "../assetMaintenanceNode.js";
 import type * as assetModel from "../assetModel.js";
 import type * as assetNode from "../assetNode.js";
 import type * as assets from "../assets.js";
@@ -78,6 +80,8 @@ declare const fullApi: ApiFromModules<{
   adminAccess: typeof adminAccess;
   adminUsers: typeof adminUsers;
   archiveNumbers: typeof archiveNumbers;
+  assetMaintenance: typeof assetMaintenance;
+  assetMaintenanceNode: typeof assetMaintenanceNode;
   assetModel: typeof assetModel;
   assetNode: typeof assetNode;
   assets: typeof assets;

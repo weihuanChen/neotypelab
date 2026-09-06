@@ -45,6 +45,9 @@ import {
   promptTemplateVariableDefinitions,
 } from "./promptTemplateVariables";
 import { getR2ConfigurationStatus } from "./r2Config";
+import { DEFAULT_ENTITLEMENT_PROFILES } from "./entitlementPolicy";
+
+const GIB = 1024 ** 3;
 
 export const overview = query({
   args: {},
@@ -518,13 +521,14 @@ export const getSettingsWorkspace = query({
   async handler(ctx) {
     requireSuperAdmin(ctx);
 
-    const [profiles, templates, versions, bindings, routes, settings] = await Promise.all([
+    const [profiles, templates, versions, bindings, routes, settings, entitlementProfiles] = await Promise.all([
       ctx.db.query("llmProfiles").collect(),
       ctx.db.query("promptTemplates").collect(),
       ctx.db.query("promptTemplateVersions").collect(),
       ctx.db.query("pipelineTemplateBindings").collect(),
       ctx.db.query("generationProviderRoutes").collect(),
       ctx.db.query("platformSettings").collect(),
+      ctx.db.query("entitlementProfiles").collect(),
     ]);
     const settingsByKey = new Map(
       [...settings]
@@ -636,6 +640,26 @@ export const getSettingsWorkspace = query({
         revision: systemRecord?.revision ?? 0,
         updatedAt: systemRecord?.updatedAt,
       },
+      entitlements: (["free", "pro", "studio"] as const).map((planType) => {
+        const revisions = entitlementProfiles
+          .filter((profile) => profile.planType === planType)
+          .sort((a, b) => b.revision - a.revision || b.updatedAt - a.updatedAt);
+        const current = revisions.find((profile) => profile.isActive);
+        const fallback = DEFAULT_ENTITLEMENT_PROFILES[planType];
+        return {
+          ...(current ?? fallback),
+          _id: current?._id ?? null,
+          updatedAt: current?.updatedAt,
+          revisionCount: revisions.length,
+          revisions: revisions.map((profile) => ({
+            _id: profile._id,
+            revision: profile.revision,
+            slug: profile.slug,
+            isActive: profile.isActive,
+            updatedAt: profile.updatedAt,
+          })),
+        };
+      }),
       environment: {
         environment: process.env.CONVEX_DEPLOYMENT?.startsWith("prod:")
           ? "Production"
@@ -659,6 +683,71 @@ export const getSettingsWorkspace = query({
         };
       }),
     };
+  },
+});
+
+export const saveEntitlementProfile = mutation({
+  args: {
+    planType: vUserPlan,
+    expectedRevision: v.number(),
+    libraryQuotaGb: v.number(),
+    temporaryOriginalQuotaGb: v.number(),
+    pinnedOriginalQuotaGb: v.number(),
+    originalRetentionDays: v.number(),
+    versionRetentionDays: v.number(),
+    masterMaxDimensionPx: v.number(),
+    exportMaxDimensionPx: v.number(),
+    originalPermanentStorage: v.boolean(),
+    originalDownloadAllowed: v.boolean(),
+    originalPinAllowed: v.boolean(),
+    batchDownloadAllowed: v.boolean(),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const profiles = await ctx.db
+      .query("entitlementProfiles")
+      .withIndex("by_plan_revision", (q) => q.eq("planType", args.planType))
+      .order("desc")
+      .collect();
+    const currentRevision = profiles[0]?.revision ?? 0;
+    if (currentRevision !== requireInteger(args.expectedRevision, 0, 10_000, "Expected revision")) {
+      throw new Error("This entitlement profile changed in another session. Reload before saving again.");
+    }
+    if (args.exportMaxDimensionPx < args.masterMaxDimensionPx) {
+      throw new Error("Export resolution cannot be smaller than the Master resolution");
+    }
+
+    const nextRevision = currentRevision + 1;
+    const now = Date.now();
+    const profileId = await ctx.db.insert("entitlementProfiles", {
+      name: planLabel(args.planType),
+      slug: `${args.planType}-v${nextRevision}`,
+      planType: args.planType,
+      revision: nextRevision,
+      libraryQuotaBytes: requireGb(args.libraryQuotaGb, 0, 10_000, "Library quota"),
+      temporaryOriginalQuotaBytes: requireGb(args.temporaryOriginalQuotaGb, 0, 10_000, "Temporary Original quota"),
+      pinnedOriginalQuotaBytes: requireGb(args.pinnedOriginalQuotaGb, 0, 10_000, "Pinned Original quota"),
+      originalRetentionDays: requireInteger(args.originalRetentionDays, 0, 3_650, "Original retention"),
+      versionRetentionDays: requireInteger(args.versionRetentionDays, 0, 3_650, "Version retention"),
+      masterMaxDimensionPx: requireInteger(args.masterMaxDimensionPx, 512, 16_384, "Master resolution"),
+      exportMaxDimensionPx: requireInteger(args.exportMaxDimensionPx, 512, 16_384, "Export resolution"),
+      originalPermanentStorage: args.originalPermanentStorage,
+      originalDownloadAllowed: args.originalDownloadAllowed,
+      originalPinAllowed: args.originalPinAllowed,
+      batchDownloadAllowed: args.batchDownloadAllowed,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "create-entitlement-profile-revision",
+      entityType: "entitlementProfile",
+      entityId: profileId,
+      detailsJson: JSON.stringify({ planType: args.planType, revision: nextRevision, previousRevision: currentRevision }),
+    });
+    return { profileId, revision: nextRevision };
   },
 });
 
@@ -1904,6 +1993,8 @@ export const listFeedbackPipeline = query({
           attachment,
           resolutionExperiment,
           queueItem,
+          feedbackTransaction,
+          reportFeedbackGrants,
         ] = await Promise.all([
           report.baseModelId ? ctx.db.get(report.baseModelId) : null,
           report.stylePresetId ? ctx.db.get(report.stylePresetId) : null,
@@ -1920,6 +2011,18 @@ export const listFeedbackPipeline = query({
               q.eq("itemType", "feedback").eq("itemId", report._id)
             )
             .unique(),
+          ctx.db
+            .query("creditTransactions")
+            .withIndex("by_reference", (q) =>
+              q.eq("referenceTable", "feedbackReports").eq("referenceId", report._id)
+            )
+            .first(),
+          ctx.db
+            .query("accountEntitlementGrants")
+            .withIndex("by_source", (q) =>
+              q.eq("sourceType", "feedback").eq("sourceReference", report._id)
+            )
+            .collect(),
           ]);
 
         const kitVariantSummary = await summarizeBaseModelWithHierarchy(ctx, baseModel);
@@ -2011,6 +2114,13 @@ export const listFeedbackPipeline = query({
                 status: queueItem.status,
                 assignedToUserId: queueItem.assignedToUserId,
                 summary: queueItem.summary,
+              }
+            : null,
+          reward: feedbackTransaction || reportFeedbackGrants.length > 0
+            ? {
+                credits: feedbackTransaction?.delta ?? 0,
+                entitlementGrantId: reportFeedbackGrants[0]?._id ?? null,
+                grantedAt: reportFeedbackGrants[0]?.createdAt ?? feedbackTransaction?._creationTime,
               }
             : null,
         };
@@ -2571,6 +2681,135 @@ export const reviewFeedback = mutation({
         resolutionExperimentRunId,
       }),
     });
+  },
+});
+
+export const rewardFeedback = mutation({
+  args: {
+    feedbackId: v.id("feedbackReports"),
+    credits: v.number(),
+    storageGb: v.number(),
+    originalRetentionDays: v.number(),
+    originalDownloadAllowed: v.boolean(),
+    batchDownloadAllowed: v.boolean(),
+    expiresAt: v.optional(v.number()),
+    note: v.optional(v.string()),
+  },
+  async handler(ctx, args) {
+    const { viewer } = requireSuperAdmin(ctx);
+    const report = await ctx.db.get(args.feedbackId);
+    if (!report) throw new Error("Feedback report not found");
+
+    const credits = requireInteger(args.credits, 0, 10_000, "Reward credits");
+    const storageBytes = requireGb(args.storageGb, 0, 1_000, "Reward storage");
+    const retentionDays = requireInteger(args.originalRetentionDays, 0, 3_650, "Original retention");
+    if (
+      credits === 0 && storageBytes === 0 && retentionDays === 0 &&
+      !args.originalDownloadAllowed && !args.batchDownloadAllowed
+    ) {
+      throw new Error("Choose at least one credit or entitlement reward");
+    }
+    if (args.expiresAt !== undefined && args.expiresAt <= Date.now()) {
+      throw new Error("Reward expiry must be in the future");
+    }
+    const note = optionalBoundedText(args.note, 1_000, "Reward note");
+
+    const [existingGrants, existingTransaction] = await Promise.all([
+      ctx.db
+        .query("accountEntitlementGrants")
+        .withIndex("by_source", (q) =>
+          q.eq("sourceType", "feedback").eq("sourceReference", args.feedbackId)
+        )
+        .collect(),
+      ctx.db
+        .query("creditTransactions")
+        .withIndex("by_reference", (q) =>
+          q.eq("referenceTable", "feedbackReports").eq("referenceId", args.feedbackId)
+        )
+        .first(),
+    ]);
+    if (existingGrants.length > 0 || existingTransaction) {
+      throw new Error("This feedback report has already received a reward");
+    }
+
+    const now = Date.now();
+    let transactionId: Id<"creditTransactions"> | null = null;
+    let balanceAfter: number | null = null;
+    if (credits > 0) {
+      let account = await ctx.db
+        .query("creditAccounts")
+        .withIndex("by_userId", (q) => q.eq("userId", report.userId))
+        .unique();
+      if (!account) {
+        const accountId = await ctx.db.insert("creditAccounts", {
+          userId: report.userId,
+          balance: 0,
+          lifetimeGranted: 0,
+          lifetimeSpent: 0,
+          lastCreditEventAt: now,
+        });
+        account = await ctx.db.get(accountId);
+      }
+      if (!account) throw new Error("Credit account could not be initialized");
+      balanceAfter = account.balance + credits;
+      await ctx.db.patch(account._id, {
+        balance: balanceAfter,
+        lifetimeGranted: account.lifetimeGranted + credits,
+        lastCreditEventAt: now,
+      });
+      transactionId = await ctx.db.insert("creditTransactions", {
+        userId: report.userId,
+        actionType: "admin-adjustment",
+        delta: credits,
+        creditAmount: credits,
+        balanceAfter,
+        referenceTable: "feedbackReports",
+        referenceId: args.feedbackId,
+        description: "Feedback reward",
+        sourceType: "promotional",
+        reasonCode: "feedback-reward",
+        operatorUserId: viewer._id,
+        expiresAt: args.expiresAt,
+        internalNote: note,
+      });
+    }
+
+    let entitlementGrantId: Id<"accountEntitlementGrants"> | null = null;
+    if (storageBytes > 0 || retentionDays > 0 || args.originalDownloadAllowed || args.batchDownloadAllowed) {
+      entitlementGrantId = await ctx.db.insert("accountEntitlementGrants", {
+        userId: report.userId,
+        sourceType: "feedback",
+        sourceReference: args.feedbackId,
+        libraryQuotaBytesDelta: storageBytes || undefined,
+        originalRetentionDays: retentionDays || undefined,
+        originalDownloadAllowed: args.originalDownloadAllowed || undefined,
+        batchDownloadAllowed: args.batchDownloadAllowed || undefined,
+        startsAt: now,
+        expiresAt: args.expiresAt,
+        note,
+        createdByUserId: viewer._id,
+        createdAt: now,
+      });
+    }
+
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "reward-feedback",
+      entityType: "feedbackReport",
+      entityId: args.feedbackId,
+      detailsJson: JSON.stringify({
+        userId: report.userId,
+        credits,
+        storageBytes,
+        retentionDays,
+        originalDownloadAllowed: args.originalDownloadAllowed,
+        batchDownloadAllowed: args.batchDownloadAllowed,
+        expiresAt: args.expiresAt,
+        transactionId,
+        entitlementGrantId,
+      }),
+    });
+    return { transactionId, entitlementGrantId, balanceAfter };
   },
 });
 
@@ -3730,6 +3969,32 @@ async function writePlatformSettings(
 function boundedInteger(value: unknown, min: number, max: number, fallback: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function requireInteger(value: number, min: number, max: number, label: string) {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${label} must be an integer between ${min} and ${max}`);
+  }
+  return value;
+}
+
+function requireGb(value: number, min: number, max: number, label: string) {
+  if (!Number.isFinite(value) || value < min || value > max || Math.abs(Math.round(value * 100) - value * 100) > 1e-8) {
+    throw new Error(`${label} must be between ${min} and ${max} GB with at most two decimal places`);
+  }
+  return Math.round(value * GIB);
+}
+
+function planLabel(planType: UserPlan) {
+  return planType.charAt(0).toUpperCase() + planType.slice(1);
+}
+
+function optionalBoundedText(value: string | undefined, maxLength: number, label: string) {
+  const normalized = value?.trim() || undefined;
+  if (normalized && normalized.length > maxLength) {
+    throw new Error(`${label} must be ${maxLength} characters or fewer`);
+  }
+  return normalized;
 }
 
 function booleanSetting(value: unknown, fallback: boolean) {

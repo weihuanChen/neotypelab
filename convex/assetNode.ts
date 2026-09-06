@@ -12,8 +12,9 @@ import {
 export const createPrivateDownloadUrl = action({
   args: {
     storageObjectId: v.id("storageObjects"),
+    downloadFileName: v.optional(v.string()),
   },
-  handler: async (ctx, { storageObjectId }): Promise<{
+  handler: async (ctx, { downloadFileName, storageObjectId }): Promise<{
     url: string;
     expiresAt: number;
     contentType?: string;
@@ -31,7 +32,10 @@ export const createPrivateDownloadUrl = action({
     if (authorized.bucket !== getR2ConnectionConfig().buckets.private) {
       throw new Error("Private asset belongs to a different storage environment");
     }
-    const url = await createPrivateR2DownloadUrl({ key: authorized.key });
+    const url = await createPrivateR2DownloadUrl({
+      key: authorized.key,
+      downloadFileName,
+    });
     return {
       url,
       expiresAt: Date.now() + PRIVATE_DOWNLOAD_URL_TTL_SECONDS * 1000,

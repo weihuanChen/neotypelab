@@ -21,7 +21,7 @@ export type AdminCreditsSearch = {
   campaign?: string;
 };
 export type AdminSettingsSearch = {
-  section?: "generation" | "providers" | "bindings" | "defaults" | "system";
+  section?: "generation" | "providers" | "bindings" | "entitlements" | "defaults" | "system";
 };
 
 export function parseAdminTemplatesSearch(
@@ -76,6 +76,7 @@ export function parseAdminSettingsSearch(search: Record<string, unknown>): Admin
     section:
       section === "providers" ||
       section === "bindings" ||
+      section === "entitlements" ||
       section === "defaults" ||
       section === "system"
         ? section

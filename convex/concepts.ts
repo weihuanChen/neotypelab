@@ -79,6 +79,8 @@ export const listLibrary = query({
           generationJob,
           previewAsset,
           versionObjects,
+          assetVersions,
+          assetObjects,
           sourceConcept,
           remixCount,
         ] =
@@ -94,6 +96,18 @@ export const listLibrary = query({
                   .withIndex("by_assetVersionId", (q) =>
                     q.eq("assetVersionId", concept.currentAssetVersionId!)
                   )
+                  .collect()
+              : [],
+            concept.mediaAssetId
+              ? ctx.db
+                  .query("assetVersions")
+                  .withIndex("by_mediaAssetId", (q) => q.eq("mediaAssetId", concept.mediaAssetId!))
+                  .collect()
+              : [],
+            concept.mediaAssetId
+              ? ctx.db
+                  .query("storageObjects")
+                  .withIndex("by_mediaAssetId", (q) => q.eq("mediaAssetId", concept.mediaAssetId!))
                   .collect()
               : [],
             concept.sourceConceptId ? getConceptSourceSummary(ctx, concept.sourceConceptId) : null,
@@ -114,6 +128,19 @@ export const listLibrary = query({
         const publicationReady = ["master", "preview", "thumbnail"].every((rendition) =>
           privateReadyObjects.some((object) => object.rendition === rendition)
         );
+        const currentOriginal = assetObjects.find(
+          (object) => object.assetVersionId === concept.currentAssetVersionId &&
+            object.bucketRole === "private" && object.rendition === "original" &&
+            object.status !== "deleted"
+        );
+        const oldVersions = assetVersions.filter(
+          (version) => version._id !== concept.currentAssetVersionId && version.status !== "deleted"
+        );
+        const oldVersionIds = new Set(oldVersions.map((version) => version._id));
+        const oldVersionObjects = assetObjects.filter(
+          (object) => object.bucketRole === "private" && object.status !== "deleted" &&
+            oldVersionIds.has(object.assetVersionId)
+        );
 
         return {
           _id: concept._id,
@@ -133,6 +160,24 @@ export const listLibrary = query({
           sourceConcept,
           remixCount,
           publicationReady,
+          assetStorage: concept.mediaAssetId
+            ? {
+                mediaAssetId: concept.mediaAssetId,
+                versionCount: assetVersions.filter((version) => version.status !== "deleted").length,
+                oldVersionCount: oldVersions.length,
+                oldVersionBytes: oldVersionObjects.reduce((sum, object) => sum + (object.byteSize ?? 0), 0),
+                currentOriginal: currentOriginal
+                  ? {
+                      storageObjectId: currentOriginal._id,
+                      byteSize: currentOriginal.byteSize ?? 0,
+                      contentType: currentOriginal.contentType,
+                      retainUntil: currentOriginal.retainUntil,
+                      retentionPolicy: currentOriginal.retentionPolicy,
+                      status: currentOriginal.status,
+                    }
+                  : null,
+              }
+            : null,
           kitVariant: kitVariantSummary,
           baseModel: kitVariantSummary,
           stylePreset: stylePreset

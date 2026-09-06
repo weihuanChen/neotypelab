@@ -47,6 +47,16 @@ type ActivityItem = ActivityData[number];
 type LedgerData = FunctionReturnType<typeof api.adminUsers.listCreditLedger>;
 type FeedbackData = FunctionReturnType<typeof api.adminUsers.listFeedback>;
 type NotesData = FunctionReturnType<typeof api.adminUsers.listNotes>;
+type EntitlementAccessData = NonNullable<FunctionReturnType<typeof api.adminUsers.getEntitlementAccess>>;
+type EntitlementGrantDraft = {
+  sourceType: "manual" | "promotion" | "early-adopter";
+  storageGb: string;
+  originalRetentionDays: string;
+  expiryDays: string;
+  originalDownloadAllowed: boolean;
+  batchDownloadAllowed: boolean;
+  note: string;
+};
 type AccessPatch = {
   planType?: "free" | "pro" | "studio";
   accountStatus?: "active" | "suspended";
@@ -97,13 +107,25 @@ export function UserOperationsWorkbench({ search }: { search: AdminUsersSearch }
   const ledger = useQuery(api.adminUsers.listCreditLedger, selectedId && activeTab === "credits" ? { userId: selectedId } : "skip");
   const feedback = useQuery(api.adminUsers.listFeedback, selectedId && activeTab === "feedback" ? { userId: selectedId } : "skip");
   const notes = useQuery(api.adminUsers.listNotes, selectedId ? { userId: selectedId } : "skip");
+  const entitlementAccess = useQuery(api.adminUsers.getEntitlementAccess, selectedId && activeTab === "access" ? { userId: selectedId } : "skip");
   const addNote = useMutation(api.adminUsers.addNote);
   const grantCredits = useMutation(api.adminUsers.grantCredits);
+  const grantEntitlements = useMutation(api.adminUsers.grantEntitlements);
+  const revokeEntitlementGrant = useMutation(api.adminUsers.revokeEntitlementGrant);
   const updateUserAccess = useMutation(api.admin.updateUserAccess);
   const [noteDraft, setNoteDraft] = useState("");
   const [grantAmount, setGrantAmount] = useState("20");
   const [grantReason, setGrantReason] = useState("early-pilot-reward");
   const [grantNote, setGrantNote] = useState("");
+  const [entitlementGrant, setEntitlementGrant] = useState<EntitlementGrantDraft>({
+    sourceType: "manual",
+    storageGb: "0",
+    originalRetentionDays: "0",
+    expiryDays: "30",
+    originalDownloadAllowed: false,
+    batchDownloadAllowed: false,
+    note: "",
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [pendingAccessAction, setPendingAccessAction] = useState<AccessAction>(null);
@@ -166,6 +188,35 @@ export function UserOperationsWorkbench({ search }: { search: AdminUsersSearch }
         await updateUserAccess({ userId: selectedId, isAdmin: action === "grant-admin" });
       }
     }, accessActionSuccess(action));
+  }
+
+  async function submitEntitlementGrant() {
+    if (!selectedId) return;
+    const expiryDays = Number(entitlementGrant.expiryDays);
+    await runAction("entitlement-grant", async () => {
+      await grantEntitlements({
+        userId: selectedId,
+        sourceType: entitlementGrant.sourceType,
+        storageGb: Number(entitlementGrant.storageGb),
+        temporaryOriginalStorageGb: 0,
+        pinnedOriginalStorageGb: 0,
+        originalRetentionDays: Number(entitlementGrant.originalRetentionDays),
+        versionRetentionDays: 0,
+        masterMaxDimensionPx: 0,
+        exportMaxDimensionPx: 0,
+        originalPermanentStorage: false,
+        originalDownloadAllowed: entitlementGrant.originalDownloadAllowed,
+        originalPinAllowed: false,
+        batchDownloadAllowed: entitlementGrant.batchDownloadAllowed,
+        expiresAt: expiryDays > 0 ? Date.now() + expiryDays * 24 * 60 * 60 * 1000 : undefined,
+        note: entitlementGrant.note.trim() || undefined,
+      });
+      setEntitlementGrant((current) => ({ ...current, note: "" }));
+    }, "Entitlement grant issued.");
+  }
+
+  async function revokeGrant(grantId: Id<"accountEntitlementGrants">) {
+    await runAction("entitlement-revoke", () => revokeEntitlementGrant({ grantId }), "Entitlement grant revoked.");
   }
 
   async function runAction(key: string, action: () => Promise<unknown>, success: string) {
@@ -273,7 +324,7 @@ export function UserOperationsWorkbench({ search }: { search: AdminUsersSearch }
               {activeTab === "activity" ? <ActivityTab items={activity} filter={activityFilter} setFilter={setActivityFilter} /> : null}
               {activeTab === "credits" ? <CreditsTab ledger={ledger} amount={grantAmount} setAmount={setGrantAmount} reason={grantReason} setReason={setGrantReason} note={grantNote} setNote={setGrantNote} onGrant={() => { void submitGrant(); }} busy={busy === "grant"} /> : null}
               {activeTab === "feedback" ? <FeedbackTab reports={feedback} /> : null}
-              {activeTab === "access" ? <AccessTab overview={overview} busy={busy} onUpdate={async (patch: AccessPatch, success: string) => runAction("access-update", () => updateUserAccess({ userId: selectedId, ...patch }), success)} onConfirm={setPendingAccessAction} /> : null}
+              {activeTab === "access" ? <AccessTab overview={overview} entitlements={entitlementAccess ?? undefined} grant={entitlementGrant} setGrant={setEntitlementGrant} busy={busy} onGrant={() => { void submitEntitlementGrant(); }} onRevoke={(grantId) => { void revokeGrant(grantId); }} onUpdate={async (patch: AccessPatch, success: string) => runAction("access-update", () => updateUserAccess({ userId: selectedId, ...patch }), success)} onConfirm={setPendingAccessAction} /> : null}
             </div>
           )}
         </section>
@@ -392,8 +443,20 @@ function FeedbackTab({ reports }: { reports: FeedbackData | undefined }) {
   );
 }
 
-function AccessTab({ overview, busy, onUpdate, onConfirm }: { overview: OverviewData; busy: string | null; onUpdate: (patch: AccessPatch, success: string) => Promise<unknown>; onConfirm: (action: Exclude<AccessAction, null>) => void }) {
+function AccessTab({ overview, entitlements, grant, setGrant, busy, onGrant, onRevoke, onUpdate, onConfirm }: {
+  overview: OverviewData;
+  entitlements: EntitlementAccessData | undefined;
+  grant: EntitlementGrantDraft;
+  setGrant: (value: EntitlementGrantDraft) => void;
+  busy: string | null;
+  onGrant: () => void;
+  onRevoke: (grantId: Id<"accountEntitlementGrants">) => void;
+  onUpdate: (patch: AccessPatch, success: string) => Promise<unknown>;
+  onConfirm: (action: Exclude<AccessAction, null>) => void;
+}) {
   const user = overview.user;
+  const effective = entitlements?.effective;
+  const hasGrant = Number(grant.storageGb) > 0 || Number(grant.originalRetentionDays) > 0 || grant.originalDownloadAllowed || grant.batchDownloadAllowed;
   return (
     <div className="user-tab">
       <section className="access-panel">
@@ -414,6 +477,42 @@ function AccessTab({ overview, busy, onUpdate, onConfirm }: { overview: Overview
             <DropdownMenuItem className="text-accent-red focus:text-accent-red" onSelect={() => onConfirm(user.isAdmin ? "remove-admin" : "grant-admin")}>{user.isAdmin ? "Remove admin role" : "Grant admin role"}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </section>
+      <section className="user-inspector-section entitlement-access">
+        <SectionHead title="Effective entitlements" />
+        {effective ? (
+          <dl className="entitlement-access__summary">
+            <div><dt>Profile</dt><dd>{formatWords(effective.planType)} · r{effective.profileRevision}</dd></div>
+            <div><dt>Library</dt><dd>{formatBytes(effective.libraryQuotaBytes)}</dd></div>
+            <div><dt>Original retention</dt><dd>{effective.originalPermanentStorage ? "Permanent" : `${effective.originalRetentionDays} days`}</dd></div>
+            <div><dt>Master / Export</dt><dd>{effective.masterMaxDimensionPx}px / {effective.exportMaxDimensionPx}px</dd></div>
+            <div><dt>Original download</dt><dd>{effective.originalDownloadAllowed ? "Allowed" : "Blocked"}</dd></div>
+            <div><dt>Active grants</dt><dd>{effective.activeGrantIds.length}</dd></div>
+          </dl>
+        ) : <PaneState icon={<ReloadIcon />} label="Loading entitlements" />}
+      </section>
+      <section className="user-inspector-section grant-credits-form entitlement-grant-form">
+        <SectionHead title="Grant entitlements" />
+        <div className="grant-credits-form__fields">
+          <label><span>Storage</span><input min="0" max="1000" step="0.01" value={grant.storageGb} onChange={(event) => setGrant({ ...grant, storageGb: event.target.value })} type="number" /></label>
+          <label><span>Original retention</span><input min="0" max="3650" value={grant.originalRetentionDays} onChange={(event) => setGrant({ ...grant, originalRetentionDays: event.target.value })} type="number" /></label>
+          <label><span>Expires after</span><input min="0" max="3650" value={grant.expiryDays} onChange={(event) => setGrant({ ...grant, expiryDays: event.target.value })} type="number" /></label>
+          <label><span>Source</span><select value={grant.sourceType} onChange={(event) => setGrant({ ...grant, sourceType: event.target.value as EntitlementGrantDraft["sourceType"] })}><option value="manual">Manual grant</option><option value="promotion">Promotion</option><option value="early-adopter">Early adopter</option></select></label>
+          <label className="entitlement-grant-check"><input checked={grant.originalDownloadAllowed} onChange={(event) => setGrant({ ...grant, originalDownloadAllowed: event.target.checked })} type="checkbox" /><span>Original download</span></label>
+          <label className="entitlement-grant-check"><input checked={grant.batchDownloadAllowed} onChange={(event) => setGrant({ ...grant, batchDownloadAllowed: event.target.checked })} type="checkbox" /><span>Batch download</span></label>
+          <label className="is-wide"><span>Internal note</span><textarea value={grant.note} onChange={(event) => setGrant({ ...grant, note: event.target.value })} placeholder="Reason for this temporary entitlement" /></label>
+        </div>
+        <div className="grant-credits-form__footer"><span>{Number(grant.expiryDays) > 0 ? `Expires in ${grant.expiryDays} days` : "No expiry"}</span><button disabled={busy === "entitlement-grant" || !hasGrant} onClick={onGrant} type="button"><PlusIcon />{busy === "entitlement-grant" ? "Granting" : "Issue grant"}</button></div>
+      </section>
+      <section className="user-inspector-section entitlement-history">
+        <SectionHead title="Grant history" />
+        {!entitlements ? <PaneState icon={<ReloadIcon />} label="Loading grant history" /> : entitlements.grants.length === 0 ? <p>No entitlement grants for this account.</p> : entitlements.grants.map((item) => (
+          <div className="entitlement-history__row" key={item._id}>
+            <div><strong>{formatWords(item.sourceType)}</strong><small>{describeEntitlementGrant(item)}</small></div>
+            <span className={cn(item.active && "is-active")}>{item.active ? item.expiresAt ? `Until ${formatDate(item.expiresAt)}` : "Active" : item.revokedAt ? "Revoked" : "Expired"}</span>
+            {item.active ? <button disabled={busy === "entitlement-revoke"} onClick={() => onRevoke(item._id)} type="button">Revoke</button> : <i />}
+          </div>
+        ))}
       </section>
     </div>
   );
@@ -480,4 +579,14 @@ function formatTime(value: number) { return new Intl.DateTimeFormat("en", { hour
 function dayLabel(value: number) { const date = new Date(value); const now = new Date(); if (date.toDateString() === now.toDateString()) return "Today"; const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1); if (date.toDateString() === yesterday.toDateString()) return "Yesterday"; return formatDate(value); }
 function relativeTime(value: number) { const seconds = Math.max(1, Math.floor((Date.now() - value) / 1000)); if (seconds < 60) return "just now"; const minutes = Math.floor(seconds / 60); if (minutes < 60) return `${minutes}m ago`; const hours = Math.floor(minutes / 60); if (hours < 24) return `${hours}h ago`; const days = Math.floor(hours / 24); return days < 30 ? `${days}d ago` : formatShortDate(value); }
 function feedbackReference(report: { recordNumber?: number; _id: string }) { return report.recordNumber ? `FB-${String(report.recordNumber).padStart(4, "0")}` : `FB-${report._id.slice(-4).toUpperCase()}`; }
+function formatBytes(value: number) { return value >= 1024 ** 3 ? `${Math.round((value / 1024 ** 3) * 100) / 100} GB` : `${Math.round(value / 1024 ** 2)} MB`; }
+function describeEntitlementGrant(grant: EntitlementAccessData["grants"][number]) {
+  const parts = [
+    grant.libraryQuotaBytesDelta ? `+${formatBytes(grant.libraryQuotaBytesDelta)} library` : null,
+    grant.originalRetentionDays ? `${grant.originalRetentionDays}d Original` : null,
+    grant.originalDownloadAllowed ? "Original download" : null,
+    grant.batchDownloadAllowed ? "Batch download" : null,
+  ].filter(Boolean);
+  return parts.join(" · ") || "Capability grant";
+}
 function accessActionSuccess(action: Exclude<AccessAction, null>) { return action === "suspend" ? "Account suspended." : action === "restore" ? "Account restored." : action === "grant-admin" ? "Administrator access granted." : "Administrator access removed."; }

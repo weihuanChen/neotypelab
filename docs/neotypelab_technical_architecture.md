@@ -335,6 +335,25 @@ maximum policy. Increase the fallback before introducing an entitlement with
 longer Original retention. Pinned Originals and `library/` are excluded from
 the bucket rule.
 
+### User storage controls
+
+The authenticated Library displays optimized, temporary Original, and pinned
+Original usage separately, including held reservations. Quota overage never
+removes existing work or blocks reads; generation and direct imports reserve or
+check capacity before creating new storage records.
+
+Each current asset reports its Original size and retention deadline. Downloads
+use an ownership-checked, short-lived private URL with attachment disposition.
+User cleanup is a two-phase R2 operation with three bounded modes:
+
+- Delete Original removes only the current Original.
+- Clean old versions removes private objects from superseded versions.
+- Space Saver combines both operations.
+
+All modes preserve the current Master, Preview, and Thumbnail. A superseded
+version with a live public copy remains a valid version record until that
+publication is withdrawn.
+
 ---
 
 ## 8. Deployment

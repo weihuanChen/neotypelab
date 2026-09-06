@@ -190,9 +190,11 @@ export async function purgePublicR2Urls(urls: string[]) {
 export async function createPrivateR2DownloadUrl({
   key,
   expiresInSeconds = PRIVATE_DOWNLOAD_URL_TTL_SECONDS,
+  downloadFileName,
 }: {
   key: string;
   expiresInSeconds?: number;
+  downloadFileName?: string;
 }) {
   const config = getR2ConnectionConfig();
   const expiresIn = Math.min(
@@ -204,9 +206,17 @@ export async function createPrivateR2DownloadUrl({
     new GetObjectCommand({
       Bucket: config.buckets.private,
       Key: key,
+      ResponseContentDisposition: downloadFileName
+        ? `attachment; filename="${sanitizeDownloadFileName(downloadFileName)}"`
+        : undefined,
     }),
     { expiresIn }
   );
+}
+
+function sanitizeDownloadFileName(value: string) {
+  const normalized = value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return (normalized || "neotypelab-original").slice(0, 120);
 }
 
 export async function checkR2StorageConnectivity(): Promise<R2HealthResult[]> {

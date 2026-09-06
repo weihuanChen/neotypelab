@@ -223,6 +223,44 @@ export async function reserveGenerationStorageForJob(
   );
 }
 
+export async function assertPrivateStorageAdditionAllowed(
+  ctx: BaseMutationCtx,
+  userId: Id<"users">,
+  requested: Partial<StorageAmounts>
+) {
+  const now = Date.now();
+  await reconcileAccountStorageUsage(ctx, userId, now);
+  const [usage, entitlements, held] = await Promise.all([
+    ctx.db
+      .query("accountStorageUsage")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique(),
+    resolveEffectiveEntitlements(ctx, userId, now),
+    ctx.db
+      .query("storageReservations")
+      .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "held"))
+      .collect(),
+  ]);
+  if (!usage) throw new Error("Storage usage account could not be initialized");
+  const reserved = held
+    .filter((reservation) => reservation.heldUntil >= now)
+    .reduce((total, reservation) => addAmounts(total, reservationAmounts(reservation)), zeroAmounts());
+  assertWithinQuota({
+    used: usageAmounts(usage),
+    reserved,
+    requested: {
+      optimizedBytes: checkedBytes(requested.optimizedBytes ?? 0),
+      temporaryOriginalBytes: checkedBytes(requested.temporaryOriginalBytes ?? 0),
+      pinnedOriginalBytes: checkedBytes(requested.pinnedOriginalBytes ?? 0),
+    },
+    quotas: {
+      optimizedBytes: entitlements.libraryQuotaBytes,
+      temporaryOriginalBytes: entitlements.temporaryOriginalQuotaBytes,
+      pinnedOriginalBytes: entitlements.pinnedOriginalQuotaBytes,
+    },
+  });
+}
+
 export async function reconcileAccountStorageUsage(
   ctx: BaseMutationCtx,
   userId: Id<"users">,
