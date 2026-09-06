@@ -107,6 +107,7 @@ Set secrets in Wrangler or the Cloudflare dashboard:
 - `SUPER_ADMIN_EMAILS`
 - `OPENAI_API_KEY`
 - R2 credentials used by generation and asset stabilization
+- `BILLING_WEBHOOK_SECRET` for normalized subscription event authentication
 
 R2 storage is separated by access boundary in every environment:
 
@@ -130,6 +131,13 @@ Private asset retention is enforced by the Convex lifecycle cron. R2 provides
 a delayed fallback only for the `temporary-originals/` prefix; never apply an
 expiration rule to `library/` or `pinned-originals/`. Run retention backfills
 before enabling lifecycle processing on an existing deployment.
+
+Subscription providers integrate through the Convex HTTP endpoint
+`/billing/webhook`. The provider adapter must send the normalized JSON contract
+documented in `docs/neotypelab_technical_architecture.md`, plus
+`x-neotypelab-timestamp` and `x-neotypelab-signature` headers. The signature is
+`v1=` followed by the lowercase HMAC-SHA256 hex digest of
+`<timestamp>.<raw-request-body>` using `BILLING_WEBHOOK_SECRET`.
 
 Convex stays deployed separately:
 

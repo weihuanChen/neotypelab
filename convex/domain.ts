@@ -244,6 +244,9 @@ export const vCreditActionType = v.union(
   v.literal("generate-multi-angle-preview"),
   v.literal("generate-high-fidelity-render"),
   v.literal("generation-refund"),
+  v.literal("keep-original"),
+  v.literal("keep-original-refund"),
+  v.literal("subscription-credit"),
   v.literal("campaign-code-redemption"),
   v.literal("admin-adjustment")
 );
@@ -453,6 +456,32 @@ export const vStorageReservationStatus = v.union(
   v.literal("released")
 );
 export type StorageReservationStatus = Infer<typeof vStorageReservationStatus>;
+
+export const vOriginalPinStatus = v.union(
+  v.literal("pending"),
+  v.literal("completed"),
+  v.literal("failed")
+);
+export type OriginalPinStatus = Infer<typeof vOriginalPinStatus>;
+
+export const vSubscriptionStatus = v.union(
+  v.literal("active"),
+  v.literal("canceling"),
+  v.literal("past-due"),
+  v.literal("canceled"),
+  v.literal("refunded")
+);
+export type SubscriptionStatus = Infer<typeof vSubscriptionStatus>;
+
+export const vBillingEventType = v.union(
+  v.literal("subscription.started"),
+  v.literal("subscription.renewed"),
+  v.literal("subscription.updated"),
+  v.literal("subscription.payment_failed"),
+  v.literal("subscription.canceled"),
+  v.literal("subscription.refunded")
+);
+export type BillingEventType = Infer<typeof vBillingEventType>;
 
 export const vStorageRetentionPolicy = v.union(
   v.literal("temporary-original"),

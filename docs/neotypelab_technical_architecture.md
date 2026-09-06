@@ -354,6 +354,58 @@ All modes preserve the current Master, Preview, and Thumbnail. A superseded
 version with a live public copy remains a valid version record until that
 publication is withdrawn.
 
+### Credits-based Original pinning
+
+`Keep Original` moves an eligible temporary Original into the
+`pinned-originals/` prefix. The operation first verifies the R2 object, then
+atomically reserves its real byte size and debits Credits. A successful copy
+changes the object to `pinned-original` accounting with permanent retention;
+a failed copy records one idempotent refund and releases the reservation.
+
+Pricing is based on verified object size: up to 8 MiB costs 10 Credits, up to
+20 MiB costs 20 Credits, and up to 50 MiB costs 40 Credits. Larger files are
+rejected instead of allowing a fixed price to create unbounded storage cost.
+The mutation also verifies that the user-confirmed quote still matches the
+actual size tier before charging.
+Pending operations older than 30 minutes are refunded by a 15-minute cron so
+an interrupted Node action cannot hold Credits or quota indefinitely.
+
+### Subscription billing boundary
+
+Subscriptions are provider-neutral records. A subscription entitlement grant
+references a versioned Pro or Studio profile; recurring Credits use a separate
+ledger keyed by subscription and billing-period start. Credit Pack orders do
+not create or modify subscriptions.
+
+Payment adapters POST normalized events to `/billing/webhook`. Requests carry
+`x-neotypelab-timestamp` as Unix seconds and `x-neotypelab-signature` as
+`v1=<hex HMAC-SHA256>` over `<timestamp>.<raw body>`, using
+`BILLING_WEBHOOK_SECRET`. Timestamps outside five minutes are rejected.
+
+```json
+{
+  "eventId": "evt_unique",
+  "provider": "provider-name",
+  "eventType": "subscription.renewed",
+  "externalSubscriptionId": "sub_unique",
+  "userId": "Convex user ID",
+  "planType": "pro",
+  "periodStart": 1788652800000,
+  "periodEnd": 1791244800000,
+  "monthlyCredits": 200,
+  "cancelAtPeriodEnd": false,
+  "occurredAt": 1788652800000
+}
+```
+
+Supported event types are `subscription.started`, `subscription.renewed`,
+`subscription.updated`, `subscription.payment_failed`,
+`subscription.canceled`, and `subscription.refunded`. Event IDs prevent replay;
+subscription plus period start prevents duplicate monthly Credits. Upgrades
+apply immediately, downgrades wait until renewal, cancellation and payment
+failure retain a 14-day grace period, and refunds revoke entitlement access
+immediately without forcing the account Credit balance below zero.
+
 ---
 
 ## 8. Deployment

@@ -550,6 +550,8 @@ function inferCreditSource(transaction: Doc<"creditTransactions">) {
   if (transaction.actionType === "starter-grant") return "starter";
   if (transaction.actionType === "campaign-code-redemption") return "activation-code";
   if (transaction.actionType === "generation-refund") return "refund";
+  if (transaction.actionType === "keep-original-refund") return "refund";
+  if (transaction.actionType === "keep-original") return "storage-spend";
   if (transaction.delta < 0) return "generation-spend";
   return transaction.actionType === "admin-adjustment" ? "admin-adjustment" : "admin-grant";
 }

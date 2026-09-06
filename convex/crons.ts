@@ -9,6 +9,12 @@ crons.interval(
   internal.storageLifecycleNode.runExpirationSweep
 );
 
+crons.interval(
+  "refund stale Original pin operations",
+  { minutes: 15 },
+  internal.originalPin.refundStale
+);
+
 crons.daily(
   "audit private storage orphans",
   { hourUTC: 3, minuteUTC: 20 },

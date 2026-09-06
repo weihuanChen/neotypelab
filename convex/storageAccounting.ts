@@ -27,7 +27,7 @@ export const viewerUsage = query({
     if (ctx.viewer === null) return null;
     const userId = ctx.viewerX()._id;
     const now = Date.now();
-    const [usage, entitlements, heldReservations] = await Promise.all([
+    const [usage, entitlements, heldReservations, pendingPins] = await Promise.all([
       ctx.db
         .query("accountStorageUsage")
         .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -37,6 +37,10 @@ export const viewerUsage = query({
         .query("storageReservations")
         .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "held"))
         .collect(),
+      ctx.db
+        .query("originalPinOperations")
+        .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "pending"))
+        .collect(),
     ]);
     const activeReserved = heldReservations
       .filter((reservation) => reservation.heldUntil >= now)
@@ -44,6 +48,10 @@ export const viewerUsage = query({
         (total, reservation) => addAmounts(total, reservationAmounts(reservation)),
         zeroAmounts()
       );
+    activeReserved.pinnedOriginalBytes += pendingPins.reduce(
+      (sum, operation) => sum + checkedBytes(operation.byteSize),
+      0
+    );
     return buildUsageResponse(
       {
         ...(usage ?? emptyUsage(userId)),
@@ -230,7 +238,7 @@ export async function assertPrivateStorageAdditionAllowed(
 ) {
   const now = Date.now();
   await reconcileAccountStorageUsage(ctx, userId, now);
-  const [usage, entitlements, held] = await Promise.all([
+  const [usage, entitlements, held, pendingPins] = await Promise.all([
     ctx.db
       .query("accountStorageUsage")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -240,11 +248,19 @@ export async function assertPrivateStorageAdditionAllowed(
       .query("storageReservations")
       .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "held"))
       .collect(),
+    ctx.db
+      .query("originalPinOperations")
+      .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "pending"))
+      .collect(),
   ]);
   if (!usage) throw new Error("Storage usage account could not be initialized");
   const reserved = held
     .filter((reservation) => reservation.heldUntil >= now)
     .reduce((total, reservation) => addAmounts(total, reservationAmounts(reservation)), zeroAmounts());
+  reserved.pinnedOriginalBytes += pendingPins.reduce(
+    (sum, operation) => sum + checkedBytes(operation.byteSize),
+    0
+  );
   assertWithinQuota({
     used: usageAmounts(usage),
     reserved,
@@ -267,7 +283,7 @@ export async function reconcileAccountStorageUsage(
   now = Date.now()
 ) {
   await releaseExpiredUserReservations(ctx, userId, now);
-  const [objects, heldReservations, existing] = await Promise.all([
+  const [objects, heldReservations, pendingPins, existing] = await Promise.all([
     ctx.db
       .query("storageObjects")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -275,6 +291,10 @@ export async function reconcileAccountStorageUsage(
     ctx.db
       .query("storageReservations")
       .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "held"))
+      .collect(),
+    ctx.db
+      .query("originalPinOperations")
+      .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "pending"))
       .collect(),
     ctx.db
       .query("accountStorageUsage")
@@ -288,6 +308,10 @@ export async function reconcileAccountStorageUsage(
       (total, reservation) => addAmounts(total, reservationAmounts(reservation)),
       zeroAmounts()
     );
+  reserved.pinnedOriginalBytes += pendingPins.reduce(
+    (sum, operation) => sum + checkedBytes(operation.byteSize),
+    0
+  );
   const record = {
     optimizedUsedBytes: used.optimizedBytes,
     temporaryOriginalUsedBytes: used.temporaryOriginalBytes,
@@ -314,7 +338,7 @@ async function holdGenerationReservation(
 ) {
   const now = Date.now();
   await reconcileAccountStorageUsage(ctx, userId, now);
-  const [usage, entitlements, existing, held] = await Promise.all([
+  const [usage, entitlements, existing, held, pendingPins] = await Promise.all([
     ctx.db
       .query("accountStorageUsage")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -328,6 +352,10 @@ async function holdGenerationReservation(
       .query("storageReservations")
       .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "held"))
       .collect(),
+    ctx.db
+      .query("originalPinOperations")
+      .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "pending"))
+      .collect(),
   ]);
   if (!usage) throw new Error("Storage usage account could not be initialized");
   if (existing?.status === "settled") {
@@ -339,6 +367,10 @@ async function holdGenerationReservation(
       (total, reservation) => addAmounts(total, reservationAmounts(reservation)),
       zeroAmounts()
     );
+  otherReserved.pinnedOriginalBytes += pendingPins.reduce(
+    (sum, operation) => sum + checkedBytes(operation.byteSize),
+    0
+  );
   assertWithinQuota({
     used: usageAmounts(usage),
     reserved: otherReserved,

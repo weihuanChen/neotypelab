@@ -1495,23 +1495,30 @@
 .library-asset-storage { display: grid; border-top: var(--rule-hair) solid var(--color-ink); }
 .library-asset-storage__head,
 .library-original-row,
-.library-version-row { display: flex; min-height: 2.8rem; align-items: center; justify-content: space-between; gap: var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.library-version-row,
+.library-keep-original { display: flex; min-height: 2.8rem; align-items: center; justify-content: space-between; gap: var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .library-asset-storage__head > span { color: var(--color-muted); font-family: var(--font-mono); font-size: 0.66rem; }
 .library-original-row > div:first-child,
-.library-version-row > div:first-child { display: grid; min-width: 0; gap: 0.15rem; }
+.library-version-row > div:first-child,
+.library-keep-original > div:first-child { display: grid; min-width: 0; gap: 0.15rem; }
 .library-original-row strong,
-.library-version-row strong { font-size: 0.75rem; }
+.library-version-row strong,
+.library-keep-original strong { font-size: 0.75rem; }
 .library-original-row span,
-.library-version-row span { overflow: hidden; color: var(--color-muted); font-size: 0.67rem; text-overflow: ellipsis; white-space: nowrap; }
+.library-version-row span,
+.library-keep-original span { overflow: hidden; color: var(--color-muted); font-size: 0.67rem; text-overflow: ellipsis; white-space: nowrap; }
 .library-original-row__actions { display: flex; flex: 0 0 auto; }
 .library-original-row__actions button { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; border: 0; border-left: var(--rule-hair) solid var(--color-rule); background: transparent; color: var(--color-muted); cursor: pointer; }
 .library-original-row__actions button:hover:not(:disabled) { background: var(--color-paper-2); color: var(--color-ink); }
 .library-original-row__actions button:last-child:hover:not(:disabled) { color: var(--color-danger); }
 .library-version-row > button { border: 0; background: transparent; color: var(--color-accent); cursor: pointer; font-size: 0.68rem; }
+.library-keep-original > button { display: inline-flex; min-height: 2.2rem; flex: 0 0 auto; align-items: center; gap: 0.35rem; border: var(--rule-hair) solid var(--color-ink); background: var(--color-ink); padding: 0 0.65rem; color: var(--color-paper); cursor: pointer; font-size: 0.68rem; }
+.library-keep-original > button:hover:not(:disabled) { background: var(--color-accent); }
 .library-space-saver { display: inline-flex; min-height: 2.6rem; align-items: center; justify-content: center; gap: 0.4rem; border: 0; border-bottom: var(--rule-hair) solid var(--color-ink); background: var(--color-paper-2); color: var(--color-ink); cursor: pointer; font-family: var(--font-label); font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .library-space-saver:hover:not(:disabled) { background: var(--color-ink); color: var(--color-paper); }
 .library-original-row button:disabled,
 .library-version-row button:disabled,
+.library-keep-original button:disabled,
 .library-space-saver:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .library-inspector__primary-actions .ghost-button {

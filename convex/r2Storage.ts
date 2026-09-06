@@ -5,6 +5,7 @@ import {
   DeleteObjectCommand,
   GetBucketLifecycleConfigurationCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutBucketLifecycleConfigurationCommand,
   PutObjectCommand,
@@ -64,6 +65,21 @@ export async function deleteR2Object(role: R2BucketRole, key: string) {
       Key: key,
     })
   );
+}
+
+export async function headR2Object(role: R2BucketRole, key: string) {
+  const config = getR2ConnectionConfig();
+  const result = await createR2Client(config).send(
+    new HeadObjectCommand({
+      Bucket: config.buckets[role],
+      Key: key,
+    })
+  );
+  return {
+    byteSize: result.ContentLength,
+    contentType: result.ContentType,
+    etag: result.ETag,
+  };
 }
 
 export async function listR2Objects({

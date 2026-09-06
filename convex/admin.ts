@@ -1444,6 +1444,8 @@ function inferCreditSourceType(actionType: CreditActionType) {
   if (actionType === "starter-grant") return "starter" as const;
   if (actionType === "campaign-code-redemption") return "activation-code" as const;
   if (actionType === "generation-refund") return "refund" as const;
+  if (actionType === "keep-original-refund") return "refund" as const;
+  if (actionType === "keep-original") return "storage-spend" as const;
   if (actionType === "admin-adjustment") return "admin-adjustment" as const;
   return "generation-spend" as const;
 }

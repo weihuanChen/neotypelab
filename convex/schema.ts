@@ -8,6 +8,7 @@ import {
   vAssetStatus,
   vAssetVersionOrigin,
   vAssetVersionStatus,
+  vBillingEventType,
   vConceptInteractionKind,
   vConceptStatus,
   vConceptVisibility,
@@ -30,6 +31,7 @@ import {
   vMediaAssetStatus,
   vModelCatalogStatus,
   vMoodTag,
+  vOriginalPinStatus,
   vOrderItemType,
   vOrderStatus,
   vPaintFinishRenderPriority,
@@ -49,6 +51,7 @@ import {
   vStorageObjectStatus,
   vStorageOrphanStatus,
   vStorageRetentionPolicy,
+  vSubscriptionStatus,
   vStorageReservationStatus,
   vTemplateVersionPolicy,
   vSprayPlanStatus,
@@ -350,6 +353,8 @@ const schema = defineSchema({
       v.literal("refund"),
       v.literal("activation-code"),
       v.literal("generation-spend"),
+      v.literal("storage-spend"),
+      v.literal("subscription"),
       v.literal("starter")
     )),
     reasonCode: v.optional(v.string()),
@@ -477,6 +482,8 @@ const schema = defineSchema({
     userId: v.id("users"),
     sourceType: vEntitlementGrantSource,
     sourceReference: v.optional(v.string()),
+    entitlementProfileId: v.optional(v.id("entitlementProfiles")),
+    subscriptionId: v.optional(v.id("subscriptions")),
     libraryQuotaBytesDelta: v.optional(v.number()),
     temporaryOriginalQuotaBytesDelta: v.optional(v.number()),
     pinnedOriginalQuotaBytesDelta: v.optional(v.number()),
@@ -498,6 +505,56 @@ const schema = defineSchema({
     .index("by_userId", ["userId"])
     .index("by_user_startsAt", ["userId", "startsAt"])
     .index("by_source", ["sourceType", "sourceReference"]),
+
+  subscriptions: defineTable({
+    userId: v.id("users"),
+    provider: v.string(),
+    externalSubscriptionId: v.string(),
+    planType: vUserPlan,
+    pendingPlanType: v.optional(vUserPlan),
+    pendingPlanEffectiveAt: v.optional(v.number()),
+    status: vSubscriptionStatus,
+    currentPeriodStart: v.number(),
+    currentPeriodEnd: v.number(),
+    cancelAtPeriodEnd: v.boolean(),
+    gracePeriodEndsAt: v.optional(v.number()),
+    entitlementGrantId: v.optional(v.id("accountEntitlementGrants")),
+    latestEventOccurredAt: v.number(),
+    endedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_externalSubscriptionId", ["externalSubscriptionId"])
+    .index("by_provider_external", ["provider", "externalSubscriptionId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_userId", ["userId"]),
+
+  subscriptionCreditGrants: defineTable({
+    subscriptionId: v.id("subscriptions"),
+    userId: v.id("users"),
+    periodStart: v.number(),
+    creditAmount: v.number(),
+    creditTransactionId: v.id("creditTransactions"),
+    billingEventId: v.string(),
+    grantedAt: v.number(),
+  })
+    .index("by_subscription_period", ["subscriptionId", "periodStart"])
+    .index("by_userId", ["userId"]),
+
+  billingWebhookEvents: defineTable({
+    eventId: v.string(),
+    provider: v.string(),
+    eventType: vBillingEventType,
+    externalSubscriptionId: v.string(),
+    occurredAt: v.number(),
+    payloadJson: v.string(),
+    outcome: v.union(v.literal("processed"), v.literal("ignored-stale")),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    processedAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_provider_event", ["provider", "eventId"])
+    .index("by_externalSubscriptionId", ["externalSubscriptionId"]),
 
   accountStorageUsage: defineTable({
     userId: v.id("users"),
@@ -531,6 +588,26 @@ const schema = defineSchema({
     .index("by_generationJobId", ["generationJobId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_status_heldUntil", ["status", "heldUntil"]),
+
+  originalPinOperations: defineTable({
+    userId: v.id("users"),
+    storageObjectId: v.id("storageObjects"),
+    status: vOriginalPinStatus,
+    sourceKey: v.string(),
+    destinationKey: v.string(),
+    byteSize: v.number(),
+    creditCost: v.number(),
+    debitTransactionId: v.optional(v.id("creditTransactions")),
+    refundTransactionId: v.optional(v.id("creditTransactions")),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+  })
+    .index("by_storageObjectId", ["storageObjectId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_status_updatedAt", ["status", "updatedAt"]),
 
   assets: defineTable({
     userId: v.id("users"),
@@ -612,6 +689,8 @@ const schema = defineSchema({
     height: v.optional(v.number()),
     checksum: v.optional(v.string()),
     etag: v.optional(v.string()),
+    pinCreditTransactionId: v.optional(v.id("creditTransactions")),
+    pinnedAt: v.optional(v.number()),
     publicUrl: v.optional(v.string()),
     status: vStorageObjectStatus,
     createdAt: v.number(),

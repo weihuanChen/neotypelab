@@ -23,3 +23,4 @@ Git history is not available in this checkout, so no repository-specific commit 
 
 ## Security & Configuration Tips
 Keep secrets in `.env.local`, which is gitignored. Current local config relies on Convex and R2-related variables such as `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `R2_BUCKET_PUBLIC`, `R2_BUCKET_PRIVATE`, `R2_END_POINT`, `R2_ACCESS_KEY_ID`, and `R2_PUBLIC_BASE_URL`; immediate CDN removal additionally uses `CLOUDFLARE_CACHE_PURGE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN`. Document any new required keys in `README.md` and this guide when setup changes.
+Subscription event ingestion additionally requires `BILLING_WEBHOOK_SECRET` in the Convex environment.

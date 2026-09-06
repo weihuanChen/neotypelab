@@ -45,7 +45,7 @@ import {
   useQuery,
 } from "convex/react";
 import { useState, useEffect } from "react";
-import { DownloadIcon, LightningBoltIcon, TrashIcon } from "@radix-ui/react-icons";
+import { DownloadIcon, LightningBoltIcon, LockClosedIcon, TrashIcon } from "@radix-ui/react-icons";
 import type { FunctionReturnType } from "convex/server";
 import type { LibrarySearch } from "./librarySearch";
 
@@ -877,7 +877,10 @@ function LibraryConceptFocus({
   originalDownloadAllowed: boolean;
 }) {
   const createPrivateDownloadUrl = useAction(api.assetNode.createPrivateDownloadUrl);
+  const keepOriginal = useAction(api.originalPinNode.keepOriginal);
   const [downloadingOriginal, setDownloadingOriginal] = useState(false);
+  const [pinningOriginal, setPinningOriginal] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const privatePreviewUrl = usePrivateAssetUrl(
     concept.previewAsset?.publicUrl ? null : concept.previewAsset?.storageObjectId
@@ -891,6 +894,10 @@ function LibraryConceptFocus({
     renderingState?.conceptId === concept._id;
   const assetStorage = concept.assetStorage;
   const original = assetStorage?.currentOriginal;
+  const pinQuote = useQuery(
+    api.originalPin.quote,
+    original ? { storageObjectId: original.storageObjectId } : "skip"
+  );
   const storageBusy = cleaningAssetId === assetStorage?.mediaAssetId;
 
   async function downloadOriginal() {
@@ -925,6 +932,26 @@ function LibraryConceptFocus({
       mode,
       oldVersionCount: assetStorage.oldVersionCount,
     });
+  }
+
+  async function confirmKeepOriginal() {
+    if (!original || !pinQuote?.eligible || pinQuote.creditCost === null) return;
+    setPinDialogOpen(false);
+    setPinningOriginal(true);
+    setStorageError(null);
+    try {
+      const result = await keepOriginal({
+        storageObjectId: original.storageObjectId,
+        expectedCreditCost: pinQuote.creditCost,
+      });
+      if (!result.sourceCleaned) {
+        setStorageError("Original was kept, but the temporary source copy still needs storage cleanup.");
+      }
+    } catch (error) {
+      setStorageError(error instanceof Error ? error.message : "Keep Original failed and the credits were refunded");
+    } finally {
+      setPinningOriginal(false);
+    }
   }
 
   function renderLabel(
@@ -1015,9 +1042,35 @@ function LibraryConceptFocus({
               <div><strong>Old versions</strong><span>{assetStorage.oldVersionCount > 0 ? `${assetStorage.oldVersionCount} · ${formatStorageBytes(assetStorage.oldVersionBytes)}` : "No removable versions"}</span></div>
               <button disabled={storageBusy || assetStorage.oldVersionCount === 0} onClick={() => requestCleanup("clean-old-versions")} type="button">Clean old versions</button>
             </div>
+            {original && original.retentionPolicy !== "permanent-original" ? (
+              <div className="library-keep-original">
+                <div>
+                  <strong>Keep Original</strong>
+                  <span>{pinQuote === undefined ? "Calculating price" : pinQuote?.eligible ? `Move to Pinned Original storage · ${pinQuote.creditCost} credits` : pinQuote?.reason ?? "Unavailable"}</span>
+                </div>
+                <button disabled={pinningOriginal || !pinQuote?.eligible} onClick={() => setPinDialogOpen(true)} type="button"><LockClosedIcon />{pinningOriginal ? "Keeping" : pinQuote?.creditCost ? `${pinQuote.creditCost} credits` : "Unavailable"}</button>
+              </div>
+            ) : null}
             <button className="library-space-saver" disabled={storageBusy || (!original && assetStorage.oldVersionCount === 0)} onClick={() => requestCleanup("space-saver")} type="button"><LightningBoltIcon />{storageBusy ? "Cleaning storage" : "Space Saver"}</button>
           </section>
         ) : null}
+
+        <AlertDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
+          <AlertDialogContent className="border-line-secondary bg-panel text-ink-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Keep this Original?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {pinQuote?.creditCost ?? 0} credits will be charged and {formatStorageBytes(original?.byteSize ?? 0)} will move to Pinned Original storage. The file remains stored while pinned quota is available.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-line-secondary bg-transparent text-ink-primary hover:bg-hover-subtle hover:text-ink-primary">Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={!pinQuote?.eligible || pinningOriginal} className="border border-line-primary bg-[var(--color-ink)] text-[var(--color-paper)] hover:opacity-90" onClick={() => { void confirmKeepOriginal(); }}>
+                Keep for {pinQuote?.creditCost ?? 0} credits
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <div className="library-inspector__primary-actions">
           <GhostButton href={`/prototype/${concept._id}`}>Open prototype</GhostButton>

@@ -17,6 +17,7 @@ export function DashboardOverview() {
   const viewer = useQuery(api.users.viewer);
   const transactions = useQuery(api.credits.listViewerTransactions);
   const orders = useQuery(api.orders.listMine);
+  const subscription = useQuery(api.subscriptions.viewerCurrent);
   const sprayPlans = useQuery(api.sprayPlans.listMine);
   const paints = useQuery(api.paintBench.listCatalog);
   const redeemActivationCode = useMutation(api.creditCampaigns.redeemActivationCode);
@@ -110,6 +111,11 @@ export function DashboardOverview() {
             </div>
           </section>
 
+          <SubscriptionPanel
+            effectivePlan={viewer?.entitlements.planType ?? viewer?.planType ?? "free"}
+            subscription={subscription}
+          />
+
           <OrdersPanel compact orders={orders ?? []} onViewAll={() => setSection("orders")} />
 
           <section className="studio-tools">
@@ -162,6 +168,31 @@ export function DashboardOverview() {
 
 type PlanEntry = { roleSlug: string; roleName: string; suggestedPaint?: { code: string; colorName: string } | null };
 
+function SubscriptionPanel({ effectivePlan, subscription }: {
+  effectivePlan: string;
+  subscription: {
+    planType: string;
+    pendingPlanType?: string;
+    pendingPlanEffectiveAt?: number;
+    status: string;
+    currentPeriodEnd: number;
+    cancelAtPeriodEnd: boolean;
+    gracePeriodEndsAt?: number;
+  } | null | undefined;
+}) {
+  return (
+    <section className="studio-subscription">
+      <header className="studio-section-head"><span>Plan & entitlements</span><small>Credits remain a separate balance</small></header>
+      <dl>
+        <div><dt>Effective plan</dt><dd>{formatLabel(effectivePlan)}</dd></div>
+        <div><dt>Subscription</dt><dd>{subscription === undefined ? "Loading" : subscription ? formatLabel(subscription.status) : "No subscription"}</dd></div>
+        <div><dt>Current period</dt><dd>{subscription ? `Ends ${formatDate(subscription.currentPeriodEnd)}` : "Credit packs only"}</dd></div>
+        <div><dt>Next change</dt><dd>{subscription?.pendingPlanType ? `${formatLabel(subscription.pendingPlanType)} on ${formatDate(subscription.pendingPlanEffectiveAt ?? subscription.currentPeriodEnd)}` : subscription?.cancelAtPeriodEnd ? `Cancellation after ${formatDate(subscription.currentPeriodEnd)}` : subscription?.status === "past-due" && subscription.gracePeriodEndsAt ? `Grace through ${formatDate(subscription.gracePeriodEndsAt)}` : "None scheduled"}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
 function OrdersPanel({ compact = false, onViewAll, orders }: { compact?: boolean; onViewAll?: () => void; orders: Array<OrderRecord> }) {
   return (
     <section className={compact ? "studio-orders is-compact" : "studio-orders"} role="tabpanel">
@@ -180,6 +211,7 @@ function StudioEmpty({ compact = false, copy, href, link, title }: { compact?: b
 
 function formatDate(value: number) { return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(value); }
 function formatMoney(value: number, currency: string) { return new Intl.NumberFormat("en", { style: "currency", currency }).format(value / 100); }
+function formatLabel(value: string) { return value.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "); }
 function creditActionLabel(action: string) { return ({ "starter-grant": "Account activated", "campaign-code-redemption": "Activation code redeemed", "generation-refund": "Generation refund", "admin-adjustment": "Account adjustment" } as Record<string, string>)[action] ?? action.replaceAll("-", " "); }
 function creditActivityDescription(action: string, balanceAfter: number, description?: string) {
   if (action === "starter-grant") return `Starter credit balance established at ${balanceAfter}.`;
