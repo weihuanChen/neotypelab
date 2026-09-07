@@ -593,7 +593,7 @@ function enumValue<const T extends readonly string[]>(
     );
     return undefined;
   }
-  return value as T[number];
+  return value;
 }
 
 function booleanValue(

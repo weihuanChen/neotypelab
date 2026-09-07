@@ -1,12 +1,7 @@
 import { ConvexHttpClient } from "convex/browser";
 
 export function getConvexDeploymentUrl() {
-  return (
-    process.env.NEXT_PUBLIC_CONVEX_URL ??
-    process.env.VITE_CONVEX_URL ??
-    process.env.CONVEX_URL ??
-    null
-  );
+  return import.meta.env.VITE_CONVEX_URL || null;
 }
 
 export function createConvexHttpClient() {

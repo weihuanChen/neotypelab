@@ -1,9 +1,9 @@
 # TanStack Migration Backlog
 
-Last updated: 2026-06-16
+Last updated: 2026-09-07
 
-This document tracks the remaining migration work from the retained Next App
-Router fallback in `app/` into the TanStack Start production path in `src/`.
+This document is the historical record of the completed migration from the Next
+App Router into the TanStack Start production path in `src/`.
 
 ## How To Update
 
@@ -195,18 +195,11 @@ polish that is migration-adjacent but not blocking.
   - Source fallback: `app/`
   - TanStack target: repository cleanup plan
   - Scope:
-    - after all P0/P1 parity gaps are closed, decide whether to keep
-      `build:next` as a fallback
-    - if retained, define ownership and freeze rules
-    - if removed, delete stale routes and dependencies safely
-  - Completed: 2026-06-16
+    - delete stale Next routes, scripts, and dependencies after parity checks
+  - Completed: 2026-09-07
   - Commit: pending local changes
-  - Notes: Retained the Next App Router tree as an isolated fallback/reference
-    instead of deleting it in this batch. TanStack now loads copied global
-    runtime styles from `src/styles/globals.css` instead of importing
-    `app/globals.css`, so the production route tree no longer depends on the
-    fallback CSS entrypoint. Next dependencies and `build:next`/`start:next`
-    stay available only for fallback verification.
+  - Notes: Removed the Next App Router tree, Next-only shared components,
+    middleware, configuration, scripts, dependencies, and environment fallbacks.
 
 - [x] `M-P3-02` Expand social/export formats beyond the migrated baseline.
   - Source fallback: first-generation prototype export routes

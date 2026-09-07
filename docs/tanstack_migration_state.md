@@ -1,6 +1,6 @@
 # TanStack Migration State
 
-Last updated: 2026-06-16
+Last updated: 2026-09-07
 
 TanStack Start under `src/` is the canonical frontend implementation for
 NeotypeLab. Cloudflare Workers is the default production deployment path, with
@@ -17,52 +17,26 @@ Convex as the canonical backend.
   `convex/`.
 - Shared low-level UI primitives remain in `components/ui`.
 
-## Retained Next Fallback
+## Runtime Retirement
 
-The `app/` tree is retained as a migration fallback and reference snapshot. It
-is not the active production implementation.
-
-P3 decision: keep the fallback available, but isolate it from the TanStack
-runtime. Do not delete `app/` or remove Next dependencies until there is an
-explicit cleanup task for removing fallback verification entirely.
-
-Fallback ownership rules:
-
-- Do not add new product features only in `app/`.
-- If a fallback route receives a useful fix, port the useful behavior into
-  `src/` in the same migration batch.
-- Do not import Next-specific components or hooks into `src/`.
-- Do not import fallback runtime assets from `app/` into the TanStack route
-  tree. Shared or still-needed assets should live under `src/` or
-  `components/`.
-- Treat `build:next` and `start:next` as fallback verification commands, not
-  release gates.
+The Next App Router fallback, middleware, configuration, scripts, and
+dependencies were removed on 2026-09-07 after route parity, production builds,
+and authenticated Clerk-to-Convex E2E coverage passed. `src/` is the only
+frontend runtime boundary.
 
 The active TanStack root loads global runtime styles from
 `src/styles/globals.css` and product/application styles from
 `src/styles/app.css`.
-
-## `app/layouts/*`
-
-`app/layouts/*` is a Next-only scaffold/demo area for sticky layout experiments.
-It is not product IA, not linked from the TanStack route tree, and is not being
-migrated into `src/`.
-
-Decision for P2:
-
-- Keep it out of the TanStack migration scope.
-- Do not port these demos unless a future product task explicitly needs one of
-  the patterns.
-- Deletion or archival belongs to the later fallback-retirement step.
 
 ## Current Verification Baseline
 
 Minimum checks for migration batches:
 
 ```bash
-npx tsc --noEmit
+npm run lint
+npm test
 npm run build
 ```
 
-Use `npm run dev:tanstack` for route smoke checks. The default dev port is
+Use `npm run dev:frontend` for route smoke checks. The default dev port is
 `3001`; Vite may choose another port if it is already in use.

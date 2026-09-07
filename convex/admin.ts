@@ -1608,7 +1608,7 @@ export const listPromptExperimentRunRegistry = query({
     );
     const users = await Promise.all(runUsers.map((userId) => ctx.db.get(userId)));
     const userById = new Map(
-      users.filter((user) => user !== null).map((user) => [user!._id, user!])
+      users.filter((user) => user !== null).map((user) => [user._id, user])
     );
     const serialize = (run: (typeof allRuns)[number]) => {
       const actor = userById.get(run.userId);

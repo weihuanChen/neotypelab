@@ -27,7 +27,7 @@ export const getShowcaseSnapshot = createServerFn({ method: "GET" }).handler(
         status: "missing-env",
         ...emptyShowcaseData,
         message:
-          "NEXT_PUBLIC_CONVEX_URL or VITE_CONVEX_URL is required for SSR Convex reads.",
+          "VITE_CONVEX_URL is required for SSR Convex reads.",
       };
     }
 

@@ -774,7 +774,15 @@ function searchable(item: IpSeriesItem | BaseUnitItem | KitVariantItem) {
 function normalize(value: string) { return value.trim().toLocaleLowerCase(); }
 function passes(status: ModelCatalogStatus, filter: StatusFilter) { return filter === "all" || status === filter; }
 function same(left: RecordSelection | null, right: RecordSelection) { return left?.id === right.id && left.type === right.type; }
-function toggle(current: Set<string>, key: string) { const next = new Set(current); next.has(key) ? next.delete(key) : next.add(key); return next; }
+function toggle(current: Set<string>, key: string) {
+  const next = new Set(current);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  return next;
+}
 function omit<T>(record: Record<string, T>, key: string) { const next = { ...record }; delete next[key]; return next; }
 function optional(value: string) { const normalized = value.trim(); return normalized ? normalized : undefined; }
 function recordName(data: ModelCatalogData, selection: RecordSelection) { if (selection.id === "new") return null; if (selection.type === "ipSeries") return data.ipSeries.find((item) => item._id === selection.id)?.name ?? null; if (selection.type === "baseUnit") return data.baseUnits.find((item) => item._id === selection.id)?.name ?? null; return data.kitVariants.find((item) => item._id === selection.id)?.name ?? null; }

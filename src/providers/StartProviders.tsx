@@ -26,12 +26,9 @@ const ProviderStatusContext = createContext<ProviderStatus>({
   hasConvexClient: false,
 });
 
-const clerkPublishableKey =
-  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-const convexUrl =
-  import.meta.env.NEXT_PUBLIC_CONVEX_URL ?? import.meta.env.VITE_CONVEX_URL;
+const convexUrl = import.meta.env.VITE_CONVEX_URL;
 
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 

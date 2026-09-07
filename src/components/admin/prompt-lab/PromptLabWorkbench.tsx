@@ -290,7 +290,7 @@ export function PromptLabWorkbench({
       action: async () => {
         if (!promptLabArgs) throw new Error("Select a prompt template before composing.");
         const response = await composePromptLabPreview(promptLabArgs);
-        setResult(response as PromptLabResult);
+        setResult(response);
       },
     });
 

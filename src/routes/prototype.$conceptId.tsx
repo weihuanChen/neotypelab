@@ -25,7 +25,7 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
         status: "missing-env",
         concept: null,
         message:
-          "NEXT_PUBLIC_CONVEX_URL or VITE_CONVEX_URL is required for SSR Convex reads.",
+          "VITE_CONVEX_URL is required for SSR Convex reads.",
         meta,
         structuredData: null,
       };

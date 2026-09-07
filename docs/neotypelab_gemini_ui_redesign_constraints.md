@@ -102,10 +102,10 @@ export const colors = {
 
 Gemini may edit frontend presentation files only:
 
-- `app/**/*.tsx` for page, layout, loading, public surface, OG/export visual components, and client view presentation
+- `src/**/*.tsx` for routes, layouts, public surfaces, OG/export components, and client presentation
 - `components/**/*.tsx` for presentational React components
 - `components/ui/**/*.tsx` for visual primitive styling only
-- `app/globals.css`
+- `src/styles/globals.css`
 - `tailwind.config.js`
 - `components.json` only if strictly needed for shadcn visual configuration
 - new frontend-only presentational components under `components/`

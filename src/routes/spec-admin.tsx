@@ -1,10 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/t_/template")({
-  beforeLoad: ({ location }) => {
+export const Route = createFileRoute("/spec-admin")({
+  beforeLoad: () => {
     throw redirect({
-      to: "/admin/templates",
-      search: location.search as never,
+      to: "/spec-admin/materials",
       replace: true,
       statusCode: 301,
     });

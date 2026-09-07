@@ -228,7 +228,13 @@ export function FeedbackWorkbench({
               </div>
             </article>
           ) : (
-            <form className="feedback-form" onSubmit={onSubmit} noValidate>
+            <form
+              className="feedback-form"
+              onSubmit={(event) => {
+                void onSubmit(event);
+              }}
+              noValidate
+            >
               <fieldset className="feedback-step feedback-type-step">
                 <legend>
                   <span>01 /</span> What do you need?

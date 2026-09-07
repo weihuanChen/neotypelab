@@ -1,7 +1,6 @@
 export function getSiteUrl(request?: Request) {
   const configured = firstConfiguredValue(
-    process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.VITE_SITE_URL,
+    import.meta.env.VITE_SITE_URL,
     process.env.SITE_URL,
     process.env.CF_PAGES_URL,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined

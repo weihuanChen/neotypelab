@@ -14,13 +14,8 @@ NeotypeLab is built with:
 - `Clerk` for authentication, bridged into Convex auth
 - `R2` for generated assets and public preview delivery
 
-The old Next App Router tree under `app/` is retained only as a migration
-fallback/reference snapshot.
-
-P3 isolation keeps that fallback available without making the TanStack runtime
-depend on it. Global runtime styles used by TanStack live in
-`src/styles/globals.css`; `app/globals.css` belongs to the retained Next
-fallback.
+The former Next App Router fallback has been retired. Global runtime styles live
+in `src/styles/globals.css`.
 
 ---
 
@@ -39,8 +34,6 @@ Implemented production surfaces include:
 - shared terminal navigation/readout shell for TanStack routes
 - Convex domain modules for product catalog, concepts, generation jobs, credits,
   feedback, public engagement, recommendations, shopping, and feasibility
-
-The retained `app/` tree is not the production source of truth.
 
 ---
 
@@ -106,11 +99,6 @@ Canonical frontend ownership:
 - `src/lib` for TanStack-safe server/client helpers
 - `components/ui` for shared low-level UI primitives
 
-The `app/layouts/*` directory is a retained Next-only layout demo/scaffold area.
-It is not product IA and is not being migrated into TanStack.
-
----
-
 ## 5. Auth and Request Flow
 
 Current auth path:
@@ -164,12 +152,10 @@ base paint product selector.
 
 Common environment variables:
 
-- `NEXT_PUBLIC_SITE_URL`
-- `NEXT_PUBLIC_CONVEX_URL`
-- `VITE_CONVEX_URL` when using Vite-only local naming
+- `VITE_SITE_URL`
+- `VITE_CONVEX_URL`
 - `CONVEX_DEPLOYMENT`
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `VITE_CLERK_PUBLISHABLE_KEY` when using Vite-only local naming
+- `VITE_CLERK_PUBLISHABLE_KEY`
 - `CLERK_SECRET_KEY`
 - `CLERK_JWT_ISSUER_DOMAIN`
 - `SUPER_ADMIN_EMAILS`
@@ -188,7 +174,7 @@ Rules:
 
 - keep local secrets in `.env.local`
 - keep server-only keys out of client bundles
-- configure public `NEXT_PUBLIC_*` values for both build and Worker runtime
+- configure public `VITE_*` values at build time and rebuild when they change
 - set Worker secrets through Wrangler or the Cloudflare dashboard
 - use `R2_PUBLIC_BASE_URL` only for public distribution objects
 - authorize private asset requests before returning a short-lived S3 presigned URL
@@ -420,21 +406,14 @@ npm run deploy
 Equivalent explicit path:
 
 ```bash
-npm run build:tanstack
-npm run deploy:tanstack
+npm run build
+npm run deploy
 ```
 
 Convex deploys separately:
 
 ```bash
 npx convex deploy
-```
-
-The retained Next build is fallback-only:
-
-```bash
-npm run build:next
-npm run start:next
 ```
 
 ---
@@ -467,8 +446,8 @@ Recommended smoke routes:
 
 ## 10. Migration Notes
 
-Do not add new product behavior only in `app/`. If a useful fallback fix lands
-there, port the behavior into `src/` and document the migration state.
+The Next runtime was removed after route parity and authenticated workflow
+verification. New frontend behavior belongs in `src/`.
 
 See `docs/tanstack_migration_backlog.md` for task tracking and
 `docs/tanstack_migration_state.md` for ownership rules.

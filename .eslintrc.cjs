@@ -1,28 +1,41 @@
 module.exports = {
+  plugins: ["jsx-a11y"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended-type-checked",
-    "next/core-web-vitals",
+    "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
+    "plugin:react-hooks/recommended",
   ],
+  env: {
+    browser: true,
+    es2022: true,
+    node: true,
+  },
   ignorePatterns: [
     ".eslintrc.cjs",
     "convex/_generated",
+    "convex/**/*.test.ts",
     "src/routeTree.gen.ts",
     // There are currently ESLint errors in shadcn/ui
     "components/ui",
   ],
   overrides: [
     {
-      files: ["src/**/*.{ts,tsx}"],
+      files: ["src/routes/**/*.{ts,tsx}"],
       rules: {
-        "@next/next/no-head-element": "off",
-        "@next/next/no-img-element": "off",
+        "@typescript-eslint/only-throw-error": "off",
       },
     },
   ],
   parserOptions: {
     project: true,
     tsconfigRootDir: __dirname,
+  },
+  settings: {
+    react: {
+      version: "detect",
+    },
   },
   rules: {
     // All of these overrides ease getting into
@@ -53,6 +66,9 @@ module.exports = {
     // for consistency (esp. Convex `handler`s)
     "@typescript-eslint/require-await": "off",
 
-    "@typescript-eslint/no-unnecessary-condition": "error",
+    "@typescript-eslint/no-unnecessary-condition": "warn",
+    "jsx-a11y/alt-text": "warn",
+    "jsx-a11y/aria-props": "error",
+    "jsx-a11y/role-has-required-aria-props": "warn",
   },
 };

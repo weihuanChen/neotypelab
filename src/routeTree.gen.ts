@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as SpecAdminRouteImport } from './routes/spec-admin'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
@@ -77,6 +78,11 @@ const TRoute = TRouteImport.update({
 const StudioRoute = StudioRouteImport.update({
   id: '/studio',
   path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpecAdminRoute = SpecAdminRouteImport.update({
+  id: '/spec-admin',
+  path: '/spec-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -384,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
@@ -444,6 +451,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
@@ -506,6 +514,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/spec-admin'
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
@@ -629,6 +639,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/spec-admin'
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
@@ -690,6 +701,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
+    | '/spec-admin'
     | '/studio'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
@@ -752,6 +764,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   ShowcaseRoute: typeof ShowcaseRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SpecAdminRoute: typeof SpecAdminRoute
   StudioRoute: typeof StudioRoute
   TRoute: typeof TRoute
   BaseModelSlugStylePresetSlugRoute: typeof BaseModelSlugStylePresetSlugRouteWithChildren
@@ -803,6 +816,13 @@ declare module '@tanstack/react-router' {
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spec-admin': {
+      id: '/spec-admin'
+      path: '/spec-admin'
+      fullPath: '/spec-admin'
+      preLoaderRoute: typeof SpecAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1269,6 +1289,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   ShowcaseRoute: ShowcaseRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SpecAdminRoute: SpecAdminRoute,
   StudioRoute: StudioRoute,
   TRoute: TRoute,
   BaseModelSlugStylePresetSlugRoute:

@@ -87,7 +87,12 @@ export function DashboardOverview() {
                 <div><dt>Granted</dt><dd>{viewer?.credits.lifetimeGranted ?? 0}</dd></div>
                 <div><dt>Used</dt><dd>{viewer?.credits.lifetimeSpent ?? 0}</dd></div>
               </dl>
-              <form className="studio-redeem" onSubmit={redeemCode}>
+              <form
+                className="studio-redeem"
+                onSubmit={(event) => {
+                  void redeemCode(event);
+                }}
+              >
                 <label htmlFor="activation-code">Activation code</label>
                 <div><input autoComplete="off" id="activation-code" onChange={(event) => setActivationCode(event.target.value)} placeholder="XXXX–XXXX–XXXX" value={activationCode} /><button disabled={isRedeeming || activationCode.trim().length === 0} type="submit">{isRedeeming ? "Redeeming" : "Redeem code"}</button></div>
               </form>

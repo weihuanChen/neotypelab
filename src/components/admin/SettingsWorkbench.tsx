@@ -502,12 +502,12 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
         action: bindingDraft.action,
         promptTemplateId: bindingDraft.promptTemplateId as TemplateId,
         versionPolicy: bindingDraft.versionPolicy,
-        promptTemplateVersionId:
+          promptTemplateVersionId:
           bindingDraft.versionPolicy === "pin-version" && bindingDraft.promptTemplateVersionId
-            ? (bindingDraft.promptTemplateVersionId as TemplateVersionId)
+            ? bindingDraft.promptTemplateVersionId
             : undefined,
         fallbackPromptTemplateId: bindingDraft.fallbackPromptTemplateId
-          ? (bindingDraft.fallbackPromptTemplateId as TemplateId)
+          ? bindingDraft.fallbackPromptTemplateId
           : undefined,
       });
       setStatusMessage(`${actionLabels[bindingDraft.action]} binding saved.`);

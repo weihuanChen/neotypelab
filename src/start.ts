@@ -1,10 +1,7 @@
 import { clerkMiddleware } from "@clerk/tanstack-react-start/server";
 import { createStart } from "@tanstack/react-start";
 
-const clerkPublishableKey =
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-  process.env.CLERK_PUBLISHABLE_KEY ??
-  process.env.VITE_CLERK_PUBLISHABLE_KEY;
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 export const startInstance = createStart(() => ({
   requestMiddleware:
