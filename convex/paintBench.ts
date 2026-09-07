@@ -1,10 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./functions";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 
 export const listCatalog = query({
   args: {},
   async handler(ctx) {
-    const paints = (await ctx.db.query("paintMappings").collect()).filter(
+    const paints = (await listResolvedPaintMappings(ctx)).filter(
       (paint) => paint.isActive
     );
     const benchItems =

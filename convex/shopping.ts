@@ -1,8 +1,31 @@
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { buildPaintPlan } from "./paintMappingEngine";
+import {
+  listResolvedPaintMappings,
+  type ResolvedPaintMapping,
+} from "./paintCatalogCompatibility";
+import { rankPaintMatches, type PaintMatchBand } from "./paintMatchingEngine";
 import { query } from "./functions";
 import { QueryCtx } from "./types";
+
+type BrandAlternative = {
+  mappingKey: string;
+  brand: string;
+  line?: string;
+  code: string;
+  colorName: string;
+  availabilityRegion?: string;
+  affiliateUrl?: string;
+  procurementStatus: "affiliate-ready" | "search-ready" | "region-limited";
+  purchaseSearchUrl: string;
+  deltaE00: number;
+  adjustedDistance: number;
+  confidence: number;
+  matchBand: PaintMatchBand;
+  method: "delta_e_2000";
+  warnings: string[];
+};
 
 export const getPublicConceptShoppingList = query({
   args: {
@@ -86,7 +109,7 @@ async function buildShoppingListSnapshot(
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
     ]);
 
     const paintPlan = buildPaintPlan({
@@ -121,17 +144,7 @@ async function buildShoppingListSnapshot(
         purchasePriority: "core" | "support";
         procurementStatus: "affiliate-ready" | "search-ready" | "region-limited";
         purchaseSearchUrl: string;
-        brandAlternatives: Array<{
-          mappingKey: string;
-          brand: string;
-          line?: string;
-          code: string;
-          colorName: string;
-          availabilityRegion?: string;
-          affiliateUrl?: string;
-          procurementStatus: "affiliate-ready" | "search-ready" | "region-limited";
-          purchaseSearchUrl: string;
-        }>;
+        brandAlternatives: BrandAlternative[];
         sourcingAdvice: string;
       }
     >();
@@ -153,17 +166,7 @@ async function buildShoppingListSnapshot(
         purchasePriority: "backup";
         procurementStatus: "affiliate-ready" | "search-ready" | "region-limited";
         purchaseSearchUrl: string;
-        brandAlternatives: Array<{
-          mappingKey: string;
-          brand: string;
-          line?: string;
-          code: string;
-          colorName: string;
-          availabilityRegion?: string;
-          affiliateUrl?: string;
-          procurementStatus: "affiliate-ready" | "search-ready" | "region-limited";
-          purchaseSearchUrl: string;
-        }>;
+        brandAlternatives: BrandAlternative[];
         sourcingAdvice: string;
       }
     >();
@@ -179,6 +182,10 @@ async function buildShoppingListSnapshot(
             entry.recommendedArea ?? "Controlled application zone",
           ]);
         } else {
+          const brandAlternatives = findBrandAlternatives(
+            paint.mappingKey,
+            paintMappings
+          );
           primaryItemMap.set(paint.mappingKey, {
             mappingKey: paint.mappingKey,
             brand: paint.brand,
@@ -203,11 +210,11 @@ async function buildShoppingListSnapshot(
               code: paint.code,
               colorName: paint.colorName,
             }),
-            brandAlternatives: findBrandAlternatives(paint, paintMappings),
+            brandAlternatives,
             sourcingAdvice: buildSourcingAdvice({
               availabilityRegion: paint.availabilityRegion,
               affiliateUrl: paint.affiliateUrl,
-              alternateCount: findBrandAlternatives(paint, paintMappings).length,
+              alternateCount: brandAlternatives.length,
             }),
           });
         }
@@ -223,6 +230,10 @@ async function buildShoppingListSnapshot(
             entry.recommendedArea ?? "Controlled application zone",
           ]);
         } else {
+          const brandAlternatives = findBrandAlternatives(
+            paint.mappingKey,
+            paintMappings
+          );
           alternateItemMap.set(paint.mappingKey, {
             mappingKey: paint.mappingKey,
             brand: paint.brand,
@@ -244,11 +255,11 @@ async function buildShoppingListSnapshot(
               code: paint.code,
               colorName: paint.colorName,
             }),
-            brandAlternatives: findBrandAlternatives(paint, paintMappings),
+            brandAlternatives,
             sourcingAdvice: buildSourcingAdvice({
               availabilityRegion: paint.availabilityRegion,
               affiliateUrl: paint.affiliateUrl,
-              alternateCount: findBrandAlternatives(paint, paintMappings).length,
+              alternateCount: brandAlternatives.length,
             }),
           });
         }
@@ -348,66 +359,41 @@ function classifyProcurementConfidence(input: {
 }
 
 function findBrandAlternatives(
-  target: {
-    mappingKey: string;
-    brand: string;
-    line?: string;
-    code: string;
-    colorName: string;
-    finishType?: string;
-    paintType?: string;
-    availabilityRegion?: string;
-    affiliateUrl?: string;
-  },
-  paintMappings: Array<{
-    mappingKey: string;
-    brand: string;
-    line?: string;
-    code: string;
-    colorName: string;
-    finishType?: string;
-    paintType?: string;
-    availabilityRegion?: string;
-    affiliateUrl?: string;
-    isActive: boolean;
-  }>
+  targetMappingKey: string,
+  paintMappings: ResolvedPaintMapping[]
 ) {
-  return paintMappings
-    .filter((mapping) => mapping.isActive)
-    .filter((mapping) => mapping.mappingKey !== target.mappingKey)
-    .filter((mapping) => mapping.brand !== target.brand)
-    .map((mapping) => ({
-      mapping,
-      score:
-        (mapping.finishType && mapping.finishType === target.finishType ? 3 : 0) +
-        (mapping.paintType && mapping.paintType === target.paintType ? 2 : 0) +
-        (mapping.availabilityRegion && mapping.availabilityRegion === target.availabilityRegion ? 1 : 0),
-    }))
-    .filter((entry) => entry.score > 0)
-    .sort((left, right) =>
-      right.score === left.score
-        ? left.mapping.brand.localeCompare(right.mapping.brand)
-        : right.score - left.score
-    )
-    .slice(0, 2)
-    .map((entry) => ({
-      mappingKey: entry.mapping.mappingKey,
-      brand: entry.mapping.brand,
-      line: entry.mapping.line,
-      code: entry.mapping.code,
-      colorName: entry.mapping.colorName,
-      availabilityRegion: entry.mapping.availabilityRegion,
-      affiliateUrl: entry.mapping.affiliateUrl,
+  const target = paintMappings.find(
+    (mapping) => mapping.mappingKey === targetMappingKey
+  );
+  if (!target) return [];
+  return rankPaintMatches(target, paintMappings, {
+    crossBrandOnly: true,
+    limit: 2,
+    maxDeltaE: 20,
+  }).map((match) => ({
+      mappingKey: match.candidate.mappingKey,
+      brand: match.candidate.brand,
+      line: match.candidate.line,
+      code: match.candidate.code,
+      colorName: match.candidate.colorName,
+      availabilityRegion: match.candidate.availabilityRegion,
+      affiliateUrl: match.candidate.affiliateUrl,
       procurementStatus: classifyProcurementStatus(
-        entry.mapping.availabilityRegion,
-        entry.mapping.affiliateUrl
+        match.candidate.availabilityRegion,
+        match.candidate.affiliateUrl
       ),
       purchaseSearchUrl: buildPurchaseSearchUrl({
-        brand: entry.mapping.brand,
-        line: entry.mapping.line,
-        code: entry.mapping.code,
-        colorName: entry.mapping.colorName,
+        brand: match.candidate.brand,
+        line: match.candidate.line,
+        code: match.candidate.code,
+        colorName: match.candidate.colorName,
       }),
+      deltaE00: match.deltaE00,
+      adjustedDistance: match.adjustedDistance,
+      confidence: match.confidence,
+      matchBand: match.matchBand,
+      method: match.method,
+      warnings: match.warnings,
     }));
 }
 

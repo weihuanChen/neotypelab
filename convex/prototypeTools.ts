@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { buildPaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { MoodTag, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
@@ -181,7 +182,7 @@ export const generatePalettePlan = mutation({
         ctx.db.get(stylePresetId),
         ctx.db.get(materialPresetId),
         ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-        ctx.db.query("paintMappings").collect(),
+        listResolvedPaintMappings(ctx),
         ctx.db
           .query("creditAccounts")
           .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
@@ -440,7 +441,7 @@ async function queueConceptRender(
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
       ctx.db.query("materialPresets").collect(),
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
       ctx.db
         .query("creditAccounts")
         .withIndex("by_userId", (q) => q.eq("userId", viewer._id))

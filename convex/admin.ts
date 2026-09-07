@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { canManagePlatform, isSuperAdminEmail, requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { buildPaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { buildOptionalModelPromptContext } from "./modelPromptContext";
 import { Doc, Id } from "./_generated/dataModel";
 import {
@@ -2201,7 +2202,7 @@ export const listCatalogData = query({
       ctx.db.query("baseModels").collect(),
       ctx.db.query("stylePresets").collect(),
       ctx.db.query("materialPresets").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
       ctx.db.query("creatorPacks").collect(),
     ]);
 
@@ -2356,7 +2357,7 @@ export const listPaintMappingsAdmin = query({
   args: {},
   async handler(ctx) {
     requireSuperAdmin(ctx);
-    return (await ctx.db.query("paintMappings").collect()).sort(
+    return (await listResolvedPaintMappings(ctx)).sort(
       (a, b) => a.brand.localeCompare(b.brand) || a.code.localeCompare(b.code)
     );
   },
@@ -4331,7 +4332,7 @@ async function composePromptLabPayload(
     input.stylePresetId ? ctx.db.get(input.stylePresetId) : null,
     input.materialPresetId ? ctx.db.get(input.materialPresetId) : null,
     ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-    ctx.db.query("paintMappings").collect(),
+    listResolvedPaintMappings(ctx),
   ]);
 
   if (template === null) {

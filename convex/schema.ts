@@ -59,6 +59,18 @@ import {
   vUserPlan,
   vWeatheringLevel,
 } from "./domain";
+import {
+  vPaintColorAccuracy,
+  vPaintColorSourceAuthority,
+  vPaintColorSourceType,
+  vPaintColorSubstrate,
+  vPaintEffect,
+  vPaintEquivalenceMethod,
+  vPaintLabMethod,
+  vPaintOpacity,
+  vPaintSheen,
+  vPaintType,
+} from "./paintCatalogDomain";
 
 const schema = defineSchema({
   users: defineTable({
@@ -269,7 +281,54 @@ const schema = defineSchema({
     .index("by_slug", ["slug"])
     .index("by_sortOrder", ["sortOrder"]),
 
+  paintBrands: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    aliases: v.array(v.string()),
+    isActive: v.boolean(),
+    searchText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_isActive", ["isActive"])
+    .searchIndex("searchText", {
+      searchField: "searchText",
+      filterFields: ["isActive"],
+    }),
+
+  paintLines: defineTable({
+    brandId: v.id("paintBrands"),
+    name: v.string(),
+    slug: v.string(),
+    aliases: v.array(v.string()),
+    defaultPaintType: v.optional(vPaintType),
+    isActive: v.boolean(),
+    searchText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_brandId", ["brandId"])
+    .index("by_brand_slug", ["brandId", "slug"])
+    .index("by_slug", ["slug"])
+    .index("by_isActive", ["isActive"])
+    .searchIndex("searchText", {
+      searchField: "searchText",
+      filterFields: ["brandId", "isActive"],
+    }),
+
   paintMappings: defineTable({
+    externalKey: v.optional(v.string()),
+    brandId: v.optional(v.id("paintBrands")),
+    paintLineId: v.optional(v.id("paintLines")),
+    series: v.optional(v.string()),
+    normalizedCode: v.optional(v.string()),
+    name: v.optional(v.string()),
+    sheen: v.optional(vPaintSheen),
+    opacity: v.optional(vPaintOpacity),
+    effects: v.optional(v.array(vPaintEffect)),
+    preferredMeasurementId: v.optional(v.id("paintColorMeasurements")),
+    dataVersion: v.optional(v.number()),
     mappingKey: v.string(),
     brand: v.string(),
     line: v.optional(v.string()),
@@ -284,9 +343,78 @@ const schema = defineSchema({
     searchText: v.string(),
   })
     .index("by_mappingKey", ["mappingKey"])
+    .index("by_externalKey", ["externalKey"])
+    .index("by_brandId", ["brandId"])
+    .index("by_paintLineId", ["paintLineId"])
+    .index("by_paintLine_code", ["paintLineId", "normalizedCode"])
     .searchIndex("searchText", {
       searchField: "searchText",
     }),
+
+  paintColorMeasurements: defineTable({
+    measurementKey: v.string(),
+    paintMappingId: v.id("paintMappings"),
+    hex: v.optional(v.string()),
+    rgb: v.optional(
+      v.object({
+        r: v.number(),
+        g: v.number(),
+        b: v.number(),
+      })
+    ),
+    rgbColorSpace: v.optional(v.literal("srgb")),
+    lab: v.object({
+      l: v.number(),
+      a: v.number(),
+      b: v.number(),
+    }),
+    labIlluminant: v.literal("D65"),
+    labObserver: v.literal("2deg"),
+    labMethod: vPaintLabMethod,
+    measurementMethod: v.optional(v.string()),
+    conversionVersion: v.optional(v.string()),
+    accuracy: vPaintColorAccuracy,
+    sourceAuthority: vPaintColorSourceAuthority,
+    sourceType: vPaintColorSourceType,
+    sourceName: v.string(),
+    sourceUrl: v.optional(v.string()),
+    sourceRetrievedAt: v.optional(v.number()),
+    substrate: vPaintColorSubstrate,
+    coatCount: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_measurementKey", ["measurementKey"])
+    .index("by_paintMappingId", ["paintMappingId"])
+    .index("by_paint_source", [
+      "paintMappingId",
+      "sourceAuthority",
+      "sourceType",
+    ])
+    .index("by_sourceType", ["sourceType"]),
+
+  paintEquivalences: defineTable({
+    sourcePaintId: v.id("paintMappings"),
+    targetPaintId: v.id("paintMappings"),
+    method: vPaintEquivalenceMethod,
+    confidence: v.number(),
+    deltaE00: v.optional(v.number()),
+    sourceMeasurementId: v.optional(v.id("paintColorMeasurements")),
+    targetMeasurementId: v.optional(v.id("paintColorMeasurements")),
+    sourceName: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdByUserId: v.id("users"),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_sourcePaintId", ["sourcePaintId"])
+    .index("by_targetPaintId", ["targetPaintId"])
+    .index("by_pair_method", ["sourcePaintId", "targetPaintId", "method"])
+    .index("by_source_active", ["sourcePaintId", "isActive"]),
 
   paintPurchaseSources: defineTable({
     paintMappingId: v.id("paintMappings"),

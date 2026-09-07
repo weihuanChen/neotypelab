@@ -1,6 +1,7 @@
 import { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { buildPaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { query } from "./functions";
 import { buildFeasibilitySnapshotForSignals } from "./feasibility";
 import { getShoppingListSnapshotForRecommendations } from "./shopping";
@@ -114,7 +115,7 @@ async function buildRecommendationSnapshot(
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
       ctx.db.query("stylePresets").collect(),
       ctx.db.query("materialPresets").collect(),
     ]);

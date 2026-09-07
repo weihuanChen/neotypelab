@@ -12,6 +12,7 @@ type PaintMappingRecord = Pick<
   | "affiliateUrl"
   | "availabilityRegion"
   | "brand"
+  | "brandId"
   | "code"
   | "colorName"
   | "finishType"
@@ -19,8 +20,17 @@ type PaintMappingRecord = Pick<
   | "isActive"
   | "line"
   | "mappingKey"
+  | "name"
+  | "opacity"
   | "paintType"
->;
+  | "effects"
+  | "sheen"
+> & {
+  preferredMeasurement?: Pick<
+    Doc<"paintColorMeasurements">,
+    "accuracy" | "hex" | "lab"
+  > | null;
+};
 
 export function buildPaintPlan(input: {
   conceptId?: Id<"concepts">;
@@ -231,14 +241,20 @@ function serializePaint(paint?: PaintMappingRecord) {
   return {
     _id: paint._id,
     mappingKey: paint.mappingKey,
+    brandId: paint.brandId,
     brand: paint.brand,
     line: paint.line,
     code: paint.code,
-    colorName: paint.colorName,
-    finishType: paint.finishType,
+    name: paint.name ?? paint.colorName,
+    colorName: paint.name ?? paint.colorName,
+    sheen: paint.sheen,
+    finishType: paint.sheen?.replace(/_/g, "-") ?? paint.finishType,
+    opacity: paint.opacity,
+    effects: paint.effects ?? [],
     paintType: paint.paintType,
     availabilityRegion: paint.availabilityRegion,
     affiliateUrl: paint.affiliateUrl,
     hexPreview: paint.hexPreview,
+    preferredMeasurement: paint.preferredMeasurement,
   };
 }

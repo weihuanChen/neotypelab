@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { buildPaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { mutation, query } from "./functions";
 
 export const listMine = query({
@@ -51,7 +52,7 @@ export const createFromConcept = mutation({
         concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
         concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
         ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-        ctx.db.query("paintMappings").collect(),
+        listResolvedPaintMappings(ctx),
       ]);
 
     const snapshot = buildPaintPlan({

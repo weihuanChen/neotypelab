@@ -8,6 +8,7 @@ import { MoodTag } from "./domain";
 import { getConceptEngagementSnapshot } from "./engagement";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
 import { buildPaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { query } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { QueryCtx } from "./types";
@@ -340,7 +341,7 @@ export const getSharedConcept = query({
       getPublishedRenditions(ctx, concept),
       ctx.db.get(concept.userId),
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
       concept.sourceConceptId ? getConceptShareCard(ctx, concept.sourceConceptId) : Promise.resolve(null),
       shareableRemixesPromise,
       getConceptEngagementSnapshot(ctx, concept._id),
@@ -815,7 +816,7 @@ export const getSeoLandingPage = query({
         .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
         .collect(),
       ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      ctx.db.query("paintMappings").collect(),
+      listResolvedPaintMappings(ctx),
     ]);
 
     if (
