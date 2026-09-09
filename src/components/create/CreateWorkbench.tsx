@@ -16,11 +16,13 @@ import {
   mapStatusTone,
 } from "@/src/components/ui/workbench";
 import { api } from "@/convex/_generated/api";
+import { creativeInputKey } from "@/convex/creativeContracts";
 import { Id } from "@/convex/_generated/dataModel";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
 import { cn } from "@/lib/utils";
 import { usePrivateAssetUrl } from "@/src/hooks/usePrivateAssetUrl";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useEffect, useMemo, useState } from "react";
 import {
   parseOptionalSearchValue,
@@ -131,8 +133,8 @@ export function CreateWorkbench({
     creatorPackSlug ? { slug: creatorPackSlug } : "skip"
   );
   const initializePrototype = useMutation(api.prototypes.initializePrototype);
-  const generateStyleSuggestion = useMutation(api.prototypeTools.generateStyleSuggestion);
-  const generatePalettePlan = useMutation(api.prototypeTools.generatePalettePlan);
+  const generateStyleSuggestion = useAction(api.prototypeTools.generateStyleSuggestion);
+  const generatePalettePlan = useAction(api.prototypeTools.generatePalettePlan);
   const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
 
   const [selectedKitVariantId, setSelectedKitVariantId] = useState<Id<"baseModels"> | null>(
@@ -204,6 +206,29 @@ export function CreateWorkbench({
       label: string;
     };
   } | null>(null);
+  const [paletteInputKey, setPaletteInputKey] = useState<string | null>(null);
+  const [approvedPaletteId, setApprovedPaletteId] = useState<Id<"promptCompositions"> | null>(null);
+  const currentInputKey = creativeInputKey({
+    kitVariantId: selectedKitVariantId ?? undefined, stylePresetId: selectedStylePresetId ?? undefined,
+    materialPresetId: selectedMaterialPresetId ?? undefined, moodTags: selectedMoodTags, weatheringLevel, notes,
+  });
+  const paletteIsCurrent = paletteInputKey === currentInputKey;
+  const recoveredStyle = useQuery(api.creativePipeline.latest, selectedKitVariantId ? {
+    kind: "style-suggestion", inputKey: creativeInputKey({ kitVariantId: selectedKitVariantId, moodTags: selectedMoodTags, notes }),
+  } : "skip");
+  const recoveredPalette = useQuery(api.creativePipeline.latest, selectedKitVariantId && selectedStylePresetId && selectedMaterialPresetId ? {
+    kind: "palette-plan", inputKey: currentInputKey,
+  } : "skip");
+  useEffect(() => {
+    if (recoveredStyle !== undefined) setStyleSuggestionResult(recoveredStyle);
+  }, [recoveredStyle]);
+  useEffect(() => {
+    if (recoveredPalette?.plan && recoveredPalette.inputKey === currentInputKey) {
+      setPalettePlanResult({ ...recoveredPalette, plan: recoveredPalette.plan });
+      setPaletteInputKey(currentInputKey);
+    }
+  }, [recoveredPalette, currentInputKey]);
+
   const [result, setResult] = useState<{
     title: string;
     conceptId: Id<"concepts">;
@@ -272,7 +297,8 @@ export function CreateWorkbench({
     (!remixConceptId || remixSource !== undefined) &&
     creatorPackGateResolved &&
     !creatorPackLocked &&
-    !isSubmitting;
+    !isSubmitting && !isGeneratingPalettePlan && !isGeneratingStyleSuggestion &&
+    paletteIsCurrent && Boolean(palettePlanResult && approvedPaletteId === palettePlanResult.promptCompositionId);
   const liveTone = mapStatusTone(liveJob?.status);
   const canGenerateStyleSuggestion = selectedKitVariant !== null && !isGeneratingStyleSuggestion;
   const canGeneratePalettePlan =
@@ -419,6 +445,8 @@ export function CreateWorkbench({
     try {
       const response = await initializePrototype({
         sourceConceptId: remixSource?._id,
+        paletteCompositionId: approvedPaletteId ?? undefined,
+        requestKey: crypto.randomUUID(),
         kitVariantId: selectedKitVariantId!,
         stylePresetId: selectedStylePresetId!,
         materialPresetId: selectedMaterialPresetId!,
@@ -440,7 +468,7 @@ export function CreateWorkbench({
         priceRule: response.priceRule,
       });
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to initialize prototype");
+      setErrorMessage(creativeErrorMessage(error, "Failed to create repaint specification"));
     } finally {
       setIsSubmitting(false);
     }
@@ -456,6 +484,7 @@ export function CreateWorkbench({
 
     try {
       const response = await generateStyleSuggestion({
+        requestKey: crypto.randomUUID(),
         kitVariantId: selectedKitVariantId,
         moodTags: selectedMoodTags,
         notes: notes.trim() === "" ? undefined : notes.trim(),
@@ -463,7 +492,7 @@ export function CreateWorkbench({
       setStyleSuggestionResult(response);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "Failed to generate Style DNA suggestion"
+        creativeErrorMessage(error, "Failed to generate Style DNA suggestion")
       );
     } finally {
       setIsGeneratingStyleSuggestion(false);
@@ -481,10 +510,12 @@ export function CreateWorkbench({
     }
 
     setIsGeneratingPalettePlan(true);
+    setApprovedPaletteId(null);
     setErrorMessage(null);
 
     try {
       const response = await generatePalettePlan({
+        requestKey: crypto.randomUUID(),
         kitVariantId: selectedKitVariantId,
         stylePresetId: selectedStylePresetId,
         materialPresetId: selectedMaterialPresetId,
@@ -493,8 +524,9 @@ export function CreateWorkbench({
         notes: notes.trim() === "" ? undefined : notes.trim(),
       });
       setPalettePlanResult(response);
+      setPaletteInputKey(currentInputKey);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to generate palette plan");
+      setErrorMessage(creativeErrorMessage(error, "Failed to generate palette plan"));
     } finally {
       setIsGeneratingPalettePlan(false);
     }
@@ -523,7 +555,7 @@ export function CreateWorkbench({
           : current
       );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to queue HD render");
+      setErrorMessage(creativeErrorMessage(error, "Failed to queue HD render"));
     } finally {
       setIsQueueingHdRender(false);
     }
@@ -797,11 +829,12 @@ export function CreateWorkbench({
               className="w-full"
               commandLabel="COMMAND"
             >
-              {isSubmitting ? "INITIALIZING" : "Initialize Prototype"}
+              {isSubmitting ? "PREPARING SPECIFICATION" : "Create repaint specification"}
             </CommandButton>
 
-            <details className="tower-tools">
-              <summary>More tools</summary>
+            {!paletteIsCurrent || !approvedPaletteId ? <FieldHint>Generate and approve a palette before creating the repaint specification.</FieldHint> : null}
+            <details className="tower-tools" open>
+              <summary>Style and palette planning</summary>
               <GhostButton
                 disabled={!canGenerateStyleSuggestion}
                 loading={isGeneratingStyleSuggestion}
@@ -835,8 +868,8 @@ export function CreateWorkbench({
                     </GhostButton>
                   ))
                 : null}
-              {palettePlanResult
-                ? palettePlanResult.plan.entries.slice(0, 3).map((entry) => (
+              {palettePlanResult && paletteIsCurrent
+                ? palettePlanResult.plan.entries.map((entry) => (
                     <FieldHint key={entry.roleSlug}>
                       {entry.roleName}:{" "}
                       {entry.suggestedPaint
@@ -845,6 +878,11 @@ export function CreateWorkbench({
                     </FieldHint>
                   ))
                 : null}
+              {palettePlanResult && paletteIsCurrent ? (
+                <GhostButton onClick={() => setApprovedPaletteId(palettePlanResult.promptCompositionId)} disabled={approvedPaletteId === palettePlanResult.promptCompositionId}>
+                  {approvedPaletteId === palettePlanResult.promptCompositionId ? "Palette approved" : "Use this palette"}
+                </GhostButton>
+              ) : null}
             </details>
 
             {result ? (
@@ -856,6 +894,7 @@ export function CreateWorkbench({
                     tone={mapStatusTone(liveJob?.concept?.status)}
                   />
                 </div>
+                {liveJob?.outputSummary?.label ? <FieldHint>{liveJob.outputSummary.label}</FieldHint> : null}
                 {liveJob?.errorMessage ? (
                   <WorkbenchNotice tone="danger">
                     <p>{liveJob.errorMessage}</p>
@@ -1013,4 +1052,11 @@ function formatMoodTagLabel(tag: MoodTag) {
 
 function clampNotes(notes?: string | null) {
   return notes?.slice(0, 100) ?? "";
+}
+
+function creativeErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ConvexError && typeof error.data === "string") return error.data;
+  if (!(error instanceof Error)) return fallback;
+  const message = error.message.match(/Uncaught (?:Error|ConvexError): ([^\n]+)/)?.[1] ?? error.message.split("\n")[0];
+  return message.replace(/^(?:Uncaught Error:\s*)+/, "");
 }

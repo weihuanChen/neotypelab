@@ -41,6 +41,7 @@ import { Route as ShowcaseOpengraphImageRouteImport } from './routes/showcase_.o
 import { Route as ShowcaseArchiveRouteImport } from './routes/showcase_.archive'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
+import { Route as LibraryConceptIdRouteImport } from './routes/library_.$conceptId'
 import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
 import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
@@ -230,6 +231,11 @@ const PilotHandleRoute = PilotHandleRouteImport.update({
   path: '/pilot/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LibraryConceptIdRoute = LibraryConceptIdRouteImport.update({
+  id: '/library_/$conceptId',
+  path: '/library/$conceptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FeedbackReportsRoute = FeedbackReportsRouteImport.update({
   id: '/feedback_/reports',
   path: '/feedback/reports',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/library/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/archive': typeof ShowcaseArchiveRoute
@@ -473,6 +480,7 @@ export interface FileRoutesByTo {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/library/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase/archive': typeof ShowcaseArchiveRoute
@@ -536,6 +544,7 @@ export interface FileRoutesById {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback_/reports': typeof FeedbackReportsRoute
+  '/library_/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
   '/showcase_/archive': typeof ShowcaseArchiveRoute
@@ -600,6 +609,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/library/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/archive'
@@ -661,6 +671,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/library/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase/archive'
@@ -723,6 +734,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback_/$feedbackId'
     | '/feedback_/reports'
+    | '/library_/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
     | '/showcase_/archive'
@@ -772,6 +784,7 @@ export interface RootRouteChildren {
   CreatorHandleRoute: typeof CreatorHandleRoute
   FeedbackFeedbackIdRoute: typeof FeedbackFeedbackIdRoute
   FeedbackReportsRoute: typeof FeedbackReportsRoute
+  LibraryConceptIdRoute: typeof LibraryConceptIdRoute
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
   ShowcaseArchiveRoute: typeof ShowcaseArchiveRoute
@@ -1026,6 +1039,13 @@ declare module '@tanstack/react-router' {
       path: '/pilot/$handle'
       fullPath: '/pilot/$handle'
       preLoaderRoute: typeof PilotHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library_/$conceptId': {
+      id: '/library_/$conceptId'
+      path: '/library/$conceptId'
+      fullPath: '/library/$conceptId'
+      preLoaderRoute: typeof LibraryConceptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback_/reports': {
@@ -1298,6 +1318,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorHandleRoute: CreatorHandleRoute,
   FeedbackFeedbackIdRoute: FeedbackFeedbackIdRoute,
   FeedbackReportsRoute: FeedbackReportsRoute,
+  LibraryConceptIdRoute: LibraryConceptIdRoute,
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
   ShowcaseArchiveRoute: ShowcaseArchiveRoute,

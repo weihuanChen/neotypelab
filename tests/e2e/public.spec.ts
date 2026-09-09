@@ -50,3 +50,14 @@ function collectConsoleErrors(page: Page) {
   });
   return errors;
 }
+
+test("gates private work details and preserves the resource tab URL", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  await page.goto("/library/unavailable-work?tab=resources");
+  await expect(page.getByRole("heading", { name: "Sign in to view this work." })).toBeVisible();
+  await expect(page).toHaveURL(/\/library\/unavailable-work\?tab=resources$/);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("link", { name: "Back to library" })).toHaveAttribute("href", "/library");
+  await expect(page.getByRole("tab", { name: /Resources/ })).toHaveCount(0);
+  expect(consoleErrors).toEqual([]);
+});

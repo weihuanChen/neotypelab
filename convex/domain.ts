@@ -364,7 +364,10 @@ export const vLlmCapability = v.union(
 );
 export type LlmCapability = Infer<typeof vLlmCapability>;
 
-export const vLlmApiFormat = v.union(v.literal("openai-compatible"));
+export const vLlmApiFormat = v.union(
+  v.literal("openai-compatible"),
+  v.literal("openai-chat-completions")
+);
 export type LlmApiFormat = Infer<typeof vLlmApiFormat>;
 
 export const vAssetKind = v.union(

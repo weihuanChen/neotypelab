@@ -10,6 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Link } from "@tanstack/react-router";
+import { ArrowTopRightIcon } from "@radix-ui/react-icons";
 import { SignInButton } from "@clerk/tanstack-react-start";
 import { ShoppingListActions } from "@/components/public/ShoppingListActions";
 import {
@@ -492,15 +494,15 @@ function AuthenticatedLibraryWorkbench() {
                   {filteredConcepts.map((concept) => {
                     const status = getOperationalStatus(concept);
                     return (
-                      <button className={selectedConcept?._id === concept._id ? "library-asset-row is-active" : "library-asset-row"} key={concept._id} onClick={() => setSelectedConceptId(concept._id)} type="button">
-                        <div className="library-asset-row__identity">
-                          <div className="library-asset-row__thumb">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : <span>{formatRecordNumber(concepts, concept._id)}</span>}</div>
+                      <div className={`library-asset-row library-asset-row--detail${selectedConcept?._id === concept._id ? " is-active" : ""}`} key={concept._id}>
+                        <button className="library-asset-row__identity library-asset-select" onClick={() => setSelectedConceptId(concept._id)} type="button" aria-label={`Inspect ${concept.title}`}>
+                          <div className="library-asset-row__thumb"><LibraryThumbnail asset={concept.previewAsset} fallback={formatRecordNumber(concepts, concept._id)} /></div>
                           <div><span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unassigned Style DNA"}</small></div>
-                        </div>
+                        </button>
                         <LifecycleLabel status={status} />
                         <span className="library-asset-row__meta">{concept.visibility}</span>
-                        <time className="library-asset-row__meta" dateTime={new Date(concept._creationTime).toISOString()}>{formatRelativeTime(concept._creationTime)}</time>
-                      </button>
+                        <div className="library-row-detail"><time className="library-asset-row__meta" dateTime={new Date(concept._creationTime).toISOString()}>{formatRelativeTime(concept._creationTime)}</time><LibraryDetailLink conceptId={concept._id} title={concept.title} compact /></div>
+                      </div>
                     );
                   })}
                 </div>
@@ -509,10 +511,10 @@ function AuthenticatedLibraryWorkbench() {
                   {filteredConcepts.map((concept) => {
                     const status = getOperationalStatus(concept);
                     return (
-                      <button className={selectedConcept?._id === concept._id ? "library-grid-card is-active" : "library-grid-card"} key={concept._id} onClick={() => setSelectedConceptId(concept._id)} type="button">
-                        <div className="library-grid-card__image">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : <span>N°.{formatRecordNumber(concepts, concept._id)}</span>}</div>
+                      <article className="library-grid-entry" key={concept._id}><button className={selectedConcept?._id === concept._id ? "library-grid-card is-active" : "library-grid-card"} onClick={() => setSelectedConceptId(concept._id)} type="button">
+                        <div className="library-grid-card__image"><LibraryThumbnail asset={concept.previewAsset} fallback={`N°.${formatRecordNumber(concepts, concept._id)}`} /></div>
                         <span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"}</small><LifecycleLabel status={status} />
-                      </button>
+                      </button><LibraryDetailLink conceptId={concept._id} title={concept.title} /></article>
                     );
                   })}
                 </div>
@@ -988,6 +990,7 @@ function LibraryConceptFocus({
       <div className="workbench-focus__body library-inspector__body">
         <span className="library-record-number">N°.{recordNumber}</span>
         <h2>{concept.title}</h2>
+        <LibraryDetailLink conceptId={concept._id} title={concept.title} />
         <div className="library-inspector__state"><LifecycleLabel status={operationalStatus} /><span>{concept.visibility}</span></div>
         <div className="library-inspector__specimen">
           <MetaRow label="Kit" value={concept.baseModel?.name ?? "Unknown base model"} />
@@ -1072,7 +1075,7 @@ function LibraryConceptFocus({
         </AlertDialog>
 
         <div className="library-inspector__primary-actions">
-          <GhostButton href={`/prototype/${concept._id}`}>Open prototype</GhostButton>
+          <GhostButton href={concept.visibility === "private" ? `/library/${concept._id}?tab=overview` : `/prototype/${concept._id}`}>{concept.visibility === "private" ? "View details" : "Open prototype"}</GhostButton>
           {(concept.status === "generated" || concept.status === "archived") ? (
             <GhostButton disabled={creatingSprayPlanId === concept._id} onClick={() => void onCreateSprayPlan(concept._id)}>
               {creatingSprayPlanId === concept._id ? "Building spray plan" : "Generate Spray Plan →"}
@@ -1424,7 +1427,7 @@ function LifecycleLabel({ status }: { status: OperationalStatus }) {
 
 function getOperationalStatus(concept: {
   status: string;
-  previewAsset?: { publicUrl?: string | null } | null;
+  previewAsset?: { publicUrl?: string | null; storageObjectId?: string; status?: string } | null;
   generationJob?: { status: string } | null;
 }): OperationalStatus {
   if (concept.generationJob?.status === "failed") {
@@ -1439,7 +1442,7 @@ function getOperationalStatus(concept: {
   if (concept.status === "archived") {
     return "archived";
   }
-  if (concept.status === "generated" && concept.previewAsset?.publicUrl) {
+  if (concept.status === "generated" && concept.previewAsset?.status !== "deleted" && (concept.previewAsset?.publicUrl || concept.previewAsset?.storageObjectId)) {
     return "ready";
   }
   return "draft";
@@ -1553,4 +1556,16 @@ function formatMoodTagLabel(tag: string) {
     return "Ceremonial Clean";
   }
   return tag;
+}
+
+function LibraryDetailLink({ conceptId, title, compact = false }: { conceptId: string; title: string; compact?: boolean }) {
+  return <Link className="library-detail-link" to="/library/$conceptId" params={{ conceptId }} search={{ tab: "overview" }} aria-label={`View details for ${title}`}>
+    {compact ? "Details" : "View details"}<ArrowTopRightIcon aria-hidden="true" />
+  </Link>;
+}
+
+function LibraryThumbnail({ asset, fallback }: { asset: { publicUrl?: string | null; storageObjectId?: Id<"storageObjects"> } | null; fallback: string }) {
+  const signedUrl = usePrivateAssetUrl(asset?.publicUrl ? null : asset?.storageObjectId);
+  const url = asset?.publicUrl ?? signedUrl;
+  return url ? <img src={url} alt="" loading="lazy" /> : <span>{fallback}</span>;
 }

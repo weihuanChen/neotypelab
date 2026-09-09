@@ -349,6 +349,7 @@ export const getSharedConcept = query({
     ]);
 
     const paintPlan = buildPaintPlan({
+      approvedPlanJson: concept.palettePlanJson,
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,
@@ -864,6 +865,7 @@ export const getSeoLandingPage = query({
       featuredConcept === null
         ? null
         : buildPaintPlan({
+      approvedPlanJson: (await ctx.db.get(featuredConcept._id))?.palettePlanJson,
             conceptId: featuredConcept._id,
             conceptTitle: featuredConcept.title,
             baseModelName: baseModel.name,

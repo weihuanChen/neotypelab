@@ -203,7 +203,7 @@ export const getJobForExecution = internalQuery({
     }
 
     const template = prompt.promptTemplateId ? await ctx.db.get(prompt.promptTemplateId) : null;
-    const llmRoute = await selectImageLlmRoute(ctx, {
+    const llmRoute = await selectLlmRoute(ctx, {
       generationKind: job.kind,
       promptTemplateId: prompt.promptTemplateId,
       renderMode,
@@ -245,10 +245,25 @@ export const getJobForExecution = internalQuery({
   },
 });
 
-async function selectImageLlmRoute(
+export const getTextExecutionContext = internalQuery({
+  args: {
+    templateKind: v.union(v.literal("style-suggestion"), v.literal("palette-plan"), v.literal("repaint-concept")),
+    promptTemplateId: v.optional(v.id("promptTemplates")),
+  },
+  handler: async (ctx, input) => {
+    const route = await selectLlmRoute(ctx, {
+      ...input, capability: "text", generationKind: "palette-plan",
+    });
+    if (!route) throw new Error("No active text provider is configured");
+    return { route, policy: await readGenerationPolicy(ctx) };
+  },
+});
+
+async function selectLlmRoute(
   ctx: QueryCtx,
   input: {
     generationKind: "palette-plan" | "hd-preview";
+    capability?: "text" | "image";
     promptTemplateId?: Id<"promptTemplates">;
     renderMode?:
       | "hd-render"
@@ -261,13 +276,14 @@ async function selectImageLlmRoute(
     templateKind?: "palette-plan" | "style-suggestion" | "repaint-concept" | "hd-render";
   }
 ) {
+  const capability = input.capability ?? "image";
   const action = input.templateKind ??
     (input.generationKind === "hd-preview" ? "hd-render" : "palette-plan");
   const configuredRoutes = await ctx.db
     .query("generationProviderRoutes")
     .withIndex("by_action", (q) => q.eq("action", action))
     .collect();
-  const configuredRoute = configuredRoutes.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const configuredRoute = configuredRoutes.sort((a, b) => b.updatedAt - a.updatedAt).at(0);
   if (configuredRoute) {
     const [primary, fallback] = await Promise.all([
       ctx.db.get(configuredRoute.primaryProfileId),
@@ -276,11 +292,11 @@ async function selectImageLlmRoute(
         : null,
     ]);
     const eligiblePrimary =
-      primary !== null && primary.isActive && primary.capability === "image"
+      primary !== null && primary.isActive && primary.capability === capability
         ? primary
         : null;
     const eligibleFallback =
-      fallback !== null && fallback.isActive && fallback.capability === "image"
+      fallback !== null && fallback.isActive && fallback.capability === capability
         ? fallback
         : null;
     if (eligiblePrimary || eligibleFallback) {
@@ -294,6 +310,10 @@ async function selectImageLlmRoute(
     }
   }
 
+  if (configuredRoute && capability === "text") {
+    throw new Error("Configured text route has no active text provider");
+  }
+
   if (input.promptTemplateId !== undefined) {
     const bindings = await ctx.db
       .query("promptTemplateBindings")
@@ -305,7 +325,7 @@ async function selectImageLlmRoute(
           .filter((binding) => isBindingEligible(binding, input))
           .map(async (binding) => {
             const profile = await ctx.db.get(binding.llmProfileId);
-            if (profile === null || !profile.isActive || profile.capability !== "image") {
+            if (profile === null || !profile.isActive || profile.capability !== capability) {
               return null;
             }
             return { binding, profile };
@@ -333,7 +353,7 @@ async function selectImageLlmRoute(
   const fallbackProfile = (
     await ctx.db
       .query("llmProfiles")
-      .withIndex("by_capability", (q) => q.eq("capability", "image"))
+      .withIndex("by_capability", (q) => q.eq("capability", capability))
       .collect()
   )
     .filter((profile) => profile.isActive)
@@ -450,7 +470,7 @@ function bindingScore(binding: {
 function serializeLlmRoute(
   profile: {
     _id: Id<"llmProfiles">;
-    apiFormat: "openai-compatible";
+    apiFormat: "openai-compatible" | "openai-chat-completions";
     baseUrl: string;
     headersJson?: string;
     keyEnvName: string;

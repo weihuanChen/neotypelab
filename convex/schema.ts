@@ -883,6 +883,9 @@ const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   concepts: defineTable({
+    paletteCompositionId: v.optional(v.id("promptCompositions")),
+    palettePlanJson: v.optional(v.string()),
+    renderSpecificationJson: v.optional(v.string()),
     userId: v.id("users"),
     recordNumber: v.optional(v.number()),
     title: v.string(),
@@ -1082,6 +1085,9 @@ const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   promptCompositions: defineTable({
+    requestKey: v.optional(v.string()),
+    executionStartedAt: v.optional(v.number()),
+    reservedCredits: v.optional(v.number()),
     userId: v.id("users"),
     conceptId: v.optional(v.id("concepts")),
     generationJobId: v.optional(v.id("generationJobs")),
@@ -1099,7 +1105,8 @@ const schema = defineSchema({
     .index("by_conceptId", ["conceptId"])
     .index("by_generationJobId", ["generationJobId"])
     .index("by_promptTemplateId", ["promptTemplateId"])
-    .index("by_promptTemplateVersionId", ["promptTemplateVersionId"]),
+    .index("by_promptTemplateVersionId", ["promptTemplateVersionId"])
+    .index("by_user_request", ["userId", "requestKey"]),
 
   promptExperimentRuns: defineTable({
     userId: v.id("users"),

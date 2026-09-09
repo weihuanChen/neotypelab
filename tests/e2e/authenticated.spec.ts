@@ -25,7 +25,7 @@ test("opens the authenticated creation workbench", async ({ page }) => {
     page.getByRole("heading", { name: "Create", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Initialize Prototype" })
+    page.getByRole("button", { name: /Create repaint specification/i })
   ).toBeVisible();
 });
 

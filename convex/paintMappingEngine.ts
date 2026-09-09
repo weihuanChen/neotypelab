@@ -32,7 +32,20 @@ type PaintMappingRecord = Pick<
   > | null;
 };
 
-export function buildPaintPlan(input: {
+export type PaintPlan = ReturnType<typeof buildRuleBasedPaintPlan>;
+
+export function buildPaintPlan(input: Parameters<typeof buildRuleBasedPaintPlan>[0] & { approvedPlanJson?: string }) {
+  if (input.approvedPlanJson) {
+    const approved = JSON.parse(input.approvedPlanJson) as PaintPlan;
+    if (!Array.isArray(approved.entries) || !Array.isArray(approved.sprayNotes)) {
+      throw new Error("Stored palette snapshot is invalid");
+    }
+    return { ...approved, conceptId: input.conceptId, conceptTitle: input.conceptTitle };
+  }
+  return buildRuleBasedPaintPlan(input);
+}
+
+function buildRuleBasedPaintPlan(input: {
   conceptId?: Id<"concepts">;
   conceptTitle: string;
   baseModelName?: string;
@@ -233,7 +246,7 @@ function buildSprayNotes(input: {
   return notes;
 }
 
-function serializePaint(paint?: PaintMappingRecord) {
+export function serializePaint(paint?: PaintMappingRecord) {
   if (!paint) {
     return null;
   }

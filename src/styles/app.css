@@ -1,6 +1,7 @@
 @import "./prompt-lab.css";
 @import "./credits-console.css";
 @import "./settings-console.css";
+@import "./library-detail.css";
 
 :root {
   color-scheme: light;

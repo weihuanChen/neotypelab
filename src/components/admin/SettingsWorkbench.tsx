@@ -41,7 +41,7 @@ type ProviderRecord = {
   provider: ProviderDraft["provider"];
   modelId: string;
   capability: ProviderDraft["capability"];
-  apiFormat: "openai-compatible";
+  apiFormat: "openai-compatible" | "openai-chat-completions";
   baseUrl: string;
   keyEnvName: string;
   timeoutMs?: number;
@@ -163,6 +163,7 @@ type GenerationDraft = {
 };
 
 type ProviderDraft = {
+  apiFormat: "openai-compatible" | "openai-chat-completions";
   name: string;
   slug: string;
   provider:
@@ -246,6 +247,7 @@ const providerLabels: Record<ProviderDraft["provider"], string> = {
 };
 
 const emptyProviderDraft: ProviderDraft = {
+  apiFormat: "openai-compatible",
   name: "",
   slug: "",
   provider: "openai",
@@ -468,7 +470,7 @@ export function SettingsWorkbench({ search }: { search: AdminSettingsSearch }) {
         slug: providerDraft.slug || undefined,
         provider: providerDraft.provider,
         capability: providerDraft.capability,
-        apiFormat: "openai-compatible" as const,
+        apiFormat: providerDraft.apiFormat,
         baseUrl: providerDraft.baseUrl,
         keyEnvName: providerDraft.keyEnvName,
         modelId: providerDraft.modelId,
@@ -815,7 +817,7 @@ function GenerationSection({
           <div className="settings-routing-row" key={route.action}>
             <div>
               <strong>{actionLabels[route.action]}</strong>
-              <small>{route.action === "style-suggestion" ? "Text capability" : "Image capability"}</small>
+              <small>{route.action === "hd-render" ? "Image capability" : "Text capability"}</small>
             </div>
             <select
               aria-label={`${actionLabels[route.action]} primary provider`}
@@ -971,6 +973,12 @@ function ProvidersSection({
                 <Field label="Capability">
                   <select onChange={(event) => setDraft({ ...draft, capability: event.target.value as ProviderDraft["capability"] })} value={draft.capability}>
                     <option value="image">Image generation</option><option value="text">Text generation</option><option value="vision">Vision</option><option value="embedding">Embedding</option>
+                  </select>
+                </Field>
+                <Field label="Request protocol" hint="Text always uses Chat Completions. Choose the image endpoint supported by your gateway.">
+                  <select value={draft.apiFormat} onChange={(event) => setDraft({ ...draft, apiFormat: event.target.value as ProviderDraft["apiFormat"] })}>
+                    <option value="openai-compatible">Images API / standard text</option>
+                    <option value="openai-chat-completions">Chat Completions (text or image)</option>
                   </select>
                 </Field>
                 <Field label="Legacy priority" hint="Higher values win only when no explicit route exists."><NumberInput min={-100} max={100} value={draft.priority} onChange={(value) => setDraft({ ...draft, priority: value })} /></Field>
@@ -1284,7 +1292,7 @@ function stripSystemMeta(value: WorkspaceData["system"]): SystemDraft {
 }
 
 function providerToDraft(provider: ProviderRecord): ProviderDraft {
-  return { name: provider.name, slug: provider.slug, provider: provider.provider, modelId: provider.modelId, capability: provider.capability, baseUrl: provider.baseUrl, keyEnvName: provider.keyEnvName, timeoutSeconds: Math.round((provider.timeoutMs ?? 90000) / 1000), priority: provider.priority, notes: provider.notes ?? "", isActive: provider.isActive };
+  return { apiFormat: provider.apiFormat, name: provider.name, slug: provider.slug, provider: provider.provider, modelId: provider.modelId, capability: provider.capability, baseUrl: provider.baseUrl, keyEnvName: provider.keyEnvName, timeoutSeconds: Math.round((provider.timeoutMs ?? 90000) / 1000), priority: provider.priority, notes: provider.notes ?? "", isActive: provider.isActive };
 }
 
 function bindingToDraft(action: PipelineAction, binding: WorkspaceData["bindings"][number] | null): BindingDraft {

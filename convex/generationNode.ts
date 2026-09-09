@@ -12,6 +12,66 @@ import {
 } from "./r2Storage";
 import { createImageRenditions } from "./imageRenditions";
 
+import { chatImage, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, requestTextCompletion } from "./llmProtocol";
+
+// Internal building block; creative stages will persist and validate their own domain output.
+export const executeText = internalAction({
+  args: {
+    templateKind: v.union(v.literal("style-suggestion"), v.literal("palette-plan"), v.literal("repaint-concept")),
+    promptTemplateId: v.optional(v.id("promptTemplates")),
+    systemPrompt: v.string(),
+    userPrompt: v.string(),
+    jsonOutput: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args): Promise<Awaited<ReturnType<typeof requestTextCompletion>> & { profileId: string }> => {
+    const { route, policy } = await ctx.runQuery(internal.generation.getTextExecutionContext, {
+      templateKind: args.templateKind, promptTemplateId: args.promptTemplateId,
+    });
+    const routes = policy.fallbackBehavior === "secondary-provider" && route.fallback
+      ? [route.primary, route.fallback] : [route.primary];
+    const attempts = policy.fallbackBehavior === "fail-job" ? 1 : policy.maxRetryCount + 1;
+    let lastError: unknown;
+    const deadline = Date.now() + 8 * 60 * 1000;
+    for (const candidate of routes) {
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        if (Date.now() >= deadline) break;
+        try {
+          const result = await requestTextCompletion({
+            ...args,
+            profile: { ...candidate.profile, timeoutMs: Math.min(candidate.profile.timeoutMs ?? policy.timeoutMs, deadline - Date.now()) },
+            parameterOverridesJson: candidate.binding?.parameterOverridesJson,
+          });
+          return { ...result, profileId: candidate.profile._id };
+        } catch (error) {
+          lastError = error;
+          if (error instanceof Error && /HTTP (400|401|403|404|422)\b/.test(error.message)) break;
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Text generation failed");
+  },
+});
+
+// Explicit administrator smoke test, separate from the read-only /models connection check.
+export const testTextProfileGeneration = action({
+  args: { profileId: v.id("llmProfiles") },
+  handler: async (ctx, { profileId }): Promise<Awaited<ReturnType<typeof requestTextCompletion>>> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Authentication is required");
+    const profile = await ctx.runQuery(internal.generation.getLlmProfileForConnectionTest, {
+      profileId, tokenIdentifier: identity.tokenIdentifier,
+    });
+    if (!profile?.isActive || profile.capability !== "text") {
+      throw new Error("An active text profile is required");
+    }
+    return requestTextCompletion({
+      profile, jsonOutput: true,
+      systemPrompt: "Return only a JSON object with the boolean field ok set to true.",
+      userPrompt: "Run the connection smoke test.",
+    });
+  },
+});
+
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-1";
 const DEFAULT_IMAGE_TIMEOUT_MS = 120000;
 
@@ -75,7 +135,7 @@ type OpenAICompatibleProvider =
 type LlmRoute = {
   profile: {
     _id: Id<"llmProfiles">;
-    apiFormat: "openai-compatible";
+    apiFormat: "openai-compatible" | "openai-chat-completions";
     baseUrl: string;
     headersJson?: string;
     keyEnvName: string;
@@ -166,7 +226,7 @@ export const testLlmProfileConnection = action({
     const startedAt = Date.now();
     try {
       const customHeaders = parseJsonObjectOrEmpty(profile.headersJson, "Provider headers");
-      const response = await fetch(`${profile.baseUrl.replace(/\/+$/, "")}/models`, {
+      const response = await fetch(`${profile.baseUrl.replace(/\/+$/, "").replace(/\/(?:images\/generations|chat\/completions)$/, "")}/models`, {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -298,6 +358,11 @@ export const executeQueuedJob = internalAction({
     generationJobId: v.id("generationJobs"),
   },
   handler: async (ctx, { generationJobId }) => {
+    const textCompositionId = await ctx.runQuery(internal.creativePipeline.getRepaintComposition, { generationJobId });
+    if (textCompositionId) {
+      await ctx.runAction(internal.creativeNode.executeComposition, { promptCompositionId: textCompositionId });
+      return;
+    }
     const job = await ctx.runQuery(internal.generation.getJobForExecution, {
       generationJobId,
     });
@@ -609,7 +674,9 @@ async function generateWithOpenAICompatibleImage({
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
   try {
-    response = await fetch(buildOpenAICompatibleImageUrl(route.profile.baseUrl), {
+    response = await fetch(route.profile.apiFormat === "openai-chat-completions"
+      ? completionUrl(route.profile.baseUrl)
+      : imageGenerationUrl(route.profile.baseUrl), {
       method: "POST",
       headers: buildOpenAICompatibleHeaders(route, apiKey),
       body: JSON.stringify(
@@ -645,10 +712,9 @@ async function generateWithOpenAICompatibleImage({
     data?: Array<{ b64_json?: string; revised_prompt?: string; url?: string }>;
     id?: string;
   };
-  const image = payload.data?.[0];
-  if (!image) {
-    throw new Error(`${route.profile.name} image generation returned no image payload`);
-  }
+  const image = route.profile.apiFormat === "openai-chat-completions"
+    ? chatImage(payload)
+    : imagesApiImage(payload);
 
   if (image.b64_json) {
     return {
@@ -727,10 +793,6 @@ function resolveImageGenerationRoutes(
   }];
 }
 
-function buildOpenAICompatibleImageUrl(baseUrl: string) {
-  return `${baseUrl.replace(/\/+$/, "")}/images/generations`;
-}
-
 function buildOpenAICompatibleHeaders(route: ExternalImageRoute, apiKey: string) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -762,14 +824,20 @@ function buildOpenAICompatibleImageBody({
   route: ExternalImageRoute;
   simulationStage?: SimulationStage;
 }) {
-  const defaultBody: Record<string, unknown> = {
-    model: route.profile.modelId,
-    prompt,
-    size: "1024x1024",
-    quality: getDefaultImageQuality(renderMode),
-    output_format: "png",
-    background: "opaque",
-  };
+  if (route.profile.apiFormat === "openai-chat-completions") {
+    const defaults = parseJsonObjectOrEmpty(route.profile.requestDefaultsJson, "LLM profile request defaults");
+    const overrides = parseJsonObjectOrEmpty(route.binding?.parameterOverridesJson, "Prompt template binding overrides");
+    return {
+      ...mergeJsonObjects(defaults, overrides),
+      model: route.profile.modelId,
+      messages: [{
+        role: "user",
+        content: negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt,
+      }],
+      stream: false,
+    };
+  }
+  const defaultBody = imageDefaults(route.profile.modelId, getDefaultImageQuality(renderMode));
   const profileDefaults = parseJsonObjectOrEmpty(
     route.profile.requestDefaultsJson,
     "LLM profile request defaults"
@@ -793,7 +861,9 @@ function buildOpenAICompatibleImageBody({
     throw new Error("LLM image request body must be a JSON object");
   }
 
-  body.prompt = prompt;
+  body.model = route.profile.modelId;
+  body.n = 1;
+  body.prompt = negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt;
   return body;
 }
 

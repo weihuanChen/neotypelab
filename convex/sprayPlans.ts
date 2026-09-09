@@ -56,6 +56,7 @@ export const createFromConcept = mutation({
       ]);
 
     const snapshot = buildPaintPlan({
+      approvedPlanJson: concept.palettePlanJson,
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,

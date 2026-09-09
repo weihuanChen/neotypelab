@@ -6,309 +6,103 @@ import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { nextArchiveNumber } from "./archiveNumbers";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
-import { reserveGenerationStorageForJob } from "./storageAccounting";
-
-const MAX_NOTES_LENGTH = 100;
+import { creativeInputKey, fillCreativeTemplate } from "./creativeContracts";
+import type { PaintPlan } from "./paintMappingEngine";
 
 export const initializePrototype = mutation({
   args: {
     sourceConceptId: v.optional(v.id("concepts")),
-    baseModelId: v.optional(v.id("baseModels")),
-    kitVariantId: v.optional(v.id("baseModels")),
-    stylePresetId: v.id("stylePresets"),
-    materialPresetId: v.id("materialPresets"),
-    moodTags: v.optional(v.array(vMoodTag)),
-    weatheringLevel: vWeatheringLevel,
-    visibility: v.optional(vConceptVisibility),
-    notes: v.optional(v.string()),
+    baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
+    stylePresetId: v.id("stylePresets"), materialPresetId: v.id("materialPresets"),
+    moodTags: v.optional(v.array(vMoodTag)), weatheringLevel: vWeatheringLevel,
+    visibility: v.optional(vConceptVisibility), notes: v.optional(v.string()),
+    paletteCompositionId: v.optional(v.id("promptCompositions")), requestKey: v.optional(v.string()),
   },
-  async handler(
-    ctx,
-    {
-      sourceConceptId,
-      baseModelId,
-      kitVariantId,
-      stylePresetId,
-      materialPresetId,
-      moodTags,
-      weatheringLevel,
-      visibility,
-      notes,
-    }
-  ) {
+  handler: async (ctx, args) => {
     const viewer = ctx.viewerX();
+    if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
+    const inputKey = creativeInputKey(args);
+    const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
+    if (!account) throw new Error("Credit account is not initialized");
+    if (args.requestKey) {
+      if (args.requestKey.length > 120) throw new Error("Invalid request key");
+      const existing = await ctx.db.query("promptCompositions").withIndex("by_user_request", q => q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
+      if (existing) {
+        const snapshot = JSON.parse(existing.inputSnapshotJson);
+        if (snapshot.inputKey !== inputKey || snapshot.kind !== "repaint-concept" || snapshot.paletteCompositionId !== args.paletteCompositionId || snapshot.sourceConceptId !== args.sourceConceptId || snapshot.visibility !== (args.visibility ?? "private")) throw new Error("Request key belongs to different creative inputs");
+        const concept = existing.conceptId ? await ctx.db.get(existing.conceptId) : null;
+        if (!concept || !existing.generationJobId) throw new Error("Incomplete existing creative request");
+        return { conceptId: concept._id, promptCompositionId: existing._id, generationJobId: existing.generationJobId,
+          balanceAfter: account.balance, title: concept.title, templateName: snapshot.templateName as string, promptPreview: existing.composedPrompt,
+          priceRule: snapshot.priceRule as { actionType: string; label: string; creditCost: number } };
+      }
+    }
     await assertGenerationCapacity(ctx, viewer._id);
-    const sanitizedNotes = notes?.trim() || undefined;
-    const sanitizedMoodTags = Array.from(new Set(moodTags ?? []));
-    const nextVisibility = visibility ?? "private";
-    const selectedKitVariantId = kitVariantId ?? baseModelId;
-
-    if (sanitizedNotes !== undefined && sanitizedNotes.length > MAX_NOTES_LENGTH) {
-      throw new Error(`Additional notes must be ${MAX_NOTES_LENGTH} characters or fewer`);
-    }
-
-    const [
-      sourceConcept,
-      baseModel,
-      stylePreset,
-      materialPreset,
-      colorRoles,
-      account,
-      template,
-      priceRule,
-    ] =
-      await Promise.all([
-        sourceConceptId ? ctx.db.get(sourceConceptId) : null,
-        selectedKitVariantId ? ctx.db.get(selectedKitVariantId) : null,
-        ctx.db.get(stylePresetId),
-        ctx.db.get(materialPresetId),
-        ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-        ctx.db
-          .query("creditAccounts")
-          .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
-          .unique(),
-        resolvePipelineTemplate(ctx, "repaint-concept"),
-        ctx.db
-          .query("creditPriceRules")
-          .withIndex("by_actionType", (q) =>
-            q.eq("actionType", "generate-repaint-concept")
-          )
-          .collect()
-          .then((items) => items.find((item) => item.isActive) ?? null),
-      ]);
-
-    if (sourceConceptId && sourceConcept === null) {
-      throw new Error("Remix source concept was not found");
-    }
-    if (
-      sourceConcept !== null &&
-      (sourceConcept.visibility === "private" ||
-        (sourceConcept.status !== "generated" && sourceConcept.status !== "archived"))
-    ) {
-      throw new Error("Remix source is not available on a shareable surface");
-    }
-    if (baseModel === null || !isPublicModelCatalogRecord(baseModel)) {
-      throw new Error("Selected kit variant is unavailable");
-    }
-    if (stylePreset === null || !stylePreset.isActive) {
-      throw new Error("Selected Style DNA preset is unavailable");
-    }
-    if (materialPreset === null || !materialPreset.isActive) {
-      throw new Error("Selected material preset is unavailable");
-    }
-    if (account === null) {
-      throw new Error("Credit account is not initialized");
-    }
-    if (template === null) {
-      throw new Error("No active repaint concept prompt template is configured");
-    }
-    if (priceRule === null) {
-      throw new Error("No active price rule is configured for repaint concepts");
-    }
-    if (account.balance < priceRule.creditCost) {
-      throw new Error(
-        `Insufficient credits. ${priceRule.creditCost} credits required, ${account.balance} available.`
-      );
-    }
-
-    const title = sourceConceptId
-      ? `${baseModel.name} / ${stylePreset.name} Remix`
-      : `${baseModel.name} / ${stylePreset.name}`;
-    const colorRoleNames = colorRoles.map((role) => role.name).join(", ");
-    const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
+    const notes = args.notes?.trim() || undefined;
+    if ((notes?.length ?? 0) > 100) throw new Error("Notes must be 100 characters or fewer");
+    const palette = args.paletteCompositionId ? await ctx.db.get(args.paletteCompositionId) : null;
+    if (!palette || palette.userId !== viewer._id || palette.status !== "consumed") throw new Error("Generate and approve a palette plan before creating the repaint specification");
+    const paletteInput = JSON.parse(palette.inputSnapshotJson);
+    const paletteOutput = JSON.parse(palette.outputSummaryJson ?? "{}");
+    if (paletteInput.kind !== "palette-plan" || paletteInput.inputKey !== inputKey || !paletteOutput.plan) throw new Error("Palette inputs have changed. Generate and approve a new palette plan");
+    const palettePlan = paletteOutput.plan as PaintPlan;
+    const modelId = args.kitVariantId ?? args.baseModelId;
+    const model = modelId ? await ctx.db.get(modelId) : null;
+    const style = await ctx.db.get(args.stylePresetId);
+    const material = await ctx.db.get(args.materialPresetId);
+    if (!model || !isPublicModelCatalogRecord(model) || !style?.isActive || !material?.isActive) throw new Error("Selected kit, style or material is unavailable");
+    const source = args.sourceConceptId ? await ctx.db.get(args.sourceConceptId) : null;
+    if (args.sourceConceptId && (!source || source.visibility === "private" || source.status === "draft")) throw new Error("Remix source is unavailable");
+    const template = await resolvePipelineTemplate(ctx, "repaint-concept");
+    const price = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", "generate-repaint-concept")).collect()).find(p => p.isActive);
+    if (!template || !price) throw new Error("Repaint specification template or price rule is missing");
+    if (account.balance < price.creditCost) throw new Error("Insufficient credits");
+    const modelContext = await buildModelPromptContext(ctx, model);
+    const title = `${model.name} / ${style.name}${source ? " Remix" : ""}`;
+    const priceRule = { actionType: price.actionType, label: price.label, creditCost: price.creditCost };
     const inputSnapshot = {
-      sourceConcept:
-        sourceConcept === null
-          ? undefined
-          : {
-              id: sourceConcept._id,
-              title: sourceConcept.title,
-              visibility: sourceConcept.visibility,
-              status: sourceConcept.status,
-            },
-      baseModel: modelPromptContext.snapshot,
-      stylePreset: {
-        id: stylePreset._id,
-        name: stylePreset.name,
-        slug: stylePreset.slug,
-        category: stylePreset.category,
-      },
-      materialPreset: {
-        id: materialPreset._id,
-        name: materialPreset.name,
-        slug: materialPreset.slug,
-        finishType: materialPreset.finishType,
-      },
-      moodTags: sanitizedMoodTags,
-      weatheringLevel,
-      visibility: nextVisibility,
-      additionalNotes: sanitizedNotes,
-      colorRoles: colorRoles.map((role) => ({
-        slug: role.slug,
-        name: role.name,
-        recommendedArea: role.recommendedArea,
-      })),
+      kind: "repaint-concept", textStage: "repaint-concept", inputKey,
+      systemPrompt: template.systemPrompt, templateName: template.name, templateVersion: template.version,
+      baseModel: modelContext.snapshot, stylePreset: { id: style._id, name: style.name, slug: style.slug },
+      materialPreset: { id: material._id, name: material.name, slug: material.slug },
+      weatheringLevel: args.weatheringLevel, moodTags: Array.from(new Set(args.moodTags ?? [])),
+      palettePlan, paletteCompositionId: palette._id, sourceConceptId: source?._id, visibility: args.visibility ?? "private", priceRule,
     };
-
-    const initialPrompt = composePrompt(template.userPromptTemplate, {
-      baseModel: modelPromptContext.promptText,
-      stylePreset: stylePreset.name,
-      materialPreset: materialPreset.name,
-      mood: sanitizedMoodTags.join(", ") || "No mood vector selected.",
-      weatheringLevel,
-      notes: sanitizedNotes ?? "No extra notes.",
-      colorRoles: colorRoleNames,
-      conceptId: "pending",
-      remixSource: sourceConcept?.title ?? "",
-    }, sourceConcept ? `Remix Source: ${sourceConcept.title}` : undefined);
-
-    const recordNumber = await nextArchiveNumber(ctx, "prototype");
+    const composedPrompt = fillCreativeTemplate(template.userPromptTemplate, {
+      baseModel: modelContext.promptText, kitVariant: modelContext.promptText,
+      stylePreset: JSON.stringify(style), materialPreset: JSON.stringify(material),
+      mood: inputSnapshot.moodTags.join(", ") || "None", weatheringLevel: args.weatheringLevel,
+      approvedPalette: JSON.stringify(palettePlan), colorRoles: palettePlan.entries.map(e => e.roleSlug).join(", "),
+      notes: notes ?? "None", remixSource: source?.title ?? "None",
+    });
     const conceptId = await ctx.db.insert("concepts", {
-      userId: viewer._id,
-      recordNumber,
-      title,
-      notes: sanitizedNotes,
-      baseModelId: baseModel._id,
-      stylePresetId: stylePreset._id,
-      materialPresetId: materialPreset._id,
-      moodTags: sanitizedMoodTags,
-      weatheringLevel,
-      status: "draft",
-      visibility: nextVisibility,
-      sourceConceptId: sourceConcept?._id,
-      searchText: [
-        title,
-        sanitizedNotes ?? "",
-        sanitizedMoodTags.join(" "),
-        stylePreset.name,
-        materialPreset.name,
-        sourceConcept?.title ?? "",
-      ]
-        .join(" ")
-        .trim(),
+      userId: viewer._id, recordNumber: await nextArchiveNumber(ctx, "prototype"), title, notes,
+      baseModelId: model._id, stylePresetId: style._id, materialPresetId: material._id,
+      moodTags: inputSnapshot.moodTags, weatheringLevel: args.weatheringLevel, status: "draft",
+      visibility: args.visibility ?? "private", sourceConceptId: source?._id,
+      paletteCompositionId: palette._id, palettePlanJson: JSON.stringify(palettePlan),
+      searchText: `${title} ${notes ?? ""} ${style.name} ${material.name}`,
     });
-
     const promptCompositionId = await ctx.db.insert("promptCompositions", {
-      userId: viewer._id,
-      conceptId,
-      promptTemplateId: template._id,
-      promptTemplateVersionId: template.promptTemplateVersionId,
-      status: "ready",
-      composedPrompt: initialPrompt,
-      negativePrompt: template.negativePromptTemplate,
-      additionalNotes: sanitizedNotes,
+      userId: viewer._id, conceptId, promptTemplateId: template._id, promptTemplateVersionId: template.promptTemplateVersionId,
+      requestKey: args.requestKey, reservedCredits: price.creditCost, status: "ready", composedPrompt,
+      negativePrompt: template.negativePromptTemplate, additionalNotes: notes,
       inputSnapshotJson: JSON.stringify(inputSnapshot),
-      outputSummaryJson: JSON.stringify({
-        template: template.name,
-        templateVersion: template.version,
-        styleDNA: stylePreset.name,
-        materialProfile: materialPreset.name,
-      }),
+      outputSummaryJson: JSON.stringify({ template: template.name, templateVersion: template.version }),
     });
-
     const generationJobId = await ctx.db.insert("generationJobs", {
-      userId: viewer._id,
-      kind: "palette-plan",
-      status: "queued",
-      baseModelId: baseModel._id,
-      stylePresetId: stylePreset._id,
-      materialPresetId: materialPreset._id,
-      conceptId,
-      requestedCredits: priceRule.creditCost,
-      promptCompositionId,
-      provider: "internal",
-      inputSnapshotJson: JSON.stringify(inputSnapshot),
-      outputSummaryJson: JSON.stringify({
-        phase: "queued",
-        label: "INITIALIZING STYLE DNA",
-      }),
+      userId: viewer._id, kind: "palette-plan", status: "queued", requestedCredits: price.creditCost,
+      baseModelId: model._id, stylePresetId: style._id, materialPresetId: material._id, conceptId, promptCompositionId,
+      inputSnapshotJson: JSON.stringify(inputSnapshot), outputSummaryJson: JSON.stringify({ phase: "queued", label: "PREPARING REPAINT SPECIFICATION" }),
     });
-    await reserveGenerationStorageForJob(ctx, viewer._id, generationJobId);
-
-    const composedPrompt = composePrompt(template.userPromptTemplate, {
-      baseModel: modelPromptContext.promptText,
-      stylePreset: stylePreset.name,
-      materialPreset: materialPreset.name,
-      mood: sanitizedMoodTags.join(", ") || "No mood vector selected.",
-      weatheringLevel,
-      notes: sanitizedNotes ?? "No extra notes.",
-      colorRoles: colorRoleNames,
-      conceptId,
-      remixSource: sourceConcept?.title ?? "",
-    }, sourceConcept ? `Remix Source: ${sourceConcept.title}` : undefined);
-
-    await ctx.db.patch(conceptId, {
-      generationJobId,
-    });
-    await ctx.db.patch(promptCompositionId, {
-      generationJobId,
-      composedPrompt,
-    });
-
-    const balanceAfter = account.balance - priceRule.creditCost;
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeSpent: account.lifetimeSpent + priceRule.creditCost,
-      lastCreditEventAt: Date.now(),
-    });
-
-    await ctx.db.insert("creditTransactions", {
-      userId: viewer._id,
-      actionType: "generate-repaint-concept",
-      delta: -priceRule.creditCost,
-      creditAmount: priceRule.creditCost,
-      balanceAfter,
-      generationJobId,
-      conceptId,
-      referenceTable: "generationJobs",
-      referenceId: generationJobId,
-      description: `Queued prototype for ${title}`,
-    });
-
-    await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, {
-      generationJobId,
-    });
-
-    return {
-      conceptId,
-      promptCompositionId,
-      generationJobId,
-      balanceAfter,
-      title,
-      templateName: template.name,
-      promptPreview: composedPrompt,
-      priceRule: {
-        actionType: priceRule.actionType,
-        label: priceRule.label,
-        creditCost: priceRule.creditCost,
-      },
-    };
+    await ctx.db.patch(conceptId, { generationJobId });
+    await ctx.db.patch(promptCompositionId, { generationJobId });
+    const balanceAfter = account.balance - price.creditCost;
+    await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeSpent: account.lifetimeSpent + price.creditCost, lastCreditEventAt: Date.now() });
+    await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType: "generate-repaint-concept", delta: -price.creditCost,
+      creditAmount: price.creditCost, balanceAfter, generationJobId, conceptId, referenceTable: "promptCompositions", referenceId: promptCompositionId, description: `Queued repaint specification for ${title}` });
+    await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, { generationJobId });
+    await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId });
+    return { conceptId, promptCompositionId, generationJobId, balanceAfter, title, templateName: template.name, promptPreview: composedPrompt, priceRule };
   },
 });
-
-function applyTemplate(template: string, values: Record<string, string>) {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
-}
-
-function composePrompt(
-  template: string,
-  values: Record<string, string>,
-  remixLine?: string
-) {
-  const prompt = applyTemplate(template, values);
-  const appendedLines: string[] = [];
-  if (!template.includes("{{mood}}")) {
-    const mood = values.mood?.trim();
-    if (mood) {
-      appendedLines.push(`Mood Vector: ${mood}`);
-    }
-  }
-  if (remixLine) {
-    appendedLines.push(remixLine);
-    appendedLines.push("Preserve source lineage cues while branching into a distinct repaint solution.");
-  }
-  if (appendedLines.length === 0) {
-    return prompt;
-  }
-  return `${prompt}\n${appendedLines.join("\n")}`;
-}

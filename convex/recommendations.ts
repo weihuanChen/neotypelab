@@ -133,6 +133,7 @@ async function buildRecommendationSnapshot(
           .then((items) => items.filter((item) => item.conceptId === concept._id));
 
   const paintPlan = buildPaintPlan({
+      approvedPlanJson: concept.palettePlanJson,
     conceptId: concept._id,
     conceptTitle: concept.title,
     baseModelName: baseModel?.name,

@@ -9,6 +9,9 @@ export type PromptTemplateVariableDefinition = {
 };
 
 export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition[] = [
+  { key: "paintCatalog", label: "Paint catalog capabilities", description: "Available paint effects and catalog sample count.", kinds: ["palette-plan"], example: "solid, metallic" },
+  { key: "approvedPalette", label: "Approved palette", description: "Full persisted palette JSON.", kinds: ["repaint-concept", "hd-render"], example: "Approved color-role paint assignments" },
+  { key: "renderSpecification", label: "Approved repaint specification", description: "Persisted panel, material, weathering and decal instructions.", kinds: ["hd-render"], example: "Approved repaint specification JSON" },
   {
     key: "baseModel",
     label: "Base Model",
@@ -48,7 +51,7 @@ export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition
     key: "mood",
     label: "Mood Vector",
     description: "Selected mood modifiers formatted for the model.",
-    kinds: ["style-suggestion", "repaint-concept", "hd-render"],
+    kinds: ["palette-plan", "style-suggestion", "repaint-concept", "hd-render"],
     example: "Command presence, reactor glow",
   },
   {

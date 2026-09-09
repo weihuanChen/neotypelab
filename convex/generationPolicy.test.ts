@@ -127,3 +127,34 @@ describe("generation policy integration", () => {
     ).rejects.toThrow(/changed in another session/);
   });
 });
+
+describe("text execution route resolution", () => {
+  it("selects a text profile instead of a higher priority image profile", async () => {
+    const t = convexTest(schema, modules);
+    const textProfileId = await t.run(async (ctx) => {
+      const shared = {
+        provider: "custom-openai-compatible" as const,
+        apiFormat: "openai-compatible" as const,
+        baseUrl: "https://example.test/v1", modelId: "test-model",
+        keyEnvName: "GEMINI_API_KEY_OFFCIAL", isActive: true, updatedAt: Date.now(),
+      };
+      await ctx.db.insert("llmProfiles", { ...shared, capability: "image", name: "Image", slug: "image", priority: 100 });
+      return ctx.db.insert("llmProfiles", { ...shared, capability: "text", name: "Text", slug: "text", priority: 0 });
+    });
+    const result = await t.query(internal.generation.getTextExecutionContext, { templateKind: "palette-plan" });
+    expect(result.route.primary.profile._id).toBe(textProfileId);
+  });
+
+  it("rejects an explicit route containing only image profiles", async () => {
+    const t = convexTest(schema, modules);
+    const user = await seedUser(t, { tokenIdentifier: "route-admin", email: "route@example.test" });
+    await t.run(async (ctx) => {
+      const shared = { provider: "custom-openai-compatible" as const, apiFormat: "openai-compatible" as const,
+        baseUrl: "https://example.test/v1", modelId: "test", keyEnvName: "TEST_KEY", isActive: true, updatedAt: Date.now(), priority: 0 };
+      const imageId = await ctx.db.insert("llmProfiles", { ...shared, name: "Image", slug: "image", capability: "image" });
+      await ctx.db.insert("llmProfiles", { ...shared, name: "Text", slug: "text", capability: "text" });
+      await ctx.db.insert("generationProviderRoutes", { action: "palette-plan", primaryProfileId: imageId, updatedAt: Date.now(), updatedByUserId: user.userId });
+    });
+    await expect(t.query(internal.generation.getTextExecutionContext, { templateKind: "palette-plan" })).rejects.toThrow(/no active text provider/);
+  });
+});

@@ -1,3 +1,4 @@
+import { creativeTemplateSeeds } from "./creativeContracts";
 import { Id } from "./_generated/dataModel";
 import {
   baseModelVariantSeeds,
@@ -106,7 +107,10 @@ export const init = internalMutation({
     }
 
     for (const template of promptTemplates) {
-      await ctx.db.insert("promptTemplates", template);
+      const creativeSeed = creativeTemplateSeeds.find(seed => seed.kind === template.kind);
+      await ctx.db.insert("promptTemplates", creativeSeed
+        ? { ...template, ...creativeSeed, version: "creation.v1" }
+        : template);
     }
 
     for (const rule of creditPriceRules) {

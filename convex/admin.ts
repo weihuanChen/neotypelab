@@ -4379,14 +4379,16 @@ async function composePromptLabPayload(
     .then((items) =>
       items
         .filter((preset) => preset.isActive)
-        .map((preset) => preset.name)
-        .sort((a, b) => a.localeCompare(b))
-        .join(", ")
+        .map((preset) => JSON.stringify({ id: preset._id, name: preset.name, slug: preset.slug, spec: preset.styleSpec }))
+        .join("\n")
     );
   const values = {
+    approvedPalette: paintPlan ? JSON.stringify(paintPlan) : "No palette selected in this preview",
+    renderSpecification: "Production uses the concept's saved specification; this manual preview has none.",
+    paintCatalog: JSON.stringify({ availableEffects: Array.from(new Set(paintMappings.filter(p=>p.isActive).map(p=>p.opacity === "transparent" ? "transparent" : p.effects.includes("metallic") ? "metallic" : "solid"))) }),
     availableStyles,
     baseModel: modelPromptContext?.promptText ?? "Unselected kit variant",
-    colorRoles: colorRoles.map((role) => role.name).join(", "),
+    colorRoles: JSON.stringify(colorRoles.map((role) => ({ slug: role.slug, name: role.name, recommendedArea: role.recommendedArea }))),
     conceptId: input.conceptId?.trim() || "prompt-lab-manual-web",
     kitVariant: modelPromptContext?.promptText ?? "Unselected kit variant",
     materialPreset: materialPreset?.name ?? "Unselected material profile",

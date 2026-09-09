@@ -113,6 +113,7 @@ async function buildShoppingListSnapshot(
     ]);
 
     const paintPlan = buildPaintPlan({
+      approvedPlanJson: concept.palettePlanJson,
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,

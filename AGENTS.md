@@ -24,3 +24,8 @@ Git history is not available in this checkout, so no repository-specific commit 
 ## Security & Configuration Tips
 Keep secrets in `.env.local`, which is gitignored. Current local config relies on Convex and R2-related variables such as `VITE_CONVEX_URL`, `CONVEX_DEPLOYMENT`, `R2_BUCKET_PUBLIC`, `R2_BUCKET_PRIVATE`, `R2_END_POINT`, `R2_ACCESS_KEY_ID`, and `R2_PUBLIC_BASE_URL`; immediate CDN removal additionally uses `CLOUDFLARE_CACHE_PURGE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN`. Document any new required keys in `README.md` and this guide when setup changes.
 Subscription event ingestion additionally requires `BILLING_WEBHOOK_SECRET` in the Convex environment.
+Text/image provider execution in Convex additionally uses `OPEMAI_IMAGE_FOR_LLM_RELAY` (LLMRelay `gpt-image-2` Images API) and `GEMINI_API_KEY_OFFCIAL` (official Gemini text via its OpenAI-compatible endpoint). Preserve these exact key names. Provider profiles must specify a model ID and matching capability; see README.md for request protocol settings.
+
+Creation setup: run `npx convex run creativeSetup:configure '{"textModelId":"gemini-3.5-flash"}' --push` for the verified text/image profiles and `creation.v1` template bindings. Text generation persists validated results in promptCompositions; concepts freeze palettePlanJson/renderSpecificationJson. Keep snapshot usage intact when changing downstream paint-plan consumers.
+
+Library details use private signed downloads. Configure exact frontend CORS origins with `libraryDownloadsNode:configureCors` (GET/HEAD only; local development uses `http://localhost:3001`). Preserve owner-only access in `libraryDetails.get` and do not return private storage keys in detail payloads.
