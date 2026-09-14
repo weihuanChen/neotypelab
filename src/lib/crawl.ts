@@ -81,6 +81,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    { url: new URL("/styles", siteUrl).toString(), lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     {
       url: new URL("/showcase", siteUrl).toString(),
       lastModified: now,
@@ -116,7 +117,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
     ] = await Promise.all([
       convex.query(api.showcase.listPublicConceptsForSitemap, {}),
       convex.query(api.showcase.listPublicProfilesForSitemap, {}),
-      convex.query(api.showcase.listSeoLandingPagesForSitemap, {}),
+      convex.query(api.styleEditorial.sitemap, {}),
       convex.query(api.showcase.listCreatorPacksForSitemap, {}),
       convex.query(api.showcase.listCreatorHubsForSitemap, {}),
     ]);
@@ -135,9 +136,14 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
         changeFrequency: "weekly" as const,
         priority: 0.75,
       })),
+      ...Array.from(new Set(seoLandingPages.map(page => page.styleSlug))).map(slug => ({
+        url: new URL(`/styles/${slug}`, siteUrl).toString(),
+        lastModified: new Date(Math.max(...seoLandingPages.filter(page => page.styleSlug === slug).map(page => page.lastModified))),
+        changeFrequency: "weekly" as const, priority: 0.85,
+      })),
       ...seoLandingPages.map((page) => ({
         url: new URL(
-          `/${page.baseModelSlug}/${page.stylePresetSlug}`,
+          `/styles/${page.styleSlug}/${page.modelSlug}`,
           siteUrl
         ).toString(),
         lastModified: new Date(page.lastModified),

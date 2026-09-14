@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { hasIndexableStyle } from "./creativeContracts";
 import {
   BaseModelWithHierarchy,
   summarizeBaseModelWithHierarchy,
@@ -145,6 +146,7 @@ export const listPublicConceptsForSitemap = query({
 
     return concepts
       .filter(isPublicConcept)
+      .filter(hasIndexableStyle)
       .sort((a, b) => b._creationTime - a._creationTime)
       .map((concept) => ({
         _id: concept._id,
@@ -364,6 +366,7 @@ export const getSharedConcept = query({
     });
 
     return {
+      indexable: concept.visibility === "public" && hasIndexableStyle(concept) && Boolean(publishedAssets?.preview?.publicUrl) && Boolean(stylePreset?.isActive),
       _id: concept._id,
       _creationTime: concept._creationTime,
       recordNumber: concept.recordNumber,
@@ -834,7 +837,7 @@ export const getSeoLandingPage = query({
         (concept) =>
           concept.baseModelId === baseModel._id &&
           concept.stylePresetId === stylePreset._id &&
-          isPublicConcept(concept)
+          hasIndexableStyle(concept) && isPublicConcept(concept)
       )
       .sort((a, b) => b._creationTime - a._creationTime);
 

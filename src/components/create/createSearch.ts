@@ -1,4 +1,5 @@
 export type CreateWorkbenchSearch = {
+  communityStyle?: string;
   remix?: string;
   recommendedStyle?: string;
   recommendedMaterial?: string;
@@ -12,6 +13,7 @@ export type CreateWorkbenchSearch = {
 
 export function parseCreateSearch(search: Record<string, unknown>): CreateWorkbenchSearch {
   return {
+    communityStyle: parseOptionalSearchValue(search.communityStyle),
     remix: parseOptionalSearchValue(search.remix),
     recommendedStyle: parseOptionalSearchValue(search.recommendedStyle),
     recommendedMaterial: parseOptionalSearchValue(search.recommendedMaterial),

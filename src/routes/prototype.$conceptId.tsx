@@ -80,6 +80,7 @@ export const Route = createFileRoute("/prototype/$conceptId")({
 
     return {
       meta: [
+        { name: "robots", content: loaderData?.concept?.indexable ? "index, follow" : "noindex, follow" },
         { title: meta.title },
         { name: "description", content: meta.description },
         { property: "og:title", content: meta.title },

@@ -1,6 +1,8 @@
 export const appPaths = {
   explore: "/",
   showcase: "/showcase",
+  styles: "/styles",
+  communityStyles: "/community/styles",
   create: "/create",
   library: "/library",
   feedback: "/feedback",

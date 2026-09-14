@@ -34,6 +34,9 @@ export const listCreateOptions = query({
         shortDescription: preset.shortDescription,
         contrastLevel: preset.contrastLevel,
         weatheringProfile: preset.weatheringProfile,
+        recommendedMaterialSlugs: preset.recommendedMaterialSlugs,
+        styleIntentJson: preset.styleIntentJson,
+        styleIntentVersion: preset.styleIntentVersion,
       }));
     const materialPresets = materialPresetsRaw
       .filter((preset) => preset.isActive)

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { ownedStyle } from "./userStyles";
 import { internal } from "./_generated/api";
 import { vConceptVisibility, vMoodTag, vWeatheringLevel } from "./domain";
 import { mutation } from "./functions";
@@ -6,21 +7,26 @@ import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { nextArchiveNumber } from "./archiveNumbers";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
-import { creativeInputKey, fillCreativeTemplate } from "./creativeContracts";
+import { creativeInputKey, fillCreativeTemplate, styleIntentSchema, stylePlanningRules } from "./creativeContracts";
 import type { PaintPlan } from "./paintMappingEngine";
 
 export const initializePrototype = mutation({
   args: {
+    userStyleId: v.optional(v.id("userStyles")),
     sourceConceptId: v.optional(v.id("concepts")),
     baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
-    stylePresetId: v.id("stylePresets"), materialPresetId: v.id("materialPresets"),
+    stylePresetId: v.optional(v.id("stylePresets")), materialPresetId: v.id("materialPresets"),
     moodTags: v.optional(v.array(vMoodTag)), weatheringLevel: vWeatheringLevel,
     visibility: v.optional(vConceptVisibility), notes: v.optional(v.string()),
     paletteCompositionId: v.optional(v.id("promptCompositions")), requestKey: v.optional(v.string()),
+    styleRevision: v.optional(v.string()), styleIntentJson: v.optional(v.string()), styleIntentVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const viewer = ctx.viewerX();
     if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
+    if (args.stylePresetId && args.styleIntentJson) throw new Error("Choose either a preset or custom style");
+    if (args.userStyleId && args.stylePresetId) throw new Error("Choose either a saved style or a preset");
+    const savedStyle = args.userStyleId ? await ownedStyle(ctx, args.userStyleId, args.styleIntentJson) : null;
     const inputKey = creativeInputKey(args);
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
     if (!account) throw new Error("Credit account is not initialized");
@@ -45,12 +51,13 @@ export const initializePrototype = mutation({
     const paletteInput = JSON.parse(palette.inputSnapshotJson);
     const paletteOutput = JSON.parse(palette.outputSummaryJson ?? "{}");
     if (paletteInput.kind !== "palette-plan" || paletteInput.inputKey !== inputKey || !paletteOutput.plan) throw new Error("Palette inputs have changed. Generate and approve a new palette plan");
+    const intent = paletteInput.styleIntent ? styleIntentSchema.parse(paletteInput.styleIntent) : undefined;
     const palettePlan = paletteOutput.plan as PaintPlan;
     const modelId = args.kitVariantId ?? args.baseModelId;
     const model = modelId ? await ctx.db.get(modelId) : null;
-    const style = await ctx.db.get(args.stylePresetId);
+    const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
     const material = await ctx.db.get(args.materialPresetId);
-    if (!model || !isPublicModelCatalogRecord(model) || !style?.isActive || !material?.isActive) throw new Error("Selected kit, style or material is unavailable");
+    if (!model || !isPublicModelCatalogRecord(model) || (!style?.isActive && !args.styleIntentJson) || !material?.isActive) throw new Error("Selected kit, style or material is unavailable");
     const source = args.sourceConceptId ? await ctx.db.get(args.sourceConceptId) : null;
     if (args.sourceConceptId && (!source || source.visibility === "private" || source.status === "draft")) throw new Error("Remix source is unavailable");
     const template = await resolvePipelineTemplate(ctx, "repaint-concept");
@@ -58,30 +65,32 @@ export const initializePrototype = mutation({
     if (!template || !price) throw new Error("Repaint specification template or price rule is missing");
     if (account.balance < price.creditCost) throw new Error("Insufficient credits");
     const modelContext = await buildModelPromptContext(ctx, model);
-    const title = `${model.name} / ${style.name}${source ? " Remix" : ""}`;
+    const title = `${model.name} / ${intent?.name ?? style?.name ?? "Custom Style"}${source ? " Remix" : ""}`;
     const priceRule = { actionType: price.actionType, label: price.label, creditCost: price.creditCost };
     const inputSnapshot = {
       kind: "repaint-concept", textStage: "repaint-concept", inputKey,
-      systemPrompt: template.systemPrompt, templateName: template.name, templateVersion: template.version,
-      baseModel: modelContext.snapshot, stylePreset: { id: style._id, name: style.name, slug: style.slug },
+      systemPrompt: template.systemPrompt + "\n" + stylePlanningRules, templateName: template.name, templateVersion: template.version,
+      baseModel: modelContext.snapshot, ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}), styleIntent: intent,
       materialPreset: { id: material._id, name: material.name, slug: material.slug },
       weatheringLevel: args.weatheringLevel, moodTags: Array.from(new Set(args.moodTags ?? [])),
       palettePlan, paletteCompositionId: palette._id, sourceConceptId: source?._id, visibility: args.visibility ?? "private", priceRule,
     };
     const composedPrompt = fillCreativeTemplate(template.userPromptTemplate, {
       baseModel: modelContext.promptText, kitVariant: modelContext.promptText,
-      stylePreset: JSON.stringify(style), materialPreset: JSON.stringify(material),
-      mood: inputSnapshot.moodTags.join(", ") || "None", weatheringLevel: args.weatheringLevel,
+      stylePreset: JSON.stringify(intent ?? style), materialPreset: JSON.stringify(material),
+      mood: inputSnapshot.moodTags.join(", ") || intent?.mood || "Style default", weatheringLevel: args.weatheringLevel,
       approvedPalette: JSON.stringify(palettePlan), colorRoles: palettePlan.entries.map(e => e.roleSlug).join(", "),
       notes: notes ?? "None", remixSource: source?.title ?? "None",
     });
     const conceptId = await ctx.db.insert("concepts", {
+      userStyleId: savedStyle?._id, styleRootId: savedStyle ? savedStyle.rootStyleId ?? savedStyle._id : undefined,
       userId: viewer._id, recordNumber: await nextArchiveNumber(ctx, "prototype"), title, notes,
-      baseModelId: model._id, stylePresetId: style._id, materialPresetId: material._id,
+      baseModelId: model._id, stylePresetId: style?._id, materialPresetId: material._id,
       moodTags: inputSnapshot.moodTags, weatheringLevel: args.weatheringLevel, status: "draft",
       visibility: args.visibility ?? "private", sourceConceptId: source?._id,
       paletteCompositionId: palette._id, palettePlanJson: JSON.stringify(palettePlan),
-      searchText: `${title} ${notes ?? ""} ${style.name} ${material.name}`,
+      styleIntentJson: intent ? JSON.stringify(intent) : undefined, styleIntentVersion: intent?.version,
+      searchText: `${title} ${notes ?? ""} ${intent?.name ?? style?.name ?? "Custom Style"} ${material.name}`,
     });
     const promptCompositionId = await ctx.db.insert("promptCompositions", {
       userId: viewer._id, conceptId, promptTemplateId: template._id, promptTemplateVersionId: template.promptTemplateVersionId,
@@ -92,7 +101,7 @@ export const initializePrototype = mutation({
     });
     const generationJobId = await ctx.db.insert("generationJobs", {
       userId: viewer._id, kind: "palette-plan", status: "queued", requestedCredits: price.creditCost,
-      baseModelId: model._id, stylePresetId: style._id, materialPresetId: material._id, conceptId, promptCompositionId,
+      baseModelId: model._id, stylePresetId: style?._id, materialPresetId: material._id, conceptId, promptCompositionId,
       inputSnapshotJson: JSON.stringify(inputSnapshot), outputSummaryJson: JSON.stringify({ phase: "queued", label: "PREPARING REPAINT SPECIFICATION" }),
     });
     await ctx.db.patch(conceptId, { generationJobId });

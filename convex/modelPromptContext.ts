@@ -67,9 +67,13 @@ export async function buildModelPromptContext(
   const shortLabel = formatKitVariantLabel(baseModel, baseUnit?.name);
   const baseUnitName = baseUnit?.name ?? baseModel.name;
   const lines = [
+    "Model DNA v1: identity and geometry only; do not transfer original paint colors.",
     `Kit Variant: ${shortLabel}.`,
     baseModel.promptAnchor ??
       `Preserve this kit version without simplifying its surface language or mixing with other ${baseUnitName} versions.`,
+    baseModel.panelDensity ? `Panel density: ${baseModel.panelDensity}. Keep marking and masking sizes appropriate.` : undefined,
+    baseModel.complexityLevel ? `Build complexity: ${baseModel.complexityLevel}.` : undefined,
+    baseModel.silhouetteType ? `Silhouette: ${baseModel.silhouetteType}.` : undefined,
     baseUnit ? `Base Unit: ${baseUnit.name}.` : undefined,
     baseUnit?.keyShapeAnchors.length
       ? `Key identity anchors: ${baseUnit.keyShapeAnchors.join(", ")}.`

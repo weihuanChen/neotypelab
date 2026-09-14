@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { buildPaintPlan } from "./paintMappingEngine";
@@ -7,6 +7,8 @@ import { MoodTag } from "./domain";
 import { mutation } from "./functions";
 import { action } from "./_generated/server";
 import { creativeArgs, type CreativeResult } from "./creativePipeline";
+import { styleIntentSchema } from "./creativeContracts";
+import type { InterpretationResult } from "./styleInterpretations";
 import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
@@ -33,6 +35,30 @@ type MaterialComparisonVariant = {
   promptKeywords: string[];
   role: "current" | "comparison";
 };
+
+/** Interpret free-form style direction into the shared StyleIntent v1 contract. */
+export const interpretCustomStyle = action({
+  args: { description: v.string(), requestKey: v.optional(v.string()) },
+  handler: async (ctx, args): Promise<InterpretationResult> => {
+    const id = await ctx.runMutation(internal.styleInterpretations.begin, { description: args.description, requestKey: args.requestKey ?? crypto.randomUUID() });
+    const claimed = await ctx.runMutation(internal.styleInterpretations.claim, { promptCompositionId: id });
+    if (claimed) {
+      try {
+        const response = await ctx.runAction(internal.generationNode.executeText, {
+          templateKind: "style-suggestion", ...claimed, jsonOutput: true,
+        });
+        await ctx.runMutation(internal.styleInterpretations.complete, {
+          promptCompositionId: id, responseJson: JSON.stringify(response.json), executionJson: JSON.stringify(response),
+        });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message.split("\n")[0].slice(0, 500) : "Style interpretation failed";
+        await ctx.runMutation(internal.creativePipeline.fail, { promptCompositionId: id, reason });
+        throw new ConvexError(reason);
+      }
+    }
+    return ctx.runQuery(internal.styleInterpretations.result, { promptCompositionId: id });
+  },
+});
 
 export const generateStyleSuggestion = action({
   args: { ...creativeArgs, requestKey: v.optional(v.string()) },
@@ -168,7 +194,8 @@ async function queueConceptRender(
         .then((items) => items.find((item) => item.isActive) ?? null),
     ]);
 
-  if (baseModel === null || stylePreset === null || materialPreset === null) {
+  const intent = concept.styleIntentJson ? styleIntentSchema.parse(JSON.parse(concept.styleIntentJson)) : null;
+  if (baseModel === null || (!stylePreset && !intent) || materialPreset === null) {
     throw new Error("Concept is missing its base model, Style DNA, or material profile");
   }
   if (account === null) {
@@ -191,8 +218,8 @@ async function queueConceptRender(
     conceptId: concept._id,
     conceptTitle: concept.title,
     baseModelName: baseModel.name,
-    stylePresetName: stylePreset.name,
-    styleSlug: stylePreset.slug,
+    stylePresetName: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
+    styleSlug: stylePreset?.slug,
     materialPresetName: materialPreset.name,
     materialSlug: materialPreset.slug,
     moodTags: concept.moodTags ?? [],
@@ -203,7 +230,7 @@ async function queueConceptRender(
   const materialComparisonVariants = selectMaterialComparisonVariants(
     materialPreset,
     materialPresets,
-    stylePreset.recommendedMaterialSlugs
+    stylePreset?.recommendedMaterialSlugs ?? []
   );
   const materialComparisonSummary = formatMaterialComparisonVariants(materialComparisonVariants);
   const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
@@ -214,7 +241,7 @@ async function queueConceptRender(
     materialPreset: materialPreset.name,
     mood: formatMoodTags(concept.moodTags ?? []),
     notes: concept.notes ?? "No extra notes.",
-    stylePreset: stylePreset.name,
+    stylePreset: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
     topPalette:
       plan.entries
         .map((entry) =>
@@ -231,7 +258,7 @@ async function queueConceptRender(
     promptPreview,
     template.userPromptTemplate,
     {
-      stylePreset: `Style DNA: ${stylePreset.name}`,
+      stylePreset: `Style DNA: ${(intent?.name ?? stylePreset?.name ?? "Custom Style")}`,
       mood: `Mood Vector: ${formatMoodTags(concept.moodTags ?? [])}`,
       weatheringLevel: `Weathering: ${concept.weatheringLevel}`,
       simulationStage: simulationStage
@@ -256,6 +283,7 @@ async function queueConceptRender(
           : "",
     }
   ),
+    intent ? `Frozen Style Intent:\n${JSON.stringify(intent)}` : "",
     concept.renderSpecificationJson ? `Approved repaint specification (authoritative):\n${concept.renderSpecificationJson}` : "",
     concept.palettePlanJson ? `Complete approved palette (authoritative):\n${concept.palettePlanJson}` : "",
   ].filter(Boolean).join("\n\n");
@@ -271,11 +299,12 @@ async function queueConceptRender(
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
       sourceConceptId: concept._id,
+      styleIntent: intent,
       baseModel: modelPromptContext.snapshot,
       stylePreset: {
-        id: stylePreset._id,
-        name: stylePreset.name,
-        slug: stylePreset.slug,
+        id: stylePreset?._id,
+        name: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
+        slug: stylePreset?.slug,
       },
       materialPreset: {
         id: materialPreset._id,
@@ -308,7 +337,7 @@ async function queueConceptRender(
     kind: "hd-preview",
     status: "queued",
     baseModelId: baseModel._id,
-    stylePresetId: stylePreset._id,
+    stylePresetId: stylePreset?._id,
     materialPresetId: materialPreset._id,
     conceptId: concept._id,
     requestedCredits: priceRule.creditCost,

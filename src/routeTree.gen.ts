@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TRouteImport } from './routes/t'
+import { Route as StylesRouteImport } from './routes/styles'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as SpecAdminRouteImport } from './routes/spec-admin'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -30,6 +31,7 @@ import { Route as TLibraryRouteImport } from './routes/t_.library'
 import { Route as TFeedbackRouteImport } from './routes/t_.feedback'
 import { Route as TCreateRouteImport } from './routes/t_.create'
 import { Route as TAdminRouteImport } from './routes/t_.admin'
+import { Route as StylesStyleSlugRouteImport } from './routes/styles_.$styleSlug'
 import { Route as SpecAdminWeatheringRouteImport } from './routes/spec-admin_.weathering'
 import { Route as SpecAdminTestsRouteImport } from './routes/spec-admin_.tests'
 import { Route as SpecAdminStylesRouteImport } from './routes/spec-admin_.styles'
@@ -46,9 +48,12 @@ import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
 import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
 import { Route as CreatorPackSlugRouteImport } from './routes/creator-pack.$slug'
+import { Route as CommunityStylesRouteImport } from './routes/community.styles'
+import { Route as CStyleIdRouteImport } from './routes/c.$styleId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTemplatesRouteImport } from './routes/admin.templates'
 import { Route as AdminStylesRouteImport } from './routes/admin.styles'
+import { Route as AdminStyleEditorialRouteImport } from './routes/admin.style-editorial'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminPromptLabRouteImport } from './routes/admin.prompt-lab'
 import { Route as AdminPaintsRouteImport } from './routes/admin.paints'
@@ -61,6 +66,7 @@ import { Route as AdminCreditsRouteImport } from './routes/admin.credits'
 import { Route as AdminCreatorPacksRouteImport } from './routes/admin.creator-packs'
 import { Route as AdminAuditLogRouteImport } from './routes/admin.audit-log'
 import { Route as BaseModelSlugStylePresetSlugRouteImport } from './routes/$baseModelSlug.$stylePresetSlug'
+import { Route as StylesStyleSlugModelSlugRouteImport } from './routes/styles_.$styleSlug_.$modelSlug'
 import { Route as PrototypeConceptIdWatermarkedImageRouteImport } from './routes/prototype_.$conceptId.watermarked-image'
 import { Route as PrototypeConceptIdRedditImageRouteImport } from './routes/prototype_.$conceptId.reddit-image'
 import { Route as PrototypeConceptIdPinterestImageRouteImport } from './routes/prototype_.$conceptId.pinterest-image'
@@ -74,6 +80,11 @@ import { Route as BaseModelSlugStylePresetSlugOpengraphImageRouteImport } from '
 const TRoute = TRouteImport.update({
   id: '/t',
   path: '/t',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StylesRoute = StylesRouteImport.update({
+  id: '/styles',
+  path: '/styles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StudioRoute = StudioRouteImport.update({
@@ -176,6 +187,11 @@ const TAdminRoute = TAdminRouteImport.update({
   path: '/t/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StylesStyleSlugRoute = StylesStyleSlugRouteImport.update({
+  id: '/styles_/$styleSlug',
+  path: '/styles/$styleSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SpecAdminWeatheringRoute = SpecAdminWeatheringRouteImport.update({
   id: '/spec-admin_/weathering',
   path: '/spec-admin/weathering',
@@ -256,6 +272,16 @@ const CreatorPackSlugRoute = CreatorPackSlugRouteImport.update({
   path: '/creator-pack/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunityStylesRoute = CommunityStylesRouteImport.update({
+  id: '/community/styles',
+  path: '/community/styles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CStyleIdRoute = CStyleIdRouteImport.update({
+  id: '/c/$styleId',
+  path: '/c/$styleId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -269,6 +295,11 @@ const AdminTemplatesRoute = AdminTemplatesRouteImport.update({
 const AdminStylesRoute = AdminStylesRouteImport.update({
   id: '/styles',
   path: '/styles',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStyleEditorialRoute = AdminStyleEditorialRouteImport.update({
+  id: '/style-editorial',
+  path: '/style-editorial',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -330,6 +361,12 @@ const BaseModelSlugStylePresetSlugRoute =
   BaseModelSlugStylePresetSlugRouteImport.update({
     id: '/$baseModelSlug/$stylePresetSlug',
     path: '/$baseModelSlug/$stylePresetSlug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const StylesStyleSlugModelSlugRoute =
+  StylesStyleSlugModelSlugRouteImport.update({
+    id: '/styles_/$styleSlug_/$modelSlug',
+    path: '/styles/$styleSlug/$modelSlug',
     getParentRoute: () => rootRouteImport,
   } as any)
 const PrototypeConceptIdWatermarkedImageRoute =
@@ -398,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
+  '/styles': typeof StylesRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -411,9 +449,12 @@ export interface FileRoutesByFullPath {
   '/admin/paints': typeof AdminPaintsRoute
   '/admin/prompt-lab': typeof AdminPromptLabRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/style-editorial': typeof AdminStyleEditorialRoute
   '/admin/styles': typeof AdminStylesRoute
   '/admin/templates': typeof AdminTemplatesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/c/$styleId': typeof CStyleIdRoute
+  '/community/styles': typeof CommunityStylesRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -430,6 +471,7 @@ export interface FileRoutesByFullPath {
   '/spec-admin/styles': typeof SpecAdminStylesRoute
   '/spec-admin/tests': typeof SpecAdminTestsRoute
   '/spec-admin/weathering': typeof SpecAdminWeatheringRoute
+  '/styles/$styleSlug': typeof StylesStyleSlugRoute
   '/t/admin': typeof TAdminRoute
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
@@ -449,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/prototype/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
   '/prototype/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
   '/prototype/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
+  '/styles/$styleSlug/$modelSlug': typeof StylesStyleSlugModelSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -460,6 +503,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
+  '/styles': typeof StylesRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -473,9 +517,12 @@ export interface FileRoutesByTo {
   '/admin/paints': typeof AdminPaintsRoute
   '/admin/prompt-lab': typeof AdminPromptLabRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/style-editorial': typeof AdminStyleEditorialRoute
   '/admin/styles': typeof AdminStylesRoute
   '/admin/templates': typeof AdminTemplatesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/c/$styleId': typeof CStyleIdRoute
+  '/community/styles': typeof CommunityStylesRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -492,6 +539,7 @@ export interface FileRoutesByTo {
   '/spec-admin/styles': typeof SpecAdminStylesRoute
   '/spec-admin/tests': typeof SpecAdminTestsRoute
   '/spec-admin/weathering': typeof SpecAdminWeatheringRoute
+  '/styles/$styleSlug': typeof StylesStyleSlugRoute
   '/t/admin': typeof TAdminRoute
   '/t/create': typeof TCreateRoute
   '/t/feedback': typeof TFeedbackRoute
@@ -511,6 +559,7 @@ export interface FileRoutesByTo {
   '/prototype/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
   '/prototype/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
   '/prototype/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
+  '/styles/$styleSlug/$modelSlug': typeof StylesStyleSlugModelSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -524,6 +573,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/spec-admin': typeof SpecAdminRoute
   '/studio': typeof StudioRoute
+  '/styles': typeof StylesRoute
   '/t': typeof TRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
@@ -537,9 +587,12 @@ export interface FileRoutesById {
   '/admin/paints': typeof AdminPaintsRoute
   '/admin/prompt-lab': typeof AdminPromptLabRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/style-editorial': typeof AdminStyleEditorialRoute
   '/admin/styles': typeof AdminStylesRoute
   '/admin/templates': typeof AdminTemplatesRoute
   '/admin/users': typeof AdminUsersRoute
+  '/c/$styleId': typeof CStyleIdRoute
+  '/community/styles': typeof CommunityStylesRoute
   '/creator-pack/$slug': typeof CreatorPackSlugRoute
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
@@ -556,6 +609,7 @@ export interface FileRoutesById {
   '/spec-admin_/styles': typeof SpecAdminStylesRoute
   '/spec-admin_/tests': typeof SpecAdminTestsRoute
   '/spec-admin_/weathering': typeof SpecAdminWeatheringRoute
+  '/styles_/$styleSlug': typeof StylesStyleSlugRoute
   '/t_/admin': typeof TAdminRoute
   '/t_/create': typeof TCreateRoute
   '/t_/feedback': typeof TFeedbackRoute
@@ -575,6 +629,7 @@ export interface FileRoutesById {
   '/prototype_/$conceptId/pinterest-image': typeof PrototypeConceptIdPinterestImageRoute
   '/prototype_/$conceptId/reddit-image': typeof PrototypeConceptIdRedditImageRoute
   '/prototype_/$conceptId/watermarked-image': typeof PrototypeConceptIdWatermarkedImageRoute
+  '/styles_/$styleSlug_/$modelSlug': typeof StylesStyleSlugModelSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -589,6 +644,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/spec-admin'
     | '/studio'
+    | '/styles'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
@@ -602,9 +658,12 @@ export interface FileRouteTypes {
     | '/admin/paints'
     | '/admin/prompt-lab'
     | '/admin/settings'
+    | '/admin/style-editorial'
     | '/admin/styles'
     | '/admin/templates'
     | '/admin/users'
+    | '/c/$styleId'
+    | '/community/styles'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback/$feedbackId'
@@ -621,6 +680,7 @@ export interface FileRouteTypes {
     | '/spec-admin/styles'
     | '/spec-admin/tests'
     | '/spec-admin/weathering'
+    | '/styles/$styleSlug'
     | '/t/admin'
     | '/t/create'
     | '/t/feedback'
@@ -640,6 +700,7 @@ export interface FileRouteTypes {
     | '/prototype/$conceptId/pinterest-image'
     | '/prototype/$conceptId/reddit-image'
     | '/prototype/$conceptId/watermarked-image'
+    | '/styles/$styleSlug/$modelSlug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -651,6 +712,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/spec-admin'
     | '/studio'
+    | '/styles'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
@@ -664,9 +726,12 @@ export interface FileRouteTypes {
     | '/admin/paints'
     | '/admin/prompt-lab'
     | '/admin/settings'
+    | '/admin/style-editorial'
     | '/admin/styles'
     | '/admin/templates'
     | '/admin/users'
+    | '/c/$styleId'
+    | '/community/styles'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback/$feedbackId'
@@ -683,6 +748,7 @@ export interface FileRouteTypes {
     | '/spec-admin/styles'
     | '/spec-admin/tests'
     | '/spec-admin/weathering'
+    | '/styles/$styleSlug'
     | '/t/admin'
     | '/t/create'
     | '/t/feedback'
@@ -702,6 +768,7 @@ export interface FileRouteTypes {
     | '/prototype/$conceptId/pinterest-image'
     | '/prototype/$conceptId/reddit-image'
     | '/prototype/$conceptId/watermarked-image'
+    | '/styles/$styleSlug/$modelSlug'
   id:
     | '__root__'
     | '/'
@@ -714,6 +781,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/spec-admin'
     | '/studio'
+    | '/styles'
     | '/t'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
@@ -727,9 +795,12 @@ export interface FileRouteTypes {
     | '/admin/paints'
     | '/admin/prompt-lab'
     | '/admin/settings'
+    | '/admin/style-editorial'
     | '/admin/styles'
     | '/admin/templates'
     | '/admin/users'
+    | '/c/$styleId'
+    | '/community/styles'
     | '/creator-pack/$slug'
     | '/creator/$handle'
     | '/feedback_/$feedbackId'
@@ -746,6 +817,7 @@ export interface FileRouteTypes {
     | '/spec-admin_/styles'
     | '/spec-admin_/tests'
     | '/spec-admin_/weathering'
+    | '/styles_/$styleSlug'
     | '/t_/admin'
     | '/t_/create'
     | '/t_/feedback'
@@ -765,6 +837,7 @@ export interface FileRouteTypes {
     | '/prototype_/$conceptId/pinterest-image'
     | '/prototype_/$conceptId/reddit-image'
     | '/prototype_/$conceptId/watermarked-image'
+    | '/styles_/$styleSlug_/$modelSlug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -778,8 +851,11 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SpecAdminRoute: typeof SpecAdminRoute
   StudioRoute: typeof StudioRoute
+  StylesRoute: typeof StylesRoute
   TRoute: typeof TRoute
   BaseModelSlugStylePresetSlugRoute: typeof BaseModelSlugStylePresetSlugRouteWithChildren
+  CStyleIdRoute: typeof CStyleIdRoute
+  CommunityStylesRoute: typeof CommunityStylesRoute
   CreatorPackSlugRoute: typeof CreatorPackSlugRoute
   CreatorHandleRoute: typeof CreatorHandleRoute
   FeedbackFeedbackIdRoute: typeof FeedbackFeedbackIdRoute
@@ -796,6 +872,7 @@ export interface RootRouteChildren {
   SpecAdminStylesRoute: typeof SpecAdminStylesRoute
   SpecAdminTestsRoute: typeof SpecAdminTestsRoute
   SpecAdminWeatheringRoute: typeof SpecAdminWeatheringRoute
+  StylesStyleSlugRoute: typeof StylesStyleSlugRoute
   TAdminRoute: typeof TAdminRoute
   TCreateRoute: typeof TCreateRoute
   TFeedbackRoute: typeof TFeedbackRoute
@@ -813,6 +890,7 @@ export interface RootRouteChildren {
   PrototypeConceptIdPinterestImageRoute: typeof PrototypeConceptIdPinterestImageRoute
   PrototypeConceptIdRedditImageRoute: typeof PrototypeConceptIdRedditImageRoute
   PrototypeConceptIdWatermarkedImageRoute: typeof PrototypeConceptIdWatermarkedImageRoute
+  StylesStyleSlugModelSlugRoute: typeof StylesStyleSlugModelSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -822,6 +900,13 @@ declare module '@tanstack/react-router' {
       path: '/t'
       fullPath: '/t'
       preLoaderRoute: typeof TRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/styles': {
+      id: '/styles'
+      path: '/styles'
+      fullPath: '/styles'
+      preLoaderRoute: typeof StylesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/studio': {
@@ -964,6 +1049,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/styles_/$styleSlug': {
+      id: '/styles_/$styleSlug'
+      path: '/styles/$styleSlug'
+      fullPath: '/styles/$styleSlug'
+      preLoaderRoute: typeof StylesStyleSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/spec-admin_/weathering': {
       id: '/spec-admin_/weathering'
       path: '/spec-admin/weathering'
@@ -1076,6 +1168,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorPackSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/community/styles': {
+      id: '/community/styles'
+      path: '/community/styles'
+      fullPath: '/community/styles'
+      preLoaderRoute: typeof CommunityStylesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$styleId': {
+      id: '/c/$styleId'
+      path: '/c/$styleId'
+      fullPath: '/c/$styleId'
+      preLoaderRoute: typeof CStyleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -1095,6 +1201,13 @@ declare module '@tanstack/react-router' {
       path: '/styles'
       fullPath: '/admin/styles'
       preLoaderRoute: typeof AdminStylesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/style-editorial': {
+      id: '/admin/style-editorial'
+      path: '/style-editorial'
+      fullPath: '/admin/style-editorial'
+      preLoaderRoute: typeof AdminStyleEditorialRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/settings': {
@@ -1181,6 +1294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BaseModelSlugStylePresetSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/styles_/$styleSlug_/$modelSlug': {
+      id: '/styles_/$styleSlug_/$modelSlug'
+      path: '/styles/$styleSlug/$modelSlug'
+      fullPath: '/styles/$styleSlug/$modelSlug'
+      preLoaderRoute: typeof StylesStyleSlugModelSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/prototype_/$conceptId/watermarked-image': {
       id: '/prototype_/$conceptId/watermarked-image'
       path: '/prototype/$conceptId/watermarked-image'
@@ -1259,6 +1379,7 @@ interface AdminRouteChildren {
   AdminPaintsRoute: typeof AdminPaintsRoute
   AdminPromptLabRoute: typeof AdminPromptLabRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminStyleEditorialRoute: typeof AdminStyleEditorialRoute
   AdminStylesRoute: typeof AdminStylesRoute
   AdminTemplatesRoute: typeof AdminTemplatesRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1277,6 +1398,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPaintsRoute: AdminPaintsRoute,
   AdminPromptLabRoute: AdminPromptLabRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminStyleEditorialRoute: AdminStyleEditorialRoute,
   AdminStylesRoute: AdminStylesRoute,
   AdminTemplatesRoute: AdminTemplatesRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -1311,9 +1433,12 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SpecAdminRoute: SpecAdminRoute,
   StudioRoute: StudioRoute,
+  StylesRoute: StylesRoute,
   TRoute: TRoute,
   BaseModelSlugStylePresetSlugRoute:
     BaseModelSlugStylePresetSlugRouteWithChildren,
+  CStyleIdRoute: CStyleIdRoute,
+  CommunityStylesRoute: CommunityStylesRoute,
   CreatorPackSlugRoute: CreatorPackSlugRoute,
   CreatorHandleRoute: CreatorHandleRoute,
   FeedbackFeedbackIdRoute: FeedbackFeedbackIdRoute,
@@ -1330,6 +1455,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpecAdminStylesRoute: SpecAdminStylesRoute,
   SpecAdminTestsRoute: SpecAdminTestsRoute,
   SpecAdminWeatheringRoute: SpecAdminWeatheringRoute,
+  StylesStyleSlugRoute: StylesStyleSlugRoute,
   TAdminRoute: TAdminRoute,
   TCreateRoute: TCreateRoute,
   TFeedbackRoute: TFeedbackRoute,
@@ -1348,6 +1474,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrototypeConceptIdRedditImageRoute: PrototypeConceptIdRedditImageRoute,
   PrototypeConceptIdWatermarkedImageRoute:
     PrototypeConceptIdWatermarkedImageRoute,
+  StylesStyleSlugModelSlugRoute: StylesStyleSlugModelSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

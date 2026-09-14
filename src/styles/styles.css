@@ -1,0 +1,40 @@
+.style-page { max-width: 1440px; margin: 0 auto; padding: clamp(24px, 5vw, 72px); color: var(--color-ink); }
+.style-page h1 { font-family: var(--font-display); font-size: clamp(40px, 5vw, 76px); font-weight: 400; line-height: 1.08; margin: 18px 0 28px; text-wrap: balance; }
+.style-page h2 { font-family: var(--font-display); font-size: clamp(26px, 3vw, 38px); line-height: 1.16; margin: 12px 0; font-weight: 400; }
+.style-page p { line-height: 1.65; max-width: 64ch; margin: 10px 0; }
+.style-page .style-eyebrow { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .1em; font-size: 11px; color: var(--color-muted); }
+.style-intro { padding: 16px 0 44px; border-bottom: 1px solid var(--color-ink); }
+.style-filters { display: flex; gap: 12px; flex-wrap: wrap; padding: 22px 0 34px; }
+.style-filters button { border: 1px solid var(--color-rule-2); padding: 8px 15px; font-size: 13px; }
+.style-filters button[aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper); border-color: var(--color-ink); }
+.style-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 24px; }
+.style-study { display: block; border-bottom: 1px solid var(--color-rule-2); padding-bottom: 20px; }
+.style-study img { aspect-ratio: 4 / 5; width: 100%; object-fit: cover; background: var(--color-paper-2); margin-bottom: 20px; transition: filter 180ms ease; }
+.style-study:hover img { filter: brightness(1.035); }
+.style-study h2 { font-size: 30px; }
+.style-study p { font-size: 14px; }
+.style-empty { padding: 36px 0 70px; }
+.style-custom { display: flex; gap: 32px; align-items: center; justify-content: space-between; border-top: 1px solid var(--color-ink); margin-top: 72px; padding: 32px 0; }
+.style-back { display: inline-block; margin-bottom: 30px; font-size: 14px; }
+.style-hero { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 5vw, 80px); align-items: center; }
+.style-hero > img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.style-hero .showcase-button { margin-top: 24px; }
+.style-palette { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 24px 0; border-top: 1px solid var(--color-rule); border-bottom: 1px solid var(--color-rule); }
+.style-palette dt { text-transform: uppercase; font: 11px var(--font-mono); color: var(--color-muted); margin-bottom: 6px; }
+.style-palette dd { margin: 0; font-size: 17px; }
+.style-section-heading { margin: 72px 0 32px; border-top: 1px solid var(--color-ink); padding-top: 22px; }
+.style-paints { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+.style-paints article { display: flex; gap: 20px; border-bottom: 1px solid var(--color-rule); padding-bottom: 24px; }
+.style-paints h3 { font-size: 21px; }
+.style-paints p { font-size: 14px; }
+.style-paint-chip { width: 56px; height: 80px; flex: 0 0 56px; border: 1px solid var(--color-rule-2); }
+.style-page a:focus-visible, .style-page button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 5px; }
+@media (max-width: 1000px) { .style-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } .style-hero { grid-template-columns: 1fr; } .style-hero > img { max-height: 640px; object-fit: contain; background: var(--color-paper-2); } }
+@media (max-width: 600px) { .style-gallery, .style-paints { grid-template-columns: 1fr; } .style-custom { display: block; } .style-custom .showcase-button { margin-top: 20px; } }
+@media (prefers-reduced-motion: reduce) { .style-study img { transition: none; } }
+
+.community-palette-cover { aspect-ratio: 4 / 5; padding: clamp(24px, 4vw, 60px); display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--color-rule-2); background: var(--color-paper-2); overflow-wrap: anywhere; }
+.community-palette-cover span { font: 11px var(--font-mono); text-transform: uppercase; letter-spacing: .1em; }
+.community-palette-cover strong { font: clamp(32px, 4vw, 60px) var(--font-display); margin: 25px 0; }
+.custom-style-picker { margin-top: 24px; }
+.custom-style-picker > .choice-chip-row { margin-bottom: 24px; }

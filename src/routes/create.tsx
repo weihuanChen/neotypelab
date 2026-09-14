@@ -34,7 +34,7 @@ function CreateRoute() {
 
   return (
     <AppShell
-      description="Select a base model, Style DNA, and material preset to prototype a spray-ready repaint."
+      description="Choose a repaint language, then apply it to a kit."
       title="Create"
     >
       <AuthLoading>

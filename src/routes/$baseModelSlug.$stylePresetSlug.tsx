@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
+import { getStyleModelPage } from "@/src/lib/styleRouteData";
 import { absoluteUrl } from "@/lib/site";
 import { buildLandingPageStructuredData } from "@/lib/structuredData";
 import { AppShell } from "@/src/components/app-shell/AppShell";
@@ -81,13 +82,11 @@ const getSeoLandingSnapshot = createServerFn({ method: "GET" })
   });
 
 export const Route = createFileRoute("/$baseModelSlug/$stylePresetSlug")({
-  loader: ({ params }) =>
-    getSeoLandingSnapshot({
-      data: {
-        baseModelSlug: params.baseModelSlug,
-        stylePresetSlug: params.stylePresetSlug,
-      },
-    }),
+  loader: async ({ params }) => {
+    const official = await getStyleModelPage({ data: { styleSlug: params.stylePresetSlug, modelSlug: params.baseModelSlug } });
+    if (official.data) throw redirect({ href: `/styles/${params.stylePresetSlug}/${params.baseModelSlug}`, statusCode: 301 });
+    return getSeoLandingSnapshot({ data: params });
+  },
   head: ({ loaderData, params }) => {
     const meta =
       loaderData?.meta ??
@@ -194,6 +193,7 @@ function buildHead(meta: PublicRouteMeta, ogType: string) {
 
   return {
     meta: [
+      { name: "robots", content: "noindex, follow" },
       { title: meta.title },
       { name: "description", content: meta.description },
       { property: "og:title", content: meta.title },

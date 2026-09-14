@@ -1,5 +1,7 @@
 "use client";
 
+import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
+import { CustomStylePicker } from "./CustomStylePicker";
 import { CommandButton } from "@/components/ui/command-button";
 import { ShoppingListActions } from "@/components/public/ShoppingListActions";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +18,7 @@ import {
   mapStatusTone,
 } from "@/src/components/ui/workbench";
 import { api } from "@/convex/_generated/api";
-import { creativeInputKey } from "@/convex/creativeContracts";
+import { creativeInputKey, type StyleIntent } from "@/convex/creativeContracts";
 import { Id } from "@/convex/_generated/dataModel";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
 import { cn } from "@/lib/utils";
@@ -114,6 +116,7 @@ export function CreateWorkbench({
   search?: CreateWorkbenchSearch;
 }) {
   const catalog = useQuery(api.catalog.listCreateOptions);
+  const reviewedStyles = useQuery(api.styleEditorial.gallery);
   const viewer = useQuery(api.users.viewer);
   const remixConceptId = parseOptionalSearchValue(search.remix);
   const recommendedStyleSlug = parseOptionalSearchValue(search.recommendedStyle);
@@ -143,11 +146,27 @@ export function CreateWorkbench({
   const [selectedStylePresetId, setSelectedStylePresetId] = useState<
     Id<"stylePresets"> | null
   >(null);
-  const [selectedMaterialPresetId, setSelectedMaterialPresetId] = useState<
+  const [styleMode, setStyleMode] = useState<"preset" | "custom">(search.communityStyle ? "custom" : "preset");
+  const [approvedCustomStyle, setApprovedCustomStyle] = useState<StyleIntent | null>(null);
+  const [savedCustomStyleId, setSavedCustomStyleId] = useState<Id<"userStyles"> | null>(null);
+  const activeUserStyleId = styleMode === "custom" ? savedCustomStyleId ?? undefined : undefined;
+  const activeIntentJson = styleMode === "custom" && approvedCustomStyle ? JSON.stringify(approvedCustomStyle) : undefined;
+  const activePresetId = styleMode === "preset" ? selectedStylePresetId ?? undefined : undefined;
+  const activeStyleRevision = activePresetId ? catalog?.stylePresets.find(style => style._id === activePresetId)?.styleIntentJson : undefined;
+  const hasActiveStyle = Boolean(activePresetId || activeIntentJson);
+  const [materialOverrideId, setSelectedMaterialPresetId] = useState<
     Id<"materialPresets"> | null
   >(null);
   const [selectedMoodTags, setSelectedMoodTags] = useState<MoodTag[]>([]);
-  const [weatheringLevel, setWeatheringLevel] = useState<WeatheringLevel>("clean");
+  const [weatheringOverride, setWeatheringLevel] = useState<WeatheringLevel | null>(null);
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  const [kitSearch, setKitSearch] = useState("");
+  const activeIntent = readStyleIntent(activeIntentJson ?? activeStyleRevision);
+  const defaults = resolveStyleRefinements(activeIntent, catalog?.materialPresets ?? [],
+    catalog?.stylePresets.find(style => style._id === activePresetId)?.recommendedMaterialSlugs);
+  const selectedMaterialPresetId = materialOverrideId ?? defaults.material?._id ?? null;
+  const weatheringLevel = weatheringOverride ?? defaults.weathering;
+
   const [visibility, setVisibility] = useState<ConceptVisibility>("private");
   const [notes, setNotes] = useState("");
   const [appliedRemixId, setAppliedRemixId] = useState<string | null>(null);
@@ -209,14 +228,14 @@ export function CreateWorkbench({
   const [paletteInputKey, setPaletteInputKey] = useState<string | null>(null);
   const [approvedPaletteId, setApprovedPaletteId] = useState<Id<"promptCompositions"> | null>(null);
   const currentInputKey = creativeInputKey({
-    kitVariantId: selectedKitVariantId ?? undefined, stylePresetId: selectedStylePresetId ?? undefined,
+    kitVariantId: selectedKitVariantId ?? undefined, stylePresetId: activePresetId, userStyleId: activeUserStyleId, styleIntentJson: activeIntentJson, styleRevision: activeStyleRevision,
     materialPresetId: selectedMaterialPresetId ?? undefined, moodTags: selectedMoodTags, weatheringLevel, notes,
   });
   const paletteIsCurrent = paletteInputKey === currentInputKey;
   const recoveredStyle = useQuery(api.creativePipeline.latest, selectedKitVariantId ? {
     kind: "style-suggestion", inputKey: creativeInputKey({ kitVariantId: selectedKitVariantId, moodTags: selectedMoodTags, notes }),
   } : "skip");
-  const recoveredPalette = useQuery(api.creativePipeline.latest, selectedKitVariantId && selectedStylePresetId && selectedMaterialPresetId ? {
+  const recoveredPalette = useQuery(api.creativePipeline.latest, selectedKitVariantId && hasActiveStyle && selectedMaterialPresetId ? {
     kind: "palette-plan", inputKey: currentInputKey,
   } : "skip");
   useEffect(() => {
@@ -291,7 +310,7 @@ export function CreateWorkbench({
   );
   const canSubmit =
     selectedKitVariant !== null &&
-    selectedStylePreset !== null &&
+    hasActiveStyle &&
     selectedMaterialPreset !== null &&
     notesRemaining >= 0 &&
     (!remixConceptId || remixSource !== undefined) &&
@@ -303,7 +322,7 @@ export function CreateWorkbench({
   const canGenerateStyleSuggestion = selectedKitVariant !== null && !isGeneratingStyleSuggestion;
   const canGeneratePalettePlan =
     selectedKitVariant !== null &&
-    selectedStylePreset !== null &&
+    hasActiveStyle &&
     selectedMaterialPreset !== null &&
     !isGeneratingPalettePlan;
   const kitFilterOptions = useMemo(
@@ -313,6 +332,7 @@ export function CreateWorkbench({
   const visibleKits = useMemo(
     () =>
       (catalog?.kitVariants ?? []).filter((kit) => {
+        if (kitSearch.trim() && ![kit.name, ...kit.tags].join(" ").toLowerCase().includes(kitSearch.trim().toLowerCase())) return false;
         if (kitUniverse && kitUniverseOf(kit) !== kitUniverse) {
           return false;
         }
@@ -327,7 +347,7 @@ export function CreateWorkbench({
         }
         return true;
       }),
-    [catalog?.kitVariants, kitComplexity, kitScale, kitTag, kitUniverse]
+    [catalog?.kitVariants, kitComplexity, kitScale, kitTag, kitUniverse, kitSearch]
   );
 
   useEffect(() => {
@@ -448,12 +468,16 @@ export function CreateWorkbench({
         paletteCompositionId: approvedPaletteId ?? undefined,
         requestKey: crypto.randomUUID(),
         kitVariantId: selectedKitVariantId!,
-        stylePresetId: selectedStylePresetId!,
+        stylePresetId: activePresetId,
+        userStyleId: activeUserStyleId,
+        styleRevision: activeStyleRevision,
         materialPresetId: selectedMaterialPresetId!,
         moodTags: selectedMoodTags,
         weatheringLevel,
         visibility,
         notes: notes.trim() === "" ? undefined : notes.trim(),
+        styleIntentJson: activeIntentJson,
+        styleIntentVersion: activeIntentJson ? approvedCustomStyle?.version : undefined,
       });
 
       setResult({
@@ -502,7 +526,7 @@ export function CreateWorkbench({
   async function onGeneratePalettePlan() {
     if (
       !selectedKitVariantId ||
-      !selectedStylePresetId ||
+      !hasActiveStyle ||
       !selectedMaterialPresetId ||
       !canGeneratePalettePlan
     ) {
@@ -517,7 +541,10 @@ export function CreateWorkbench({
       const response = await generatePalettePlan({
         requestKey: crypto.randomUUID(),
         kitVariantId: selectedKitVariantId,
-        stylePresetId: selectedStylePresetId,
+        stylePresetId: activePresetId,
+        userStyleId: activeUserStyleId,
+        styleRevision: activeStyleRevision,
+        styleIntentJson: activeIntentJson,
         materialPresetId: selectedMaterialPresetId,
         moodTags: selectedMoodTags,
         weatheringLevel,
@@ -574,7 +601,11 @@ export function CreateWorkbench({
   const previewMass = kitMassOf(selectedKitVariant);
 
   return (
-    <div className="workbench-page workbench-layout">
+    <div className={cn("workbench-page workbench-layout create-flow", createStep === 1 && "is-style-step")}>
+      <nav className="col-span-full flex gap-4" aria-label="Creation steps">
+        <button type="button" aria-current={createStep === 1 ? "step" : undefined} onClick={() => setCreateStep(1)}>01 · Style</button>
+        <button type="button" disabled={!hasActiveStyle} aria-current={createStep === 2 ? "step" : undefined} onClick={() => setCreateStep(2)}>02 · Model</button>
+      </nav>
       <div className="workbench-form">
         {remixConceptId ? (
           <section className="workbench-step">
@@ -591,8 +622,44 @@ export function CreateWorkbench({
           </section>
         ) : null}
 
-        <section className="workbench-step">
-          <StepHeader step="01" title="Kit" />
+        <section className="workbench-step" hidden={createStep !== 1}>
+          <StepHeader step="01" title="Choose a style" />
+          <p className="mb-6">Choose a repaint language, then apply it to a kit.</p>
+          <div className="choice-chip-row">
+            <ChoiceChip active={styleMode === "preset"} onClick={() => setStyleMode("preset")} compact>Preset Style</ChoiceChip>
+            <ChoiceChip active={styleMode === "custom"} onClick={() => setStyleMode("custom")} compact>Custom Style</ChoiceChip>
+          </div>
+          {styleMode === "custom" ? <CustomStylePicker
+            userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(rule => rule.actionType === "generate-style-suggestion")?.creditCost} communityStyle={search.communityStyle}
+            selectedId={savedCustomStyleId}
+            onUse={(intent, styleId) => { setApprovedCustomStyle(intent); setSavedCustomStyleId(styleId); }}
+            onClear={() => { setApprovedCustomStyle(null); setSavedCustomStyleId(null); }}
+          /> : null}
+          {styleMode === "preset" ? <div className="dna-grid">
+            {catalog.stylePresets.map(preset => {
+              const preview = reviewedStyles?.find(style => style.id === preset._id);
+              const intent = readStyleIntent(preset.styleIntentJson);
+              return <button className={cn("dna-card create-style-card", selectedStylePresetId === preset._id && "is-active")} key={preset._id} onClick={() => setSelectedStylePresetId(preset._id)} type="button" aria-pressed={selectedStylePresetId === preset._id}>
+                {preview ? <img className="create-style-card__image" src={preview.imageUrl} alt={preset.name + " reviewed preview"} loading="lazy" /> :
+                  <div className="create-style-card__placeholder"><span>Repaint direction</span><strong>{intent?.palette.primary ?? preset.category ?? "Style study"}</strong></div>}
+                <p className="dna-card__name">{preset.name}</p>
+                <p className="dna-card__meta">{intent ? Object.values(intent.palette).flat().join(" · ") : preset.category}</p>
+                <p>{preset.shortDescription ?? intent?.graphicLanguage}</p>
+              </button>;
+            })}
+          </div> : null}
+          <div className="mt-6"><CommandButton disabled={!hasActiveStyle} onClick={() => setCreateStep(2)}>Apply to a model →</CommandButton></div>
+        </section>
+
+        <section className="workbench-step" hidden={createStep !== 2}>
+          <StepHeader step="02" title="Apply to a model" />
+          <div className="workbench-notice">
+            <strong>{styleMode === "custom" ? approvedCustomStyle?.name : selectedStylePreset?.name}</strong>
+            <p>{activeIntent ? Object.values(activeIntent.palette).flat().join(" · ") : selectedStylePreset?.shortDescription}</p>
+            <GhostButton onClick={() => setCreateStep(1)}>Change style</GhostButton>
+          </div>
+          <p className="my-4">Which kit should wear this style?</p>
+          <input className="mb-4 w-full border border-line-secondary bg-transparent p-3" aria-label="Search kits" placeholder="Search kits…" value={kitSearch} onChange={event => setKitSearch(event.target.value)} />
           <div className="kit-browser">
             <div className="kit-filters">
               <KitFilterGroup
@@ -644,108 +711,40 @@ export function CreateWorkbench({
           </div>
         </section>
 
-        <section className="workbench-step">
-          <StepHeader step="02" title="Style DNA" />
-          <div className="dna-grid">
-            {catalog.stylePresets.map((preset) => (
-              <button
-                className={selectedStylePresetId === preset._id ? "dna-card is-active" : "dna-card"}
-                key={preset._id}
-                onClick={() => setSelectedStylePresetId(preset._id)}
-                type="button"
-              >
-                <p className="dna-card__name">{preset.name}</p>
-                <p className="dna-card__meta">{preset.category ?? "Unsorted"}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="workbench-step">
-          <StepHeader step="03" title="Material" />
-          <div className="swatch-grid">
-            {catalog.materialPresets.map((preset) => (
-              <button
-                className={
-                  selectedMaterialPresetId === preset._id ? "swatch-card is-active" : "swatch-card"
-                }
-                key={preset._id}
-                onClick={() => setSelectedMaterialPresetId(preset._id)}
-                type="button"
-              >
-                <div className={`swatch-card__plate is-${materialFinishOf(preset)}`} />
-                <p className="swatch-card__name">{preset.name}</p>
-                <p className="swatch-card__meta">{preset.finishType}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="workbench-step">
-          <StepHeader step="04" title="Mood" />
-          <div className="choice-chip-row">
-            {moodOptions.map((option) => (
-              <ChoiceChip
-                key={option.value}
-                compact
-                active={selectedMoodTags.includes(option.value)}
-                onClick={() => toggleMoodTag(option.value)}
-                title={option.detail}
-              >
-                {option.label}
-              </ChoiceChip>
-            ))}
-          </div>
-          <Kicker>Visibility</Kicker>
-          <div className="choice-chip-row">
-            {visibilityOptions.map((option) => (
-              <ChoiceChip
-                key={option.value}
-                compact
-                active={visibility === option.value}
-                onClick={() => setVisibility(option.value)}
-                title={option.detail}
-              >
-                {option.label}
-              </ChoiceChip>
-            ))}
-          </div>
-          <FieldHint>Public sends the concept to showcase.</FieldHint>
-        </section>
-
-        <section className="workbench-step">
-          <StepHeader step="05" title="Weathering" />
-          <div className="segment">
-            {weatheringOptions.map((option) => (
-              <button
-                className={weatheringLevel === option.value ? "is-active" : undefined}
-                key={option.value}
-                onClick={() => setWeatheringLevel(option.value)}
-                title={option.detail}
-                type="button"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <div className="workbench-note">
-            <div className="flex items-center justify-between gap-3">
-              <Kicker>Note</Kicker>
-              <span className={cn("status-pill", notesRemaining < 0 && "is-danger")}>
-                {notes.length}/100
-              </span>
+        <section className="workbench-step" hidden={createStep !== 2}>
+          <details>
+            <summary className="cursor-pointer">Refine · Optional</summary>
+            <div className="space-y-5 py-5">
+              <label className="block">Finish
+                <select className="block w-full border border-line-secondary bg-transparent p-3" value={materialOverrideId ?? "auto"} onChange={event => setSelectedMaterialPresetId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}>
+                  <option value="auto">Auto · {defaults.material?.name ?? "No material available"}</option>
+                  {catalog.materialPresets.map(material => <option key={material._id} value={material._id}>{material.name} · {material.finishType}</option>)}
+                </select>
+              </label>
+              <label className="block">Weathering
+                <select className="block w-full border border-line-secondary bg-transparent p-3" value={weatheringOverride ?? "auto"} onChange={event => setWeatheringLevel(event.target.value === "auto" ? null : event.target.value as WeatheringLevel)}>
+                  <option value="auto">Auto · {defaults.weathering}</option>
+                  {weatheringOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <div><p>Mood</p><div className="choice-chip-row">
+                <ChoiceChip compact active={!selectedMoodTags.length} onClick={() => setSelectedMoodTags([])}>Auto · {defaults.mood}</ChoiceChip>
+                {moodOptions.map(option => <ChoiceChip key={option.value} compact active={selectedMoodTags.includes(option.value)} onClick={() => toggleMoodTag(option.value)}>{option.label}</ChoiceChip>)}
+              </div></div>
+              <label className="block">Notes · {notes.length}/100
+                <Textarea maxLength={100} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional: restrained warning decals" />
+              </label>
+              <p>Visibility</p><div className="choice-chip-row">
+                {visibilityOptions.map(option => <ChoiceChip key={option.value} compact active={visibility === option.value} onClick={() => setVisibility(option.value)}>{option.label}</ChoiceChip>)}
+              </div>
+              <FieldHint>Sharing a preview requires publishing it from your library.</FieldHint>
             </div>
-            <Textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Optional: orange warning decals"
-              className="border-line-secondary bg-transparent text-ink-primary placeholder:text-ink-muted"
-            />
-          </div>
+          </details>
+          <FieldHint>Resolved: {selectedMaterialPreset?.name ?? "No material available"} · {weatheringLevel} · {selectedMoodTags.length ? selectedMoodTags.join(", ") : defaults.mood}</FieldHint>
         </section>
       </div>
 
-      <aside className="workbench-focus-col">
+      <aside className="workbench-focus-col" hidden={createStep !== 2}>
         <FocusPanel>
           <div className="workbench-focus__preview">
             {generatedImageUrl ? (
@@ -781,7 +780,7 @@ export function CreateWorkbench({
                   : "—"
               }
             />
-            <TowerField label="Style" value={selectedStylePreset?.name ?? "—"} />
+            <TowerField label="Style" value={styleMode === "custom" ? approvedCustomStyle?.name ?? "Choose a custom style" : selectedStylePreset?.name ?? "—"} />
             <TowerField label="Material" value={selectedMaterialPreset?.name ?? "—"} />
             <TowerField
               label="Mood"
@@ -817,7 +816,8 @@ export function CreateWorkbench({
 
             <div className="tower-credits">
               <span className="workbench-kicker">Credits</span>
-              <strong>{createCost}</strong>
+              <strong>{palettePlanCost + createCost + hdCost}</strong>
+              <small>Full preview flow · palette {palettePlanCost} + specification {createCost} + render {hdCost}</small>
             </div>
 
             <CommandButton
@@ -862,7 +862,7 @@ export function CreateWorkbench({
                     <GhostButton
                       key={suggestion.stylePresetId}
                       compact
-                      onClick={() => setSelectedStylePresetId(suggestion.stylePresetId)}
+                      onClick={() => { setStyleMode("preset"); setSelectedStylePresetId(suggestion.stylePresetId); }}
                     >
                       Apply {suggestion.name}
                     </GhostButton>

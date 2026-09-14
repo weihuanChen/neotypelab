@@ -84,8 +84,11 @@ import type * as sprayPlans from "../sprayPlans.js";
 import type * as storageAccounting from "../storageAccounting.js";
 import type * as storageLifecycle from "../storageLifecycle.js";
 import type * as storageLifecycleNode from "../storageLifecycleNode.js";
+import type * as styleEditorial from "../styleEditorial.js";
+import type * as styleInterpretations from "../styleInterpretations.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as types from "../types.js";
+import type * as userStyles from "../userStyles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 
@@ -172,8 +175,11 @@ declare const fullApi: ApiFromModules<{
   storageAccounting: typeof storageAccounting;
   storageLifecycle: typeof storageLifecycle;
   storageLifecycleNode: typeof storageLifecycleNode;
+  styleEditorial: typeof styleEditorial;
+  styleInterpretations: typeof styleInterpretations;
   subscriptions: typeof subscriptions;
   types: typeof types;
+  userStyles: typeof userStyles;
   users: typeof users;
   utils: typeof utils;
 }>;

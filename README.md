@@ -262,3 +262,30 @@ For a deployed frontend, supply its exact HTTPS origin instead. The internal set
 preserves unrelated CORS rules, permits only GET/HEAD and does not make the bucket
 public. Download authorization and original-file plan limits remain in effect.
 No additional environment secrets are required.
+
+### Official style editorial pages
+
+The Style collection is served at `/styles`, with reviewed studies at
+`/styles/:styleSlug/:modelSlug`. Administrators prepare official Style Intent
+and review public previews/paint mappings at `/admin/style-editorial`.
+Saving an intent does not publish a page. Only unchanged, explicitly reviewed
+public studies enter the Style sitemap; Custom prototypes stay shareable but
+are not indexed. See [the P4 editorial guide](docs/style-editorial-p4.md)
+for authoring, generation, review, withdrawal and deployment order.
+
+### Custom and community styles
+
+Create → Custom Style now supports persisted interpretation, My Styles and
+Community reuse. The Interpreter uses the active style-suggestion price rule,
+reserves credits before inference, and refunds failed/expired requests once.
+Saving is private; publishing to Community is explicit. Shared directions use
+`/c/:styleId` and `/community/styles`, both excluded from indexing.
+Administrators can hide styles or promote them to inactive official drafts in
+the editorial workspace. See [the P5 guide](docs/community-styles-p5.md) for
+privacy, lineage, request recovery and the subsequent official review flow.
+
+Create now has two navigation steps: Choose a style → Apply to a model.
+Finish, Weathering and Mood default to Auto in optional refinements; resolved
+catalog material and wear values remain visible and feed the existing frozen
+palette/specification flow. See [two-step Create](docs/create-two-step.md)
+for fallback behavior and the retained per-stage approval and billing controls.

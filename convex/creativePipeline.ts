@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { ownedStyle } from "./userStyles";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, query } from "./functions";
 import { internalMutation as systemMutation, internalQuery as systemQuery, type MutationCtx } from "./_generated/server";
@@ -9,14 +10,15 @@ import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { buildPaintPlan, serializePaint, type PaintPlan } from "./paintMappingEngine";
 import { deltaE2000, hexToLabD65 } from "./paintColor";
 import { vMoodTag, vWeatheringLevel } from "./domain";
-import { assertExactRoles, creativeInputKey, fillCreativeTemplate, paletteSchema, repaintSchema, styleSuggestionSchema } from "./creativeContracts";
+import { assertExactRoles, creativeInputKey, fillCreativeTemplate, paletteSchema, repaintSchema, styleSuggestionSchema, styleIntentSchema, stylePlanningRules, type StyleIntent } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
 
 export const creativeArgs = {
+  userStyleId: v.optional(v.id("userStyles")),
   baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
   stylePresetId: v.optional(v.id("stylePresets")), materialPresetId: v.optional(v.id("materialPresets")),
   moodTags: v.optional(v.array(vMoodTag)), weatheringLevel: v.optional(vWeatheringLevel),
-  notes: v.optional(v.string()), requestKey: v.string(),
+  styleRevision: v.optional(v.string()), styleIntentJson: v.optional(v.string()), notes: v.optional(v.string()), requestKey: v.string(),
 };
 
 export type CreativeResult = {
@@ -27,6 +29,9 @@ export type CreativeResult = {
 };
 
 type Snapshot = {
+  styleIntent?: StyleIntent;
+  userStyleId?: Id<"userStyles">;
+  styleRootId?: Id<"userStyles">;
   kind: "style-suggestion" | "palette-plan" | "repaint-concept";
   inputKey: string;
   systemPrompt: string;
@@ -50,6 +55,8 @@ export const begin = internalMutation({
     if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
     if (!args.requestKey.trim() || args.requestKey.length > 120) throw new Error("Invalid request key");
     const existing = await ctx.db.query("promptCompositions").withIndex("by_user_request", q => q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
+    if (args.userStyleId && args.stylePresetId) throw new Error("Choose either a saved style or a preset");
+    const savedStyle = args.userStyleId ? await ownedStyle(ctx, args.userStyleId, args.styleIntentJson) : null;
     const inputKey = creativeInputKey(args);
     if (existing) {
       const prior = JSON.parse(existing.inputSnapshotJson) as Snapshot;
@@ -64,7 +71,14 @@ export const begin = internalMutation({
     if (!model || !isPublicModelCatalogRecord(model)) throw new Error("Selected kit variant is unavailable");
     const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
     const material = args.materialPresetId ? await ctx.db.get(args.materialPresetId) : null;
-    if (args.kind === "palette-plan" && (!style?.isActive || !material?.isActive || !args.weatheringLevel)) throw new Error("Select an active style, material and weathering level");
+    if (args.stylePresetId && args.styleIntentJson) throw new Error("Choose either a preset or custom style");
+    if (args.stylePresetId && !style?.isActive) throw new Error("Selected style is unavailable");
+    const customIntent = args.styleIntentJson ? styleIntentSchema.parse(JSON.parse(args.styleIntentJson)) : style?.styleIntentJson ? styleIntentSchema.parse(JSON.parse(style.styleIntentJson)) : null;
+    if (args.kind === "palette-plan" && style && customIntent &&
+      (!args.styleRevision || JSON.stringify(styleIntentSchema.parse(JSON.parse(args.styleRevision))) !== JSON.stringify(customIntent))) {
+      throw new Error("Style intent changed. Refresh the style catalog before generating");
+    }
+    if (args.kind === "palette-plan" && ((!style?.isActive && !customIntent) || !material?.isActive || !args.weatheringLevel)) throw new Error("Select an active style, material and weathering level");
     const template = await resolvePipelineTemplate(ctx, args.kind);
     if (!template) throw new Error("No published creative template is configured");
     const actionType = args.kind === "palette-plan" ? "generate-palette" : "generate-style-suggestion";
@@ -73,13 +87,14 @@ export const begin = internalMutation({
     if (!priceRule || !account || account.balance < priceRule.creditCost) throw new Error("Insufficient credits or missing active price rule");
     const modelContext = await buildModelPromptContext(ctx, model);
     const styles = (await ctx.db.query("stylePresets").collect()).filter(s => s.isActive);
-    if (!styles.length) throw new Error("No active styles available");
+    if (args.kind === "style-suggestion" && !styles.length) throw new Error("No active styles available");
     const roles = await ctx.db.query("colorRoles").withIndex("by_sortOrder").collect();
     const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive && /^#[0-9a-f]{6}$/i.test(p.hexPreview ?? ""));
     const effects = Array.from(new Set(mappings.map(p => p.opacity === "transparent" ? "transparent" : p.effects.includes("metallic") ? "metallic" : "solid")));
     if (args.kind === "palette-plan" && !mappings.length) throw new Error("Paint catalog has no active color samples");
     const snapshot: Snapshot = {
-      kind: args.kind, inputKey, systemPrompt: template.systemPrompt,
+      userStyleId: savedStyle?._id, styleRootId: savedStyle ? savedStyle.rootStyleId ?? savedStyle._id : undefined,
+      kind: args.kind, inputKey, styleIntent: customIntent ?? undefined, systemPrompt: template.systemPrompt + "\n" + stylePlanningRules,
       templateName: template.name, templateVersion: template.version, baseModel: modelContext.snapshot,
       ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}),
       ...(material ? { materialPreset: { id: material._id, name: material.name, slug: material.slug } } : {}),
@@ -89,8 +104,8 @@ export const begin = internalMutation({
     };
     const prompt = fillCreativeTemplate(template.userPromptTemplate, {
       baseModel: modelContext.promptText, kitVariant: modelContext.promptText,
-      stylePreset: JSON.stringify(style), materialPreset: JSON.stringify(material),
-      weatheringLevel: snapshot.weatheringLevel, mood: snapshot.moodTags.join(", ") || "None",
+      stylePreset: JSON.stringify(customIntent ?? style), materialPreset: JSON.stringify(material),
+      weatheringLevel: snapshot.weatheringLevel, mood: snapshot.moodTags.join(", ") || customIntent?.mood || "Style default",
       notes: args.notes?.trim() || "None",
       availableStyles: JSON.stringify(styles.map(s => ({ id: s._id, name: s.name, slug: s.slug, description: s.shortDescription, spec: s.styleSpec }))),
       colorRoles: JSON.stringify(roles.map(r => ({ slug: r.slug, name: r.name, recommendedArea: r.recommendedArea }))),
@@ -145,8 +160,8 @@ export const complete = systemMutation({
       const result = paletteSchema.parse(raw);
       assertExactRoles(result.entries.map(e => e.roleSlug), snapshot.colorRoles.map(r => r.slug));
       const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive && /^#[0-9a-f]{6}$/i.test(p.hexPreview ?? ""));
-      plan = buildPaintPlan({ conceptTitle: `${snapshot.baseModel.name} / ${snapshot.stylePreset?.name}`, baseModelName: snapshot.baseModel.name,
-        stylePresetName: snapshot.stylePreset?.name, materialPresetName: snapshot.materialPreset?.name,
+      plan = buildPaintPlan({ conceptTitle: `${snapshot.baseModel.name} / ${(snapshot.styleIntent?.name ?? snapshot.stylePreset?.name)}`, baseModelName: snapshot.baseModel.name,
+        stylePresetName: (snapshot.styleIntent?.name ?? snapshot.stylePreset?.name), materialPresetName: snapshot.materialPreset?.name,
         weatheringLevel: snapshot.weatheringLevel, moodTags: snapshot.moodTags, colorRoles: snapshot.colorRoles, paintMappings: mappings });
       plan.sprayNotes = result.sprayNotes;
       plan.entries = plan.entries.map(entry => {
@@ -166,7 +181,7 @@ export const complete = systemMutation({
       assertExactRoles(result.panels.map(p => p.roleSlug), snapshot.palettePlan.entries.map(e => e.roleSlug));
       if (result.weathering.level !== snapshot.weatheringLevel) throw new Error("Specification changed the approved weathering level");
       specification = { ...result, baseModel: snapshot.baseModel, colorPlan: snapshot.palettePlan,
-        stylePreset: snapshot.stylePreset, materialPreset: snapshot.materialPreset };
+        styleIntent: snapshot.styleIntent, stylePreset: snapshot.stylePreset, materialPreset: snapshot.materialPreset };
       await ctx.db.patch(composition.conceptId, { renderSpecificationJson: JSON.stringify(specification) });
       await ctx.db.patch(composition.generationJobId, { status: "succeeded", outputSummaryJson: JSON.stringify({ phase: "specification-ready", label: "REPAINT SPECIFICATION READY", specification }) });
     }
@@ -191,7 +206,7 @@ export const result = internalQuery({
   },
 });
 
-async function failComposition(ctx: MutationCtx, id: Id<"promptCompositions">, reason: string) {
+export async function failComposition(ctx: MutationCtx, id: Id<"promptCompositions">, reason: string) {
   const composition = await ctx.db.get(id);
   if (!composition || composition.status !== "ready") return;
   await ctx.db.patch(id, { status: "failed", failureReason: reason });

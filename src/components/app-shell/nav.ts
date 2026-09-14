@@ -21,6 +21,8 @@ export const appNavGroups: readonly AppNavGroup[] = [
     label: "Discover",
     items: [
       { href: appPaths.explore, label: "Explore", match: "exact" },
+      { href: appPaths.styles, label: "Styles", match: "prefix" },
+      { href: appPaths.communityStyles, label: "Community", match: "prefix" },
       { href: appPaths.showcase, label: "Showcase", match: "prefix" },
     ],
   },
@@ -62,6 +64,8 @@ export function isNavItemActive(pathname: string, item: AppNavItem) {
     return pathname === item.href;
   }
 
+  if (item.href === appPaths.communityStyles && pathname.startsWith("/c/")) return true;
+
   if (item.href === appPaths.showcase) {
     return (
       pathname === appPaths.showcase ||
@@ -80,7 +84,7 @@ function isSeoLandingPath(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   return (
     segments.length === 2 &&
-    !["t", "showcase", "create", "library", "feedback", "studio", "prototype", "pilot", "creator", "creator-pack", "spec-admin"].includes(
+    !["c", "community", "styles", "t", "showcase", "create", "library", "feedback", "studio", "prototype", "pilot", "creator", "creator-pack", "spec-admin"].includes(
       segments[0]
     )
   );

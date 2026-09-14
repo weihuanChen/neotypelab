@@ -2840,3 +2840,18 @@
     flex-direction: column;
   }
 }
+
+/* Creation has two navigation steps; refinement and generation stay within Model. */
+.create-flow [hidden] { display: none !important; }
+.create-flow.is-style-step { grid-template-columns: minmax(0, 1fr); }
+.create-flow > nav { grid-column: 1 / -1; padding-bottom: 20px; border-bottom: 1px solid var(--line-primary); }
+.create-flow > nav button[aria-current="step"] { font-weight: 600; text-decoration: underline; text-underline-offset: 6px; }
+.create-flow > nav button:disabled { opacity: .45; }
+.create-flow .dna-grid { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); margin: 24px 0; }
+.create-flow .create-style-card { display: block; text-align: left; padding: 16px; }
+.create-style-card__image, .create-style-card__placeholder { width: 100%; aspect-ratio: 4 / 3; margin-bottom: 18px; object-fit: cover; }
+.create-style-card__placeholder { display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 24px; background: var(--bg-panel); }
+.create-style-card__placeholder span { font: 11px var(--font-mono); text-transform: uppercase; }
+.create-style-card__placeholder strong { font: 28px var(--font-display); }
+.create-flow .tower-credits { flex-wrap: wrap; }
+.create-flow .tower-credits small { width: 100%; font-size: 12px; }

@@ -176,6 +176,10 @@ const schema = defineSchema({
     negativeKeywords: v.array(v.string()),
     systemPromptFragment: v.optional(v.string()),
     styleSpec: v.optional(vStyleSpec),
+    // Canonical, versioned style language consumed by the creative pipeline.
+    // Optional during migration so legacy presets remain readable.
+    styleIntentJson: v.optional(v.string()),
+    styleIntentVersion: v.optional(v.string()),
     contrastLevel: v.optional(v.string()),
     weatheringProfile: v.optional(v.string()),
     recommendedMaterialSlugs: v.array(v.string()),
@@ -191,6 +195,41 @@ const schema = defineSchema({
     .searchIndex("searchText", {
       searchField: "searchText",
     }),
+
+  userStyles: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    intentJson: v.string(),
+    visibility: v.union(v.literal("private"), v.literal("community")),
+    status: v.union(v.literal("active"), v.literal("hidden")),
+    promptCompositionId: v.optional(v.id("promptCompositions")),
+    sourceStyleId: v.optional(v.id("userStyles")),
+    rootStyleId: v.optional(v.id("userStyles")),
+    promotedPresetId: v.optional(v.id("stylePresets")),
+    saveCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_composition", ["userId", "promptCompositionId"])
+    .index("by_user_root", ["userId", "rootStyleId"])
+    .index("by_visibility_status", ["visibility", "status"]),
+
+  styleEditorialReviews: defineTable({
+    stylePresetId: v.id("stylePresets"),
+    baseModelId: v.id("baseModels"),
+    conceptId: v.id("concepts"),
+    publicationId: v.id("assetPublications"),
+    styleIntentJson: v.string(),
+    palettePlanJson: v.string(),
+    renderSpecificationJson: v.string(),
+    isPublished: v.boolean(),
+    reviewedByUserId: v.id("users"),
+    reviewedAt: v.number(),
+  })
+    .index("by_style_model", ["stylePresetId", "baseModelId"])
+    .index("by_style", ["stylePresetId"])
+    .index("by_published", ["isPublished"]),
 
   creatorPacks: defineTable({
     name: v.string(),
@@ -883,9 +922,13 @@ const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   concepts: defineTable({
+    userStyleId: v.optional(v.id("userStyles")),
+    styleRootId: v.optional(v.id("userStyles")),
     paletteCompositionId: v.optional(v.id("promptCompositions")),
     palettePlanJson: v.optional(v.string()),
     renderSpecificationJson: v.optional(v.string()),
+    styleIntentJson: v.optional(v.string()),
+    styleIntentVersion: v.optional(v.string()),
     userId: v.id("users"),
     recordNumber: v.optional(v.number()),
     title: v.string(),
@@ -905,6 +948,7 @@ const schema = defineSchema({
     generationJobId: v.optional(v.id("generationJobs")),
     searchText: v.string(),
   })
+    .index("by_styleRoot", ["styleRootId"])
     .index("by_user_status", ["userId", "status"])
     .index("by_user_visibility", ["userId", "visibility"])
     .index("by_visibility", ["visibility"])

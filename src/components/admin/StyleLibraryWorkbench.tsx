@@ -173,6 +173,7 @@ export function StyleLibraryWorkbench() {
         <h2>Style DNA</h2>
         <span>Manage the visual language, exclusions, and prompt grounding shared across repaint concepts.</span>
       </header>
+      <a href="/admin/style-editorial">Curate official style studies →</a>
       <div className="style-library-toolbar">
         <span><strong>{catalog.styles.filter((item) => item.isActive).length}</strong> active · {catalog.styles.length} total</span>
         <label><MagnifyingGlassIcon /><Input aria-label="Search styles" onChange={(event) => setQuery(event.target.value)} placeholder="Search styles…" value={query} /></label>
