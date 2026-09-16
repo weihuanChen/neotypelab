@@ -272,7 +272,7 @@ export function TemplatesWorkbench({
       <header className="border-b-2 border-line-primary pb-3">
         <div className="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">
               Admin console / Templates
             </p>
             <h2 className="mt-1 text-2xl font-semibold">
@@ -366,7 +366,7 @@ export function TemplatesWorkbench({
                     <div className="mt-2 flex flex-wrap items-center gap-3">
                       <h3 className="text-xl font-semibold">{selectedTemplate.name}</h3>
                       <StatusLabel status={selectedVersion.status} />
-                      {isDirty ? <span className="text-xs text-accent-orange">Unsaved</span> : null}
+                      {isDirty ? <span className="text-xs text-accent-cta">Unsaved</span> : null}
                     </div>
                     <p className="mt-2 font-mono text-xs text-ink-secondary">
                       {selectedTemplate.slug} · {selectedVersion.version} · Updated {formatDate(selectedVersion.updatedAt)}
@@ -686,7 +686,7 @@ function StatusLabel({ status }: { status: VersionStatus }) {
     <span className={cn(
       "shrink-0 border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]",
       status === "published" && "border-accent-teal/50 text-accent-teal",
-      status === "draft" && "border-accent-orange/60 text-accent-orange",
+      status === "draft" && "border-accent-cta/60 text-accent-cta",
       status === "archived" && "border-line-secondary text-ink-muted"
     )}>
       {status === "published" ? "Active" : status}
@@ -730,7 +730,7 @@ function FeedbackStrip({ message, tone }: { message: string | null; tone: "succe
 function AccessState({ danger, description, eyebrow, title }: { danger?: boolean; description?: string; eyebrow: string; title: string }) {
   return (
     <section className={cn("border-2 bg-surface p-6 text-ink-primary", danger ? "border-accent-red" : "border-line-primary")}>
-      <p className={cn("text-xs uppercase tracking-[0.3em]", danger ? "text-accent-red" : "text-accent-orange")}>{eyebrow}</p>
+      <p className={cn("text-xs uppercase tracking-[0.3em]", danger ? "text-accent-red" : "text-accent-cta")}>{eyebrow}</p>
       <h2 className="mt-3 text-3xl font-semibold">{title}</h2>
       {description ? <p className="mt-4 max-w-3xl text-sm leading-6 text-ink-secondary">{description}</p> : null}
     </section>

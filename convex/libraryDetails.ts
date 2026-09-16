@@ -1,20 +1,15 @@
 import { v } from "convex/values";
-import { z } from "zod";
 import { query } from "./functions";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { repaintSchema } from "./creativeContracts";
 import type { Doc } from "./_generated/dataModel";
-
-const paletteSchema = z.object({
-  entries: z.array(z.object({
-    roleSlug: z.string(), roleName: z.string(), recommendedArea: z.string().optional(), rationale: z.string().optional(),
-    suggestedPaint: z.object({
-      brand: z.string(), code: z.string(), colorName: z.string(), hexPreview: z.string().optional(),
-      finishType: z.string().optional(),
-    }).nullable(),
-  })),
-  sprayNotes: z.array(z.string()).optional().default([]),
-});
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
+import {
+  buildPaintRecommendationSets,
+  paintRecommendationSetsSchema,
+  visualPaletteFromLegacyPlan,
+  visualPaletteSchema,
+} from "./paintRecommendationEngine";
 
 function objectJson(value?: string): Record<string, unknown> {
   try {
@@ -37,7 +32,7 @@ export const get = query({
     const concept = await ctx.db.get(id);
     if (!concept || concept.userId !== ctx.viewer._id) return null;
     const ownerId = ctx.viewer._id;
-    const [kit, style, material, assets, jobs, compositions, paletteComposition, legacy, entitlements, sprayPlans] = await Promise.all([
+    const [kit, style, material, assets, jobs, compositions, paletteComposition, legacy, entitlements, sprayPlans, paintMappings] = await Promise.all([
       concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
@@ -48,6 +43,7 @@ export const get = query({
       concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
       resolveEffectiveEntitlements(ctx, ownerId),
       ctx.db.query("sprayPlans").withIndex("by_conceptId", q => q.eq("conceptId", id)).collect(),
+      listResolvedPaintMappings(ctx),
     ]);
     // Older records can have a media pointer without the reverse concept association.
     if (concept.mediaAssetId && !assets.some(asset => asset._id === concept.mediaAssetId)) {
@@ -89,7 +85,23 @@ export const get = query({
     const readableLegacyObject = legacyObject?.userId === ownerId && legacyObject.bucketRole === "private" && legacyObject.status === "ready"
       && (!legacyObject.retainUntil || legacyObject.retainUntil > Date.now())
       && (legacyObject.rendition !== "original" || entitlements.originalDownloadAllowed) ? legacyObject : null;
-    const paletteResult = paletteSchema.safeParse(objectJson(concept.palettePlanJson));
+    const visualPaletteResult = concept.visualPaletteJson
+      ? visualPaletteSchema.safeParse(objectJson(concept.visualPaletteJson))
+      : null;
+    const visualPalette = visualPaletteResult?.success
+      ? visualPaletteResult.data
+      : visualPaletteFromLegacyPlan(concept.palettePlanJson);
+    const storedRecommendations = concept.paintRecommendationSetsJson
+      ? paintRecommendationSetsSchema.safeParse(objectJson(concept.paintRecommendationSetsJson))
+      : null;
+    let paintRecommendations = storedRecommendations?.success ? storedRecommendations.data : null;
+    if (!paintRecommendations && visualPalette) {
+      try {
+        paintRecommendations = buildPaintRecommendationSets(visualPalette, paintMappings);
+      } catch {
+        paintRecommendations = null;
+      }
+    }
     const rawSpec = objectJson(concept.renderSpecificationJson);
     const specResult = repaintSchema.safeParse({ summary: rawSpec.summary, panels: rawSpec.panels, material: rawSpec.material, weathering: rawSpec.weathering, decals: rawSpec.decals });
     const compositionById = new Map(compositions.filter(c => c.userId === ownerId).map(c => [c._id, c]));
@@ -116,7 +128,8 @@ export const get = query({
         publicUrl: preview || readableLegacyObject ? null : httpUrl(safeLegacy?.publicUrl),
         width: preview?.width ?? readableLegacyObject?.width ?? null, height: preview?.height ?? readableLegacyObject?.height ?? null,
         version: current?.version ?? null },
-      palette: paletteResult.success ? paletteResult.data : null,
+      palette: visualPalette,
+      paintRecommendations,
       specification: specResult.success ? specResult.data : null,
       collections, history,
       documents: sprayPlans.filter(plan => plan.userId === ownerId).map(plan => ({ id: plan._id, title: plan.title, version: plan.currentVersion, status: plan.status })),

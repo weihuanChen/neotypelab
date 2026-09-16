@@ -498,7 +498,7 @@ export function AdminWorkbench({
   if (viewer === undefined) {
     return (
       <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Admin boot</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">Admin boot</p>
         <h2 className="mt-3 text-3xl font-semibold">Resolving operator privileges</h2>
       </section>
     );
@@ -597,7 +597,7 @@ export function AdminWorkbench({
       {!workspaceOnly ? (
         <>
       <section className="border-2 border-line-primary bg-panel p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Admin terminal</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">Admin terminal</p>
         <h2 className="mt-3 text-3xl font-semibold">Super admin control surface</h2>
         <p className="mt-4 max-w-4xl text-sm leading-6 text-ink-secondary">
           This console governs user access, credits, charge rules, and prompt templates.
@@ -1129,7 +1129,7 @@ export function AdminWorkbench({
                 auditLog.map((entry) => (
                   <div key={entry._id} className="rounded-[18px] border border-line-secondary bg-panel p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] uppercase tracking-[0.2em] text-accent-orange">
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-accent-cta">
                         {entry.action}
                       </span>
                       <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -1155,7 +1155,7 @@ export function AdminWorkbench({
       <section className="border-2 border-line-primary bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Credit campaigns</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">Credit campaigns</p>
             <h3 className="mt-2 text-2xl font-semibold">Activity code management</h3>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-ink-secondary">
@@ -1175,7 +1175,7 @@ export function AdminWorkbench({
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, name: event.target.value }))
                 }
-                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
             <Field label="Starts At">
@@ -1185,7 +1185,7 @@ export function AdminWorkbench({
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, startsAt: event.target.value }))
                 }
-                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
             <Field label="Ends At">
@@ -1195,7 +1195,7 @@ export function AdminWorkbench({
                 onChange={(event) =>
                   setNewCreditCampaignDraft((current) => ({ ...current, endsAt: event.target.value }))
                 }
-                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
             <Field label="Default Credits">
@@ -1209,7 +1209,7 @@ export function AdminWorkbench({
                     defaultCreditAmount: event.target.value,
                   }))
                 }
-                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
             <Field label="Campaign Cap">
@@ -1224,7 +1224,7 @@ export function AdminWorkbench({
                   }))
                 }
                 placeholder="Unlimited"
-                className="h-11 border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-cta"
               />
             </Field>
             <Field label="Per User Limit">
@@ -1238,7 +1238,7 @@ export function AdminWorkbench({
                     perUserLimit: event.target.value,
                   }))
                 }
-                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
             <div className="md:col-span-2">
@@ -1251,7 +1251,7 @@ export function AdminWorkbench({
                       description: event.target.value,
                     }))
                   }
-                  className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                  className="h-11 border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                 />
               </Field>
             </div>
@@ -1376,7 +1376,7 @@ export function AdminWorkbench({
                                 [campaign._id]: { ...draft, name: event.target.value },
                               }))
                             }
-                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <Field label="Default Credits">
@@ -1390,7 +1390,7 @@ export function AdminWorkbench({
                                 [campaign._id]: { ...draft, defaultCreditAmount: event.target.value },
                               }))
                             }
-                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <Field label="Starts At">
@@ -1403,7 +1403,7 @@ export function AdminWorkbench({
                                 [campaign._id]: { ...draft, startsAt: event.target.value },
                               }))
                             }
-                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <Field label="Ends At">
@@ -1416,7 +1416,7 @@ export function AdminWorkbench({
                                 [campaign._id]: { ...draft, endsAt: event.target.value },
                               }))
                             }
-                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <Field label="Campaign Cap">
@@ -1431,7 +1431,7 @@ export function AdminWorkbench({
                               }))
                             }
                             placeholder="Unlimited"
-                            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <Field label="Per User Limit">
@@ -1445,7 +1445,7 @@ export function AdminWorkbench({
                                 [campaign._id]: { ...draft, perUserLimit: event.target.value },
                               }))
                             }
-                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                            className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                           />
                         </Field>
                         <div className="md:col-span-2">
@@ -1458,7 +1458,7 @@ export function AdminWorkbench({
                                   [campaign._id]: { ...draft, description: event.target.value },
                                 }))
                               }
-                              className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                              className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
                             />
                           </Field>
                         </div>
@@ -1915,7 +1915,7 @@ export function AdminWorkbench({
                     className={cn(
                       "w-full rounded-[18px] border p-4 text-left transition-colors",
                       selectedTemplate?._id === template._id
-                        ? "border-[#58FFB2]/35 bg-accent-teal/10"
+                        ? "border-accent-teal/40 bg-accent-teal/10"
                         : "border-line-secondary bg-panel hover:border-line-active"
                     )}
                   >
@@ -1983,7 +1983,7 @@ export function AdminWorkbench({
 
         <div className={cn("mt-5 grid gap-6", catalogScope ? "xl:grid-cols-1" : "xl:grid-cols-2")}>
           <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="styles">
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Style DNA</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-cta">Style DNA</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading style presets." />
@@ -2016,39 +2016,39 @@ export function AdminWorkbench({
                       <div className="mt-4 grid gap-4">
                         <div className="grid gap-4 md:grid-cols-2">
                           <Field label="Name">
-                            <Input value={draft.name} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input value={draft.name} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, name: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                           <Field label="Category">
-                            <Input value={draft.category} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, category: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input value={draft.category} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, category: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                           <Field label="Contrast">
-                            <Input value={draft.contrastLevel} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, contrastLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input value={draft.contrastLevel} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, contrastLevel: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                           <Field label="Weathering Profile">
-                            <Input value={draft.weatheringProfile} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, weatheringProfile: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input value={draft.weatheringProfile} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, weatheringProfile: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                         </div>
                         <Field label="Short Description">
-                          <Textarea value={draft.shortDescription} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Textarea value={draft.shortDescription} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, shortDescription: event.target.value } }))} className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Prompt Keywords CSV">
-                          <Input value={draft.promptKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.promptKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Negative Keywords CSV">
-                          <Input value={draft.negativeKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, negativeKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.negativeKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, negativeKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Recommended Material Slugs CSV">
-                          <Input value={draft.recommendedMaterialSlugs} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, recommendedMaterialSlugs: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.recommendedMaterialSlugs} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, recommendedMaterialSlugs: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="SEO Keywords CSV">
-                          <Input value={draft.seoKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, seoKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.seoKeywords} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, seoKeywords: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <div className="grid gap-4 md:grid-cols-2">
                           <Field label="Prompt Version">
-                            <Input value={draft.promptVersion} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptVersion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input value={draft.promptVersion} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, promptVersion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                           <Field label="Visibility Weight">
-                            <Input type="number" step="0.01" min="0" max="1" value={draft.visibilityWeight} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, visibilityWeight: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                            <Input type="number" step="0.01" min="0" max="1" value={draft.visibilityWeight} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, visibilityWeight: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                           </Field>
                           <Field label="Creator Owner">
                             <Select value={draft.creatorUserId} onValueChange={(value) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, creatorUserId: value } }))}>
@@ -2067,7 +2067,7 @@ export function AdminWorkbench({
                           </Field>
                         </div>
                         <Field label="System Prompt Fragment">
-                          <Textarea value={draft.systemPromptFragment} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, systemPromptFragment: event.target.value } }))} className="min-h-[100px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Textarea value={draft.systemPromptFragment} onChange={(event) => setStylePresetDrafts((current) => ({ ...current, [preset._id]: { ...draft, systemPromptFragment: event.target.value } }))} className="min-h-[100px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2406,7 +2406,7 @@ export function AdminWorkbench({
           </section>
 
           <section className="border-2 border-line-primary bg-panel p-5" data-catalog-section="paints">
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">Paint Mappings</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-cta">Paint Mappings</p>
             <div className="mt-4 space-y-4">
               {catalogData === undefined ? (
                 <CatalogLoading label="Loading paint mappings." />
@@ -2481,31 +2481,31 @@ export function AdminWorkbench({
                       </div>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <Field label="Brand">
-                          <Input value={draft.brand} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, brand: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.brand} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, brand: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Line">
-                          <Input value={draft.line} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, line: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.line} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, line: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Code">
-                          <Input value={draft.code} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, code: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.code} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, code: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Color Name">
-                          <Input value={draft.colorName} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, colorName: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.colorName} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, colorName: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Finish Type">
-                          <Input value={draft.finishType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, finishType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.finishType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, finishType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Paint Type">
-                          <Input value={draft.paintType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, paintType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.paintType} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, paintType: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Availability Region">
-                          <Input value={draft.availabilityRegion} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, availabilityRegion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.availabilityRegion} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, availabilityRegion: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Hex Preview">
-                          <Input value={draft.hexPreview} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, hexPreview: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.hexPreview} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, hexPreview: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                         <Field label="Affiliate URL">
-                          <Input value={draft.affiliateUrl} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, affiliateUrl: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange" />
+                          <Input value={draft.affiliateUrl} onChange={(event) => setPaintMappingDrafts((current) => ({ ...current, [mapping._id]: { ...draft, affiliateUrl: event.target.value } }))} className="border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta" />
                         </Field>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2670,7 +2670,7 @@ export function AdminWorkbench({
 
       {activeAdminSection === "commerce" ? (
       <section className="border-2 border-line-primary bg-surface p-6">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Charge rules</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">Charge rules</p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {priceRules === undefined ? (
             <div className="rounded-[18px] border border-line-secondary bg-panel p-4 text-sm text-ink-secondary">
@@ -2824,7 +2824,7 @@ function AdminSectionNav({
     <section className="border-2 border-line-primary bg-surface p-3">
       <div className="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
         <div className="border border-line-secondary bg-panel p-4">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-accent-orange">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-accent-cta">
             Admin map
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-ink-primary">{activeMeta.label}</h3>
@@ -2982,7 +2982,7 @@ function PromptLabPanel({
     <section className="border-2 border-line-primary bg-surface p-6 text-ink-primary">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-accent-orange">Prompt Lab</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-cta">Prompt Lab</p>
           <h3 className="mt-2 text-2xl font-semibold">Manual web experiment bench</h3>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-ink-secondary">
             Compose the exact project prompt, copy it into vendor web tools, then save
@@ -3040,7 +3040,7 @@ function PromptLabPanel({
                   className={cn(
                     "min-h-[132px] rounded-[18px] border p-4 text-left transition-colors",
                     active
-                      ? "border-accent-orange bg-accent-orange/10 shadow-[inset_4px_0_0_0_var(--accent-orange)]"
+                      ? "border-accent-cta bg-accent-cta/10 shadow-[inset_4px_0_0_0_var(--accent-cta)]"
                       : "border-line-secondary bg-main hover:border-line-active hover:bg-hover-surface"
                   )}
                 >
@@ -3152,7 +3152,7 @@ function PromptLabPanel({
                     setDraft((current) => ({ ...current, conceptId: event.target.value }))
                   }
                   placeholder="Optional stable label"
-                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-cta"
                 />
               </Field>
               <Field label="Remix Source">
@@ -3162,7 +3162,7 @@ function PromptLabPanel({
                     setDraft((current) => ({ ...current, remixSource: event.target.value }))
                   }
                   placeholder="Optional source title"
-                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-orange"
+                  className="border-line-secondary bg-main text-ink-primary placeholder:text-ink-muted focus-visible:ring-accent-cta"
                 />
               </Field>
             </div>
@@ -3172,7 +3172,7 @@ function PromptLabPanel({
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, notes: event.target.value }))
                 }
-                className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-orange"
+                className="min-h-[88px] border-line-secondary bg-main text-ink-primary focus-visible:ring-accent-cta"
               />
             </Field>
 
@@ -3431,7 +3431,7 @@ function PromptLabExperimentForm({
                 selectedAsWinner: event.target.checked,
               }))
             }
-            className="h-4 w-4 accent-[#58FFB2]"
+            className="h-4 w-4 accent-accent-teal"
           />
           Winner candidate
         </label>
@@ -3530,7 +3530,7 @@ function PromptLabPreview({
       {result ? (
         <div className="mt-4 space-y-4">
           {result.warnings.length > 0 ? (
-            <div className="rounded-[16px] border border-accent-orange bg-accent-orange/10 p-3 text-sm text-[#FFD499]">
+            <div className="rounded-none border border-accent-cta bg-accent-cta/10 p-3 text-sm text-ink-primary">
               {result.warnings.join(" ")}
             </div>
           ) : null}
@@ -4273,7 +4273,7 @@ function CommerceStat({
           "text-[11px] uppercase tracking-[0.18em]",
           tone === "green" && "text-accent-teal",
           tone === "cyan" && "text-accent-blue",
-          tone === "amber" && "text-accent-orange"
+          tone === "amber" && "text-accent-cta"
         )}
       >
         {label}

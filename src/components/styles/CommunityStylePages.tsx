@@ -24,7 +24,7 @@ export function CommunityStyleGallery({ styles }: { styles: Community }) {
 }
 export function CommunityStyleDetail({ style }: { style: Shared }) {
   return <AppShell title={style.name}><main className="style-page">
-    <a className="style-back" href="/community/styles">← Community styles</a>
+    <a className="style-back" href="/styles">← Official styles</a>
     <section className="style-hero"><div><p className="style-eyebrow">Community style / By {style.creator.name}</p>
       <h1>{style.name}</h1><p>{style.intent.graphicLanguage}</p>
       <dl className="style-palette">{Object.entries(style.intent.palette).map(([role, color]) =>
@@ -43,6 +43,6 @@ export function CommunityStyleDetail({ style }: { style: Shared }) {
 export function CommunityUnavailable() {
   return <AppShell title="Community styles"><main className="style-page"><p className="style-eyebrow">Community styles</p>
     <h1>The community collection is taking a moment.</h1><p>Please try again shortly.</p>
-    <a className="showcase-button" href="/community/styles">Reload community styles</a>
+    <a className="showcase-button" href="/styles">Browse official styles</a>
   </main></AppShell>;
 }

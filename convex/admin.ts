@@ -4365,14 +4365,8 @@ async function composePromptLabPayload(
         })
       : null;
   const topPalette =
-    paintPlan?.entries
-      .slice(0, 6)
-      .map((entry) =>
-        entry.suggestedPaint
-          ? `${entry.roleName}: ${entry.suggestedPaint.brand} ${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}`
-          : `${entry.roleName}: no active mapping`
-      )
-      .join(" | ") ?? "No palette lock available.";
+    colorRoles.map((role) => `${role.name}: production visual target`).join(" | ")
+      || "No visual palette available.";
   const availableStyles = await ctx.db
     .query("stylePresets")
     .collect()
@@ -4383,7 +4377,15 @@ async function composePromptLabPayload(
         .join("\n")
     );
   const values = {
-    approvedPalette: paintPlan ? JSON.stringify(paintPlan) : "No palette selected in this preview",
+    approvedPalette: JSON.stringify({
+      version: "visual-palette.v2",
+      entries: colorRoles.map((role) => ({
+        roleSlug: role.slug,
+        roleName: role.name,
+        recommendedArea: role.recommendedArea,
+        targetHex: "#RRGGBB supplied by production palette",
+      })),
+    }),
     renderSpecification: "Production uses the concept's saved specification; this manual preview has none.",
     paintCatalog: JSON.stringify({ availableEffects: Array.from(new Set(paintMappings.filter(p=>p.isActive).map(p=>p.opacity === "transparent" ? "transparent" : p.effects.includes("metallic") ? "metallic" : "solid"))) }),
     availableStyles,

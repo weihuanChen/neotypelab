@@ -7,8 +7,15 @@ import { buildModelPromptContext } from "./modelPromptContext";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { resolvePipelineTemplate } from "./pipelineSettings";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
-import { buildPaintPlan, serializePaint, type PaintPlan } from "./paintMappingEngine";
-import { deltaE2000, hexToLabD65 } from "./paintColor";
+import type { PaintPlan } from "./paintMappingEngine";
+import {
+  buildPaintRecommendationSets,
+  buildVisualPalette,
+  materializePrimaryPaintPlan,
+  type PaintRecommendationSets,
+  type VisualPalette,
+  visualPaletteFromLegacyPlan,
+} from "./paintRecommendationEngine";
 import { vMoodTag, vWeatheringLevel } from "./domain";
 import { assertExactRoles, creativeInputKey, fillCreativeTemplate, paletteSchema, repaintSchema, styleSuggestionSchema, styleIntentSchema, stylePlanningRules, type StyleIntent } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
@@ -26,6 +33,8 @@ export type CreativeResult = {
   priceRule: { actionType: string; label: string; creditCost: number };
   suggestions: Array<{ stylePresetId: Id<"stylePresets">; name: string; slug: string; rationale: string; confidenceLabel: string }>;
   plan: PaintPlan | null;
+  visualPalette: VisualPalette | null;
+  paintRecommendations: PaintRecommendationSets | null;
 };
 
 type Snapshot = {
@@ -46,6 +55,7 @@ type Snapshot = {
   colorRoles: Array<{ _id: Id<"colorRoles">; slug: string; name: string; recommendedArea?: string; description?: string }>;
   priceRule: CreativeResult["priceRule"];
   palettePlan?: PaintPlan;
+  visualPalette?: VisualPalette;
 };
 
 export const begin = internalMutation({
@@ -147,6 +157,8 @@ export const complete = systemMutation({
     const raw: unknown = JSON.parse(args.responseJson);
     let suggestions: CreativeResult["suggestions"] = [];
     let plan: PaintPlan | null = null;
+    let visualPalette: VisualPalette | null = null;
+    let paintRecommendations: PaintRecommendationSets | null = null;
     let specification: unknown = null;
     if (snapshot.kind === "style-suggestion") {
       const result = styleSuggestionSchema.parse(raw);
@@ -159,35 +171,38 @@ export const complete = systemMutation({
     } else if (snapshot.kind === "palette-plan") {
       const result = paletteSchema.parse(raw);
       assertExactRoles(result.entries.map(e => e.roleSlug), snapshot.colorRoles.map(r => r.slug));
-      const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive && /^#[0-9a-f]{6}$/i.test(p.hexPreview ?? ""));
-      plan = buildPaintPlan({ conceptTitle: `${snapshot.baseModel.name} / ${(snapshot.styleIntent?.name ?? snapshot.stylePreset?.name)}`, baseModelName: snapshot.baseModel.name,
-        stylePresetName: (snapshot.styleIntent?.name ?? snapshot.stylePreset?.name), materialPresetName: snapshot.materialPreset?.name,
-        weatheringLevel: snapshot.weatheringLevel, moodTags: snapshot.moodTags, colorRoles: snapshot.colorRoles, paintMappings: mappings });
-      plan.sprayNotes = result.sprayNotes;
-      plan.entries = plan.entries.map(entry => {
-        const target = result.entries.find(r => r.roleSlug === entry.roleSlug)!;
-        const candidates = mappings.filter(p => target.paintEffect === "transparent" ? p.opacity === "transparent"
-          : target.paintEffect === "metallic" ? p.effects.includes("metallic") && p.opacity !== "transparent"
-          : !p.effects.includes("metallic") && p.opacity !== "transparent");
-        const targetLab = hexToLabD65(target.targetHex);
-        const nearest = candidates.map(p => ({ paint: p, delta: deltaE2000(targetLab, hexToLabD65(p.hexPreview!)) })).sort((a,b) => a.delta - b.delta).at(0);
-        if (!nearest) throw new Error(`No catalog paint available for ${entry.roleSlug} (${target.paintEffect})`);
-        return { ...entry, rationale: `${target.rationale} Target ${target.targetHex}; closest catalog sample ΔE00 ${nearest.delta.toFixed(1)}.`,
-          suggestedPaint: serializePaint(nearest.paint), alternatePaint: null };
+      const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive);
+      visualPalette = buildVisualPalette({
+        entries: result.entries,
+        roles: snapshot.colorRoles,
+        sprayNotes: result.sprayNotes,
       });
+      paintRecommendations = buildPaintRecommendationSets(visualPalette, mappings);
+      plan = materializePrimaryPaintPlan({
+        palette: visualPalette,
+        recommendations: paintRecommendations,
+        conceptTitle: `${snapshot.baseModel.name} / ${(snapshot.styleIntent?.name ?? snapshot.stylePreset?.name)}`,
+        baseModelName: snapshot.baseModel.name,
+        stylePresetName: snapshot.styleIntent?.name ?? snapshot.stylePreset?.name,
+        materialPresetName: snapshot.materialPreset?.name,
+        weatheringLevel: snapshot.weatheringLevel,
+        moodTags: snapshot.moodTags,
+      }) as PaintPlan;
     } else {
       const result = repaintSchema.parse(raw);
-      if (!snapshot.palettePlan || !composition.conceptId || !composition.generationJobId) throw new Error("Missing approved palette or concept");
-      assertExactRoles(result.panels.map(p => p.roleSlug), snapshot.palettePlan.entries.map(e => e.roleSlug));
+      const approvedVisualPalette = snapshot.visualPalette
+        ?? visualPaletteFromLegacyPlan(snapshot.palettePlan ? JSON.stringify(snapshot.palettePlan) : undefined);
+      if (!approvedVisualPalette || !composition.conceptId || !composition.generationJobId) throw new Error("Missing approved palette or concept");
+      assertExactRoles(result.panels.map(p => p.roleSlug), approvedVisualPalette.entries.map(e => e.roleSlug));
       if (result.weathering.level !== snapshot.weatheringLevel) throw new Error("Specification changed the approved weathering level");
-      specification = { ...result, baseModel: snapshot.baseModel, colorPlan: snapshot.palettePlan,
+      specification = { ...result, baseModel: snapshot.baseModel, colorPlan: approvedVisualPalette,
         styleIntent: snapshot.styleIntent, stylePreset: snapshot.stylePreset, materialPreset: snapshot.materialPreset };
       await ctx.db.patch(composition.conceptId, { renderSpecificationJson: JSON.stringify(specification) });
       await ctx.db.patch(composition.generationJobId, { status: "succeeded", outputSummaryJson: JSON.stringify({ phase: "specification-ready", label: "REPAINT SPECIFICATION READY", specification }) });
     }
     await ctx.db.patch(composition._id, { status: "consumed", outputSummaryJson: JSON.stringify({
       tool: snapshot.kind, template: snapshot.templateName, templateVersion: snapshot.templateVersion,
-      suggestions, plan, specification, execution: JSON.parse(args.executionJson),
+      suggestions, plan, visualPalette, paintRecommendations, specification, execution: JSON.parse(args.executionJson),
     }) });
   },
 });
@@ -199,10 +214,17 @@ export const result = internalQuery({
     if (!composition || composition.userId !== ctx.viewerX()._id) throw new Error("Creative result not found");
     if (composition.status !== "consumed") throw new Error(composition.failureReason ?? "Generation is already running; retry with the same request key after it finishes");
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
-    const output = JSON.parse(composition.outputSummaryJson!) as { suggestions: CreativeResult["suggestions"]; plan: PaintPlan | null };
+    const output = JSON.parse(composition.outputSummaryJson!) as {
+      suggestions: CreativeResult["suggestions"];
+      plan: PaintPlan | null;
+      visualPalette?: VisualPalette | null;
+      paintRecommendations?: PaintRecommendationSets | null;
+    };
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", composition.userId)).unique();
     return { inputKey: snapshot.inputKey, promptCompositionId, balanceAfter: account?.balance ?? 0, promptPreview: composition.composedPrompt,
-      templateName: snapshot.templateName, priceRule: snapshot.priceRule, suggestions: output.suggestions, plan: output.plan };
+      templateName: snapshot.templateName, priceRule: snapshot.priceRule, suggestions: output.suggestions, plan: output.plan,
+      visualPalette: output.visualPalette ?? (output.plan ? visualPaletteFromLegacyPlan(JSON.stringify(output.plan)) : null),
+      paintRecommendations: output.paintRecommendations ?? null };
   },
 });
 
@@ -250,9 +272,16 @@ export const latest = query({
     });
     if (!composition?.outputSummaryJson) return null;
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
-    const output = JSON.parse(composition.outputSummaryJson) as { suggestions: CreativeResult["suggestions"]; plan: PaintPlan | null };
+    const output = JSON.parse(composition.outputSummaryJson) as {
+      suggestions: CreativeResult["suggestions"];
+      plan: PaintPlan | null;
+      visualPalette?: VisualPalette | null;
+      paintRecommendations?: PaintRecommendationSets | null;
+    };
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", composition.userId)).unique();
     return { inputKey: snapshot.inputKey, promptCompositionId: composition._id, balanceAfter: account?.balance ?? 0, promptPreview: composition.composedPrompt,
-      templateName: snapshot.templateName, priceRule: snapshot.priceRule, suggestions: output.suggestions, plan: output.plan };
+      templateName: snapshot.templateName, priceRule: snapshot.priceRule, suggestions: output.suggestions, plan: output.plan,
+      visualPalette: output.visualPalette ?? (output.plan ? visualPaletteFromLegacyPlan(JSON.stringify(output.plan)) : null),
+      paintRecommendations: output.paintRecommendations ?? null };
   },
 });

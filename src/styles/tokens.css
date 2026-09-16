@@ -1,20 +1,22 @@
 :root {
   color-scheme: light;
 
-  --color-paper: oklch(96.4% 0.018 82);
-  --color-paper-2: oklch(94.1% 0.022 82);
-  --color-paper-3: oklch(90.6% 0.028 80);
-  --color-ink: oklch(18% 0.018 70);
-  --color-ink-2: oklch(32% 0.016 72);
-  --color-muted: oklch(48% 0.018 75);
-  --color-rule: oklch(84% 0.022 80);
-  --color-rule-2: oklch(71% 0.024 78);
-  --color-accent: oklch(62% 0.155 55);
-  --color-accent-ink: oklch(98% 0.01 82);
-  --color-focus: oklch(58% 0.17 55);
+  /* Cool Almanac: pale slate paper, graphite ink, one navy signal.
+     Hue ~245 is the differentiator from the old warm-oat Specimen paper. */
+  --color-paper: oklch(95.2% 0.008 245);
+  --color-paper-2: oklch(92.8% 0.010 245);
+  --color-paper-3: oklch(88.5% 0.012 240);
+  --color-ink: oklch(18% 0.018 245);
+  --color-ink-2: oklch(32% 0.016 245);
+  --color-muted: oklch(46% 0.014 245);
+  --color-rule: oklch(82% 0.012 240);
+  --color-rule-2: oklch(68% 0.014 240);
+  --color-accent: oklch(48% 0.10 250);
+  --color-accent-ink: oklch(98% 0.006 245);
+  --color-focus: oklch(50% 0.12 250);
   --color-danger: oklch(48% 0.14 28);
-  --color-success: oklch(46% 0.055 170);
-  --color-info: oklch(44% 0.05 230);
+  --color-success: oklch(46% 0.055 175);
+  --color-info: oklch(44% 0.05 220);
 
   --font-display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
   --font-label: "IM Fell English SC", "IM Fell English", serif;
@@ -66,7 +68,8 @@
   --text-secondary: var(--color-ink-2);
   --text-muted: var(--color-muted);
 
-  --accent-orange: var(--color-accent);
+  --accent-cta: var(--color-accent);
+  --accent-orange: var(--color-accent); /* legacy alias: CTA is navy, not orange */
   --accent-teal: var(--color-success);
   --accent-blue: var(--color-info);
   --accent-red: var(--color-danger);
@@ -80,5 +83,5 @@
   --spike-muted: var(--color-muted);
   --spike-accent: var(--color-accent);
   --spike-blue: var(--color-info);
-  --spike-orange: var(--color-accent);
+  --spike-orange: var(--color-accent); /* legacy alias */
 }

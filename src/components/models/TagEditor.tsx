@@ -67,7 +67,7 @@ export function TagEditor({
             {value}
             <button
               aria-label={`Remove ${value}`}
-              className="text-ink-muted transition-colors hover:text-ink-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-orange"
+              className="text-ink-muted transition-colors hover:text-ink-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cta"
               onClick={() => onChange(values.filter((item) => item !== value))}
               type="button"
             >

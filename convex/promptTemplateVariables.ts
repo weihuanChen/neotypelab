@@ -71,8 +71,8 @@ export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition
   {
     key: "colorRoles",
     label: "Color Roles",
-    description: "Ordered semantic paint roles from the catalog.",
-    kinds: ["palette-plan", "repaint-concept"],
+    description: "Ordered semantic visual color roles without product identifiers.",
+    kinds: ["palette-plan", "repaint-concept", "hd-render"],
     example: "Primary armor, frame, accent",
   },
   {
@@ -85,9 +85,9 @@ export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition
   {
     key: "topPalette",
     label: "Palette Lock",
-    description: "Resolved paint mappings for the leading color roles.",
+    description: "Legacy alias for visual role targets. Never include paint products or catalog codes.",
     kinds: ["hd-render"],
-    example: "Primary: Tamiya XF-24 Dark Grey",
+    example: "Primary armor: #3A4F5C (solid)",
   },
   {
     key: "remixSource",

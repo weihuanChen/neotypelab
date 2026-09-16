@@ -3,6 +3,12 @@ import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { buildPaintPlan } from "./paintMappingEngine";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
+import {
+  visualPaletteForRender,
+  visualPaletteFromLegacyPlan,
+  visualPaletteSchema,
+  type VisualPalette,
+} from "./paintRecommendationEngine";
 import { MoodTag } from "./domain";
 import { mutation } from "./functions";
 import { action } from "./_generated/server";
@@ -227,6 +233,18 @@ async function queueConceptRender(
     colorRoles,
     paintMappings,
   });
+  const visualPalette = concept.visualPaletteJson
+    ? visualPaletteSchema.parse(JSON.parse(concept.visualPaletteJson))
+    : visualPaletteFromLegacyPlan(concept.palettePlanJson);
+  if (!visualPalette) {
+    throw new Error("Concept is missing a usable visual palette");
+  }
+  const renderPalette = visualPaletteForRender(visualPalette);
+  const renderSpecification = sanitizeRenderSpecification(
+    concept.renderSpecificationJson,
+    visualPalette,
+    paintMappings
+  );
   const materialComparisonVariants = selectMaterialComparisonVariants(
     materialPreset,
     materialPresets,
@@ -242,17 +260,11 @@ async function queueConceptRender(
     mood: formatMoodTags(concept.moodTags ?? []),
     notes: concept.notes ?? "No extra notes.",
     stylePreset: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
-    topPalette:
-      plan.entries
-        .map((entry) =>
-          entry.suggestedPaint
-            ? `${entry.roleName}: ${entry.suggestedPaint.brand} ${entry.suggestedPaint.code}`
-            : `${entry.roleName}: no active mapping`
-        )
-        .join(" | ") || "No paint mapping available.",
+    colorRoles: JSON.stringify(renderPalette.entries),
+    topPalette: JSON.stringify(renderPalette.entries),
     weatheringLevel: concept.weatheringLevel,
-    approvedPalette: concept.palettePlanJson ?? JSON.stringify(plan),
-    renderSpecification: concept.renderSpecificationJson ?? "Legacy concept without a stored specification",
+    approvedPalette: JSON.stringify(renderPalette),
+    renderSpecification,
   });
   const promptPreviewWithFallback = [template.systemPrompt, appendPromptFallbackLines(
     promptPreview,
@@ -264,15 +276,7 @@ async function queueConceptRender(
       simulationStage: simulationStage
         ? `Simulation Stage: ${getBuildStageLabel(simulationStage)}`
         : "",
-      topPalette: `Palette Lock: ${
-        plan.entries
-            .map((entry) =>
-            entry.suggestedPaint
-              ? `${entry.roleName} ${entry.suggestedPaint.code}`
-              : `${entry.roleName} unmapped`
-          )
-          .join(" | ") || "No paint mapping available."
-      }`,
+      topPalette: `Visual color assignment (render instructions only): ${JSON.stringify(renderPalette.entries)}`,
       notes: `Operator notes: ${concept.notes ?? "No extra notes."}`,
       renderMode: `Render Mode: ${getRenderLabel(renderMode)}`,
       renderDirective: `Render Directive: ${getRenderDirective(renderMode, simulationStage)}`,
@@ -283,9 +287,10 @@ async function queueConceptRender(
           : "",
     }
   ),
+    "Output guard: render only the painted model and its native in-universe markings. Do not render paint brands, product names, catalog numbers, HEX strings, palette legends, color swatches, callout lines, specification panels, or technical annotation text.",
     intent ? `Frozen Style Intent:\n${JSON.stringify(intent)}` : "",
-    concept.renderSpecificationJson ? `Approved repaint specification (authoritative):\n${concept.renderSpecificationJson}` : "",
-    concept.palettePlanJson ? `Complete approved palette (authoritative):\n${concept.palettePlanJson}` : "",
+    `Approved repaint specification (authoritative):\n${renderSpecification}`,
+    `Complete visual palette (authoritative render colors; never reproduce these strings as text):\n${JSON.stringify(renderPalette)}`,
   ].filter(Boolean).join("\n\n");
 
   const promptCompositionId = await ctx.db.insert("promptCompositions", {
@@ -295,7 +300,10 @@ async function queueConceptRender(
     promptTemplateVersionId: template.promptTemplateVersionId,
     status: "ready",
     composedPrompt: promptPreviewWithFallback,
-    negativePrompt: template.negativePromptTemplate,
+    negativePrompt: [
+      template.negativePromptTemplate,
+      "paint brand labels, paint product codes, catalog numbers, hex text, palette legend, color chart, specification sheet, technical callouts",
+    ].filter(Boolean).join(", "),
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
       sourceConceptId: concept._id,
@@ -313,6 +321,7 @@ async function queueConceptRender(
       },
       moodTags: concept.moodTags ?? [],
       weatheringLevel: concept.weatheringLevel,
+      visualPalette,
       paintPlan: plan,
       renderMode,
       simulationStage,
@@ -482,6 +491,42 @@ function appendPromptFallbackLines(
 
 function formatMoodTags(moodTags: MoodTag[]) {
   return moodTags.length > 0 ? moodTags.join(", ") : "No mood vector selected.";
+}
+
+function sanitizeRenderSpecification(
+  value: string | undefined,
+  palette: VisualPalette,
+  paintMappings: Array<{ brand: string; code: string }>
+) {
+  let parsed: Record<string, unknown> = {};
+  try {
+    const candidate: unknown = JSON.parse(value ?? "{}");
+    if (candidate !== null && typeof candidate === "object" && !Array.isArray(candidate)) {
+      parsed = candidate as Record<string, unknown>;
+    }
+  } catch {
+    parsed = {};
+  }
+  const serialized = JSON.stringify({
+    summary: parsed.summary,
+    panels: parsed.panels,
+    material: parsed.material,
+    weathering: parsed.weathering,
+    decals: parsed.decals,
+    colorPlan: visualPaletteForRender(palette),
+  });
+  const forbiddenTerms = Array.from(new Set(paintMappings.flatMap((paint) =>
+    [paint.brand, paint.code]
+      .filter((term): term is string => Boolean(term && term.trim().length >= 2))
+  ))).sort((left, right) => right.length - left.length);
+  return forbiddenTerms.reduce((current, term) =>
+    current.replace(new RegExp(`\\b${escapeRegExp(term)}\\b`, "gi"), "selected visual color"),
+    serialized
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function selectMaterialComparisonVariants(

@@ -1,14 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { getCommunityGallery } from "@/src/lib/styleRouteData";
-import { styleHead } from "@/src/components/styles/StylePages";
-import { CommunityStyleGallery, CommunityUnavailable } from "@/src/components/styles/CommunityStylePages";
+import { createFileRoute, notFound } from "@tanstack/react-router";
+import { noIndexRobots } from "@/src/lib/appPaths";
 
+// Community discovery stays closed until the public collection is ready.
 export const Route = createFileRoute("/community/styles")({
-  loader: () => getCommunityGallery(),
-  head: () => styleHead("Community styles", "/community/styles", "Shared repaint directions to save and apply to your kit.", false),
-  component: Page,
+  beforeLoad: () => { throw notFound(); },
+  head: () => ({ meta: [noIndexRobots] }),
 });
-function Page() {
-  const snapshot = Route.useLoaderData();
-  return snapshot.data ? <CommunityStyleGallery styles={snapshot.data} /> : <CommunityUnavailable />;
-}

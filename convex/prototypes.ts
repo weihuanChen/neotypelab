@@ -9,6 +9,14 @@ import { nextArchiveNumber } from "./archiveNumbers";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 import { creativeInputKey, fillCreativeTemplate, styleIntentSchema, stylePlanningRules } from "./creativeContracts";
 import type { PaintPlan } from "./paintMappingEngine";
+import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
+import {
+  buildPaintRecommendationSets,
+  paintRecommendationSetsSchema,
+  visualPaletteForRender,
+  visualPaletteFromLegacyPlan,
+  visualPaletteSchema,
+} from "./paintRecommendationEngine";
 
 export const initializePrototype = mutation({
   args: {
@@ -53,6 +61,13 @@ export const initializePrototype = mutation({
     if (paletteInput.kind !== "palette-plan" || paletteInput.inputKey !== inputKey || !paletteOutput.plan) throw new Error("Palette inputs have changed. Generate and approve a new palette plan");
     const intent = paletteInput.styleIntent ? styleIntentSchema.parse(paletteInput.styleIntent) : undefined;
     const palettePlan = paletteOutput.plan as PaintPlan;
+    const visualPalette = paletteOutput.visualPalette
+      ? visualPaletteSchema.parse(paletteOutput.visualPalette)
+      : visualPaletteFromLegacyPlan(JSON.stringify(palettePlan));
+    if (!visualPalette) throw new Error("The approved palette does not contain usable visual colors");
+    const paintRecommendations = paletteOutput.paintRecommendations
+      ? paintRecommendationSetsSchema.parse(paletteOutput.paintRecommendations)
+      : buildPaintRecommendationSets(visualPalette, await listResolvedPaintMappings(ctx));
     const modelId = args.kitVariantId ?? args.baseModelId;
     const model = modelId ? await ctx.db.get(modelId) : null;
     const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
@@ -73,13 +88,13 @@ export const initializePrototype = mutation({
       baseModel: modelContext.snapshot, ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}), styleIntent: intent,
       materialPreset: { id: material._id, name: material.name, slug: material.slug },
       weatheringLevel: args.weatheringLevel, moodTags: Array.from(new Set(args.moodTags ?? [])),
-      palettePlan, paletteCompositionId: palette._id, sourceConceptId: source?._id, visibility: args.visibility ?? "private", priceRule,
+      visualPalette, palettePlan, paletteCompositionId: palette._id, sourceConceptId: source?._id, visibility: args.visibility ?? "private", priceRule,
     };
     const composedPrompt = fillCreativeTemplate(template.userPromptTemplate, {
       baseModel: modelContext.promptText, kitVariant: modelContext.promptText,
       stylePreset: JSON.stringify(intent ?? style), materialPreset: JSON.stringify(material),
       mood: inputSnapshot.moodTags.join(", ") || intent?.mood || "Style default", weatheringLevel: args.weatheringLevel,
-      approvedPalette: JSON.stringify(palettePlan), colorRoles: palettePlan.entries.map(e => e.roleSlug).join(", "),
+      approvedPalette: JSON.stringify(visualPaletteForRender(visualPalette)), colorRoles: visualPalette.entries.map(e => e.roleSlug).join(", "),
       notes: notes ?? "None", remixSource: source?.title ?? "None",
     });
     const conceptId = await ctx.db.insert("concepts", {
@@ -88,7 +103,10 @@ export const initializePrototype = mutation({
       baseModelId: model._id, stylePresetId: style?._id, materialPresetId: material._id,
       moodTags: inputSnapshot.moodTags, weatheringLevel: args.weatheringLevel, status: "draft",
       visibility: args.visibility ?? "private", sourceConceptId: source?._id,
-      paletteCompositionId: palette._id, palettePlanJson: JSON.stringify(palettePlan),
+      paletteCompositionId: palette._id,
+      visualPaletteJson: JSON.stringify(visualPalette),
+      paintRecommendationSetsJson: JSON.stringify(paintRecommendations),
+      palettePlanJson: JSON.stringify(palettePlan),
       styleIntentJson: intent ? JSON.stringify(intent) : undefined, styleIntentVersion: intent?.version,
       searchText: `${title} ${notes ?? ""} ${intent?.name ?? style?.name ?? "Custom Style"} ${material.name}`,
     });

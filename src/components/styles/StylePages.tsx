@@ -47,7 +47,7 @@ export function StyleGallery({ styles }: { styles: Gallery }) {
     <JsonLd name="Repaint styles" path="/styles" description="Choose a repaint language, then apply it to a kit." />
     <header className="style-intro"><p className="style-eyebrow">01 / The style collection</p>
       <h1>A different kit.<br /><em>The same feeling.</em></h1>
-      <p>Choose a repaint language, then apply it to a kit. <a href="/community/styles">Explore community directions →</a></p>
+      <p>Choose a repaint language, then apply it to a kit.</p>
     </header>
     <nav className="style-filters" aria-label="Filter styles">
       {[["all", "All styles"], ["featured", "Featured"], ...categories.map(c => [c, c])].map(([value, label]) =>

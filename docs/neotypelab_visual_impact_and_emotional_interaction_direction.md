@@ -8,7 +8,7 @@ This document defines the emotional experience and visual interaction direction 
 
 The main visual system is now:
 
-> Bright retro-futurism, technical line-art, mecha blueprint sketch, clean hobby lab, analog control panels, cream / warm white surfaces, muted orange / teal accents, thin technical strokes, printed manual aesthetic, and spray-planning workstation atmosphere.
+> Bright retro-futurism, technical line-art, mecha blueprint sketch, clean hobby lab, analog control panels, cool pale paper / slate surfaces, slate navy / teal accents, thin technical strokes, printed manual aesthetic, and spray-planning workstation atmosphere.
 
 This replaces the previous dark prototype-chamber emphasis.
 
@@ -205,7 +205,7 @@ The primary workspace should feel like:
 
 It should include:
 
-- cream paper-like surface
+- cool pale paper surface
 - blueprint sketch marks
 - color swatch modules
 - panel-line drawings

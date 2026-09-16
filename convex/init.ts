@@ -109,7 +109,7 @@ export const init = internalMutation({
     for (const template of promptTemplates) {
       const creativeSeed = creativeTemplateSeeds.find(seed => seed.kind === template.kind);
       await ctx.db.insert("promptTemplates", creativeSeed
-        ? { ...template, ...creativeSeed, version: "creation.v1" }
+        ? { ...template, ...creativeSeed, version: "creation.v2" }
         : template);
     }
 

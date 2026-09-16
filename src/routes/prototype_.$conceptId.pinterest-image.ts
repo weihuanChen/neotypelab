@@ -11,7 +11,7 @@ export const Route = createFileRoute("/prototype_/$conceptId/pinterest-image")({
         const concept = await getSharedConcept(params.conceptId);
 
         return prototypeExportImageResponse({
-          accent: "#FFB84D",
+          accent: "#2C6194",
           badge: "Pinterest card",
           eyebrow: "Pinterest Export",
           footer: concept?.owner

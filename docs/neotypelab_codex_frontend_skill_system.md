@@ -10,7 +10,7 @@ The previous dark industrial terminal / cockpit HUD direction is no longer the a
 
 Current primary visual direction:
 
-> Bright retro-futurism + technical line-art + mecha blueprint sketch + clean hobby lab + analog control panels + cream / warm white surfaces + muted orange / teal accents + thin technical strokes + printed manual aesthetic + spray-planning workstation.
+> Bright retro-futurism + technical line-art + mecha blueprint sketch + clean hobby lab + analog control panels + cool pale paper / slate surfaces + slate navy / teal accents + thin technical strokes + printed manual aesthetic + spray-planning workstation.
 
 This document is for frontend/UI execution only.
 
@@ -115,12 +115,12 @@ Always prioritize:
 - bright retro-futurism
 - technical line-art
 - mecha blueprint sketch
-- cream / warm white surfaces
+- cool pale paper / slate surfaces
 - printed manual aesthetic
 - clean hobby lab atmosphere
 - analog control panels
 - thin technical strokes
-- muted orange / teal / blue accents
+- slate navy / teal / blue accents
 - strong readability
 - practical spray-planning hierarchy
 
@@ -149,23 +149,23 @@ Use these canonical V2 colors.
 
 ```ts
 export const colors = {
-  bgMain: "#F4F0E6",
-  bgSurface: "#FBF7ED",
-  bgPanel: "#E8E0D0",
-  bgElevated: "#FFFDF6",
+  bgMain: "#EBF0F4",
+  bgSurface: "#E2E8EE",
+  bgPanel: "#D2DAE0",
+  bgElevated: "#F5F9FC",
 
-  lineSubtle: "rgba(35, 40, 45, 0.10)",
-  lineMuted: "#C9BFAE",
-  lineActive: "#2F3A3D",
+  lineSubtle: "rgba(11, 18, 25, 0.10)",
+  lineMuted: "#BDC5CB",
+  lineActive: "#0B1219",
 
-  textPrimary: "#202426",
-  textSecondary: "#5E625F",
-  textMuted: "#8A8377",
+  textPrimary: "#0B1219",
+  textSecondary: "#2C343B",
+  textMuted: "#525960",
 
-  accentOrange: "#E46F2D",
-  accentTeal: "#2A8C8C",
-  accentBlue: "#3B6D8C",
-  accentRed: "#B84A3A",
+  accentCta: "#2C6194",
+  accentTeal: "#346256",
+  accentBlue: "#315966",
+  accentRed: "#9D352D",
 };
 ```
 
@@ -181,7 +181,7 @@ export const colors = {
 - `textPrimary`: titles and critical values
 - `textSecondary`: body and metadata
 - `textMuted`: helper text and low-emphasis labels
-- `accentOrange`: primary CTA, cost, warning, confirmation
+- `accentCta`: primary CTA, cost, warning, confirmation
 - `accentTeal`: selected states, success, Style DNA, active planning
 - `accentBlue`: navigation, public discovery, neutral status
 - `accentRed`: destructive, failed, blocked, irreversible
@@ -224,7 +224,7 @@ Prefer:
 - tabular numbers
 - sentence-case section headings
 - uppercase labels only where useful
-- strong contrast on warm light backgrounds
+- strong contrast on cool light backgrounds
 
 Avoid:
 
@@ -589,7 +589,7 @@ Rules:
 
 Required:
 
-- strong contrast on cream / warm white backgrounds
+- strong contrast on cool pale paper backgrounds
 - readable text
 - clear active states
 - visible focus states

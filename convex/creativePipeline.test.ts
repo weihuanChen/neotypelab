@@ -93,7 +93,7 @@ describe("creative pipeline", () => {
     };
     await expect(f.t.mutation(internal.creativePipeline.complete, {
       promptCompositionId: id, responseJson: JSON.stringify(output), executionJson: "{}",
-    })).rejects.toThrow(/No catalog paint/);
+    })).rejects.toThrow(/No catalog paint system/);
   });
 
   it("rejects a stale official revision and isolates palette recovery across revisions", async () => {
@@ -155,7 +155,7 @@ describe("creative pipeline", () => {
     const repeated = await f.client.mutation(api.prototypes.initializePrototype, { ...f.input, paletteCompositionId: id, requestKey: "spec-1" });
     expect(repeated.conceptId).toBe(repaint.conceptId);
     const spec = {
-      summary: "Neutral display model", panels: f.catalog.roles.map(role => ({ roleSlug: role.slug, areas: [role.recommendedArea ?? role.name], maskingNotes: "Follow existing panel edges." })),
+      summary: "Neutral display model using Mr. Color C39", panels: f.catalog.roles.map(role => ({ roleSlug: role.slug, areas: [role.recommendedArea ?? role.name], maskingNotes: "Follow existing panel edges." })),
       material: { surfaceTexture: "Smooth", reflectivity: "Low", coating: "Matte clear" },
       weathering: { level: "heavy", applicationNotes: "No weathering" }, decals: { density: "low", placementNotes: "Shoulder markings" },
     };
@@ -166,8 +166,19 @@ describe("creative pipeline", () => {
     const prompt = await f.t.run(ctx => ctx.db.get(render.promptCompositionId));
     for (const role of f.catalog.roles) expect(prompt?.composedPrompt).toContain(role.slug);
     expect(prompt?.composedPrompt).toContain("Approved repaint specification");
+    expect(prompt?.composedPrompt).toContain("visual-palette.v2");
+    expect(prompt?.composedPrompt).not.toContain("Mr. Color");
+    expect(prompt?.composedPrompt).not.toContain("C39");
+    for (const set of result.paintRecommendations?.sets ?? []) {
+      for (const entry of set.entries) {
+        expect(prompt?.composedPrompt).not.toContain(entry.paint.code);
+        expect(prompt?.composedPrompt).not.toContain(entry.paint.brand);
+      }
+    }
     const snapshot = await f.t.run(ctx => ctx.db.get(repaint.conceptId));
     expect(JSON.parse(snapshot!.palettePlanJson!)).toEqual(result.plan);
+    expect(JSON.parse(snapshot!.visualPaletteJson!)).toEqual(result.visualPalette);
+    expect(JSON.parse(snapshot!.paintRecommendationSetsJson!)).toEqual(result.paintRecommendations);
     if (mode === "custom") {
       expect(JSON.parse(snapshot!.styleIntentJson!)).toEqual(customIntent);
       expect(prompt?.composedPrompt).toContain("Cyan Performance");

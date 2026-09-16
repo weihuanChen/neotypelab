@@ -42,11 +42,11 @@ export function ShoppingListActions({
         onClick={() => {
           void onCopyShoppingList();
         }}
-        className="h-10 rounded-[16px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] hover:bg-white/10"
+        className="showcase-button h-10 px-4 text-sm"
       >
         Copy Shopping List
       </Button>
-      {message ? <span className="text-xs uppercase tracking-[0.18em] text-[#9BA7B4]">{message}</span> : null}
+      {message ? <span className="text-xs uppercase tracking-[0.18em] text-ink-muted">{message}</span> : null}
     </div>
   );
 }

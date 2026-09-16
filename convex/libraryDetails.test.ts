@@ -45,7 +45,11 @@ describe("library work details", () => {
     const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
     expect(detail?.title).toBe("Workshop repaint");
     expect(detail?.specification?.panels[0].areas).toEqual(["Torso"]);
-    expect(detail?.palette?.entries[0].suggestedPaint?.code).toBe("XF-2");
+    expect(detail?.palette?.entries[0]).toMatchObject({
+      roleSlug: "primary-armor",
+      targetHex: "#EEEEEE",
+      paintEffect: "solid",
+    });
   });
 
   it("lists only owned private resource files and never returns storage keys or bucket names", async () => {
@@ -57,6 +61,36 @@ describe("library work details", () => {
     expect(JSON.stringify(detail)).not.toContain("secret-storage-key");
     expect(JSON.stringify(detail)).not.toContain("private-library");
     expect(JSON.stringify(detail)).not.toContain("foreign-file");
+  });
+
+  it("keeps visual colors separate from stored single-system paint recommendations", async () => {
+    const f = await fixture();
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, {
+      visualPaletteJson: JSON.stringify({
+        version: "visual-palette.v2",
+        entries: [{ roleSlug: "primary-armor", roleName: "Primary armor", targetHex: "#E3E2DC", paintEffect: "solid", rationale: "Warm off-white armor." }],
+        sprayNotes: ["Use thin coats"],
+      }),
+      paintRecommendationSetsJson: JSON.stringify({
+        version: "paint-recommendations.v1",
+        generatedAt: 123,
+        sets: [{
+          id: "gsi-creos:mr-color", brand: "GSI Creos", line: "Mr. Color", label: "Mr. Color C Series",
+          recommended: true, coverageCount: 1, roleCount: 1, averageDeltaE: 3.2, maxDeltaE: 3.2,
+          missingRoleSlugs: [], warnings: ["Some matches use approximate digital color data."],
+          entries: [{
+            roleSlug: "primary-armor", targetHex: "#E3E2DC", paintEffect: "solid", deltaE00: 3.2,
+            matchBand: "close", warnings: ["approximate_color_data"],
+            paint: { _id: "paint-id", mappingKey: "gsi:c101", brand: "GSI Creos", line: "Mr. Color", series: "C", code: "C101", colorName: "Smoke Gray", hexPreview: "#E6E6E6" },
+          }],
+        }],
+      }),
+    }));
+    const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
+    expect(detail?.palette?.entries[0]).toMatchObject({ targetHex: "#E3E2DC", paintEffect: "solid" });
+    expect(detail?.paintRecommendations?.sets[0]).toMatchObject({ label: "Mr. Color C Series", recommended: true });
+    expect(JSON.stringify(detail?.palette)).not.toContain("C101");
+    expect(detail?.paintRecommendations?.sets[0].entries[0].paint.code).toBe("C101");
   });
 
   it("reflects expired files and original-download entitlements without blocking the preview", async () => {

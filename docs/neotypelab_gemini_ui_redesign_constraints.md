@@ -35,17 +35,17 @@ The new UI should feel like:
 - mecha blueprint sketch
 - clean hobby lab
 - analog control panels
-- cream / warm white surfaces
-- muted orange / teal accents
+- cool pale paper / slate surfaces
+- slate navy / teal accents
 - thin technical strokes
 - printed manual aesthetic
 - spray-planning workstation
 
 Suggested visual ingredients:
 
-- warm off-white or paper-like base surfaces
+- cool pale paper or slate base surfaces
 - graphite text and blueprint-style annotation lines
-- muted orange, teal, and blue-gray accents
+- slate navy, teal, and blue-gray accents
 - thin strokes, hairline dividers, diagram frames, measurement ticks, small labels
 - line-art mecha silhouettes or abstract drafting marks where useful
 - subtle paper grain, plotted grid, ruled margins, registration marks, blueprint callouts
@@ -76,23 +76,23 @@ Canonical V2 color tokens:
 
 ```ts
 export const colors = {
-  bgMain: "#F4F0E6",
-  bgSurface: "#FBF7ED",
-  bgPanel: "#E8E0D0",
-  bgElevated: "#FFFDF6",
+  bgMain: "#EBF0F4",
+  bgSurface: "#E2E8EE",
+  bgPanel: "#D2DAE0",
+  bgElevated: "#F5F9FC",
 
-  lineSubtle: "rgba(35, 40, 45, 0.10)",
-  lineMuted: "#C9BFAE",
-  lineActive: "#2F3A3D",
+  lineSubtle: "rgba(11, 18, 25, 0.10)",
+  lineMuted: "#BDC5CB",
+  lineActive: "#0B1219",
 
-  textPrimary: "#202426",
-  textSecondary: "#5E625F",
-  textMuted: "#8A8377",
+  textPrimary: "#0B1219",
+  textSecondary: "#2C343B",
+  textMuted: "#525960",
 
-  accentOrange: "#E46F2D",
-  accentTeal: "#2A8C8C",
-  accentBlue: "#3B6D8C",
-  accentRed: "#B84A3A",
+  accentCta: "#2C6194",
+  accentTeal: "#346256",
+  accentBlue: "#315966",
+  accentRed: "#9D352D",
 };
 ```
 

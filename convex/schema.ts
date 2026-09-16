@@ -925,6 +925,8 @@ const schema = defineSchema({
     userStyleId: v.optional(v.id("userStyles")),
     styleRootId: v.optional(v.id("userStyles")),
     paletteCompositionId: v.optional(v.id("promptCompositions")),
+    visualPaletteJson: v.optional(v.string()),
+    paintRecommendationSetsJson: v.optional(v.string()),
     palettePlanJson: v.optional(v.string()),
     renderSpecificationJson: v.optional(v.string()),
     styleIntentJson: v.optional(v.string()),

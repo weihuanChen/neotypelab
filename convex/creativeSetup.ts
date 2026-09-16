@@ -2,6 +2,13 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { creativeTemplateSeeds } from "./creativeContracts";
 
+const CREATIVE_TEMPLATE_VERSION = "creation.v2";
+
+const HD_RENDER_SYSTEM_PATCH =
+  "Render the selected visual color targets only. Never render paint brands, product codes, HEX strings, catalog numbers, palette legends, color charts, callout lines, specification sheets, or technical annotation text. Preserve native in-universe markings only.";
+const HD_RENDER_NEGATIVE_PATCH =
+  "paint brand labels, paint product codes, catalog numbers, HEX text, palette legend, color chart, specification sheet, technical callouts";
+
 export const configure = internalMutation({
   args: { textModelId: v.string() },
   handler: async (ctx, { textModelId }) => {
@@ -26,7 +33,7 @@ export const configure = internalMutation({
     for (const seed of creativeTemplateSeeds) {
       let template = (await ctx.db.query("promptTemplates").withIndex("by_kind", q => q.eq("kind", seed.kind)).collect()).find(t => t.isActive);
       if (!template) {
-        const id = await ctx.db.insert("promptTemplates", { ...seed, slug: `${seed.kind}-template`, version: "creation.v1", isActive: true });
+        const id = await ctx.db.insert("promptTemplates", { ...seed, slug: `${seed.kind}-template`, version: CREATIVE_TEMPLATE_VERSION, isActive: true });
         template = (await ctx.db.get(id))!;
       }
       const versions = await ctx.db.query("promptTemplateVersions").withIndex("by_template", q => q.eq("promptTemplateId", template._id)).collect();
@@ -35,19 +42,69 @@ export const configure = internalMutation({
         userPromptTemplate: template.userPromptTemplate, negativePromptTemplate: template.negativePromptTemplate,
         notePolicy: template.notePolicy, createdAt: now, updatedAt: now,
       });
-      for (const version of versions.filter(ver => ver.status === "published" && ver.version !== "creation.v1")) await ctx.db.patch(version._id, { status: "archived", updatedAt: now });
-      let versionId = versions.find(ver => ver.version === "creation.v1")?._id;
+      for (const version of versions.filter(ver => ver.status === "published" && ver.version !== CREATIVE_TEMPLATE_VERSION)) await ctx.db.patch(version._id, { status: "archived", updatedAt: now });
+      let versionId = versions.find(ver => ver.version === CREATIVE_TEMPLATE_VERSION)?._id;
       const content = { systemPrompt: seed.systemPrompt, userPromptTemplate: seed.userPromptTemplate,
         notePolicy: "Structured kit selections and approved palette override operator notes.", status: "published" as const, publishedAt: now, updatedAt: now };
       if (versionId) await ctx.db.patch(versionId, content);
-      else versionId = await ctx.db.insert("promptTemplateVersions", { ...content, promptTemplateId: template._id, version: "creation.v1", createdAt: now });
-      await ctx.db.patch(template._id, { name: seed.name, version: "creation.v1", publishedVersionId: versionId, systemPrompt: seed.systemPrompt,
+      else versionId = await ctx.db.insert("promptTemplateVersions", { ...content, promptTemplateId: template._id, version: CREATIVE_TEMPLATE_VERSION, createdAt: now });
+      await ctx.db.patch(template._id, { name: seed.name, version: CREATIVE_TEMPLATE_VERSION, publishedVersionId: versionId, systemPrompt: seed.systemPrompt,
         userPromptTemplate: seed.userPromptTemplate, notePolicy: content.notePolicy, updatedAt: now });
       const binding = (await ctx.db.query("pipelineTemplateBindings").withIndex("by_action", q => q.eq("action", seed.kind)).collect()).sort((a,b) => b.updatedAt-a.updatedAt).at(0);
       const bindingFields = { action: seed.kind, promptTemplateId: template._id, versionPolicy: "follow-published" as const, isActive: true, effectiveFrom: now, updatedAt: now };
       if (binding) await ctx.db.patch(binding._id, bindingFields);
       else await ctx.db.insert("pipelineTemplateBindings", bindingFields);
       templates.push({ kind: seed.kind, templateId: template._id, versionId });
+    }
+    const hdTemplates = await ctx.db
+      .query("promptTemplates")
+      .withIndex("by_kind", (q) => q.eq("kind", "hd-render"))
+      .collect();
+    for (const template of hdTemplates.filter((item) => item.isActive)) {
+      const systemPrompt = template.systemPrompt.includes(HD_RENDER_SYSTEM_PATCH)
+        ? template.systemPrompt
+        : `${template.systemPrompt}\n\n${HD_RENDER_SYSTEM_PATCH}`;
+      const negativePromptTemplate = [template.negativePromptTemplate, HD_RENDER_NEGATIVE_PATCH]
+        .filter(Boolean)
+        .join(", ");
+      const previousVersions = await ctx.db
+        .query("promptTemplateVersions")
+        .withIndex("by_template", (q) => q.eq("promptTemplateId", template._id))
+        .collect();
+      const existingVersion = previousVersions.find((item) => item.version === "render.v2");
+      const version = existingVersion
+        ? existingVersion._id
+        : await ctx.db.insert("promptTemplateVersions", {
+            promptTemplateId: template._id,
+            version: "render.v2",
+            status: "published",
+            systemPrompt,
+            userPromptTemplate: template.userPromptTemplate,
+            negativePromptTemplate,
+            notePolicy: template.notePolicy,
+            createdAt: now,
+            updatedAt: now,
+          });
+      if (existingVersion) {
+        await ctx.db.patch(version, {
+          status: "published",
+          systemPrompt,
+          userPromptTemplate: template.userPromptTemplate,
+          negativePromptTemplate,
+          notePolicy: template.notePolicy,
+          updatedAt: now,
+        });
+      }
+      for (const previous of previousVersions.filter((item) => item._id !== version && item.status === "published")) {
+        await ctx.db.patch(previous._id, { status: "archived", updatedAt: now });
+      }
+      await ctx.db.patch(template._id, {
+        version: "render.v2",
+        systemPrompt,
+        negativePromptTemplate,
+        publishedVersionId: version,
+        updatedAt: now,
+      });
     }
     for (const action of ["style-suggestion", "palette-plan", "repaint-concept", "hd-render"] as const) {
       const routes = await ctx.db.query("generationProviderRoutes").withIndex("by_action", q => q.eq("action", action)).collect();

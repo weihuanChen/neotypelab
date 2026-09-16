@@ -1,5 +1,7 @@
 # Community styles and durable interpretation — P5
 
+Availability update: `/community/styles` is temporarily closed (404); its main navigation and official-gallery links are hidden. Reopen only after a product decision once community content exists. Private saving, direct shared-style links, Create reuse and admin tools remain available.
+
 ## User workflow
 
 1. In Create, select Custom Style → Describe a style.

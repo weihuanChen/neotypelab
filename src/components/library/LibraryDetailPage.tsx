@@ -118,15 +118,16 @@ function Overview({ detail }: { detail: WorkDetail }) {
       {detail.palette ? <>
         <div className="work-detail-palette">
           {detail.palette.entries.map((entry, index) => <div className="work-detail-color" key={`${entry.roleSlug}-${index}`}>
-            <span className="work-detail-swatch" aria-hidden="true" style={{ backgroundColor: validHex(entry.suggestedPaint?.hexPreview) }} />
-            <div><p className="work-detail-eyebrow">{entry.roleName}</p><h3>{entry.suggestedPaint?.colorName ?? "No paint assigned"}</h3>
-              <p>{entry.suggestedPaint ? `${entry.suggestedPaint.brand} · ${entry.suggestedPaint.code}` : entry.recommendedArea}</p>
+            <span className="work-detail-swatch" aria-hidden="true" style={{ backgroundColor: validHex(entry.targetHex) }} />
+            <div><p className="work-detail-eyebrow">{entry.roleName}</p><h3>{entry.targetHex}</h3>
+              <p>{humanize(entry.paintEffect)} visual target</p>
               {entry.recommendedArea ? <small>{entry.recommendedArea}</small> : null}
               {entry.rationale ? <details className="work-detail-rationale"><summary>Color reasoning</summary><p>{entry.rationale}</p></details> : null}
             </div>
           </div>)}
         </div>
         {detail.palette.sprayNotes.length ? <div className="work-detail-spray-notes"><h3>Painting notes</h3><ul>{detail.palette.sprayNotes.map((note, index) => <li key={index}>{note}</li>)}</ul></div> : null}
+        <PaintSystems detail={detail} />
       </> : <EmptySection>This work does not have a saved palette snapshot. Its original configuration is shown above.</EmptySection>}
     </section>
     <section aria-labelledby="spec-title" className="work-detail-section">
@@ -146,6 +147,52 @@ function Overview({ detail }: { detail: WorkDetail }) {
   </div>;
 }
 
+function PaintSystems({ detail }: { detail: WorkDetail }) {
+  const recommendations = detail.paintRecommendations;
+  const first = recommendations?.sets.find((set) => set.recommended)
+    ?? recommendations?.sets.find((set) => set.coverageCount === set.roleCount)
+    ?? recommendations?.sets[0];
+  const [selectedId, setSelectedId] = useState(first?.id ?? "");
+  const selected = recommendations?.sets.find((set) => set.id === selectedId) ?? first;
+  if (!recommendations || !selected) {
+    return <section className="work-detail-paint-systems" aria-labelledby="paint-systems-title">
+      <div className="work-detail-subheading"><h3 id="paint-systems-title">Paint recommendations</h3><span>Catalog matches unavailable</span></div>
+      <EmptySection>The visual palette is preserved, but the current paint catalog cannot provide a complete single-system recommendation.</EmptySection>
+    </section>;
+  }
+  return <section className="work-detail-paint-systems" aria-labelledby="paint-systems-title">
+    <div className="work-detail-subheading">
+      <div><h3 id="paint-systems-title">Paint recommendations</h3><p>Each option stays within one paint system. Codes are planning references and never enter the render prompt.</p></div>
+      <span>Matched {formatDate(recommendations.generatedAt)}</span>
+    </div>
+    <div className="work-detail-system-switch" role="group" aria-label="Paint system">
+      {recommendations.sets.map((set) => <button type="button" key={set.id} className={set.id === selected.id ? "is-active" : ""} onClick={() => setSelectedId(set.id)}>
+        <span>{set.label}</span>
+        <small>{set.coverageCount}/{set.roleCount} roles{set.recommended ? " · Recommended" : ""}</small>
+      </button>)}
+    </div>
+    <div className="work-detail-system-summary">
+      <div><span>System</span><strong>{selected.brand} · {selected.line}</strong></div>
+      <div><span>Average ΔE00</span><strong>{selected.averageDeltaE?.toFixed(1) ?? "—"}</strong></div>
+      <div><span>Worst ΔE00</span><strong>{selected.maxDeltaE?.toFixed(1) ?? "—"}</strong></div>
+      <div><span>Coverage</span><strong>{selected.coverageCount}/{selected.roleCount}</strong></div>
+    </div>
+    <div className="work-detail-paint-list">
+      {detail.palette?.entries.map((color) => {
+        const match = selected.entries.find((entry) => entry.roleSlug === color.roleSlug);
+        return <div key={color.roleSlug}>
+          <span className="work-detail-swatch is-small" aria-hidden="true" style={{ backgroundColor: validHex(color.targetHex) }} />
+          <div><span>{color.roleName}</span><small>Target {color.targetHex}</small></div>
+          {match ? <><div><strong>{match.paint.code}</strong><small>{match.paint.colorName}</small></div><div><span>ΔE00 {match.deltaE00.toFixed(1)}</span><small>{humanize(match.matchBand)}</small></div></>
+            : <div className="work-detail-paint-missing"><strong>No compatible paint</strong><small>{humanize(color.paintEffect)} required</small></div>}
+        </div>;
+      })}
+    </div>
+    {selected.warnings.length ? <ul className="work-detail-match-warnings">{selected.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+    <p className="work-detail-match-note">Matches compare catalog color data. Primer, coat thickness, clear coat and lighting can change the painted result.</p>
+  </section>;
+}
+
 function Resources({ detail }: { detail: WorkDetail }) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   return <section className="work-detail-section" aria-labelledby="resources-title">
@@ -162,7 +209,8 @@ function Resources({ detail }: { detail: WorkDetail }) {
     </section>) : <EmptySection>No image resources yet. Saved renders and reference files associated with this work will appear here.</EmptySection>}
     <section className="work-detail-resource-group" aria-label="Build documents">
       <div className="work-detail-resource-heading"><h3>Build documents</h3><span>Saved plans</span></div>
-      {detail.palette ? <DocumentRow title="Approved color plan" description="Color roles, catalog paints and painting notes" onDownload={() => downloadJson(detail, "color-plan", detail.palette)} /> : null}
+      {detail.palette ? <DocumentRow title="Approved visual color plan" description="Color roles, target HEX values and painting notes" onDownload={() => downloadJson(detail, "color-plan", detail.palette)} /> : null}
+      {detail.paintRecommendations ? <DocumentRow title="Paint recommendation sets" description="Single-system catalog matches and color distances" onDownload={() => downloadJson(detail, "paint-recommendations", detail.paintRecommendations)} /> : null}
       {detail.specification ? <DocumentRow title="Repaint specification" description="Panel placement, finish, weathering and markings" onDownload={() => downloadJson(detail, "repaint-specification", detail.specification)} /> : null}
       {detail.documents.map(document => <div className="work-detail-file" key={document.id}><FileTextIcon aria-hidden="true" /><div><strong>{document.title}</strong><small>Spray plan · Version {document.version} · {document.status}</small></div><Button asChild variant="outline" className="work-detail-action"><Link to="/studio">Open studio<ArrowTopRightIcon aria-hidden="true" /></Link></Button></div>)}
       {!detail.palette && !detail.specification && !detail.documents.length ? <EmptySection>Approved color plans, repaint specifications and spray plans will be kept here as the work develops.</EmptySection> : null}

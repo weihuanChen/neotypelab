@@ -1,6 +1,7 @@
 "use client";
 
 import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
+import { StyleDiscovery } from "./StyleDiscovery";
 import { CustomStylePicker } from "./CustomStylePicker";
 import { CommandButton } from "@/components/ui/command-button";
 import { ShoppingListActions } from "@/components/public/ShoppingListActions";
@@ -116,6 +117,11 @@ export function CreateWorkbench({
   search?: CreateWorkbenchSearch;
 }) {
   const catalog = useQuery(api.catalog.listCreateOptions);
+  const communityStyles = useQuery(api.userStyles.community);
+  const saveCommunity = useMutation(api.userStyles.saveCommunityStyle);
+  const [selectedCommunitySourceId, setSelectedCommunitySourceId] = useState<string | undefined>();
+  const [discoveryBusy, setDiscoveryBusy] = useState(false);
+  const [styleTab, setStyleTab] = useState<"discover" | "create" | "saved">("discover");
   const reviewedStyles = useQuery(api.styleEditorial.gallery);
   const viewer = useQuery(api.users.viewer);
   const remixConceptId = parseOptionalSearchValue(search.remix);
@@ -202,6 +208,18 @@ export function CreateWorkbench({
     balanceAfter: number;
     promptCompositionId: Id<"promptCompositions">;
     promptPreview: string;
+    visualPalette: {
+      version: "visual-palette.v2";
+      entries: Array<{
+        roleSlug: string;
+        roleName: string;
+        recommendedArea?: string;
+        targetHex: string;
+        paintEffect: "solid" | "metallic" | "transparent";
+        rationale: string;
+      }>;
+      sprayNotes: string[];
+    } | null;
     plan: {
       baseModelName: string;
       conceptTitle: string;
@@ -625,30 +643,33 @@ export function CreateWorkbench({
         <section className="workbench-step" hidden={createStep !== 1}>
           <StepHeader step="01" title="Choose a style" />
           <p className="mb-6">Choose a repaint language, then apply it to a kit.</p>
-          <div className="choice-chip-row">
-            <ChoiceChip active={styleMode === "preset"} onClick={() => setStyleMode("preset")} compact>Preset Style</ChoiceChip>
-            <ChoiceChip active={styleMode === "custom"} onClick={() => setStyleMode("custom")} compact>Custom Style</ChoiceChip>
+          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+          <div className="style-main-tabs" aria-label="Style workspace">
+            {(["discover", "create", "saved"] as const).map(tab => <button key={tab} type="button" aria-pressed={styleTab === tab} onClick={() => setStyleTab(tab)}>{tab === "discover" ? "Discover" : tab === "create" ? "Create" : "Saved"}</button>)}
           </div>
-          {styleMode === "custom" ? <CustomStylePicker
-            userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(rule => rule.actionType === "generate-style-suggestion")?.creditCost} communityStyle={search.communityStyle}
-            selectedId={savedCustomStyleId}
-            onUse={(intent, styleId) => { setApprovedCustomStyle(intent); setSavedCustomStyleId(styleId); }}
-            onClear={() => { setApprovedCustomStyle(null); setSavedCustomStyleId(null); }}
-          /> : null}
-          {styleMode === "preset" ? <div className="dna-grid">
-            {catalog.stylePresets.map(preset => {
-              const preview = reviewedStyles?.find(style => style.id === preset._id);
-              const intent = readStyleIntent(preset.styleIntentJson);
-              return <button className={cn("dna-card create-style-card", selectedStylePresetId === preset._id && "is-active")} key={preset._id} onClick={() => setSelectedStylePresetId(preset._id)} type="button" aria-pressed={selectedStylePresetId === preset._id}>
-                {preview ? <img className="create-style-card__image" src={preview.imageUrl} alt={preset.name + " reviewed preview"} loading="lazy" /> :
-                  <div className="create-style-card__placeholder"><span>Repaint direction</span><strong>{intent?.palette.primary ?? preset.category ?? "Style study"}</strong></div>}
-                <p className="dna-card__name">{preset.name}</p>
-                <p className="dna-card__meta">{intent ? Object.values(intent.palette).flat().join(" · ") : preset.category}</p>
-                <p>{preset.shortDescription ?? intent?.graphicLanguage}</p>
-              </button>;
-            })}
-          </div> : null}
-          <div className="mt-6"><CommandButton disabled={!hasActiveStyle} onClick={() => setCreateStep(2)}>Apply to a model →</CommandButton></div>
+          <div hidden={styleTab !== "discover"}>
+            <StyleDiscovery presets={catalog.stylePresets} community={communityStyles} previews={reviewedStyles ?? []}
+              selectedId={styleMode === "preset" ? selectedStylePresetId ?? undefined : selectedCommunitySourceId ?? savedCustomStyleId ?? undefined}
+              busy={discoveryBusy} initialCommunity={search.communityStyle}
+              onPreset={preset => { setStyleMode("preset"); setSelectedStylePresetId(preset._id); }}
+              onCommunity={style => {
+                setDiscoveryBusy(true); setErrorMessage(null);
+                void saveCommunity({ styleId: style.id }).then(saved => {
+                  setStyleMode("custom"); setApprovedCustomStyle(saved.intent); setSavedCustomStyleId(saved.styleId); setSelectedCommunitySourceId(style.id);
+                }).catch(error => setErrorMessage(creativeErrorMessage(error, "Unable to save style"))).finally(() => setDiscoveryBusy(false));
+              }} />
+          </div>
+          <div hidden={styleTab === "discover"}>
+            <CustomStylePicker
+              userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(rule => rule.actionType === "generate-style-suggestion")?.creditCost}
+              selectedId={savedCustomStyleId} view={styleTab === "saved" ? "mine" : "describe"}
+              onUse={(intent, styleId) => { setStyleMode("custom"); setApprovedCustomStyle(intent); setSavedCustomStyleId(styleId); }}
+              onClear={() => { setApprovedCustomStyle(null); setSavedCustomStyleId(null); if (styleTab === "create") setStyleMode("custom"); }}
+              onApply={() => setCreateStep(2)}
+            />
+          </div>
+          {styleTab !== "create" ? <div className="mt-6"><CommandButton disabled={!hasActiveStyle || discoveryBusy} onClick={() => setCreateStep(2)}>Apply to a model →</CommandButton></div> : null}
+
         </section>
 
         <section className="workbench-step" hidden={createStep !== 2}>
@@ -868,15 +889,18 @@ export function CreateWorkbench({
                     </GhostButton>
                   ))
                 : null}
-              {palettePlanResult && paletteIsCurrent
-                ? palettePlanResult.plan.entries.map((entry) => (
-                    <FieldHint key={entry.roleSlug}>
-                      {entry.roleName}:{" "}
-                      {entry.suggestedPaint
-                        ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`
-                        : "unmapped"}
-                    </FieldHint>
-                  ))
+              {palettePlanResult?.visualPalette && paletteIsCurrent
+                ? <div className="create-palette-preview" aria-label="Visual color plan">
+                    {palettePlanResult.visualPalette.entries.map((entry) => (
+                      <div className="create-palette-preview__row" key={entry.roleSlug}>
+                        <span aria-hidden="true" style={{ backgroundColor: entry.targetHex }} />
+                        <div>
+                          <strong>{entry.roleName}</strong>
+                          <small>{entry.targetHex} · {entry.paintEffect}</small>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 : null}
               {palettePlanResult && paletteIsCurrent ? (
                 <GhostButton onClick={() => setApprovedPaletteId(palettePlanResult.promptCompositionId)} disabled={approvedPaletteId === palettePlanResult.promptCompositionId}>

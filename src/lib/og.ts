@@ -240,7 +240,7 @@ function buildPortraitPrototypeExportSvg({
   </defs>
   <rect width="1000" height="1500" fill="url(#bg)"/>
   <circle cx="82" cy="96" r="280" fill="${escapeXml(accent)}" fill-opacity="0.18"/>
-  <circle cx="930" cy="1390" r="300" fill="#FFB84D" fill-opacity="0.16"/>
+  <circle cx="930" cy="1390" r="300" fill="#2C6194" fill-opacity="0.16"/>
   <g opacity="0.45">
     ${Array.from({ length: 11 })
       .map((_, index) => `<path d="M${50 + index * 90} 48V1452" stroke="#1D2730" stroke-width="1"/>`)
@@ -316,7 +316,7 @@ function buildWidePrototypeExportSvg({
   </defs>
   <rect width="1600" height="900" fill="url(#bg)"/>
   <circle cx="1390" cy="126" r="310" fill="${escapeXml(accent)}" fill-opacity="0.16"/>
-  <circle cx="110" cy="805" r="280" fill="#FFB84D" fill-opacity="0.14"/>
+  <circle cx="110" cy="805" r="280" fill="#2C6194" fill-opacity="0.14"/>
   <g opacity="0.45">
     ${Array.from({ length: 17 })
       .map((_, index) => `<path d="M${44 + index * 94} 44V856" stroke="#1D2730" stroke-width="1"/>`)
@@ -395,7 +395,7 @@ function buildSquarePrototypeExportSvg({
   </defs>
   <rect width="1200" height="1200" fill="url(#bg)"/>
   <circle cx="146" cy="124" r="310" fill="${escapeXml(accent)}" fill-opacity="0.18"/>
-  <circle cx="1082" cy="1104" r="290" fill="#FFB84D" fill-opacity="0.16"/>
+  <circle cx="1082" cy="1104" r="290" fill="#2C6194" fill-opacity="0.16"/>
   <g opacity="0.45">
     ${Array.from({ length: 13 })
       .map((_, index) => `<path d="M${48 + index * 92} 48V1152" stroke="#1D2730" stroke-width="1"/>`)

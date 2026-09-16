@@ -58,6 +58,7 @@ module.exports = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          cta: "var(--accent-cta)",
           orange: "var(--accent-orange)",
           teal: "var(--accent-teal)",
           blue: "var(--accent-blue)",

@@ -56,7 +56,7 @@ export function PublicShareActions({
         onClick={() => {
           void onCopyLink();
         }}
-        className="h-11 rounded-[18px] border border-white/10 bg-transparent px-4 text-sm text-[#E6EDF3] hover:bg-white/10"
+        className="showcase-button h-11 px-4 text-sm"
       >
         Copy Link
       </Button>
@@ -65,7 +65,7 @@ export function PublicShareActions({
         onClick={() => {
           void onShare();
         }}
-        className="h-11 rounded-[18px] border border-[#3DD9FF]/35 bg-[#0E2430] px-4 text-sm text-[#E6EDF3] hover:bg-white/10"
+        className="showcase-button is-warm h-11 px-4 text-sm"
       >
         Share
       </Button>
@@ -74,7 +74,7 @@ export function PublicShareActions({
           href={exportImageUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
+          className="showcase-button h-11 px-4 text-sm"
         >
           Watermarked Export
         </a>
@@ -84,7 +84,7 @@ export function PublicShareActions({
           href={pinterestImageUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#FFB84D]/35 bg-[#2A210F] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
+          className="showcase-button h-11 px-4 text-sm"
         >
           Pinterest Card
         </a>
@@ -94,12 +94,12 @@ export function PublicShareActions({
           href={redditImageUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-11 items-center justify-center rounded-[18px] border border-[#58FFB2]/35 bg-[#13241B] px-4 text-sm text-[#E6EDF3] transition-colors hover:bg-white/10"
+          className="showcase-button h-11 px-4 text-sm"
         >
           Reddit Card
         </a>
       ) : null}
-      {message ? <span className="text-xs uppercase tracking-[0.18em] text-[#9BA7B4]">{message}</span> : null}
+      {message ? <span className="text-xs uppercase tracking-[0.18em] text-ink-muted">{message}</span> : null}
     </div>
   );
 }

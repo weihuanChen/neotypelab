@@ -17,7 +17,7 @@ export const Route = createFileRoute("/pilot_/$handle/opengraph-image")({
         const leadConcept = profile?.published[0] ?? profile?.saved[0] ?? null;
 
         return openGraphImageResponse({
-          accent: "#FFB84D",
+          accent: "#2C6194",
           eyebrow: "Pilot Profile",
           title: profile?.pilot.fullName ?? "Pilot profile unavailable",
           subtitle: profile

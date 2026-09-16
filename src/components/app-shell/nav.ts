@@ -22,7 +22,6 @@ export const appNavGroups: readonly AppNavGroup[] = [
     items: [
       { href: appPaths.explore, label: "Explore", match: "exact" },
       { href: appPaths.styles, label: "Styles", match: "prefix" },
-      { href: appPaths.communityStyles, label: "Community", match: "prefix" },
       { href: appPaths.showcase, label: "Showcase", match: "prefix" },
     ],
   },

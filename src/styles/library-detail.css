@@ -52,6 +52,31 @@
 .work-detail-spray-notes h3, .work-detail-finishes h3 { margin: 0; font-size: 1rem; font-weight: 600; }
 .work-detail-spray-notes ul { margin: 0; padding-left: 1.1rem; max-width: 65ch; }
 .work-detail-spray-notes li { padding-bottom: .5rem; font-size: .9rem; line-height: 1.65; }
+.work-detail-paint-systems { margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--color-ink); }
+.work-detail-subheading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.25rem; }
+.work-detail-subheading h3 { margin: 0; font-family: var(--font-display); font-size: 1.45rem; font-weight: 400; }
+.work-detail-subheading p { max-width: 62ch; margin: .4rem 0 0; color: var(--color-muted); font-size: .82rem; line-height: 1.6; }
+.work-detail-subheading > span { color: var(--color-muted); font-family: var(--font-mono); font-size: .66rem; white-space: nowrap; }
+.work-detail-system-switch { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--color-ink); }
+.work-detail-system-switch button { display: grid; flex: 0 0 auto; gap: .18rem; min-width: 12rem; padding: .8rem 1rem; border: 0; border-right: 1px solid var(--color-rule); background: transparent; color: var(--color-muted); text-align: left; cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+.work-detail-system-switch button:hover { background: var(--color-paper-2); color: var(--color-ink); }
+.work-detail-system-switch button.is-active { background: var(--color-ink); color: var(--color-paper); }
+.work-detail-system-switch span { font-size: .8rem; font-weight: 600; }
+.work-detail-system-switch small { font-family: var(--font-mono); font-size: .62rem; }
+.work-detail-system-summary { display: grid; grid-template-columns: minmax(12rem, 1.5fr) repeat(3, minmax(6rem, .6fr)); border-bottom: 1px solid var(--color-rule); }
+.work-detail-system-summary > div { display: grid; gap: .2rem; padding: 1rem; border-right: 1px solid var(--color-rule); }
+.work-detail-system-summary > div:last-child { border-right: 0; }
+.work-detail-system-summary span { color: var(--color-muted); font-size: .7rem; }
+.work-detail-system-summary strong { font-family: var(--font-mono); font-size: .78rem; font-weight: 500; }
+.work-detail-paint-list > div { display: grid; grid-template-columns: 1.6rem minmax(9rem, 1fr) minmax(9rem, 1fr) 7rem; align-items: center; gap: .85rem; padding: .85rem 0; border-bottom: 1px solid var(--color-rule); }
+.work-detail-swatch.is-small { width: 1.6rem; }
+.work-detail-paint-list div > div { display: grid; gap: .12rem; min-width: 0; }
+.work-detail-paint-list span, .work-detail-paint-list strong { font-size: .78rem; }
+.work-detail-paint-list strong { font-family: var(--font-mono); font-weight: 600; }
+.work-detail-paint-list small { overflow: hidden; color: var(--color-muted); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.work-detail-paint-missing { grid-column: span 2; color: var(--color-danger); }
+.work-detail-match-warnings { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--color-muted); font-size: .78rem; line-height: 1.6; }
+.work-detail-match-note { max-width: 68ch; margin: 1rem 0 0; color: var(--color-muted); font-size: .72rem; line-height: 1.65; }
 .work-detail-intro { margin: 0 0 1.8rem; max-width: 65ch; color: var(--color-ink-2); font-size: 1rem; line-height: 1.75; }
 .work-detail-panel-map > div { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1.5rem; padding: 1rem 0; border-top: 1px solid var(--color-rule); }
 .work-detail-panel-map h3 { margin: 0; font-size: .88rem; font-weight: 600; }
@@ -114,6 +139,13 @@
   .work-detail-section-heading > p { padding-left: 1.9rem; }
   .work-detail-spray-notes, .work-detail-panel-map > div { grid-template-columns: minmax(0, 1fr); gap: .7rem; }
   .work-detail-finishes { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .work-detail-subheading { display: grid; gap: .5rem; }
+  .work-detail-system-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .work-detail-system-summary > div:nth-child(2) { border-right: 0; }
+  .work-detail-system-summary > div:nth-child(-n+2) { border-bottom: 1px solid var(--color-rule); }
+  .work-detail-paint-list > div { grid-template-columns: 1.6rem minmax(0, 1fr) 6rem; }
+  .work-detail-paint-list > div > div:nth-of-type(2) { grid-column: 2; }
+  .work-detail-paint-list > div > div:nth-of-type(3) { grid-column: 3; grid-row: 1 / span 2; }
   .work-detail-file { gap: .65rem; }
   .work-detail-file .work-detail-action { font-size: .75rem; padding: .4rem .55rem; }
   .work-detail-tab-list { gap: 1rem; }

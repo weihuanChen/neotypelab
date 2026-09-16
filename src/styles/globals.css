@@ -4,37 +4,37 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 208 18% 94%;
+    --foreground: 208 22% 14%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 208 16% 95%;
+    --card-foreground: 208 22% 14%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 208 16% 95%;
+    --popover-foreground: 208 22% 14%;
 
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 208 22% 14%;
+    --primary-foreground: 208 20% 97%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 208 12% 90%;
+    --secondary-foreground: 208 22% 14%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 208 10% 90%;
+    --muted-foreground: 208 8% 38%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 209 54% 37%;
+    --accent-foreground: 208 20% 97%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 4 55% 40%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
+    --border: 206 10% 72%;
+    --input: 206 10% 72%;
+    --ring: 209 54% 37%;
 
     --radius: 0.5rem;
 
-    /* Almanac paper system — source of truth is src/styles/tokens.css */
+    /* Cool Almanac paper system — source of truth is src/styles/tokens.css */
     --bg-main: var(--color-paper);
     --bg-surface: var(--color-paper-2);
     --bg-panel: var(--color-paper-3);
@@ -56,42 +56,11 @@
     --text-secondary: var(--color-ink-2);
     --text-muted: var(--color-muted);
 
+    --accent-cta: var(--color-accent);
     --accent-orange: var(--color-accent);
     --accent-teal: var(--color-success);
     --accent-blue: var(--color-info);
     --accent-red: var(--color-danger);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: 240 10% 3.9%;
-      --foreground: 0 0% 98%;
-
-      --card: 240 10% 3.9%;
-      --card-foreground: 0 0% 98%;
-
-      --popover: 240 10% 3.9%;
-      --popover-foreground: 0 0% 98%;
-
-      --primary: 0 0% 98%;
-      --primary-foreground: 240 5.9% 10%;
-
-      --secondary: 240 3.7% 15.9%;
-      --secondary-foreground: 0 0% 98%;
-
-      --muted: 240 3.7% 15.9%;
-      --muted-foreground: 240 5% 64.9%;
-
-      --accent: 240 3.7% 15.9%;
-      --accent-foreground: 0 0% 98%;
-
-      --destructive: 0 62.8% 30.6%;
-      --destructive-foreground: 0 0% 98%;
-
-      --border: 240 3.7% 15.9%;
-      --input: 240 3.7% 15.9%;
-      --ring: 240 4.9% 83.9%;
-    }
   }
 }
 
@@ -108,8 +77,8 @@
 @layer utilities {
   .bg-grid-blueprint {
     background-image: 
-      linear-gradient(rgba(47, 53, 51, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(47, 53, 51, 0.08) 1px, transparent 1px);
+      linear-gradient(color-mix(in oklch, var(--color-ink) 8%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklch, var(--color-ink) 8%, transparent) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 

@@ -92,13 +92,13 @@ test("gates the editorial review workspace", async ({ page }) => {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
-test("keeps the community gallery outside the search index", async ({ page }) => {
-  await page.goto("/community/styles");
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/community\/styles$/);
-  await expect(page.getByRole("link", { name: "Community", exact: true })).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+test("keeps the community gallery closed and hides its discovery entry", async ({ page }) => {
+  const response = await page.goto("/community/styles");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
+  await page.goto("/styles");
+  await expect(page.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
+  await expect(page.locator('a[href="/community/styles"]')).toHaveCount(0);
 });
 
 test("does not index unavailable custom style links", async ({ page }) => {

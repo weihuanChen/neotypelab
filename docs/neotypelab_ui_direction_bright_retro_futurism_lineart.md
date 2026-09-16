@@ -122,8 +122,8 @@ The difference is mood:
 - Mecha blueprint sketch
 - Clean hobby lab
 - Analog control panels
-- Cream / warm white surfaces
-- Muted orange / teal accents
+- Cool pale paper / slate surfaces
+- Slate navy / teal accents
 - Thin technical strokes
 - Printed manual aesthetic
 - Spray-planning workstation
@@ -214,7 +214,7 @@ Visual references:
 
 # Color System
 
-The UI should shift to warm, light surfaces with technical ink and muted accents.
+The UI should shift to cool, light surfaces with technical ink and a single navy accent.
 
 Do not use pure white as the main background.
 
@@ -225,10 +225,10 @@ Do not use dark cyberpunk surfaces as the default.
 Canonical V2 palette:
 
 ```css
---bg-main: #F4F0E6;
---bg-surface: #FBF7ED;
---bg-panel: #E8E0D0;
---bg-elevated: #FFFDF6;
+--bg-main: #EBF0F4;
+--bg-surface: #E2E8EE;
+--bg-panel: #D2DAE0;
+--bg-elevated: #F5F9FC;
 ```
 
 Use these for:
@@ -243,21 +243,21 @@ Use these for:
 ## Ink And Text Colors
 
 ```css
---text-primary: #202426;
---text-secondary: #5E625F;
---text-muted: #8A8377;
+--text-primary: #0B1219;
+--text-secondary: #2C343B;
+--text-muted: #525960;
 ```
 
 Use strong contrast.
 
-Do not let the bright redesign become low-contrast beige text on beige backgrounds.
+Do not let the bright redesign become low-contrast cool-gray text on cool-gray backgrounds.
 
 ## Engineering Stroke Colors
 
 ```css
---line-subtle: rgba(35, 40, 45, 0.10);
---line-muted: #C9BFAE;
---line-active: #2F3A3D;
+--line-subtle: rgba(11, 18, 25, 0.10);
+--line-muted: #BDC5CB;
+--line-active: #0B1219;
 ```
 
 Use strokes for:
@@ -275,22 +275,22 @@ Use strokes for:
 Accents should be muted and technical.
 
 ```css
---accent-orange: #E46F2D;
---accent-orange-soft: rgba(228,111,45,0.14);
+--accent-cta: #2C6194;
+--accent-cta-soft: rgba(44, 97, 148, 0.14);
 
---accent-teal: #2A8C8C;
---accent-teal-soft: rgba(42,140,140,0.14);
+--accent-teal: #346256;
+--accent-teal-soft: rgba(52, 98, 86, 0.14);
 
---accent-blue: #3B6D8C;
---accent-blue-soft: rgba(59,109,140,0.16);
+--accent-blue: #315966;
+--accent-blue-soft: rgba(49, 89, 102, 0.16);
 
---accent-red: #B84A3A;
---accent-red-soft: rgba(184,74,58,0.14);
+--accent-red: #9D352D;
+--accent-red-soft: rgba(157, 53, 45, 0.14);
 ```
 
 Recommended usage:
 
-- Orange: primary actions, cost, confirmation, important warnings
+- Navy CTA: primary actions, cost, confirmation, important warnings
 - Teal: active system states, successful sync, selected Style DNA
 - Blue: navigation, metadata, neutral technical status, public discovery
 - Red: destructive, failed, blocked, or irreversible states
@@ -299,23 +299,23 @@ Recommended TypeScript token shape:
 
 ```ts
 export const colors = {
-  bgMain: "#F4F0E6",
-  bgSurface: "#FBF7ED",
-  bgPanel: "#E8E0D0",
-  bgElevated: "#FFFDF6",
+  bgMain: "#EBF0F4",
+  bgSurface: "#E2E8EE",
+  bgPanel: "#D2DAE0",
+  bgElevated: "#F5F9FC",
 
-  lineSubtle: "rgba(35, 40, 45, 0.10)",
-  lineMuted: "#C9BFAE",
-  lineActive: "#2F3A3D",
+  lineSubtle: "rgba(11, 18, 25, 0.10)",
+  lineMuted: "#BDC5CB",
+  lineActive: "#0B1219",
 
-  textPrimary: "#202426",
-  textSecondary: "#5E625F",
-  textMuted: "#8A8377",
+  textPrimary: "#0B1219",
+  textSecondary: "#2C343B",
+  textMuted: "#525960",
 
-  accentOrange: "#E46F2D",
-  accentTeal: "#2A8C8C",
-  accentBlue: "#3B6D8C",
-  accentRed: "#B84A3A",
+  accentCta: "#2C6194",
+  accentTeal: "#346256",
+  accentBlue: "#315966",
+  accentRed: "#9D352D",
 };
 ```
 
@@ -328,6 +328,7 @@ export const colors = {
 - rainbow status systems
 - classic toy-like red/blue/yellow as the main UI palette
 - low-contrast cream-on-cream text
+- electric cobalt / SaaS hyperlink blue as a flood color
 
 ---
 
@@ -553,7 +554,7 @@ Panels should feel like technical sheets or control plates.
 
 Style:
 
-- warm paper surface
+- cool pale paper surface
 - thin ink or gray stroke
 - square or lightly rounded corners
 - small registration marks
@@ -609,8 +610,8 @@ Buttons should feel like physical controls or manual command tabs.
 
 Primary actions:
 
-- strong ink or muted orange outline
-- warm fill or subtle accent fill
+- strong ink or slate navy outline
+- cool fill or subtle accent fill
 - clear label
 - visible focus state
 - slight press response
@@ -633,7 +634,7 @@ Secondary actions:
 
 Danger / cost / irreversible actions:
 
-- muted orange or safety vermilion
+- muted red or safety vermilion
 - clear cost or consequence
 - no hidden payment language
 
@@ -1118,9 +1119,9 @@ Do not:
 ## Do
 
 - make NeotypeLab bright, precise, and technical
-- use warm off-white / cream backgrounds
+- use cool pale paper / slate backgrounds
 - use line-art panels and engineering strokes
-- use muted orange, teal, and blue-gray accents
+- use slate navy, teal, and blue-gray accents
 - make generated prototypes and practical paint data the hero
 - preserve all product terminology and workflows
 - keep mobile fast and thumb-friendly

@@ -12,7 +12,7 @@ const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "relative flex h-12 flex-col items-start justify-center border-2 border-accent-orange bg-transparent px-4 text-accent-orange transition-colors hover:bg-accent-orange/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-orange disabled:pointer-events-none disabled:opacity-50",
+          "relative flex h-12 flex-col items-start justify-center border-2 border-accent-cta bg-transparent px-4 text-accent-cta transition-colors hover:bg-accent-cta/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cta disabled:pointer-events-none disabled:opacity-50",
           className
         )}
         {...props}

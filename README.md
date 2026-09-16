@@ -210,7 +210,7 @@ npx convex run creativeSetup:configure '{"textModelId":"gemini-3.5-flash"}' --pu
 ```
 
 This creates the official Gemini and LLMRelay profiles, routes the first three
-creative actions to text and HD Render to image, and publishes `creation.v1` of
+creative actions to text and HD Render to image, and publishes `creation.v2` of
 the three creative templates. Existing template text is retained as version
 history. It does not replace the HD Render template.
 
@@ -236,6 +236,32 @@ abandoned text calls refund once, and an expiry check after 15 minutes prevents
 permanent holds. Late responses cannot overwrite failure/refund state. Text
 planning reserves no image storage; R2 storage is reserved only for the image job.
 The existing image failure-credit policy continues to apply to HD Render.
+
+## Visual colors and paint recommendations
+
+The creative pipeline keeps rendered color targets separate from physical paint
+products. A palette uses `visual-palette.v2`: each role stores a target HEX,
+effect and rationale. HD Render receives this visual projection only and is
+explicitly instructed not to draw paint brands, product codes, HEX labels,
+palette legends or technical callouts. Native in-universe markings remain part
+of the model identity.
+
+After the palette is approved, the server computes `paint-recommendations.v1`.
+It groups active catalog colors by paint line, matches each role with the same
+effect constraint using CIEDE2000, and ranks complete systems by coverage,
+weighted average distance and worst-role distance. Mr. Color is constrained to
+the `C` series. Tamiya Acrylic is represented as the combined `XF/X` system so
+opaque armor can use XF colors while transparent optics can use X colors. A
+system that cannot cover every approved role remains visible as an incomplete
+alternative only when a complete system is available; the pipeline never
+silently substitutes another brand for a missing role.
+
+Library work details show target HEX values and swatches under **Color plan**.
+The separate **Paint recommendations** block shows the recommended complete
+system, alternatives, catalog codes, CIEDE2000 distances and match warnings.
+Shopping and spray-plan snapshots continue using the selected catalog projection
+for compatibility. Older works are adapted from their frozen plan and keep
+their historical data; new renders use only their visual palette.
 
 `creativeSetupNode.inspectModels` checks configured keys and lists official Gemini
 models without returning credentials. `creativeSetupNode.probeTextProtocol` is a

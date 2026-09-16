@@ -3068,13 +3068,7 @@ select {
 .terminal-shell__credits,
 .terminal-shell__auth-missing {
   border-color: color-mix(in srgb, var(--accent-teal) 32%, var(--line-secondary));
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 253, 246, 0.88),
-      rgba(251, 247, 237, 0.72)
-    ),
-    var(--bg-elevated);
+  background: var(--bg-elevated);
   color: var(--text-primary);
 }
 
@@ -3235,7 +3229,7 @@ select {
 }
 
 .showcase-button.is-disabled {
-  color: #6f7f87;
+  color: var(--color-muted);
   pointer-events: none;
 }
 
@@ -5064,26 +5058,26 @@ button.showcase-chip:disabled {
 }
 
 /* Almanac compatibility layer
-   Keeps migrated surfaces on the paper system without dark spike leftovers. */
+   Cool slate paper system. Source of truth: src/styles/tokens.css */
 :root {
   color-scheme: light;
-  --background: 43 28% 94%;
-  --foreground: 40 18% 16%;
-  --card: 43 30% 95%;
-  --card-foreground: 40 18% 16%;
-  --popover: 43 30% 95%;
-  --popover-foreground: 40 18% 16%;
-  --primary: 40 18% 16%;
-  --primary-foreground: 43 40% 97%;
-  --secondary: 40 20% 88%;
-  --secondary-foreground: 40 18% 16%;
-  --muted: 40 16% 88%;
-  --muted-foreground: 40 10% 38%;
-  --accent: 38 70% 48%;
-  --accent-foreground: 43 40% 97%;
-  --border: 40 14% 72%;
-  --input: 40 14% 72%;
-  --ring: 38 70% 48%;
+  --background: 208 18% 94%;
+  --foreground: 208 22% 14%;
+  --card: 208 16% 95%;
+  --card-foreground: 208 22% 14%;
+  --popover: 208 16% 95%;
+  --popover-foreground: 208 22% 14%;
+  --primary: 208 22% 14%;
+  --primary-foreground: 208 20% 97%;
+  --secondary: 208 12% 90%;
+  --secondary-foreground: 208 22% 14%;
+  --muted: 208 10% 90%;
+  --muted-foreground: 208 8% 38%;
+  --accent: 209 54% 37%;
+  --accent-foreground: 208 20% 97%;
+  --border: 206 10% 72%;
+  --input: 206 10% 72%;
+  --ring: 209 54% 37%;
 
   --spike-bg: var(--color-paper);
   --spike-surface: var(--color-paper-2);
@@ -5094,7 +5088,7 @@ button.showcase-chip:disabled {
   --spike-muted: var(--color-muted);
   --spike-accent: var(--color-accent);
   --spike-blue: var(--color-info);
-  --spike-orange: var(--color-accent);
+  --spike-orange: var(--color-accent); /* legacy alias */
   --compat-panel-bg: var(--color-paper-3);
   --compat-surface-bg: var(--color-paper-2);
 }
@@ -5270,7 +5264,7 @@ body {
 .prototype-pill,
 .pilot-pill {
   border-color: var(--line-secondary);
-  background: rgba(255, 253, 246, 0.42);
+  background: color-mix(in oklch, var(--color-paper) 82%, transparent);
   color: var(--text-secondary);
 }
 
@@ -5287,9 +5281,9 @@ body {
 .library-pill.is-warm,
 .prototype-pill.is-warm,
 .pilot-pill.is-warm {
-  border-color: color-mix(in srgb, var(--accent-orange) 48%, var(--line-secondary));
-  background: color-mix(in srgb, var(--accent-orange) 12%, var(--bg-surface));
-  color: var(--accent-orange);
+  border-color: color-mix(in srgb, var(--accent-cta) 48%, var(--line-secondary));
+  background: color-mix(in srgb, var(--accent-cta) 12%, var(--bg-surface));
+  color: var(--accent-cta);
 }
 
 .showcase-pill.is-teal,
@@ -5384,7 +5378,7 @@ body {
 }
 
 .text-\[\#FFB84D\] {
-  color: var(--accent-orange) !important;
+  color: var(--accent-cta) !important;
 }
 
 .border-\[\#3DD9FF\] {
@@ -5396,5 +5390,5 @@ body {
 }
 
 .border-\[\#FFB84D\] {
-  border-color: var(--accent-orange) !important;
+  border-color: var(--accent-cta) !important;
 }

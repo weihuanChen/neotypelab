@@ -469,7 +469,7 @@ function Toolbar({
           <span className="sr-only">Search model records</span>
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
-            className="h-10 border-line-secondary bg-main pl-9 shadow-none placeholder:text-ink-muted focus-visible:ring-accent-orange"
+            className="h-10 border-line-secondary bg-main pl-9 shadow-none placeholder:text-ink-muted focus-visible:ring-accent-cta"
             onChange={(event) => onQuery(event.target.value)}
             placeholder="Search models, kits, slugs…"
             value={query}
@@ -635,17 +635,17 @@ function TreeNode({
 }) {
   const addLabel = selection.type === "ipSeries" ? "Add Base Unit" : selection.type === "baseUnit" ? "Add Kit Variant" : "Add sibling Kit Variant";
   const row = (
-    <div className={cn("group flex min-h-[48px] items-center border-l-2 border-transparent pr-2 transition-colors", compact && "min-h-[42px]", selected ? "border-l-accent-orange bg-accent-orange/10" : "hover:bg-hover-subtle")}>
-      <button aria-label={hasChildren ? `${expanded ? "Collapse" : "Expand"} ${name}` : undefined} className={cn("ml-1 flex h-8 w-7 shrink-0 items-center justify-center text-ink-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-orange", !hasChildren && "pointer-events-none opacity-0")} onClick={onToggle} tabIndex={hasChildren ? 0 : -1} type="button">
+    <div className={cn("group flex min-h-[48px] items-center border-l-2 border-transparent pr-2 transition-colors", compact && "min-h-[42px]", selected ? "border-l-accent-cta bg-accent-cta/10" : "hover:bg-hover-subtle")}>
+      <button aria-label={hasChildren ? `${expanded ? "Collapse" : "Expand"} ${name}` : undefined} className={cn("ml-1 flex h-8 w-7 shrink-0 items-center justify-center text-ink-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cta", !hasChildren && "pointer-events-none opacity-0")} onClick={onToggle} tabIndex={hasChildren ? 0 : -1} type="button">
         {expanded ? <CaretDownIcon /> : <CaretRightIcon />}
       </button>
-      <button className="min-w-0 flex-1 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent-orange" onClick={() => onSelect(selection)} type="button">
+      <button className="min-w-0 flex-1 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent-cta" onClick={() => onSelect(selection)} type="button">
         <span className="flex items-center gap-2"><StatusDot status={status} /><span className="truncate text-sm font-medium">{name}</span>{count !== undefined ? <span className="ml-auto font-mono text-[10px] text-ink-muted">{count}</span> : null}</span>
         <span className="mt-0.5 block truncate pl-3.5 font-mono text-[10px] text-ink-muted">{meta}</span>
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button aria-label={`Actions for ${name}`} className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center text-ink-muted opacity-0 hover:bg-main hover:text-ink-primary focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-orange group-hover:opacity-100" type="button"><DotsHorizontalIcon /></button>
+          <button aria-label={`Actions for ${name}`} className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center text-ink-muted opacity-0 hover:bg-main hover:text-ink-primary focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-cta group-hover:opacity-100" type="button"><DotsHorizontalIcon /></button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52 border-line-primary bg-surface text-ink-primary">
           <DropdownMenuItem onSelect={onCreate}>{addLabel}</DropdownMenuItem>
@@ -685,7 +685,7 @@ function SearchResults({ onSelect, results, selection }: { onSelect: (selection:
           <section key={type}>
             <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">{recordTypeLabel(type)}</p>
             {group.map((result) => (
-              <button className={cn("w-full border-l-2 border-transparent px-3 py-2.5 text-left hover:bg-hover-subtle", same(selection, result.selection) && "border-l-accent-orange bg-accent-orange/10")} key={recordKey(result.selection)} onClick={() => onSelect(result.selection)} type="button">
+              <button className={cn("w-full border-l-2 border-transparent px-3 py-2.5 text-left hover:bg-hover-subtle", same(selection, result.selection) && "border-l-accent-cta bg-accent-cta/10")} key={recordKey(result.selection)} onClick={() => onSelect(result.selection)} type="button">
                 <span className="flex items-center gap-2 text-sm font-medium"><StatusDot status={result.status} />{result.name}</span>
                 <span className="mt-1 block truncate pl-3.5 text-xs text-ink-muted">{result.path}</span>
               </button>
@@ -700,8 +700,8 @@ function SearchResults({ onSelect, results, selection }: { onSelect: (selection:
 function InspectorHeader({ busy, canSave, dirty, isNew, name, onCancel, onSave, status, type }: { busy: boolean; canSave: boolean; dirty: boolean; isNew: boolean; name: string; onCancel: () => void; onSave: () => void; status: ModelCatalogStatus; type: RecordType }) {
   return (
     <header className="sticky top-0 z-20 flex min-h-[76px] flex-col gap-3 border-b border-line-primary bg-surface/95 px-5 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-7 lg:px-9">
-      <div className="min-w-0"><h2 className="truncate text-lg font-semibold tracking-tight">{name}</h2><div className="mt-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted"><span>{isNew ? "New" : recordTypeLabel(type)}</span><span>·</span><span className={cn(status === "active" && "text-accent-teal", status === "prerelease" && "text-accent-orange", status === "archived" && "text-accent-red")}>{statusLabel(status)}</span></div></div>
-      <div className="flex shrink-0 items-center gap-3"><span className={cn("hidden text-xs sm:inline", dirty ? "text-accent-orange" : "text-ink-muted")}>{dirty ? "Unsaved changes" : "Up to date"}</span><button className="px-2 py-2 text-sm text-ink-secondary hover:text-ink-primary disabled:opacity-40" disabled={!dirty} onClick={onCancel} type="button">Cancel</button><Button className="min-w-[126px] bg-ink-primary text-surface shadow-none hover:bg-ink-secondary" disabled={!canSave || busy} onClick={onSave}>{busy ? "Saving…" : "Save changes"}</Button></div>
+      <div className="min-w-0"><h2 className="truncate text-lg font-semibold tracking-tight">{name}</h2><div className="mt-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-ink-muted"><span>{isNew ? "New" : recordTypeLabel(type)}</span><span>·</span><span className={cn(status === "active" && "text-accent-teal", status === "prerelease" && "text-accent-cta", status === "archived" && "text-accent-red")}>{statusLabel(status)}</span></div></div>
+      <div className="flex shrink-0 items-center gap-3"><span className={cn("hidden text-xs sm:inline", dirty ? "text-accent-cta" : "text-ink-muted")}>{dirty ? "Unsaved changes" : "Up to date"}</span><button className="px-2 py-2 text-sm text-ink-secondary hover:text-ink-primary disabled:opacity-40" disabled={!dirty} onClick={onCancel} type="button">Cancel</button><Button className="min-w-[126px] bg-ink-primary text-surface shadow-none hover:bg-ink-secondary" disabled={!canSave || busy} onClick={onSave}>{busy ? "Saving…" : "Save changes"}</Button></div>
     </header>
   );
 }
@@ -742,7 +742,7 @@ function DangerRow({ action, copy, disabled, onClick, title }: { action: string;
   return <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-ink-muted">{copy}</p></div><button className="shrink-0 border border-accent-red px-3 py-2 text-xs font-medium text-accent-red hover:bg-accent-red/10 disabled:cursor-not-allowed disabled:opacity-35" disabled={disabled} onClick={onClick} type="button">{action}</button></div>;
 }
 
-function StatusDot({ status }: { status: ModelCatalogStatus }) { return <span aria-label={statusLabel(status)} className={cn("h-1.5 w-1.5 shrink-0", status === "active" && "bg-accent-teal", status === "prerelease" && "bg-accent-orange", status === "archived" && "bg-accent-red")} title={statusLabel(status)} />; }
+function StatusDot({ status }: { status: ModelCatalogStatus }) { return <span aria-label={statusLabel(status)} className={cn("h-1.5 w-1.5 shrink-0", status === "active" && "bg-accent-teal", status === "prerelease" && "bg-accent-cta", status === "archived" && "bg-accent-red")} title={statusLabel(status)} />; }
 function Empty({ message }: { message: string }) { return <div className="px-5 py-12 text-center"><p className="font-medium">No matching records</p><p className="mt-2 text-sm text-ink-muted">{message}</p></div>; }
 function EmptyInspector({ onCreate }: { onCreate: () => void }) { return <div className="grid min-h-[620px] place-items-center px-6 text-center"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink-muted">Record inspector</p><h2 className="mt-3 text-2xl font-semibold">Select a model record</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-secondary">Choose a node to inspect its fields, relationships, and prompt grounding.</p><Button className="mt-5 bg-ink-primary text-surface" onClick={onCreate}>Create first IP / Series</Button></div></div>; }
 function Loading({ label }: { label: string }) { return <section className="border border-line-primary bg-surface p-6"><p className="text-xs uppercase tracking-[0.18em] text-accent-teal">Models</p><h2 className="mt-3 text-2xl font-semibold">{label}</h2></section>; }

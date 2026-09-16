@@ -445,7 +445,7 @@ function PresetEditor({ kind }: { kind: SpecKind }) {
       <aside className="border-2 border-line-primary bg-panel p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-cta">
               {priorityLabels[kind]} / {kindLabels[kind]}
             </p>
             <h2 className="mt-2 text-xl font-semibold">Preset Registry</h2>
@@ -636,7 +636,7 @@ function PresetEditor({ kind }: { kind: SpecKind }) {
             ) : null}
 
             <Button
-              className="h-11 rounded-[16px] border border-accent-teal bg-[#13241B] px-5 text-ink-primary hover:bg-white/10"
+              className="h-11 border border-accent-teal bg-panel px-5 text-ink-primary hover:bg-hover-subtle"
               disabled={busy}
               onClick={() => void onSavePreset()}
               type="button"
@@ -730,7 +730,7 @@ function MaterialDslEditor({
             {parsedDsl.state}
           </span>
           <Button
-            className="h-9 rounded-[14px] border border-accent-orange bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
+            className="h-9 rounded-[14px] border border-accent-cta bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
             onClick={() => onChange(writeMaterialDslSpec(specJson, pseudoChromeExample))}
             type="button"
           >
@@ -790,7 +790,7 @@ function MaterialDslEditor({
 
         <div className="border border-line-secondary bg-panel p-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-orange">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-cta">
               Current DSL
             </p>
             <span className="font-mono text-[11px] text-ink-muted">{parsedDsl.detail}</span>
@@ -865,7 +865,7 @@ function MaterialTagGroupEditor({
         })}
         {customTags.map((tag) => (
           <button
-            className="border border-accent-orange bg-accent-orange/10 px-2.5 py-1.5 font-mono text-xs text-ink-primary disabled:cursor-not-allowed disabled:opacity-50"
+            className="border border-accent-cta bg-accent-cta/10 px-2.5 py-1.5 font-mono text-xs text-ink-primary disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled}
             key={tag}
             onClick={() => onToggleTag(tag)}
@@ -1075,10 +1075,10 @@ function StyleDslEditor({
   const compactDslJson = JSON.stringify(compactStyleDsl(parsedDsl.dsl), null, 2);
 
   return (
-    <section className="border-2 border-accent-orange/60 bg-main p-4">
+    <section className="border-2 border-accent-cta/60 bg-main p-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent-orange">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent-cta">
             Style DSL Builder
           </p>
           <h3 className="mt-2 text-lg font-semibold text-ink-primary">
@@ -1096,7 +1096,7 @@ function StyleDslEditor({
           <Button
             type="button"
             onClick={() => onChange(writeStyleDslSpec(specJson, neoZeonExample))}
-            className="h-9 rounded-[14px] border border-accent-orange bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
+            className="h-9 rounded-[14px] border border-accent-cta bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle"
           >
             Load Neo Zeon Sample
           </Button>
@@ -1154,7 +1154,7 @@ function StyleDslEditor({
 
         <div className="border border-line-secondary bg-panel p-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-orange">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-cta">
               Current DSL
             </p>
             <span className="font-mono text-[11px] text-ink-muted">{parsedDsl.detail}</span>
@@ -1202,7 +1202,7 @@ function StyleTagGroupEditor({
           </p>
           <p className="mt-1 text-xs leading-5 text-ink-muted">{group.description}</p>
         </div>
-        <span className="font-mono text-[11px] text-accent-orange">
+        <span className="font-mono text-[11px] text-accent-cta">
           {selectedTags.length} tags
         </span>
       </div>
@@ -1219,7 +1219,7 @@ function StyleTagGroupEditor({
               className={cn(
                 "border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                 active
-                  ? "border-accent-orange bg-accent-orange/15 text-ink-primary"
+                  ? "border-accent-cta bg-accent-cta/15 text-ink-primary"
                   : "border-line-secondary bg-main text-ink-secondary hover:border-line-active hover:text-ink-primary"
               )}
             >
@@ -1519,7 +1519,7 @@ function PromptPreviewPanel() {
         </div>
 
         <div className="mt-6 border border-line-secondary bg-main p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-accent-orange">
+          <p className="text-xs uppercase tracking-[0.24em] text-accent-cta">
             Test Record Upload
           </p>
           <div className="mt-4 space-y-4">
@@ -1573,7 +1573,7 @@ function PromptPreviewPanel() {
               </div>
             ) : null}
             <Button
-              className="h-10 rounded-[14px] border border-accent-teal bg-[#13241B] px-4 text-xs text-ink-primary hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-10 border border-accent-teal bg-panel px-4 text-xs text-ink-primary hover:bg-hover-subtle disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!compiledPrompt || testRecordBusy}
               onClick={() => void onCreateTestRecord()}
               type="button"
@@ -1587,7 +1587,7 @@ function PromptPreviewPanel() {
       <div className="border-2 border-line-primary bg-panel p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-accent-orange">
+            <p className="text-xs uppercase tracking-[0.28em] text-accent-cta">
               Preview Output
             </p>
             <h2 className="mt-2 text-xl font-semibold">Compiled Prompt Preview</h2>
@@ -1685,7 +1685,7 @@ function SpecTestRecordsPanel() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-accent-orange">
+                    <p className="text-xs uppercase tracking-[0.22em] text-accent-cta">
                       {record.testStatus}
                     </p>
                     <h3 className="mt-2 text-lg font-semibold text-ink-primary">
@@ -1699,7 +1699,7 @@ function SpecTestRecordsPanel() {
                     </p>
                   </div>
                   <Button
-                    className="h-9 rounded-[14px] border border-accent-teal bg-[#13241B] px-3 text-xs text-ink-primary hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-9 border border-accent-teal bg-panel px-3 text-xs text-ink-primary hover:bg-hover-subtle disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={applyingRecordId === record._id}
                     onClick={() => void onApplyTestRecord(record._id)}
                     type="button"
