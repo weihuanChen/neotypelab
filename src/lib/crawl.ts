@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { getSiteUrl } from "@/lib/site";
 import { createConvexHttpClient } from "@/src/lib/convexServer";
+import { publicStylesEnabled } from "@/src/lib/appPaths";
 
 type SitemapFrequency =
   | "always"
@@ -58,6 +59,8 @@ export function buildRobotsTxt(request: Request) {
     "Allow: /creator-pack/",
     "Disallow: /t",
     "Disallow: /t/",
+    "Disallow: /styles",
+    "Disallow: /styles/",
     "Disallow: /library",
     "Disallow: /studio",
     "Disallow: /spec-admin",
@@ -81,7 +84,9 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       changeFrequency: "weekly",
       priority: 1,
     },
-    { url: new URL("/styles", siteUrl).toString(), lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    ...(publicStylesEnabled
+      ? [{ url: new URL("/styles", siteUrl).toString(), lastModified: now, changeFrequency: "weekly" as const, priority: 0.9 }]
+      : []),
     {
       url: new URL("/showcase", siteUrl).toString(),
       lastModified: now,
@@ -136,20 +141,24 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
         changeFrequency: "weekly" as const,
         priority: 0.75,
       })),
-      ...Array.from(new Set(seoLandingPages.map(page => page.styleSlug))).map(slug => ({
-        url: new URL(`/styles/${slug}`, siteUrl).toString(),
-        lastModified: new Date(Math.max(...seoLandingPages.filter(page => page.styleSlug === slug).map(page => page.lastModified))),
-        changeFrequency: "weekly" as const, priority: 0.85,
-      })),
-      ...seoLandingPages.map((page) => ({
-        url: new URL(
-          `/styles/${page.styleSlug}/${page.modelSlug}`,
-          siteUrl
-        ).toString(),
-        lastModified: new Date(page.lastModified),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      })),
+      ...(publicStylesEnabled
+        ? [
+            ...Array.from(new Set(seoLandingPages.map(page => page.styleSlug))).map(slug => ({
+              url: new URL(`/styles/${slug}`, siteUrl).toString(),
+              lastModified: new Date(Math.max(...seoLandingPages.filter(page => page.styleSlug === slug).map(page => page.lastModified))),
+              changeFrequency: "weekly" as const, priority: 0.85,
+            })),
+            ...seoLandingPages.map((page) => ({
+              url: new URL(
+                `/styles/${page.styleSlug}/${page.modelSlug}`,
+                siteUrl
+              ).toString(),
+              lastModified: new Date(page.lastModified),
+              changeFrequency: "weekly" as const,
+              priority: 0.8,
+            })),
+          ]
+        : []),
       ...creatorPacks.map((pack) => ({
         url: new URL(`/creator-pack/${pack.slug}`, siteUrl).toString(),
         lastModified: new Date(pack.lastModified),

@@ -133,7 +133,7 @@ export function ShowcasePublishDialog({
                 className="rounded-none gap-1.5 bg-ink text-paper hover:bg-ink-secondary text-xs"
               >
                 <Link to="/prototype/$conceptId" params={{ conceptId: target.id }}>
-                  View in Showcase <ExternalLinkIcon className="w-3.5 h-3.5" />
+                  Go to case <ExternalLinkIcon className="w-3.5 h-3.5" />
                 </Link>
               </Button>
             </DialogFooter>

@@ -98,11 +98,19 @@
 }
 
 .exhibition-feature-card__image img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 600ms var(--ease-out), filter 240ms var(--ease-out);
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+  padding: 0.85rem;
+}
+
+.exhibition-feature-card.is-primary .exhibition-feature-card__image img {
+  padding: clamp(1.15rem, 2.8vw, 2.5rem);
 }
 
 .exhibition-feature-card__actions {
@@ -135,11 +143,6 @@
 .exhibition-feature-card:focus-within .exhibition-feature-card__actions {
   opacity: 1;
   transform: translateY(0);
-}
-
-.exhibition-feature-card:hover .exhibition-feature-card__image img {
-  transform: scale(1.018);
-  filter: contrast(1.035);
 }
 
 .exhibition-feature-card__caption {
@@ -188,29 +191,29 @@
 }
 
 .exhibition-feature__image {
+  position: relative;
   display: block;
   overflow: hidden;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1;
   background: var(--color-paper-3);
 }
 
 .exhibition-feature__image img,
 .exhibition-card__media img,
-.exhibition-collection__works img,
-.exhibition-recent__item img {
+.exhibition-collection__works img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 600ms var(--ease-out), filter 240ms var(--ease-out);
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+  padding: 0.65rem;
 }
 
-.exhibition-feature__image:hover img,
-.exhibition-card:hover .exhibition-card__media img,
-.exhibition-collection__works a:hover img,
-.exhibition-recent__item:hover img {
-  transform: scale(1.018);
-  filter: contrast(1.035);
+.exhibition-card.is-large .exhibition-card__media img {
+  padding: clamp(1rem, 2.2vw, 2rem);
 }
 
 .exhibition-feature__copy {
@@ -596,7 +599,7 @@
 .exhibition-collection__works a {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 1;
 }
 
 .exhibition-collection__works span {
@@ -626,8 +629,15 @@
 }
 
 .exhibition-recent__item img {
-  aspect-ratio: 4 / 5;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
   margin-bottom: 0.5rem;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+  padding: 0.55rem;
+  background: var(--color-paper-3);
 }
 
 .exhibition-recent__item span,
@@ -810,7 +820,7 @@
   }
 
   .exhibition-feature-card__image {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1;
   }
 
   .exhibition-feature-card__actions {
@@ -859,7 +869,7 @@
   .exhibition-card.is-large .exhibition-card__media,
   .exhibition-card.is-small .exhibition-card__media {
     height: auto;
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 1;
   }
 
   .exhibition-card__hover {

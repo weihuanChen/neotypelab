@@ -14,6 +14,9 @@ export const appPaths = {
 
 export type AppPath = (typeof appPaths)[keyof typeof appPaths];
 
+/** Public /styles gallery is parked until the collection is ready to ship. */
+export const publicStylesEnabled = false;
+
 export const noIndexRobots = { name: "robots", content: "noindex, nofollow" } as const;
 
 export function buildCreateHref(

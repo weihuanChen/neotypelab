@@ -2,17 +2,21 @@ import {
   SignInButton,
   useAuth,
 } from "@clerk/tanstack-react-start";
+import {
+  ArrowLeftIcon,
+  ArrowTopRightIcon,
+  CheckIcon,
+  CopyIcon,
+  Share1Icon,
+} from "@radix-ui/react-icons";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { PublicShareActions } from "@/src/components/public/PublicShareActions";
 import { ShoppingListActions } from "@/src/components/public/ShoppingListActions";
 import { ConceptEngagementBar } from "@/src/components/showcase/EngagementBars";
-import { formatMoodTagLabel } from "@/src/components/showcase/showcaseUtils";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import type {
-  PrototypeMetaRowValue,
   PrototypeSnapshot,
   PublicPrototypeFeasibility,
   PublicPrototypeRecommendations,
@@ -22,6 +26,18 @@ import type {
 
 type ShoppingBundleItem =
   PublicPrototypeShoppingList["bundles"][keyof PublicPrototypeShoppingList["bundles"]][number];
+
+type AdjacentPath = PublicPrototypeRecommendations["beginnerAlternatives"][number];
+
+type ColorSystemRow = {
+  index: string;
+  roleSlug: string;
+  roleName: string;
+  targetHex?: string;
+  area?: string;
+  paint?: NonNullable<SharedPrototype["paintPlan"]["entries"][number]["suggestedPaint"]>;
+  note?: string;
+};
 
 export function PrototypePublicView({
   conceptId,
@@ -38,7 +54,6 @@ export function PrototypePublicView({
     <LivePrototypePublicView
       conceptId={conceptId}
       interactive
-      providerReady={providerStatus.hasConvexClient}
       snapshot={snapshot}
     />
   ) : (
@@ -46,7 +61,6 @@ export function PrototypePublicView({
       concept={snapshot.concept}
       interactive={false}
       message={snapshot.status === "ok" ? undefined : snapshot.message}
-      providerReady={providerStatus.hasConvexClient}
       status={snapshot.status}
     />
   );
@@ -55,12 +69,10 @@ export function PrototypePublicView({
 function LivePrototypePublicView({
   conceptId,
   interactive,
-  providerReady,
   snapshot,
 }: {
   conceptId: string;
   interactive: boolean;
-  providerReady: boolean;
   snapshot: PrototypeSnapshot;
 }) {
   const liveConcept = useQuery(api.showcase.getSharedConcept, {
@@ -89,9 +101,7 @@ function LivePrototypePublicView({
       concept={concept}
       feasibility={feasibility}
       interactive={interactive}
-      isLivePending={liveConcept === undefined}
       message={snapshot.status === "ok" ? undefined : snapshot.message}
-      providerReady={providerReady}
       recommendations={recommendations}
       setRecommendationFeedback={setRecommendationFeedback}
       shoppingList={shoppingList}
@@ -104,9 +114,7 @@ function PrototypePublicViewBody({
   concept,
   feasibility = null,
   interactive,
-  isLivePending = false,
   message,
-  providerReady,
   recommendations = null,
   setRecommendationFeedback,
   shoppingList = null,
@@ -115,9 +123,7 @@ function PrototypePublicViewBody({
   concept: SharedPrototype | null;
   feasibility?: PublicPrototypeFeasibility | null;
   interactive: boolean;
-  isLivePending?: boolean;
   message?: string;
-  providerReady: boolean;
   recommendations?: PublicPrototypeRecommendations | null;
   setRecommendationFeedback?: ReturnType<
     typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
@@ -127,759 +133,673 @@ function PrototypePublicViewBody({
 }) {
   if (concept === null) {
     return (
-      <section className="prototype-empty">
-        <p className="showcase-kicker is-orange">Unavailable</p>
-        <h1>This prototype is not on a shareable surface.</h1>
+      <section className="case-empty">
+        <p className="case-eyebrow">Unavailable</p>
+        <h1>This case is not on a shareable surface.</h1>
         <p>
           {message ??
-            "The concept may be private, missing, archived away from public sharing, or unavailable in the current Convex environment."}
+            "The work may be private, missing, or no longer public."}
         </p>
-        <div className="prototype-action-row">
-          <a className="showcase-button" href="/showcase">
-            Back to Showcase
-          </a>
-          <a className="showcase-button is-ghost" href="/library">
-            Open Library
-          </a>
-        </div>
+        <a className="case-back" href="/showcase">
+          <ArrowLeftIcon aria-hidden="true" />
+          Back to Showcase
+        </a>
       </section>
     );
   }
 
+  const imageUrl = concept.previewAsset?.masterUrl ?? concept.previewAsset?.publicUrl;
+  const sprayNotes = concept.paintPlan.sprayNotes;
+  const colorRows = buildColorSystemRows(concept);
+  let section = 1;
+
   return (
-    <div className="prototype-stack">
-      <section className="prototype-hero-panel">
-        <div className="prototype-hero-panel__copy">
-          <div className="showcase-pill-row">
-            <Pill>{concept.visibility}</Pill>
-            <Pill>{concept.status}</Pill>
-            {concept.stylePreset?.category ? (
-              <Pill>{concept.stylePreset.category}</Pill>
-            ) : null}
-            {concept.stylePreset?.isFeaturedStyle ? (
-              <Pill tone="blue">featured style</Pill>
-            ) : null}
-            {concept.remixCount > 0 ? (
-              <Pill tone="warm">
-                {`${concept.remixCount} remix${concept.remixCount === 1 ? "" : "es"}`}
-              </Pill>
-            ) : null}
-          </div>
-
-          <div>
-            <p className="showcase-kicker">
-              {concept.recordNumber
-                ? `N°.${String(concept.recordNumber).padStart(3, "0")} / Prototype record`
-                : "Prototype Share Surface"}
-            </p>
-            <h1>{concept.title}</h1>
-            <p className="prototype-lede">
-              {buildPrototypeDescription(concept)}
-            </p>
-          </div>
-
-          {concept.moodTags.length > 0 ? (
-            <p className="prototype-mood">
-              Mood Vector / {concept.moodTags.map(formatMoodTagLabel).join(" / ")}
-            </p>
-          ) : null}
-
-          <ConceptEngagementBar
-            conceptId={concept._id}
-            interactive={interactive}
-            likeCount={concept.engagement.likeCount}
-            saveCount={concept.engagement.saveCount}
-            viewerHasLiked={concept.engagement.viewerHasLiked}
-            viewerHasSaved={concept.engagement.viewerHasSaved}
-          />
-
-          <PrototypeActions concept={concept} />
-
-          <div className="prototype-status-line">
-            <span>{providerReady ? "Convex live sync ready" : "SSR snapshot mode"}</span>
-            {isLivePending ? <span>Hydrating live concept query</span> : null}
-            {status !== "ok" && message ? <span>{message}</span> : null}
-          </div>
-        </div>
-
-        <div className="prototype-hero-panel__media">
-          {concept.previewAsset?.masterUrl ?? concept.previewAsset?.publicUrl ? (
-            <img src={concept.previewAsset.masterUrl ?? concept.previewAsset.publicUrl} alt={concept.title} />
-          ) : (
-            <div className="prototype-media-placeholder">
-              <p>Preview unavailable</p>
-              {concept.previewAsset?.key ? <span>{concept.previewAsset.key}</span> : null}
+    <article aria-labelledby="case-title">
+      <header className="case-masthead">
+        <div className="case-frame">
+          <a className="case-back" href="/showcase">
+            <ArrowLeftIcon aria-hidden="true" />
+            Showcase
+          </a>
+          <div className="case-masthead__row">
+            <div>
+              <p className="case-eyebrow">
+                Public case / {recordLabel(concept)}
+              </p>
+              <h1 id="case-title">
+                {titleLines(concept.title).map((line, index, lines) => (
+                  <span key={line}>
+                    {line}
+                    {index < lines.length - 1 ? " /" : ""}
+                  </span>
+                ))}
+              </h1>
             </div>
-          )}
+            <dl className="case-identity">
+              <div>
+                <dt>Kit</dt>
+                <dd>{kitLabel(concept.baseModel)}</dd>
+              </div>
+              <div>
+                <dt>Style</dt>
+                <dd>{concept.stylePreset?.name ?? "Not recorded"}</dd>
+              </div>
+              <div>
+                <dt>Weathering</dt>
+                <dd>{humanize(concept.weatheringLevel)}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
-      </section>
+      </header>
 
-      <LineagePanel concept={concept} />
+      <figure className="case-artwork">
+        {imageUrl ? (
+          <img src={imageUrl} alt={`${concept.title} public case`} />
+        ) : (
+          <div className="case-image-empty">
+            <strong>Preview unavailable</strong>
+            <p>This case does not currently expose a published render.</p>
+          </div>
+        )}
+        <figcaption className="case-frame">
+          <span>{concept.owner?.handle ? `@${concept.owner.handle}` : "Anonymous pilot"}</span>
+          <span>{concept.remixCount} {concept.remixCount === 1 ? "remix" : "remixes"}</span>
+        </figcaption>
+      </figure>
 
-      <div className="prototype-content-grid">
-        <div className="prototype-main-column">
-          <PaintPlanPanel concept={concept} />
-          <FeasibilityPanel feasibility={feasibility} providerReady={providerReady} />
-          <ShoppingListPanel providerReady={providerReady} shoppingList={shoppingList} />
-          <RecommendationsPanel
-            conceptId={concept._id}
-            interactive={interactive}
-            providerReady={providerReady}
-            recommendations={recommendations}
-            setRecommendationFeedback={setRecommendationFeedback}
-          />
-          <RemixesPanel concept={concept} />
+      <div className="case-frame">
+        <div className="case-toolbar" aria-label="Case actions">
+          <div className="case-toolbar__meta">
+            <div className="case-engage">
+              <ConceptEngagementBar
+                conceptId={concept._id}
+                interactive={interactive}
+                likeCount={concept.engagement.likeCount}
+                saveCount={concept.engagement.saveCount}
+                viewerHasLiked={concept.engagement.viewerHasLiked}
+                viewerHasSaved={concept.engagement.viewerHasSaved}
+              />
+            </div>
+          </div>
+          <div className="case-toolbar__actions">
+            <CaseShareBar
+              sharePath={`/prototype/${concept._id}`}
+              text={buildPrototypeDescription(concept)}
+              title={concept.title}
+            />
+            <details className="case-export">
+              <summary>Export cards</summary>
+              <nav aria-label="Export cards">
+                <a href={`/prototype/${concept._id}/watermarked-image`} rel="noreferrer" target="_blank">Watermarked image</a>
+                <a href={`/prototype/${concept._id}/pinterest-image`} rel="noreferrer" target="_blank">Pinterest</a>
+                <a href={`/prototype/${concept._id}/reddit-image`} rel="noreferrer" target="_blank">Reddit</a>
+                <a href={`/prototype/${concept._id}/instagram-image`} rel="noreferrer" target="_blank">Instagram</a>
+              </nav>
+            </details>
+            <a className="case-text-link" href={`/create?remix=${concept._id}`}>
+              Remix
+            </a>
+            <a
+              className="case-text-link"
+              href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&type=generation-quality&source=prototype`}
+            >
+              Report an issue
+            </a>
+          </div>
         </div>
-        <aside className="prototype-side-column">
-          <SourceConceptPanel concept={concept} />
-          <MetadataPanel concept={concept} />
-          <SprayNotesPanel concept={concept} />
-          <OperatorNotePanel concept={concept} />
-        </aside>
+
+        {status !== "ok" && message ? <p className="case-muted">{message}</p> : null}
+        {concept.notes ? <p className="case-operator">{concept.notes}</p> : null}
+        <LineageRow concept={concept} />
       </div>
-    </div>
+
+      <ColorSystemSection
+        colorRows={colorRows}
+        imageUrl={imageUrl}
+        number={pad(section++)}
+        title={concept.title}
+      />
+      <FeasibilitySection number={pad(section++)} feasibility={feasibility} />
+      {sprayNotes.length > 0 ? (
+        <SprayNotesSection number={pad(section++)} notes={sprayNotes} />
+      ) : null}
+      <ShoppingSection number={pad(section++)} shoppingList={shoppingList} />
+      <CreateYoursSection colorRows={colorRows} concept={concept} />
+      <RecommendationsSection
+        number={pad(section++)}
+        conceptId={concept._id}
+        interactive={interactive}
+        recommendations={recommendations}
+        setRecommendationFeedback={setRecommendationFeedback}
+      />
+      <RemixesSection number={pad(section++)} concept={concept} />
+    </article>
   );
 }
 
-function PrototypeActions({ concept }: { concept: SharedPrototype }) {
-  const styleLandingHref =
-    concept.baseModel?.slug && concept.stylePreset?.slug
-      ? `/${concept.baseModel.slug}/${concept.stylePreset.slug}`
-      : null;
+function CaseShareBar({
+  sharePath,
+  text,
+  title,
+}: {
+  sharePath: string;
+  text: string;
+  title: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    const url = typeof window === "undefined"
+      ? sharePath
+      : new URL(sharePath, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  async function shareNative() {
+    const nativeShare =
+      typeof navigator !== "undefined" && "share" in navigator
+        ? navigator.share.bind(navigator)
+        : undefined;
+    if (!nativeShare) {
+      await copyLink();
+      return;
+    }
+    try {
+      await nativeShare({
+        title,
+        text,
+        url: new URL(sharePath, window.location.origin).toString(),
+      });
+    } catch {
+      /* dismissed */
+    }
+  }
 
   return (
     <>
-      <PublicShareActions
-        className="prototype-action-row"
-        exportImageUrl={`/prototype/${concept._id}/watermarked-image`}
-        extraExportLinks={[
-          {
-            href: `/prototype/${concept._id}/instagram-image`,
-            label: "Instagram Card",
-            tone: "warm",
-          },
-        ]}
-        pinterestImageUrl={`/prototype/${concept._id}/pinterest-image`}
-        redditImageUrl={`/prototype/${concept._id}/reddit-image`}
-        sharePath={`/prototype/${concept._id}`}
-        text={buildPrototypeDescription(concept)}
-        title={concept.title}
-      />
-      <div className="prototype-action-row">
-        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
-          Remix This Prototype
-        </a>
-        {styleLandingHref ? (
-          <a className="showcase-button is-accent" href={styleLandingHref}>
-            Open Style Landing
-          </a>
-        ) : null}
-        <a
-          className="showcase-button is-ghost"
-          href={`/feedback?conceptId=${encodeURIComponent(concept._id)}&type=generation-quality&source=prototype`}
-        >
-          Report generation issue
-        </a>
-        <a className="showcase-button is-ghost" href="/showcase">
-          Back to Showcase
-        </a>
-      </div>
+      <button className="case-action" type="button" onClick={() => void copyLink()}>
+        {copied ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
+        <span>{copied ? "Link copied" : "Copy link"}</span>
+      </button>
+      <button className="case-action" type="button" onClick={() => void shareNative()}>
+        <Share1Icon aria-hidden="true" />
+        <span>Share</span>
+      </button>
     </>
   );
 }
 
-function LineagePanel({ concept }: { concept: SharedPrototype }) {
-  if (concept.lineage.length <= 1) {
+function LineageRow({ concept }: { concept: SharedPrototype }) {
+  if (concept.lineage.length <= 1 && !concept.sourceConcept) {
     return null;
   }
 
+  const source = concept.sourceConcept;
+
   return (
-    <section className="prototype-panel prototype-lineage-panel">
-      <div>
-        <p className="showcase-kicker is-teal">Lineage chain</p>
-        <h2>Branch history</h2>
-      </div>
-      <div className="prototype-lineage">
-        {concept.lineage.map((entry, index) => (
-          <div className="prototype-lineage__item" key={entry._id}>
-            {index > 0 ? <span className="prototype-lineage__arrow">-&gt;</span> : null}
-            <a
-              className={
-                entry._id === concept._id
-                  ? "showcase-chip is-active"
-                  : "showcase-chip"
-              }
-              href={`/prototype/${entry._id}`}
-            >
-              {entry.title}
-            </a>
-          </div>
-        ))}
-      </div>
-    </section>
+    <p className="case-lineage">
+      <span>Lineage</span>
+      {concept.lineage.length > 1
+        ? concept.lineage.map((entry, index) => (
+            <span key={entry._id}>
+              {index > 0 ? " / " : null}
+              <a
+                className={entry._id === concept._id ? "is-current" : undefined}
+                href={`/prototype/${entry._id}`}
+              >
+                {entry.title}
+              </a>
+            </span>
+          ))
+        : source
+          ? (
+              <>
+                <a href={`/prototype/${source._id}`}>{source.title}</a>
+                <span>→ this case</span>
+              </>
+            )
+          : null}
+    </p>
   );
 }
 
-function PaintPlanPanel({ concept }: { concept: SharedPrototype }) {
-  return (
-    <section className="prototype-panel">
-      <div className="prototype-section-header">
-        <div>
-          <p className="showcase-kicker is-teal">Paint Mapping Plan</p>
-          <h2>{concept.paintPlan.entries.length} spray-ready roles</h2>
-        </div>
-        <p>
-          {concept.paintPlan.baseModelName} / {concept.paintPlan.stylePresetName}
-        </p>
-      </div>
-
-      {concept.paintPlan.entries.length > 0 ? (
-        <div className="prototype-paint-grid">
-          {concept.paintPlan.entries.map((entry) => (
-            <article className="prototype-paint-row" key={entry.roleSlug}>
-              <div className="prototype-paint-row__head">
-                <div>
-                  <h3>{entry.roleName}</h3>
-                  <p>{entry.recommendedArea ?? "Controlled application zone"}</p>
-                </div>
-                {entry.suggestedPaint?.hexPreview ? (
-                  <span
-                    className="prototype-swatch"
-                    style={{ backgroundColor: entry.suggestedPaint.hexPreview }}
-                  />
-                ) : null}
-              </div>
-              <div className="prototype-paint-row__paint">
-                <strong>
-                  {entry.suggestedPaint
-                    ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.code}`
-                    : "No active paint mapping"}
-                </strong>
-                <span>
-                  {entry.suggestedPaint
-                    ? `${entry.suggestedPaint.colorName}${
-                        entry.suggestedPaint.line ? ` / ${entry.suggestedPaint.line}` : ""
-                      }`
-                    : "Fallback mapping is not configured for this role."}
-                </span>
-              </div>
-              <p className="prototype-row-copy">{entry.rationale}</p>
-              {entry.alternatePaint ? (
-                <p className="prototype-alt-paint">
-                  Alternate / {entry.alternatePaint.brand} {entry.alternatePaint.code} /{" "}
-                  {entry.alternatePaint.colorName}
-                </p>
-              ) : null}
-            </article>
-          ))}
-        </div>
-      ) : (
-        <p className="prototype-muted">
-          Paint roles have not been configured for this concept yet.
-        </p>
-      )}
-    </section>
-  );
-}
-
-function FeasibilityPanel({
-  feasibility,
-  providerReady,
-}: {
-  feasibility?: PublicPrototypeFeasibility | null;
-  providerReady: boolean;
-}) {
-  if (feasibility === undefined) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker is-orange">Spray Feasibility</p>
-        <h2>Hydrating feasibility telemetry</h2>
-        <p className="prototype-muted">
-          Convex is loading the public workflow snapshot for this prototype.
-        </p>
-      </section>
-    );
-  }
-
-  if (feasibility === null) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker is-orange">Spray Feasibility</p>
-        <h2>{providerReady ? "Feasibility not published" : "Live feasibility unavailable"}</h2>
-        <p className="prototype-muted">
-          {providerReady
-            ? "This share surface does not currently expose a public feasibility snapshot."
-            : "Set the Convex client environment before this public page can hydrate live feasibility data."}
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="prototype-panel">
-      <div className="prototype-section-header">
-        <div>
-          <p className="showcase-kicker is-orange">Spray Feasibility</p>
-          <h2>
-            {feasibility.beginnerDifficulty === "advanced"
-              ? "Advanced workflow"
-              : feasibility.beginnerDifficulty === "moderate"
-                ? "Moderate workflow"
-                : "Beginner-friendly workflow"}
-          </h2>
-        </div>
-        <p>
-          Masking {feasibility.maskingComplexity}/100 /{" "}
-          {feasibility.estimatedLayerCount} estimated layers /{" "}
-          {feasibility.paintCostBand} paint cost
-        </p>
-      </div>
-      <p className="prototype-muted">{feasibility.summary}</p>
-      <div className="prototype-stat-grid">
-        <MetricMiniCard
-          label="Beginner difficulty"
-          value={feasibility.beginnerDifficulty}
-        />
-        <MetricMiniCard
-          label="Surface compatibility"
-          value={feasibility.surfaceCompatibility}
-        />
-        <MetricMiniCard
-          label="Estimated layers"
-          value={`${feasibility.estimatedLayerCount}`}
-        />
-        <MetricMiniCard label="Paint cost" value={feasibility.paintCostBand} />
-      </div>
-      <div className="prototype-mini-list">
-        {feasibility.signals.map((signal) => (
-          <article className="prototype-mini-row" key={signal.label}>
-            <div>
-              <h3>{signal.label}</h3>
-              <p>{signal.note}</p>
-            </div>
-            <span>+{signal.impact}</span>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ShoppingListPanel({
-  providerReady,
-  shoppingList,
-}: {
-  providerReady: boolean;
-  shoppingList?: PublicPrototypeShoppingList | null;
-}) {
-  if (shoppingList === undefined) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker">Shopping List</p>
-        <h2>Hydrating procurement plan</h2>
-        <p className="prototype-muted">
-          Convex is loading paint bundles and purchase paths for this prototype.
-        </p>
-      </section>
-    );
-  }
-
-  if (shoppingList === null) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker">Shopping List</p>
-        <h2>{providerReady ? "Shopping list not published" : "Live shopping list unavailable"}</h2>
-        <p className="prototype-muted">
-          {providerReady
-            ? "This share surface does not currently expose a public shopping list."
-            : "Set the Convex client environment before this public page can hydrate procurement data."}
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="prototype-panel">
-      <div className="prototype-section-header">
-        <div>
-          <p className="showcase-kicker">Shopping List</p>
-          <h2>
-            {shoppingList.estimatedItemCount} recommended paint item
-            {shoppingList.estimatedItemCount === 1 ? "" : "s"}
-          </h2>
-        </div>
-        <p>
-          {shoppingList.baseModelName} / {shoppingList.stylePresetName}
-        </p>
-      </div>
-      <div className="prototype-stat-grid">
-        <MetricMiniCard
-          label="Affiliate-ready"
-          tone="teal"
-          value={`${shoppingList.purchaseSummary.affiliateReadyCount}`}
-        />
-        <MetricMiniCard
-          label="Search-ready"
-          tone="blue"
-          value={`${shoppingList.purchaseSummary.searchReadyCount}`}
-        />
-        <MetricMiniCard
-          label="Region-limited"
-          tone="warm"
-          value={`${shoppingList.purchaseSummary.regionLimitedCount}`}
-        />
-      </div>
-      <div className="prototype-mini-row prototype-mini-row--stacked">
-        <div>
-          <h3>Procurement confidence</h3>
-          <p>{shoppingList.procurementConfidence}</p>
-        </div>
-        <p>
-          {shoppingList.procurementConfidence === "strong"
-            ? "Most core items already have robust sourcing paths or search-ready global availability."
-            : shoppingList.procurementConfidence === "moderate"
-              ? "The concept is generally sourceable, but some items may still require manual search or substitution."
-              : "This concept has multiple constrained sourcing points, so procurement should be reviewed before execution."}
-        </p>
-      </div>
-      {shoppingList.featuredPurchasePath ? (
-        <div className="prototype-mini-row prototype-mini-row--stacked">
-          <div>
-            <h3>Best purchase path</h3>
-            <p>{shoppingList.featuredPurchasePath.label}</p>
-          </div>
-          <a
-            className={
-              shoppingList.featuredPurchasePath.type === "affiliate"
-                ? "showcase-button is-accent"
-                : "showcase-button"
-            }
-            href={shoppingList.featuredPurchasePath.url}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {shoppingList.featuredPurchasePath.type === "affiliate"
-              ? "Open Best Purchase Link"
-              : "Search Best Purchase Path"}
-          </a>
-        </div>
-      ) : null}
-      <ShoppingListActions
-        className="prototype-action-row"
-        data={{
-          baseModelName: shoppingList.baseModelName,
-          bundles: shoppingList.bundles,
-          conceptTitle: shoppingList.conceptTitle,
-          materialPresetName: shoppingList.materialPresetName,
-          notes: shoppingList.notes,
-          stylePresetName: shoppingList.stylePresetName,
-        }}
-      />
-      <ShoppingBundlePanel items={shoppingList.bundles.core} title="Core Bundle" />
-      {shoppingList.bundles.support.length > 0 ? (
-        <ShoppingBundlePanel
-          items={shoppingList.bundles.support}
-          title="Support Bundle"
-        />
-      ) : null}
-      {shoppingList.bundles.backup.length > 0 ? (
-        <ShoppingBundlePanel
-          items={shoppingList.bundles.backup}
-          title="Backup Bundle"
-        />
-      ) : null}
-      <div className="prototype-note-stack">
-        {shoppingList.notes.map((note) => (
-          <p key={note}>{note}</p>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ShoppingBundlePanel({
-  items,
+function ColorSystemSection({
+  colorRows,
+  imageUrl,
+  number,
   title,
 }: {
-  items: ShoppingBundleItem[];
+  colorRows: ColorSystemRow[];
+  imageUrl?: string;
+  number: string;
   title: string;
 }) {
-  if (items.length === 0) {
-    return null;
+  if (colorRows.length === 0) {
+    return (
+      <section className="case-section" aria-labelledby="case-color-title">
+        <div className="case-frame">
+          <header className="case-section-heading">
+            <div>
+              <span>{number}</span>
+              <h2 id="case-color-title">Color System</h2>
+            </div>
+          </header>
+          <p className="case-muted">Paint roles have not been published for this case yet.</p>
+        </div>
+      </section>
+    );
   }
 
   return (
-    <div className="prototype-subsection">
-      <p className="showcase-kicker is-teal">{title}</p>
-      <div className="prototype-mini-list">
-        {items.map((item) => (
-          <ShoppingListItem item={item} key={item.mappingKey} />
-        ))}
+    <section className="case-section" aria-labelledby="case-color-title">
+      <div className="case-palette" aria-label="Palette DNA">
+        <div className="case-frame">
+          <header className="case-section-heading">
+            <div>
+              <span>{number}</span>
+              <h2 id="case-color-title">Color System</h2>
+            </div>
+            <p>{colorRows.length} roles</p>
+          </header>
+        </div>
+        <div className="case-palette__bars">
+          {colorRows.map((row) => (
+            <div
+              className="case-palette__bar"
+              key={row.roleSlug}
+              style={row.targetHex ? { backgroundColor: row.targetHex } : undefined}
+              title={row.roleName}
+            />
+          ))}
+        </div>
+        <p className="case-palette__legend">
+          {colorRows.map((row) => row.roleName).join("  /  ")}
+        </p>
       </div>
-    </div>
+
+      <div className="case-frame">
+        <div className="case-breakdown">
+          <div className="case-breakdown__stage">
+            {imageUrl ? (
+              <img src={imageUrl} alt={`${title} color breakdown`} />
+            ) : (
+              <div className="case-image-empty">
+                <strong>Preview unavailable</strong>
+              </div>
+            )}
+          </div>
+          <ol className="case-callouts">
+            {colorRows.map((row) => (
+              <li className="case-callout" key={row.roleSlug}>
+                <span className="case-callout__index">{row.index}</span>
+                {row.targetHex ? (
+                  <span className="case-swatch" style={{ backgroundColor: row.targetHex }} aria-hidden="true" />
+                ) : null}
+                <div>
+                  <strong>{row.roleName}</strong>
+                  <p>
+                    {row.paint
+                      ? `${row.paint.code} ${row.paint.colorName}`
+                      : row.targetHex ?? "No catalog match"}
+                  </p>
+                  {row.area ? <small>{row.area}</small> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <h3 className="case-subhead">Technical Color Plan</h3>
+        <table className="case-matrix">
+          <thead>
+            <tr>
+              <th scope="col">Role</th>
+              <th scope="col">Paint</th>
+              <th scope="col">Areas</th>
+              <th scope="col">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {colorRows.map((row) => (
+              <tr key={row.roleSlug}>
+                <td>
+                  <div className="case-matrix__role">
+                    {row.targetHex ? (
+                      <span className="case-swatch" style={{ backgroundColor: row.targetHex }} aria-hidden="true" />
+                    ) : null}
+                    <strong>{row.roleName}</strong>
+                  </div>
+                </td>
+                <td>
+                  {row.paint ? (
+                    <>
+                      <strong>{row.paint.code}</strong>
+                      <small>{row.paint.brand} · {row.paint.colorName}</small>
+                    </>
+                  ) : (
+                    <span className="case-muted">No catalog match</span>
+                  )}
+                </td>
+                <td>{row.area ?? "—"}</td>
+                <td>{row.note ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
-function ShoppingListItem({
-  item,
+function FeasibilitySection({
+  feasibility,
+  number,
 }: {
-  item: ShoppingBundleItem;
+  feasibility?: PublicPrototypeFeasibility | null;
+  number: string;
+}) {
+  if (!feasibility) {
+    return null;
+  }
+
+  const workflow =
+    feasibility.beginnerDifficulty === "advanced"
+      ? "Advanced workflow"
+      : feasibility.beginnerDifficulty === "moderate"
+        ? "Moderate workflow"
+        : "Beginner-friendly workflow";
+  const maxImpact = Math.max(...feasibility.signals.map((signal) => signal.impact), 1);
+
+  return (
+    <section className="case-section" aria-labelledby="case-feasibility-title">
+      <div className="case-frame">
+        <header className="case-section-heading">
+          <div>
+            <span>{number}</span>
+            <h2 id="case-feasibility-title">Workshop Load</h2>
+          </div>
+          <p>{workflow}</p>
+        </header>
+        {feasibility.summary ? <p className="case-intro">{feasibility.summary}</p> : null}
+        <div className="case-metrics">
+          <div>
+            <strong>
+              {feasibility.maskingComplexity}
+              <small>/100</small>
+            </strong>
+            <span>Masking</span>
+          </div>
+          <div>
+            <strong>{feasibility.estimatedLayerCount}</strong>
+            <span>Layers</span>
+          </div>
+          <div>
+            <strong>{humanize(feasibility.paintCostBand)}</strong>
+            <span>Paint cost</span>
+          </div>
+        </div>
+        {feasibility.signals.length > 0 ? (
+          <ul className="case-signals">
+            {feasibility.signals.map((signal) => (
+              <li key={signal.label}>
+                <strong>{signal.label}</strong>
+                <span>+{signal.impact}</span>
+                <div className="case-signal__track" aria-hidden="true">
+                  <span style={{ width: `${Math.max(8, (signal.impact / maxImpact) * 100)}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function SprayNotesSection({
+  notes,
+  number,
+}: {
+  notes: string[];
+  number: string;
 }) {
   return (
-    <article className="prototype-shopping-item">
-      <div className="prototype-shopping-item__head">
-        <div>
-          <h3>
-            {item.brand} {item.code}
-          </h3>
-          <p>
-            {item.colorName}
-            {item.line ? ` / ${item.line}` : ""}
-            {item.finishType ? ` / ${item.finishType}` : ""}
-          </p>
-        </div>
-        <div className="prototype-shopping-item__badges">
-          {item.hexPreview ? (
-            <span
-              className="prototype-swatch"
-              style={{ backgroundColor: item.hexPreview }}
-            />
-          ) : null}
-          <Pill tone={getProcurementTone(item.procurementStatus)}>
-            {item.procurementStatus}
-          </Pill>
-        </div>
-      </div>
-      <p className="prototype-row-copy">
-        Roles: {item.recommendedRoles.join(", ")}
-      </p>
-      <p className="prototype-muted">Areas: {item.roleAreas.join(", ")}</p>
-      <div className="prototype-action-row">
-        {item.affiliateUrl ? (
-          <a
-            className="showcase-button is-accent"
-            href={item.affiliateUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            Open Purchase Link
-          </a>
-        ) : null}
-        <a
-          className="showcase-button"
-          href={item.purchaseSearchUrl}
-          rel="noreferrer"
-          target="_blank"
-        >
-          Search This Paint
-        </a>
-      </div>
-      <p className="prototype-muted">{item.sourcingAdvice}</p>
-      {item.brandAlternatives.length > 0 ? (
-        <div className="prototype-alternative-list">
-          <p className="showcase-kicker">Brand alternatives</p>
-          {item.brandAlternatives.map((alternative) => (
-            <div className="prototype-alternative-row" key={alternative.mappingKey}>
-              <div>
-                <strong>
-                  {alternative.brand} {alternative.code}
-                </strong>
-                <span>
-                  {alternative.colorName}
-                  {alternative.line ? ` / ${alternative.line}` : ""}
-                </span>
-              </div>
-              <div className="prototype-action-row">
-                {alternative.affiliateUrl ? (
-                  <a
-                    className="showcase-button is-accent"
-                    href={alternative.affiliateUrl}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Buy Alternative
-                  </a>
-                ) : null}
-                <a
-                  className="showcase-button"
-                  href={alternative.purchaseSearchUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Search Alternative
-                </a>
-              </div>
-            </div>
+    <section className="case-section" aria-labelledby="case-spray-title">
+      <div className="case-frame">
+        <header className="case-section-heading">
+          <div>
+            <span>{number}</span>
+            <h2 id="case-spray-title">Painting Sequence</h2>
+          </div>
+          <p>{notes.length} sequential notes</p>
+        </header>
+        <ol className="case-timeline">
+          {notes.map((note, index) => (
+            <li key={index}>
+              <span>{pad(index + 1)}</span>
+              <strong>{sequenceLabel(note)}</strong>
+            </li>
           ))}
+        </ol>
+        <ol className="case-sequence">
+          {notes.map((note, index) => (
+            <li key={index}>
+              <span className="case-sequence__index">{pad(index + 1)}</span>
+              <p>{note}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function ShoppingSection({
+  shoppingList,
+  number,
+}: {
+  shoppingList?: PublicPrototypeShoppingList | null;
+  number: string;
+}) {
+  if (!shoppingList) {
+    return null;
+  }
+
+  const specimens = [...shoppingList.bundles.core, ...shoppingList.bundles.support];
+  const paintCount = shoppingList.estimatedItemCount;
+
+  return (
+    <section className="case-section" aria-labelledby="case-shop-title">
+      <div className="case-frame">
+        <header className="case-section-heading">
+          <div>
+            <span>{number}</span>
+            <h2 id="case-shop-title">Shopping List</h2>
+          </div>
+          <p>{paintCount === 1 ? "1 paint" : `${paintCount} paints`}</p>
+        </header>
+        <div className="case-shop-head">
+          <p className="case-intro">
+            {shoppingList.procurementConfidence === "strong"
+              ? "Most core paints already have a clear sourcing path."
+              : shoppingList.procurementConfidence === "moderate"
+                ? "Generally sourceable, with a few items that may need substitution."
+                : "Several items are constrained; review sourcing before spraying."}
+          </p>
+          <ShoppingListActions
+            className="case-copy"
+            data={{
+              baseModelName: shoppingList.baseModelName,
+              bundles: shoppingList.bundles,
+              conceptTitle: shoppingList.conceptTitle,
+              materialPresetName: shoppingList.materialPresetName,
+              notes: shoppingList.notes,
+              stylePresetName: shoppingList.stylePresetName,
+            }}
+          />
         </div>
+        {specimens.length > 0 ? (
+          <div className="case-specimens">
+            {specimens.map((item) => (
+              <ShoppingSpecimen item={item} key={item.mappingKey} />
+            ))}
+          </div>
+        ) : (
+          <p className="case-muted">No catalog paints have been published for this case yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ShoppingSpecimen({ item }: { item: ShoppingBundleItem }) {
+  const role = item.recommendedRoles[0];
+  const alternative = item.brandAlternatives.length > 0
+    ? item.brandAlternatives[0]
+    : undefined;
+  const findUrl = item.affiliateUrl ?? item.purchaseSearchUrl;
+
+  return (
+    <article className="case-specimen">
+      <div
+        className="case-specimen__swatch"
+        style={item.hexPreview ? { backgroundColor: item.hexPreview } : undefined}
+        aria-hidden="true"
+      />
+      <p className="case-specimen__code">{item.code}</p>
+      <h3>{item.colorName}</h3>
+      <p>{item.line ?? item.brand}</p>
+      {role ? <p className="case-specimen__role">{role}</p> : null}
+      <a className="case-text-link" href={findUrl} rel="noreferrer" target="_blank">
+        Find paint
+        <ArrowTopRightIcon aria-hidden="true" />
+      </a>
+      {alternative ? (
+        <p className="case-specimen__alt">
+          Alt / {alternative.brand} {alternative.code}
+        </p>
       ) : null}
     </article>
   );
 }
 
-function RecommendationsPanel({
+function CreateYoursSection({
+  colorRows,
+  concept,
+}: {
+  colorRows: ColorSystemRow[];
+  concept: SharedPrototype;
+}) {
+  return (
+    <section className="case-create" aria-labelledby="case-create-title">
+      <div className="case-frame">
+        <p className="case-create__kicker">This was one idea.</p>
+        <h2 id="case-create-title">
+          Your kit
+          <span>{"doesn't have to"}</span>
+          <span>stay stock.</span>
+        </h2>
+        <p>Upload a kit. Choose a direction. Build the paint plan.</p>
+        <a className="case-create__cta" href={`/create?remix=${concept._id}`}>
+          <span>Create your case</span>
+          <ArrowTopRightIcon aria-hidden="true" />
+        </a>
+        {colorRows.length > 0 ? (
+          <div className="case-create__swatches" aria-hidden="true">
+            {colorRows.map((row) => (
+              <span
+                key={row.roleSlug}
+                style={row.targetHex ? { backgroundColor: row.targetHex } : undefined}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function RecommendationsSection({
   conceptId,
   interactive,
-  providerReady,
+  number,
   recommendations,
   setRecommendationFeedback,
 }: {
   conceptId: string;
   interactive: boolean;
-  providerReady: boolean;
+  number: string;
   recommendations?: PublicPrototypeRecommendations | null;
   setRecommendationFeedback?: ReturnType<
     typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
   >;
 }) {
-  if (recommendations === undefined) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker is-teal">Smart Recommendations</p>
-        <h2>Hydrating recommendation graph</h2>
-        <p className="prototype-muted">
-          Convex is loading adjacent styles, easier materials, and sourcing
-          alternatives.
-        </p>
-      </section>
-    );
+  if (!recommendations) {
+    return null;
   }
 
-  if (recommendations === null) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker is-teal">Smart Recommendations</p>
-        <h2>{providerReady ? "Recommendations not published" : "Live recommendations unavailable"}</h2>
-        <p className="prototype-muted">
-          {providerReady
-            ? "This share surface does not currently expose public recommendations."
-            : "Set the Convex client environment before this public page can hydrate recommendations."}
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="prototype-panel">
-      <div className="prototype-section-header">
-        <div>
-          <p className="showcase-kicker is-teal">Smart Recommendations</p>
-          <h2>
-            {recommendations.feasibilityBias === "practical"
-              ? "Practical-first alternatives"
-              : "Alternative paths"}
-          </h2>
-        </div>
-        <p>
-          {recommendations.currentStyle?.name ?? "Unknown Style DNA"} /{" "}
-          {recommendations.currentMaterial?.name ?? "Unknown material"} /{" "}
-          {recommendations.feasibilityBias} bias
-        </p>
-      </div>
-      <RecommendationGroup
-        conceptId={conceptId}
-        interactive={interactive}
-        items={recommendations.alternativeStyles}
-        setRecommendationFeedback={setRecommendationFeedback}
-        title="Adjacent Style DNA"
-      />
-      <RecommendationGroup
-        conceptId={conceptId}
-        interactive={interactive}
-        items={recommendations.easierMaterials}
-        setRecommendationFeedback={setRecommendationFeedback}
-        title="Easier Finish Alternatives"
-      />
-      <RecommendationGroup
-        conceptId={conceptId}
-        interactive={interactive}
-        items={recommendations.beginnerAlternatives}
-        setRecommendationFeedback={setRecommendationFeedback}
-        title="Beginner Workflow Alternatives"
-      />
-      <RecommendationGroup
-        conceptId={conceptId}
-        interactive={interactive}
-        items={recommendations.sourcingAlternatives}
-        setRecommendationFeedback={setRecommendationFeedback}
-        title="Sourcing Alternatives"
-      />
-    </section>
-  );
-}
-
-function RecommendationGroup({
-  conceptId,
-  interactive,
-  items,
-  setRecommendationFeedback,
-  title,
-}: {
-  conceptId: string;
-  interactive: boolean;
-  items: PublicPrototypeRecommendations["alternativeStyles"];
-  setRecommendationFeedback?: ReturnType<
-    typeof useMutation<typeof api.recommendationFeedback.setRecommendationFeedback>
-  >;
-  title: string;
-}) {
-  if (items.length === 0) {
+  const paths = topAdjacentPaths(recommendations, 3);
+  if (paths.length === 0) {
     return null;
   }
 
   return (
-    <div className="prototype-subsection">
-      <p className="showcase-kicker">{title}</p>
-      <div className="prototype-mini-list">
-        {items.map((item) => (
-          <article className="prototype-mini-row prototype-mini-row--stacked" key={`${item.type}-${item.value}`}>
-            <div>
-              <h3>{item.label}</h3>
-              <p>{item.type}</p>
-            </div>
-            <p>{item.rationale}</p>
-            <div className="prototype-action-row">
-              <RecommendationFeedbackButton
-                active={item.feedback.helpful}
-                conceptId={conceptId}
-                interactive={interactive}
-                kind="helpful"
-                label="Helpful"
-                recommendationType={item.type}
-                recommendationValue={item.value}
-                setRecommendationFeedback={setRecommendationFeedback}
-              />
-              <RecommendationFeedbackButton
-                active={item.feedback.notHelpful}
-                conceptId={conceptId}
-                interactive={interactive}
-                kind="not-helpful"
-                label="Not Useful"
-                recommendationType={item.type}
-                recommendationValue={item.value}
-                setRecommendationFeedback={setRecommendationFeedback}
-              />
-              <RecommendationFeedbackButton
-                active={item.feedback.try}
-                conceptId={conceptId}
-                interactive={interactive}
-                kind="try"
-                label="Try This"
-                recommendationType={item.type}
-                recommendationValue={item.value}
-                setRecommendationFeedback={setRecommendationFeedback}
-              />
-              <a
-                className="showcase-button"
-                href={buildCreateRecommendationHref(conceptId, item)}
-              >
-                Open In Create
-              </a>
-            </div>
-          </article>
-        ))}
+    <section className="case-section" aria-labelledby="case-rec-title">
+      <div className="case-frame">
+        <header className="case-section-heading">
+          <div>
+            <span>{number}</span>
+            <h2 id="case-rec-title">Explore this direction</h2>
+          </div>
+        </header>
+        <ol className="case-paths">
+          {paths.map((item, index) => (
+            <li className="case-path" key={`${item.type}-${item.value}`}>
+              <span>{pad(index + 1)}</span>
+              <div>
+                <h3>{item.label}</h3>
+                <p>{compactNote(item.rationale, 110)}</p>
+                <nav>
+                  <a className="case-text-link" href={buildCreateRecommendationHref(conceptId, item)}>
+                    Open variation
+                    <ArrowTopRightIcon aria-hidden="true" />
+                  </a>
+                  <span className="case-path__feedback">
+                    <RecommendationFeedbackButton
+                      active={item.feedback.helpful}
+                      conceptId={conceptId}
+                      interactive={interactive}
+                      kind="helpful"
+                      label="Helpful"
+                      recommendationType={item.type}
+                      recommendationValue={item.value}
+                      setRecommendationFeedback={setRecommendationFeedback}
+                    />
+                    <RecommendationFeedbackButton
+                      active={item.feedback.notHelpful}
+                      conceptId={conceptId}
+                      interactive={interactive}
+                      kind="not-helpful"
+                      label="Not useful"
+                      recommendationType={item.type}
+                      recommendationValue={item.value}
+                      setRecommendationFeedback={setRecommendationFeedback}
+                    />
+                  </span>
+                </nav>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -906,22 +826,18 @@ function RecommendationFeedbackButton({
 }) {
   const { isLoaded, isSignedIn } = useAuth();
   const [pending, setPending] = useState(false);
-  const className = active ? "showcase-chip is-active" : "showcase-chip is-button";
   const disabled =
     !interactive || !setRecommendationFeedback || !isLoaded || pending;
 
   const button = (
     <button
-      className={className}
+      className={active ? "is-on" : undefined}
       disabled={disabled}
       type="button"
       onClick={
         isSignedIn
           ? () => {
-              if (!setRecommendationFeedback) {
-                return;
-              }
-
+              if (!setRecommendationFeedback) return;
               setPending(true);
               void setRecommendationFeedback({
                 conceptId: conceptId as Id<"concepts">,
@@ -933,7 +849,7 @@ function RecommendationFeedbackButton({
           : undefined
       }
     >
-      {pending ? `${label}...` : label}
+      {pending ? `${label}…` : label}
     </button>
   );
 
@@ -944,240 +860,156 @@ function RecommendationFeedbackButton({
   return <SignInButton mode="modal">{button}</SignInButton>;
 }
 
-function MetricMiniCard({
-  label,
-  tone,
-  value,
+function RemixesSection({
+  concept,
+  number,
 }: {
-  label: string;
-  tone?: "blue" | "teal" | "warm";
-  value: string;
+  concept: SharedPrototype;
+  number: string;
 }) {
+  if (concept.remixes.length === 0) {
+    return null;
+  }
+
   return (
-    <div className={tone ? `prototype-stat is-${tone}` : "prototype-stat"}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+    <section className="case-section" aria-labelledby="case-remix-title">
+      <div className="case-frame">
+        <header className="case-section-heading">
+          <div>
+            <span>{number}</span>
+            <h2 id="case-remix-title">Public Branches</h2>
+          </div>
+          <p>
+            {concept.remixCount} remix{concept.remixCount === 1 ? "" : "es"}
+          </p>
+        </header>
+        <ul className="case-remix-list">
+          {concept.remixes.map((remix) => (
+            <li key={remix._id}>
+              <a href={`/prototype/${remix._id}`}>
+                <span>
+                  <strong>{remix.title}</strong>
+                  <span className="case-muted">
+                    {[remix.baseModel?.name, remix.stylePreset?.name, remix.owner?.handle ? `@${remix.owner.handle}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </span>
+                <ArrowTopRightIcon aria-hidden="true" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
-function getProcurementTone(
-  status: "affiliate-ready" | "search-ready" | "region-limited"
-) {
-  if (status === "affiliate-ready") {
-    return "warm";
+function buildColorSystemRows(concept: SharedPrototype): ColorSystemRow[] {
+  const visual = concept.visualPalette?.entries ?? [];
+  const bySlug = new Map(concept.paintPlan.entries.map((entry) => [entry.roleSlug, entry]));
+  const order = visual.length > 0
+    ? visual
+    : concept.paintPlan.entries.map((entry) => ({
+        roleSlug: entry.roleSlug,
+        roleName: entry.roleName,
+        targetHex: entry.suggestedPaint?.hexPreview,
+        recommendedArea: entry.recommendedArea,
+      }));
+
+  return order.map((entry, index) => {
+    const plan = bySlug.get(entry.roleSlug);
+    const targetHex = "targetHex" in entry ? entry.targetHex : plan?.suggestedPaint?.hexPreview;
+    return {
+      index: pad(index + 1),
+      roleSlug: entry.roleSlug,
+      roleName: entry.roleName,
+      targetHex,
+      area: entry.recommendedArea ?? plan?.recommendedArea,
+      paint: plan?.suggestedPaint ?? undefined,
+      note: compactNote(plan?.rationale),
+    };
+  });
+}
+
+function topAdjacentPaths(recommendations: PublicPrototypeRecommendations, limit: number) {
+  const groups: AdjacentPath[][] = [
+    recommendations.beginnerAlternatives,
+    recommendations.alternativeStyles,
+    recommendations.easierMaterials,
+    recommendations.sourcingAlternatives,
+  ];
+  const seen = new Set<string>();
+  const paths: AdjacentPath[] = [];
+  for (const group of groups) {
+    for (const item of group) {
+      const key = `${item.type}:${item.value}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      paths.push(item);
+      if (paths.length >= limit) return paths;
+    }
   }
-  if (status === "search-ready") {
-    return "blue";
+  return paths;
+}
+
+function titleLines(title: string) {
+  const parts = title.split(/\s*\/\s*/).map((part) => part.trim()).filter(Boolean);
+  return parts.length > 1 ? parts : [title];
+}
+
+function sequenceLabel(note: string) {
+  const first = note.split(/[.:,]/)[0]?.trim() ?? note;
+  const words = first.split(/\s+/).slice(0, 4).join(" ");
+  return words.length > 32 ? `${words.slice(0, 29).trimEnd()}…` : words;
+}
+
+function compactNote(value?: string, max = 92) {
+  if (!value) return undefined;
+  const sentence = value.split(/(?<=[.!?])\s+/)[0] ?? value;
+  if (sentence.length <= max) return sentence.replace(/\.$/, "");
+  return `${sentence.slice(0, max - 1).replace(/\s+\S*$/, "")}…`;
+}
+
+function kitLabel(model: SharedPrototype["baseModel"]) {
+  if (!model?.name) return "Not recorded";
+  const grade = "grade" in model && typeof model.grade === "string" ? model.grade : undefined;
+  if (grade && !model.name.toLowerCase().includes(grade.toLowerCase())) {
+    return `${grade} ${model.name}`;
   }
-  return undefined;
+  return model.name;
+}
+
+function recordLabel(concept: SharedPrototype) {
+  return concept.recordNumber
+    ? `N° ${String(concept.recordNumber).padStart(4, "0")}`
+    : "Prototype";
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function humanize(value: string) {
+  return value.replace(/-/g, " ").replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function buildCreateRecommendationHref(
   conceptId: string,
-  item: {
-    type: string;
-    value: string;
-  }
+  item: { type: string; value: string }
 ) {
   const params = new URLSearchParams();
   params.set("remix", conceptId);
-
-  if (item.type === "style") {
-    params.set("recommendedStyle", item.value);
-  }
-  if (item.type === "material") {
-    params.set("recommendedMaterial", item.value);
-  }
-  if (item.type === "workflow") {
-    params.set("recommendedWorkflow", item.value);
-  }
-
+  if (item.type === "style") params.set("recommendedStyle", item.value);
+  if (item.type === "material") params.set("recommendedMaterial", item.value);
+  if (item.type === "workflow") params.set("recommendedWorkflow", item.value);
   return `/create?${params.toString()}`;
-}
-
-function RemixesPanel({ concept }: { concept: SharedPrototype }) {
-  if (concept.remixes.length === 0) {
-    return (
-      <section className="prototype-panel">
-        <p className="showcase-kicker is-orange">Remix branches</p>
-        <h2>No public branches yet</h2>
-        <p className="prototype-muted">
-          This concept has not produced public descendant prototypes yet.
-        </p>
-        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
-          Start First Remix
-        </a>
-      </section>
-    );
-  }
-
-  return (
-    <section className="prototype-panel">
-      <div className="prototype-section-header">
-        <div>
-          <p className="showcase-kicker is-orange">Remix branches</p>
-          <h2>
-            {concept.remixCount} community branch
-            {concept.remixCount === 1 ? "" : "es"}
-          </h2>
-        </div>
-        <a className="showcase-button is-warm" href={`/create?remix=${concept._id}`}>
-          Start Your Remix
-        </a>
-      </div>
-      <div className="prototype-remix-grid">
-        {concept.remixes.map((remix) => (
-          <a className="prototype-remix-card" href={`/prototype/${remix._id}`} key={remix._id}>
-            <h3>{remix.title}</h3>
-            <p>
-              {remix.baseModel?.name ?? "Unknown base model"} /{" "}
-              {remix.stylePreset?.name ?? "Unknown Style DNA"}
-            </p>
-            <span>
-              {remix.owner?.handle ? `@${remix.owner.handle}` : "Unknown pilot"} /{" "}
-              {remix.weatheringLevel}
-            </span>
-          </a>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function SourceConceptPanel({ concept }: { concept: SharedPrototype }) {
-  if (!concept.sourceConcept) {
-    return null;
-  }
-
-  const source = concept.sourceConcept;
-  const sourceLandingHref =
-    source.baseModel?.slug && source.stylePreset?.slug
-      ? `/${source.baseModel.slug}/${source.stylePreset.slug}`
-      : null;
-
-  return (
-    <section className="prototype-panel">
-      <p className="showcase-kicker is-teal">Source lineage</p>
-      <h2>{source.title}</h2>
-      <p className="prototype-muted">
-        This prototype is a public branch derived from an earlier shareable concept.
-      </p>
-      <dl className="showcase-meta">
-        <MetaRow
-          label="Pilot"
-          value={
-            source.owner ? (
-              <a href={`/pilot/${source.owner.handle}`}>@{source.owner.handle}</a>
-            ) : (
-              "Unknown"
-            )
-          }
-        />
-        <MetaRow label="Base Model" value={source.baseModel?.name ?? "Unknown"} />
-        <MetaRow label="Style DNA" value={source.stylePreset?.name ?? "Unknown"} />
-      </dl>
-      <div className="prototype-action-column">
-        <a className="showcase-button" href={`/prototype/${source._id}`}>
-          Open Source Prototype
-        </a>
-        {sourceLandingHref ? (
-          <a className="showcase-button is-accent" href={sourceLandingHref}>
-            Open Source Landing
-          </a>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function MetadataPanel({ concept }: { concept: SharedPrototype }) {
-  return (
-    <section className="prototype-panel">
-      <p className="showcase-kicker is-orange">Prototype Metadata</p>
-      <dl className="showcase-meta prototype-meta-list">
-        <MetaRow
-          label="Pilot"
-          value={
-            concept.owner ? (
-              <a href={`/pilot/${concept.owner.handle}`}>@{concept.owner.handle}</a>
-            ) : (
-              "Unknown"
-            )
-          }
-        />
-        <MetaRow label="Series" value={concept.baseModel?.series ?? "Unknown"} />
-        <MetaRow label="Grade" value={concept.baseModel?.grade ?? "Unknown"} />
-        <MetaRow label="Weathering" value={concept.weatheringLevel} />
-        <MetaRow label="Finish" value={concept.materialPreset?.finishType ?? "Unknown"} />
-        <MetaRow label="Style DNA" value={concept.stylePreset?.name ?? "Unknown"} />
-        <MetaRow label="Remixes" value={`${concept.remixCount}`} />
-        <MetaRow label="Likes" value={`${concept.engagement.likeCount}`} />
-        <MetaRow label="Saves" value={`${concept.engagement.saveCount}`} />
-      </dl>
-    </section>
-  );
-}
-
-function SprayNotesPanel({ concept }: { concept: SharedPrototype }) {
-  return (
-    <section className="prototype-panel">
-      <p className="showcase-kicker is-teal">Spray Notes</p>
-      <div className="prototype-note-stack">
-        {concept.paintPlan.sprayNotes.map((note) => (
-          <p key={note}>{note}</p>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function OperatorNotePanel({ concept }: { concept: SharedPrototype }) {
-  if (!concept.notes) {
-    return null;
-  }
-
-  return (
-    <section className="prototype-panel">
-      <p className="showcase-kicker">Operator Note</p>
-      <p className="prototype-muted">{concept.notes}</p>
-    </section>
-  );
-}
-
-function MetaRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: PrototypeMetaRowValue;
-}) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
-function Pill({
-  children,
-  tone,
-}: {
-  children: string;
-  tone?: "blue" | "warm";
-}) {
-  return (
-    <span className={tone ? `showcase-pill is-${tone}` : "showcase-pill"}>
-      {children}
-    </span>
-  );
 }
 
 function buildPrototypeDescription(concept: SharedPrototype) {
   return [
-    concept.baseModel?.name ?? "Unknown base model",
+    concept.baseModel?.name ?? "Unknown kit",
     concept.stylePreset?.name ?? "Unknown Style DNA",
-    concept.materialPreset?.name ?? "Unknown material profile",
+    concept.materialPreset?.name ?? "Unknown material",
   ].join(" / ");
 }

@@ -440,9 +440,9 @@ export function BuildBriefInspector({
             {isPublic ? (
               <GhostButton
                 href={`/prototype/${concept._id}`}
-                className="w-full justify-center bg-ink text-paper hover:bg-ink-secondary font-semibold"
+                className="w-full justify-center text-xs"
               >
-                Published on Showcase · Open View <ExternalLinkIcon className="w-3.5 h-3.5 ml-1" />
+                Go to case <ExternalLinkIcon className="w-3.5 h-3.5 ml-1" />
               </GhostButton>
             ) : canPublish ? (
               <button

@@ -9,6 +9,10 @@ import { MoodTag } from "./domain";
 import { getConceptEngagementSnapshot } from "./engagement";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
 import { buildPaintPlan } from "./paintMappingEngine";
+import {
+  visualPaletteFromLegacyPlan,
+  visualPaletteSchema,
+} from "./paintRecommendationEngine";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { query } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
@@ -367,6 +371,7 @@ export const getSharedConcept = query({
 
     return {
       indexable: concept.visibility === "public" && hasIndexableStyle(concept) && Boolean(publishedAssets?.preview?.publicUrl) && Boolean(stylePreset?.isActive),
+      visualPalette: publicVisualPalette(concept),
       _id: concept._id,
       _creationTime: concept._creationTime,
       recordNumber: concept.recordNumber,
@@ -1310,4 +1315,33 @@ function dedupeShareCards<
     seen.add(item._id);
     return true;
   });
+}
+
+function publicVisualPalette(concept: Doc<"concepts">) {
+  const parsed = parseStoredVisualPalette(concept.visualPaletteJson)
+    ?? visualPaletteFromLegacyPlan(concept.palettePlanJson);
+  if (parsed === null) {
+    return null;
+  }
+
+  return {
+    entries: parsed.entries.map((entry) => ({
+      roleSlug: entry.roleSlug,
+      roleName: entry.roleName,
+      targetHex: entry.targetHex,
+      recommendedArea: entry.recommendedArea,
+    })),
+  };
+}
+
+function parseStoredVisualPalette(value?: string) {
+  if (!value) {
+    return null;
+  }
+  try {
+    const parsed = visualPaletteSchema.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

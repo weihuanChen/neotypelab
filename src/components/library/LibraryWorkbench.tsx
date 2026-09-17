@@ -532,7 +532,7 @@ function AuthenticatedLibraryWorkbench() {
                 <h2>{selectedSaved.title}</h2>
                 <MetaRow label="Kit" value={selectedSaved.baseModel?.name ?? "Unknown"} />
                 <MetaRow label="Style DNA" value={selectedSaved.stylePreset?.name ?? "Unknown"} />
-                <GhostButton href={`/prototype/${selectedSaved._id}`}>Open showcase view</GhostButton>
+                <GhostButton href={`/prototype/${selectedSaved._id}`}>Go to case</GhostButton>
                 <GhostButton href={`/create?remix=${selectedSaved._id}`}>Remix in create</GhostButton>
               </div>
             ) : <div className="library-inspector__empty"><Kicker>No selection</Kicker><p>Select a saved build to inspect it.</p></div>}

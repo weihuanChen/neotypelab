@@ -206,13 +206,16 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).toContain("neotypelab.com");
   });
 
-  it("shows an Open Showcase control when the work is already public", () => {
+  it("points to the existing public case instead of repeating a Showcase publish action", () => {
     mockDetail.visibility = "public";
     const html = renderToStaticMarkup(
       <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />
     );
-    expect(html).toContain("Open Showcase");
-    expect(html).toContain("This build is live on the hangar wall.");
+    expect(html).toContain("Go to case");
+    expect(html).toContain("work-detail-exhibition__case");
+    expect(html).toContain("This work already has its public case");
+    expect(html).not.toContain("Open Showcase");
+    expect(html).not.toContain("Publish to Showcase");
     mockDetail.visibility = "private";
   });
 });

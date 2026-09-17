@@ -1,4 +1,4 @@
-import { appPaths, type AppPath } from "@/src/lib/appPaths";
+import { appPaths, publicStylesEnabled, type AppPath } from "@/src/lib/appPaths";
 
 export type AppNavGroupId = "discover" | "create" | "account" | "admin";
 
@@ -21,7 +21,9 @@ export const appNavGroups: readonly AppNavGroup[] = [
     label: "Discover",
     items: [
       { href: appPaths.explore, label: "Explore", match: "exact" },
-      { href: appPaths.styles, label: "Styles", match: "prefix" },
+      ...(publicStylesEnabled
+        ? [{ href: appPaths.styles, label: "Styles", match: "prefix" as const }]
+        : []),
       { href: appPaths.showcase, label: "Showcase", match: "prefix" },
     ],
   },

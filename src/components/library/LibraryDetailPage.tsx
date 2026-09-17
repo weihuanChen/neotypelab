@@ -201,24 +201,29 @@ function ExhibitionStrip({
   const canPublish = canPublishWork(detail.status);
 
   return (
-    <section className="work-detail-exhibition" aria-label="Showcase publication">
+    <section
+      className={isPublic ? "work-detail-exhibition is-live" : "work-detail-exhibition"}
+      aria-label={isPublic ? "Public case" : "Showcase publication"}
+    >
       <div>
-        <span>Exhibition</span>
+        <span>{isPublic ? "On hangar wall" : "Exhibition"}</span>
         <p>
           {isPublic
-            ? "This build is live on the hangar wall."
+            ? "This work already has its public case on the hangar wall."
             : canPublish
               ? "Share this prototype to Showcase so other builders can inspect the color system."
               : "Generate a render before publishing this build to Showcase."}
         </p>
       </div>
       {isPublic ? (
-        <Button asChild className="work-detail-action is-primary">
-          <Link to="/prototype/$conceptId" params={{ conceptId: detail.id }}>
-            <Share1Icon aria-hidden="true" />
-            Open Showcase
-          </Link>
-        </Button>
+        <Link
+          className="work-detail-exhibition__case"
+          to="/prototype/$conceptId"
+          params={{ conceptId: detail.id }}
+        >
+          Go to case
+          <ArrowTopRightIcon aria-hidden="true" />
+        </Link>
       ) : canPublish ? (
         <Button type="button" className="work-detail-action is-primary" onClick={onPublish}>
           <Share1Icon aria-hidden="true" />

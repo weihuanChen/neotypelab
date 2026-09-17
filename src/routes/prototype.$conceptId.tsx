@@ -103,8 +103,8 @@ function PrototypeRoute() {
   const conceptId = getConceptIdFromSnapshot(snapshot);
 
   return (
-    <AppShell title="Shared prototype">
-      <main className="prototype-page">
+    <AppShell title="Public case">
+      <main className="case-page">
         {snapshot.structuredData ? (
           <script
             type="application/ld+json"

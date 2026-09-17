@@ -15,6 +15,7 @@ import type {
   SeoLandingData,
   SeoLandingSnapshot,
 } from "@/src/components/public/types";
+import { publicStylesEnabled } from "@/src/lib/appPaths";
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 
 const getSeoLandingSnapshot = createServerFn({ method: "GET" })
@@ -83,8 +84,10 @@ const getSeoLandingSnapshot = createServerFn({ method: "GET" })
 
 export const Route = createFileRoute("/$baseModelSlug/$stylePresetSlug")({
   loader: async ({ params }) => {
-    const official = await getStyleModelPage({ data: { styleSlug: params.stylePresetSlug, modelSlug: params.baseModelSlug } });
-    if (official.data) throw redirect({ href: `/styles/${params.stylePresetSlug}/${params.baseModelSlug}`, statusCode: 301 });
+    if (publicStylesEnabled) {
+      const official = await getStyleModelPage({ data: { styleSlug: params.stylePresetSlug, modelSlug: params.baseModelSlug } });
+      if (official.data) throw redirect({ href: `/styles/${params.stylePresetSlug}/${params.baseModelSlug}`, statusCode: 301 });
+    }
     return getSeoLandingSnapshot({ data: params });
   },
   head: ({ loaderData, params }) => {

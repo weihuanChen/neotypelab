@@ -270,6 +270,28 @@
   flex-shrink: 0;
 }
 
+.work-detail-exhibition.is-live {
+  align-items: center;
+}
+
+.work-detail-exhibition__case {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.35rem;
+  padding-bottom: 0.12rem;
+  border-bottom: 1px solid var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.work-detail-exhibition__case:hover {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
 /* Part-by-Part Color Plan Matrix */
 .work-detail-matrix-container {
   width: 100%;

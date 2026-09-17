@@ -62,28 +62,18 @@ test("gates private work details and preserves the resource tab URL", async ({ p
   expect(consoleErrors).toEqual([]);
 });
 
-test("opens Styles from discovery and handles an unpopulated collection", async ({ page }) => {
-  await page.goto("/styles");
-  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Styles", exact: true })).toBeVisible();
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/styles$/);
-  // A deployment without the new Convex functions must render a recoverable, noindex state.
-  if (await page.getByRole("heading", { name: "The collection is taking a moment." }).isVisible()) {
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    await expect(page.getByRole("link", { name: "Reload styles" })).toHaveAttribute("href", "/styles");
-  } else {
-    await expect(page.getByRole("heading", { name: /A different kit/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Featured", exact: true })).toBeVisible();
-  }
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await expect(page.locator("#app-primary-navigation")).toHaveAttribute("aria-hidden", "true");
-  await page.screenshot({ path: "/tmp/neotypelab-styles-mobile.png", fullPage: true, animations: "disabled" });
+test("keeps the Styles gallery closed and hides its discovery entry", async ({ page }) => {
+  const response = await page.goto("/styles");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Styles", exact: true })).toHaveCount(0);
+  await expect(page.locator('nav[aria-label="Primary"] a[href="/styles"]')).toHaveCount(0);
 });
 
 test("does not index an unavailable or unreviewed style pairing", async ({ page }) => {
   await page.goto("/styles/integration-missing-style/integration-missing-kit");
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
 });
 
 test("gates the editorial review workspace", async ({ page }) => {
@@ -96,7 +86,7 @@ test("keeps the community gallery closed and hides its discovery entry", async (
   const response = await page.goto("/community/styles");
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
-  await page.goto("/styles");
+  await page.goto("/");
   await expect(page.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
   await expect(page.locator('a[href="/community/styles"]')).toHaveCount(0);
 });

@@ -175,6 +175,25 @@ export function compareCreatorPacks(
   );
 }
 
+export function publicConceptImageUrl(
+  previewAsset:
+    | {
+        publicUrl?: string;
+        thumbnailUrl?: string;
+        masterUrl?: string;
+      }
+    | null
+    | undefined,
+  fallback: string
+) {
+  return (
+    previewAsset?.publicUrl ??
+    previewAsset?.masterUrl ??
+    previewAsset?.thumbnailUrl ??
+    fallback
+  );
+}
+
 export function formatMoodTagLabel(tag: string) {
   if (tag === "command-presence") {
     return "Command Presence";
