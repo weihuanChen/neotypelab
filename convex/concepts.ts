@@ -160,6 +160,10 @@ export const listLibrary = query({
           sourceConcept,
           remixCount,
           publicationReady,
+          visualPaletteJson: concept.visualPaletteJson,
+          paintRecommendationSetsJson: concept.paintRecommendationSetsJson,
+          renderSpecificationJson: concept.renderSpecificationJson,
+          palettePlanJson: concept.palettePlanJson,
           assetStorage: concept.mediaAssetId
             ? {
                 mediaAssetId: concept.mediaAssetId,
@@ -323,6 +327,9 @@ export const listSavedPublicConcepts = query({
             : null,
           remixCount,
           engagement,
+          visualPaletteJson: concept.visualPaletteJson,
+          paintRecommendationSetsJson: concept.paintRecommendationSetsJson,
+          renderSpecificationJson: concept.renderSpecificationJson,
         };
       })
     );

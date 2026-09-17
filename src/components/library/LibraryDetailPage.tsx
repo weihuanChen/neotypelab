@@ -5,7 +5,18 @@ import { Link } from "@tanstack/react-router";
 import { SignInButton } from "@clerk/tanstack-react-start";
 import { Authenticated, AuthLoading, Unauthenticated, useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ArrowLeftIcon, ArrowTopRightIcon, DownloadIcon, FileTextIcon, ImageIcon, LockClosedIcon, ZoomInIcon } from "@radix-ui/react-icons";
+import {
+  ArrowLeftIcon,
+  ArrowTopRightIcon,
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  FileTextIcon,
+  ImageIcon,
+  LockClosedIcon,
+  Share1Icon,
+  ZoomInIcon,
+} from "@radix-ui/react-icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -13,8 +24,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
 import type { LibraryDetailTab } from "./libraryDetailSearch";
+import { computeMaskingSummary } from "./libraryBriefData";
+import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
 
 export type WorkDetail = NonNullable<FunctionReturnType<typeof api.libraryDetails.get>>;
+export type PaintSystemSet = NonNullable<WorkDetail["paintRecommendations"]>["sets"][number];
 type ResourceFile = WorkDetail["collections"][number]["versions"][number]["files"][number];
 type PreviewSource = { storageObjectId: Id<"storageObjects"> | null; publicUrl: string | null };
 const tabs: Array<{ id: LibraryDetailTab; label: string }> = [
@@ -39,6 +53,18 @@ export function LibraryDetailPage(props: { conceptId: string; tab: LibraryDetail
 
 function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; tab: LibraryDetailTab; onTabChange: (tab: LibraryDetailTab) => void }) {
   const detail = useQuery(api.libraryDetails.get, { conceptId });
+  const recommendations = detail?.paintRecommendations;
+  const defaultSystem = recommendations?.sets.find((set) => set.recommended)
+    ?? recommendations?.sets.find((set) => set.coverageCount === set.roleCount)
+    ?? recommendations?.sets[0];
+  const [selectedSystemId, setSelectedSystemId] = useState<string>("");
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const setVisibility = useAction(api.publicationNode.setConceptVisibility);
+  const preview = useDetailImage(detail?.hero ?? { storageObjectId: null, publicUrl: null });
+  const activeSystem = recommendations?.sets.find((set) => set.id === (selectedSystemId || defaultSystem?.id)) ?? defaultSystem;
+
   if (detail === undefined) return <DetailLoading />;
   if (detail === null) return <section className="work-detail-state">
     <h1>Work not found.</h1><p>This work is unavailable in your library.</p>
@@ -46,7 +72,28 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   </section>;
   const resources = detail.collections.reduce((total, collection) => total + collection.versions.reduce((count, version) => count + version.files.length, 0), 0)
     + Number(Boolean(detail.palette)) + Number(Boolean(detail.specification)) + detail.documents.length;
+  const workId = detail.id as Id<"concepts">;
+
+  async function handleConfirmPublish() {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      await setVisibility({ conceptId: workId, visibility: "public" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Publication failed";
+      setPublishError(message);
+      throw error;
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   return <article className="work-detail" aria-labelledby="work-title">
+    <p className="work-detail-print-banner">
+      NeotypeLab Build Manual · {recordLabel(detail)}
+      {detail.kit ? ` · ${[detail.kit.grade, detail.kit.name].filter(Boolean).join(" ")}` : ""}
+      {activeSystem ? ` · ${activeSystem.brand} ${activeSystem.line}` : ""}
+    </p>
     <header className="work-detail-header">
       <Link className="work-detail-back" to="/library"><ArrowLeftIcon aria-hidden="true" />Library</Link>
       <div className="work-detail-heading">
@@ -71,16 +118,44 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
         <p className="work-detail-summary-foot">{resources} resources <span aria-hidden="true">/</span> {detail.history.length} generation records</p>
       </aside>
     </div>
+
+    <ExhibitionStrip detail={detail} onPublish={() => setPublishOpen(true)} />
+    <WorkbenchActionBar detail={detail} selectedSystem={activeSystem} />
+
     <Tabs value={tab} onValueChange={value => onTabChange(value as LibraryDetailTab)} className="work-detail-tabs">
       <TabsList aria-label="Work details" className="work-detail-tab-list">
         {tabs.map(item => <TabsTrigger key={item.id} value={item.id} className="work-detail-tab">
           {item.label}{item.id !== "overview" ? <span>{item.id === "resources" ? resources : detail.history.length}</span> : null}
         </TabsTrigger>)}
       </TabsList>
-      <TabsContent value="overview"><Overview detail={detail} /></TabsContent>
+      <TabsContent value="overview">
+        <Overview
+          detail={detail}
+          selectedSystem={activeSystem}
+          onSelectSystemId={setSelectedSystemId}
+        />
+      </TabsContent>
       <TabsContent value="resources"><Resources detail={detail} /></TabsContent>
       <TabsContent value="history"><History detail={detail} /></TabsContent>
     </Tabs>
+    <ShowcasePublishDialog
+      open={publishOpen}
+      onOpenChange={setPublishOpen}
+      target={{
+        id: detail.id,
+        title: detail.title,
+        recordNumber: detail.recordNumber,
+        kitName: detail.kit?.name ?? null,
+        styleName: detail.style,
+        materialName: detail.material,
+        weathering: detail.weathering,
+      }}
+      previewUrl={preview.url}
+      onConfirmPublish={handleConfirmPublish}
+      isPublishing={publishing}
+      errorMessage={publishError}
+    />
+    <PrintColophon />
   </article>;
 }
 
@@ -111,86 +186,465 @@ function WorkPreview({ detail }: { detail: WorkDetail }) {
   </figure>;
 }
 
-function Overview({ detail }: { detail: WorkDetail }) {
-  return <div className="work-detail-overview">
-    <section aria-labelledby="palette-title" className="work-detail-section">
-      <SectionHeading number="01" title="Color plan" id="palette-title" note={detail.palette ? `${detail.palette.entries.length} approved roles` : "No saved palette"} />
-      {detail.palette ? <>
-        <div className="work-detail-palette">
-          {detail.palette.entries.map((entry, index) => <div className="work-detail-color" key={`${entry.roleSlug}-${index}`}>
-            <span className="work-detail-swatch" aria-hidden="true" style={{ backgroundColor: validHex(entry.targetHex) }} />
-            <div><p className="work-detail-eyebrow">{entry.roleName}</p><h3>{entry.targetHex}</h3>
-              <p>{humanize(entry.paintEffect)} visual target</p>
-              {entry.recommendedArea ? <small>{entry.recommendedArea}</small> : null}
-              {entry.rationale ? <details className="work-detail-rationale"><summary>Color reasoning</summary><p>{entry.rationale}</p></details> : null}
-            </div>
-          </div>)}
-        </div>
-        {detail.palette.sprayNotes.length ? <div className="work-detail-spray-notes"><h3>Painting notes</h3><ul>{detail.palette.sprayNotes.map((note, index) => <li key={index}>{note}</li>)}</ul></div> : null}
-        <PaintSystems detail={detail} />
-      </> : <EmptySection>This work does not have a saved palette snapshot. Its original configuration is shown above.</EmptySection>}
-    </section>
-    <section aria-labelledby="spec-title" className="work-detail-section">
-      <SectionHeading number="02" title="Repaint specification" id="spec-title" note={detail.specification ? "Approved build instructions" : "Not yet recorded"} />
-      {detail.specification ? <>
-        <p className="work-detail-intro">{detail.specification.summary}</p>
-        <div className="work-detail-panel-map">{detail.specification.panels.map((panel, index) => <div key={`${panel.roleSlug}-${index}`}>
-          <h3>{detail.palette?.entries.find(entry => entry.roleSlug === panel.roleSlug)?.roleName ?? humanize(panel.roleSlug)}</h3>
-          <div><p>{panel.areas.join(" · ")}</p><small>{panel.maskingNotes}</small></div>
-        </div>)}</div>
-        <div className="work-detail-finishes">
-          <div><h3>Surface & finish</h3><p>{detail.specification.material.surfaceTexture}</p><p>{detail.specification.material.reflectivity}</p><p>{detail.specification.material.coating}</p></div>
-          <div><h3>Weathering & markings</h3><p>{detail.specification.weathering.applicationNotes}</p><p>{detail.specification.decals.placementNotes}</p><small>Decal density: {detail.specification.decals.density}</small></div>
-        </div>
-      </> : <EmptySection>No repaint specification has been saved for this work yet.</EmptySection>}
-    </section>
-  </div>;
+function canPublishWork(status: string) {
+  return status === "generated" || status === "archived";
 }
 
-function PaintSystems({ detail }: { detail: WorkDetail }) {
-  const recommendations = detail.paintRecommendations;
-  const first = recommendations?.sets.find((set) => set.recommended)
-    ?? recommendations?.sets.find((set) => set.coverageCount === set.roleCount)
-    ?? recommendations?.sets[0];
-  const [selectedId, setSelectedId] = useState(first?.id ?? "");
-  const selected = recommendations?.sets.find((set) => set.id === selectedId) ?? first;
-  if (!recommendations || !selected) {
-    return <section className="work-detail-paint-systems" aria-labelledby="paint-systems-title">
-      <div className="work-detail-subheading"><h3 id="paint-systems-title">Paint recommendations</h3><span>Catalog matches unavailable</span></div>
-      <EmptySection>The visual palette is preserved, but the current paint catalog cannot provide a complete single-system recommendation.</EmptySection>
-    </section>;
+function ExhibitionStrip({
+  detail,
+  onPublish,
+}: {
+  detail: WorkDetail;
+  onPublish: () => void;
+}) {
+  const isPublic = detail.visibility === "public";
+  const canPublish = canPublishWork(detail.status);
+
+  return (
+    <section className="work-detail-exhibition" aria-label="Showcase publication">
+      <div>
+        <span>Exhibition</span>
+        <p>
+          {isPublic
+            ? "This build is live on the hangar wall."
+            : canPublish
+              ? "Share this prototype to Showcase so other builders can inspect the color system."
+              : "Generate a render before publishing this build to Showcase."}
+        </p>
+      </div>
+      {isPublic ? (
+        <Button asChild className="work-detail-action is-primary">
+          <Link to="/prototype/$conceptId" params={{ conceptId: detail.id }}>
+            <Share1Icon aria-hidden="true" />
+            Open Showcase
+          </Link>
+        </Button>
+      ) : canPublish ? (
+        <Button type="button" className="work-detail-action is-primary" onClick={onPublish}>
+          <Share1Icon aria-hidden="true" />
+          Publish to Showcase
+        </Button>
+      ) : null}
+    </section>
+  );
+}
+
+function WorkbenchActionBar({
+  detail,
+  selectedSystem,
+}: {
+  detail: WorkDetail;
+  selectedSystem?: PaintSystemSet;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopyShoppingList() {
+    const lines: string[] = [
+      `=== ${detail.title.toUpperCase()} // PAINT SHOPPING LIST ===`,
+      `Kit: ${detail.kit ? [detail.kit.grade, detail.kit.name].filter(Boolean).join(" ") : "Custom Kit"}`,
+      selectedSystem
+        ? `Paint System: ${selectedSystem.brand} - ${selectedSystem.line}`
+        : "Color Palette Specification",
+      "",
+    ];
+
+    if (selectedSystem && selectedSystem.entries.length > 0) {
+      lines.push("--- Matched Paints ---");
+      selectedSystem.entries.forEach((entry, idx) => {
+        const role =
+          detail.palette?.entries.find((p) => p.roleSlug === entry.roleSlug)?.roleName ??
+          humanize(entry.roleSlug);
+        lines.push(
+          `${String(idx + 1).padStart(2, "0")}. [${entry.paint.code}] ${entry.paint.colorName}`
+        );
+        lines.push(
+          `    Role: ${role} | Target: ${entry.targetHex} | Match: ΔE00 ${entry.deltaE00.toFixed(1)} (${humanize(entry.matchBand)})`
+        );
+      });
+      if (selectedSystem.warnings.length > 0) {
+        lines.push("", "--- System Warnings ---");
+        selectedSystem.warnings.forEach((w) => lines.push(`* ${w}`));
+      }
+    } else if (detail.palette && detail.palette.entries.length > 0) {
+      lines.push("--- Color Roles ---");
+      detail.palette.entries.forEach((entry, idx) => {
+        lines.push(
+          `${String(idx + 1).padStart(2, "0")}. ${entry.roleName}: ${entry.targetHex} (${humanize(entry.paintEffect)})`
+        );
+        if (entry.recommendedArea) lines.push(`    Area: ${entry.recommendedArea}`);
+      });
+    }
+
+    if (detail.specification?.panels && detail.specification.panels.length > 0) {
+      lines.push("", "--- Target Zones & Masking ---");
+      detail.specification.panels.forEach((panel) => {
+        const role =
+          detail.palette?.entries.find((e) => e.roleSlug === panel.roleSlug)?.roleName ??
+          humanize(panel.roleSlug);
+        lines.push(`* ${role}: ${panel.areas.join(", ")}`);
+        if (panel.maskingNotes) lines.push(`  Masking: ${panel.maskingNotes}`);
+      });
+    }
+
+    lines.push("", "--- NeotypeLab Modeler Workbench ---");
+
+    void navigator.clipboard.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
   }
-  return <section className="work-detail-paint-systems" aria-labelledby="paint-systems-title">
-    <div className="work-detail-subheading">
-      <div><h3 id="paint-systems-title">Paint recommendations</h3><p>Each option stays within one paint system. Codes are planning references and never enter the render prompt.</p></div>
-      <span>Matched {formatDate(recommendations.generatedAt)}</span>
+
+  function handlePrint() {
+    const previousTitle = document.title;
+    const root = document.documentElement;
+    document.title = `${safeFilename(detail.title)}-build-manual`;
+    root.classList.add("is-printing");
+    const restore = () => {
+      document.title = previousTitle;
+      root.classList.remove("is-printing");
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    requestAnimationFrame(() => window.print());
+  }
+
+  return (
+    <div className="work-detail-workbench-bar" aria-label="Workbench actions">
+      <div className="work-detail-workbench-bar__info">
+        <span className="work-detail-workbench-bar__badge">MODELER MANUAL</span>
+        <span className="work-detail-workbench-bar__desc">
+          {selectedSystem
+            ? `Ready to spray · ${selectedSystem.brand} ${selectedSystem.line} (${selectedSystem.coverageCount}/${selectedSystem.roleCount} matched)`
+            : "Physical Kit Painting Directives"}
+        </span>
+      </div>
+      <div className="work-detail-workbench-bar__actions">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleCopyShoppingList}
+          className="work-detail-action"
+        >
+          {copied ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
+          {copied ? "Shopping List Copied!" : "Copy Shopping List"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handlePrint}
+          className="work-detail-action"
+        >
+          <FileTextIcon aria-hidden="true" />
+          Print Manual
+        </Button>
+        <Button asChild variant="outline" className="work-detail-action">
+          <Link to="/create" search={{ remix: detail.id }}>
+            <ArrowTopRightIcon aria-hidden="true" />
+            Remix in Create
+          </Link>
+        </Button>
+      </div>
     </div>
-    <div className="work-detail-system-switch" role="group" aria-label="Paint system">
-      {recommendations.sets.map((set) => <button type="button" key={set.id} className={set.id === selected.id ? "is-active" : ""} onClick={() => setSelectedId(set.id)}>
-        <span>{set.label}</span>
-        <small>{set.coverageCount}/{set.roleCount} roles{set.recommended ? " · Recommended" : ""}</small>
-      </button>)}
+  );
+}
+
+function recommendPrimer(hex?: string, effect?: string): string {
+  if (effect === "metallic") return "Gloss Black Primer base";
+  if (effect === "transparent") return "Mirror Chrome or Bright Silver base";
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return "Gray 1000 Surfacer";
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const y = 0.299 * r + 0.587 * g + 0.114 * b;
+  if (y > 185) return "White Primer (preserves brilliance)";
+  if (r > 170 && g < 115 && b < 115) return "Pink / White Surfacer (preserves red vibrancy)";
+  if (y < 65) return "Dark Gray or Black Surfacer";
+  return "Gray 1000 Surfacer (neutral base)";
+}
+
+function deltaEClass(deltaE: number): string {
+  if (deltaE <= 2.0) return "is-very-close";
+  if (deltaE <= 4.0) return "is-close";
+  return "is-usable";
+}
+
+function Overview({
+  detail,
+  selectedSystem,
+  onSelectSystemId,
+}: {
+  detail: WorkDetail;
+  selectedSystem?: PaintSystemSet;
+  onSelectSystemId: (id: string) => void;
+}) {
+  const maskingSummary = computeMaskingSummary(detail.specification, detail.palette);
+
+  return (
+    <div className="work-detail-overview">
+      {/* Section 01: Part-by-Part Color Plan Matrix */}
+      <section aria-labelledby="palette-title" className="work-detail-section">
+        <SectionHeading
+          number="01"
+          title="Part-by-Part Color Plan"
+          id="palette-title"
+          note={
+            detail.palette
+              ? `${detail.palette.entries.length} color roles · ${
+                  selectedSystem ? `${selectedSystem.brand} ${selectedSystem.line}` : "Target Hex"
+                }`
+              : "No saved palette"
+          }
+        />
+
+        {detail.palette ? (
+          <>
+            <p className="work-detail-intro">
+              Complete workbench matrix mapping kit parts to visual color roles, catalog paint codes, and surface prep instructions.
+            </p>
+
+            {detail.paintRecommendations && detail.paintRecommendations.sets.length > 1 ? (
+              <div className="work-detail-system-switch" role="group" aria-label="Paint system selector">
+                {detail.paintRecommendations.sets.map((set) => (
+                  <button
+                    type="button"
+                    key={set.id}
+                    className={set.id === selectedSystem?.id ? "is-active" : ""}
+                    aria-pressed={set.id === selectedSystem?.id}
+                    onClick={() => onSelectSystemId(set.id)}
+                  >
+                    <span>{set.label}</span>
+                    <small>
+                      {set.coverageCount} / {set.roleCount}
+                      {set.recommended ? " · Recommended" : ""}
+                    </small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="work-detail-matrix-container">
+              <table className="work-detail-matrix">
+                <thead>
+                  <tr>
+                    <th scope="col">Color Role</th>
+                    <th scope="col">
+                      Paint Match
+                      {selectedSystem ? ` · ${selectedSystem.brand} ${selectedSystem.line}` : ""}
+                    </th>
+                    <th scope="col">Target Areas</th>
+                    <th scope="col">Technique & Primer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.palette.entries.map((color, index) => {
+                    const match = selectedSystem?.entries.find((entry) => entry.roleSlug === color.roleSlug);
+                    const panel = detail.specification?.panels.find((p) => p.roleSlug === color.roleSlug);
+                    const areas =
+                      panel?.areas && panel.areas.length > 0
+                        ? panel.areas
+                        : color.recommendedArea
+                          ? [color.recommendedArea]
+                          : [];
+                    const primerAdvice = recommendPrimer(color.targetHex, color.paintEffect);
+
+                    return (
+                      <tr key={`${color.roleSlug}-${index}`}>
+                        <td className="work-detail-matrix__role">
+                          <div className="work-detail-matrix__role-inner">
+                            <span
+                              className="work-detail-matrix__swatch"
+                              style={{ backgroundColor: validHex(color.targetHex) }}
+                              aria-hidden="true"
+                            />
+                            <div>
+                              <strong>{color.roleName}</strong>
+                              <span className="work-detail-matrix__hex">{color.targetHex}</span>
+                              <span className="work-detail-matrix__effect">{color.paintEffect} target</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="work-detail-matrix__match">
+                          {match ? (
+                            <>
+                              <div className="work-detail-matrix__code-row">
+                                <strong>{match.paint.code}</strong>
+                                <span className={`work-detail-matrix__delta ${deltaEClass(match.deltaE00)}`}>
+                                  ΔE {match.deltaE00.toFixed(1)}
+                                </span>
+                              </div>
+                              <span className="work-detail-matrix__paint-name">{match.paint.colorName}</span>
+                            </>
+                          ) : (
+                            <div className="work-detail-matrix__missing">
+                              <span>No single-system match</span>
+                              <small>Match visually</small>
+                            </div>
+                          )}
+                        </td>
+                        <td className="work-detail-matrix__areas">
+                          {areas.length > 0 ? joinList(areas) : "—"}
+                        </td>
+                        <td className="work-detail-matrix__technique">
+                          <span>{primerAdvice}</span>
+                          {panel?.maskingNotes ? (
+                            <p>
+                              <strong>Masking </strong>
+                              {panel.maskingNotes}
+                            </p>
+                          ) : color.rationale ? (
+                            <p>{color.rationale}</p>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <EmptySection>This work does not have a saved palette snapshot. Its original configuration is shown above.</EmptySection>
+        )}
+      </section>
+
+      {/* Section 02: Masking & Process Steps */}
+      <section aria-labelledby="spec-title" className="work-detail-section">
+        <SectionHeading
+          number="02"
+          title="Masking & Workshop Process"
+          id="spec-title"
+          note={detail.specification ? "Physical kit build manual" : "Not yet recorded"}
+        />
+
+        {detail.specification ? (
+          <>
+            <p className="work-detail-intro">{detail.specification.summary}</p>
+            <div className="work-detail-process">
+              <article className="work-detail-process-col">
+                <header className="work-detail-process-head">
+                  <span>01</span>
+                  <h3>Panel Masking</h3>
+                </header>
+                <p className="work-detail-process-load">
+                  <span>Masking load</span>
+                  <b className={maskingSummary.difficulty === "High" ? "is-high" : undefined}>
+                    {maskingSummary.difficulty}
+                    <span>/ {maskingSummary.zoneCount} zones</span>
+                  </b>
+                </p>
+                <SpecField label="Key attention areas">
+                  {maskingSummary.keyAreas.length > 0 ? (
+                    <ul className="work-detail-process-areas">
+                      {maskingSummary.keyAreas.map((item, idx) => (
+                        <li key={idx}>
+                          <strong>{item.area}</strong>
+                          {item.note}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    "Standard component separation; assemble after painting."
+                  )}
+                </SpecField>
+                <SpecField label="Workshop rule">
+                  Spray lightest shades first. Burnish masking tape edges, then mist a light clear coat to seal edges before spraying darker contrasting tones.
+                </SpecField>
+              </article>
+
+              <article className="work-detail-process-col">
+                <header className="work-detail-process-head">
+                  <span>02</span>
+                  <h3>Surface & Finish</h3>
+                </header>
+                <SpecField label="Surface">{detail.specification.material.surfaceTexture}</SpecField>
+                <SpecField label="Reflectivity">{detail.specification.material.reflectivity}</SpecField>
+                <SpecField label="Topcoat">{detail.specification.material.coating}</SpecField>
+                <p className="work-detail-process-note">
+                  Apply 1000–1200 grit primer to verify seamline elimination. Sand nubs flat before spraying color coats.
+                </p>
+              </article>
+
+              <article className="work-detail-process-col">
+                <header className="work-detail-process-head">
+                  <span>03</span>
+                  <h3>Decals & Weathering</h3>
+                </header>
+                <SpecField label="Weathering">
+                  {joinList([
+                    humanize(detail.specification.weathering.level),
+                    detail.specification.weathering.applicationNotes,
+                  ])}
+                </SpecField>
+                <SpecField label="Decals">
+                  {joinList([
+                    `${humanize(detail.specification.decals.density)} density`,
+                    detail.specification.decals.placementNotes,
+                  ])}
+                </SpecField>
+                <SpecField label="Sequence">
+                  Gloss → Decal → Seal → Panel line → Topcoat
+                </SpecField>
+              </article>
+            </div>
+          </>
+        ) : (
+          <EmptySection>No repaint specification has been saved for this work yet.</EmptySection>
+        )}
+      </section>
+
+      {/* Section 03: Painting Sequence & Spray Notes */}
+      {detail.palette?.sprayNotes && detail.palette.sprayNotes.length > 0 ? (
+        <section aria-labelledby="spray-notes-title" className="work-detail-section">
+          <SectionHeading
+            number="03"
+            title="Painting Sequence & Spray Notes"
+            id="spray-notes-title"
+            note={`${detail.palette.sprayNotes.length} sequential directives`}
+          />
+          <div className="work-detail-sequence-wrap">
+            <ol
+              className="work-detail-sequence"
+              style={{ gridTemplateColumns: `repeat(${detail.palette.sprayNotes.length}, minmax(10.5rem, 1fr))` }}
+            >
+              {detail.palette.sprayNotes.map((note, index) => (
+                <li key={index}>
+                  <span className="work-detail-sequence__index">{String(index + 1).padStart(2, "0")}</span>
+                  <p>{note}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Section 04: Paint System Catalog Details */}
+      {selectedSystem ? (
+        <section aria-labelledby="paint-systems-title" className="work-detail-section">
+          <SectionHeading
+            number="04"
+            title="Paint System Catalog Details"
+            id="paint-systems-title"
+            note={`Matched ${formatDate(detail.paintRecommendations?.generatedAt ?? detail.createdAt)}`}
+          />
+          <div className="work-detail-system-summary">
+            <div><span>System</span><strong>{selectedSystem.brand} · {selectedSystem.line}</strong></div>
+            <div><span>Average ΔE00</span><strong>{selectedSystem.averageDeltaE?.toFixed(1) ?? "—"}</strong></div>
+            <div><span>Worst ΔE00</span><strong>{selectedSystem.maxDeltaE?.toFixed(1) ?? "—"}</strong></div>
+            <div><span>Coverage</span><strong>{selectedSystem.coverageCount}/{selectedSystem.roleCount}</strong></div>
+          </div>
+          {selectedSystem.warnings.length > 0 ? (
+            <ul className="work-detail-match-warnings">
+              {selectedSystem.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="work-detail-match-note">
+            Matches compare catalog color spectrophotometer data. Primer tone, coat thickness, clear coat, and lighting will influence the final painted appearance.
+          </p>
+        </section>
+      ) : null}
     </div>
-    <div className="work-detail-system-summary">
-      <div><span>System</span><strong>{selected.brand} · {selected.line}</strong></div>
-      <div><span>Average ΔE00</span><strong>{selected.averageDeltaE?.toFixed(1) ?? "—"}</strong></div>
-      <div><span>Worst ΔE00</span><strong>{selected.maxDeltaE?.toFixed(1) ?? "—"}</strong></div>
-      <div><span>Coverage</span><strong>{selected.coverageCount}/{selected.roleCount}</strong></div>
-    </div>
-    <div className="work-detail-paint-list">
-      {detail.palette?.entries.map((color) => {
-        const match = selected.entries.find((entry) => entry.roleSlug === color.roleSlug);
-        return <div key={color.roleSlug}>
-          <span className="work-detail-swatch is-small" aria-hidden="true" style={{ backgroundColor: validHex(color.targetHex) }} />
-          <div><span>{color.roleName}</span><small>Target {color.targetHex}</small></div>
-          {match ? <><div><strong>{match.paint.code}</strong><small>{match.paint.colorName}</small></div><div><span>ΔE00 {match.deltaE00.toFixed(1)}</span><small>{humanize(match.matchBand)}</small></div></>
-            : <div className="work-detail-paint-missing"><strong>No compatible paint</strong><small>{humanize(color.paintEffect)} required</small></div>}
-        </div>;
-      })}
-    </div>
-    {selected.warnings.length ? <ul className="work-detail-match-warnings">{selected.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
-    <p className="work-detail-match-note">Matches compare catalog color data. Primer, coat thickness, clear coat and lighting can change the painted result.</p>
-  </section>;
+  );
 }
 
 function Resources({ detail }: { detail: WorkDetail }) {
@@ -289,8 +743,42 @@ function useDetailImage(source: PreviewSource) {
     loading: Boolean(source.storageObjectId && !current?.url && !current?.error), retry: () => setAttempt(value => value + 1) };
 }
 
+const SITE_BRAND_URL = "https://neotypelab.com";
+
+function PrintColophon() {
+  return (
+    <aside className="work-detail-print-colophon" aria-label="NeotypeLab">
+      <NeotypeLabQr />
+      <p>
+        <strong>NeotypeLab</strong>
+        <span>Scale-model color systems and build manuals</span>
+        <a href={SITE_BRAND_URL}>{SITE_BRAND_URL.replace(/^https:\/\//, "")}</a>
+      </p>
+    </aside>
+  );
+}
+
+function NeotypeLabQr() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 27 27" shapeRendering="crispEdges" aria-hidden="true">
+      <title>QR code for neotypelab.com</title>
+      <path fill="#fff" d="M0 0h27v27H0z" />
+      <path fill="none" stroke="#111" d="M1 1.5h7m4 0h1m4 0h1m1 0h7M1 2.5h1m5 0h1m3 0h4m1 0h2m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h1m2 0h1m3 0h1m2 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h6m1 0h1m2 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h4m1 0h3m2 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m1 0h1m4 0h2M1 9.5h1m1 0h5m2 0h1m2 0h3m3 0h5M3 10.5h3m2 0h2m2 0h2m3 0h1m2 0h1m3 0h1M2 11.5h1m1 0h1m2 0h1m5 0h2m1 0h4m1 0h2m1 0h2M1 12.5h2m1 0h3m4 0h1m1 0h1m1 0h7m3 0h1M1 13.5h1m3 0h5m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3M1 14.5h5m7 0h2m2 0h1m2 0h1m1 0h1m1 0h1M1 15.5h1m1 0h5m2 0h2m2 0h3m1 0h1m1 0h3m1 0h2M1 16.5h1m1 0h1m1 0h2m2 0h2m2 0h1m1 0h2m1 0h1m1 0h2m3 0h1M1 17.5h1m3 0h1m1 0h5m1 0h9m1 0h1M9 18.5h3m2 0h1m2 0h1m3 0h2M1 19.5h7m4 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3M1 20.5h1m5 0h1m1 0h4m2 0h1m1 0h1m3 0h2M1 21.5h1m1 0h3m1 0h1m1 0h2m1 0h1m3 0h6m1 0h3M1 22.5h1m1 0h3m1 0h1m1 0h2m2 0h2m3 0h2m1 0h5M1 23.5h1m1 0h3m1 0h1m1 0h2m3 0h5m3 0h2m1 0h1M1 24.5h1m5 0h1m2 0h1m2 0h2m2 0h6m2 0h1M1 25.5h7m1 0h1m3 0h1m1 0h1m3 0h7" />
+    </svg>
+  );
+}
+
 function DetailLoading() { return <section className="work-detail-loading" role="status" aria-label="Loading work details"><span>Opening work archive…</span><div /><div /></section>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value}</dd></div>; }
+function SpecField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="work-detail-spec">
+      <span>{label}</span>
+      <div>{children}</div>
+    </div>
+  );
+}
+function joinList(items: string[]) { return items.filter(Boolean).join(" · "); }
 function SectionHeading({ number, title, id, note }: { number: string; title: string; id: string; note: string }) { return <header className="work-detail-section-heading"><div><span>{number}</span><h2 id={id}>{title}</h2></div><p>{note}</p></header>; }
 function EmptySection({ children }: { children: ReactNode }) { return <p className="work-detail-empty">{children}</p>; }
 function DocumentRow({ title, description, onDownload }: { title: string; description: string; onDownload: () => void }) { return <div className="work-detail-file"><FileTextIcon aria-hidden="true" /><div><strong>{title}</strong><small>{description} · JSON</small></div><Button variant="outline" className="work-detail-action" onClick={onDownload} aria-label={`Export ${title}`}><DownloadIcon aria-hidden="true" />Export</Button></div>; }

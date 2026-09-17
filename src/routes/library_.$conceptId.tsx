@@ -27,7 +27,11 @@ function LibraryDetailRoute() {
   const navigate = Route.useNavigate();
   return (
     <AppShell title="Work details" description="Your repaint, its specifications and its resources.">
-      <LibraryDetailPage conceptId={conceptId} tab={tab} onTabChange={(next) => void navigate({ search: { tab: next } })} />
+      <LibraryDetailPage
+        conceptId={conceptId}
+        tab={tab}
+        onTabChange={(next) => void navigate({ search: { tab: next }, replace: true, resetScroll: false })}
+      />
     </AppShell>
   );
 }
