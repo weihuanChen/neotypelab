@@ -1,1086 +1,193 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { Link } from "@tanstack/react-router";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import type { StyleIntent } from "@/convex/creativeContracts";
 import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
+import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { StyleDiscovery } from "./StyleDiscovery";
 import { CustomStylePicker } from "./CustomStylePicker";
-import { CommandButton } from "@/components/ui/command-button";
-import { ShoppingListActions } from "@/components/public/ShoppingListActions";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  ChoiceChip,
-  FieldHint,
-  FocusPanel,
-  GhostButton,
-  Kicker,
-  StatusPill,
-  StepHeader,
-  TowerField,
-  WorkbenchNotice,
-  mapStatusTone,
-} from "@/src/components/ui/workbench";
-import { api } from "@/convex/_generated/api";
-import { creativeInputKey, type StyleIntent } from "@/convex/creativeContracts";
-import { Id } from "@/convex/_generated/dataModel";
-import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
-import { cn } from "@/lib/utils";
-import { usePrivateAssetUrl } from "@/src/hooks/usePrivateAssetUrl";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { ConvexError } from "convex/values";
-import { useEffect, useMemo, useState } from "react";
-import {
-  parseOptionalSearchValue,
-  type CreateWorkbenchSearch,
-} from "./createSearch";
+import { StylePalette, displayPalette } from "./StylePalette";
+import { KitPicker, KitPortrait } from "./KitPicker";
+import { GenerationJobSheet } from "./GenerationJobSheet";
+import type { CreateWorkbenchSearch } from "./createSearch";
 
-type WeatheringLevel = "clean" | "light" | "heavy";
-type MoodTag =
-  | "command-presence"
-  | "stealth-tension"
-  | "industrial-hazard"
-  | "reactor-glow"
-  | "field-fatigue"
-  | "ceremonial-clean";
-type ConceptVisibility = "private" | "unlisted" | "public";
+const moodOptions = ["command-presence", "stealth-tension", "industrial-hazard", "reactor-glow", "field-fatigue", "ceremonial-clean"] as const;
+type Mood = typeof moodOptions[number];
 
-const weatheringOptions: Array<{
-  value: WeatheringLevel;
-  label: string;
-  detail: string;
-}> = [
-  { value: "clean", label: "Clean", detail: "Factory-fresh panel control" },
-  { value: "light", label: "Light", detail: "Operational wear, restrained dust" },
-  { value: "heavy", label: "Heavy", detail: "Field abrasion and masking stress" },
-];
-
-const moodOptions: Array<{
-  value: MoodTag;
-  label: string;
-  detail: string;
-}> = [
-  {
-    value: "command-presence",
-    label: "Command Presence",
-    detail: "Hero-forward authority with disciplined silhouette readability.",
-  },
-  {
-    value: "stealth-tension",
-    label: "Stealth Tension",
-    detail: "Suppressed contrast, low-signature armor, and controlled sensor pop.",
-  },
-  {
-    value: "industrial-hazard",
-    label: "Industrial Hazard",
-    detail: "Maintenance-deck warning logic and workshop brutality.",
-  },
-  {
-    value: "reactor-glow",
-    label: "Reactor Glow",
-    detail: "Localized high-energy accents without losing panel discipline.",
-  },
-  {
-    value: "field-fatigue",
-    label: "Field Fatigue",
-    detail: "Operational wear, dust memory, and prolonged deployment stress.",
-  },
-  {
-    value: "ceremonial-clean",
-    label: "Ceremonial Clean",
-    detail: "Inspection-grade finish with minimal abrasion and crisp masking.",
-  },
-];
-
-const visibilityOptions: Array<{
-  value: ConceptVisibility;
-  label: string;
-  detail: string;
-}> = [
-  {
-    value: "private",
-    label: "Private",
-    detail: "Only visible in your operator library.",
-  },
-  {
-    value: "unlisted",
-    label: "Unlisted",
-    detail: "Shareable later by direct link, hidden from any public surface.",
-  },
-  {
-    value: "public",
-    label: "Public",
-    detail: "Marked as ready for future showcase and remix surfaces.",
-  },
-];
-
-export function CreateWorkbench({
-  search = {},
-}: {
-  search?: CreateWorkbenchSearch;
-}) {
-  const catalog = useQuery(api.catalog.listCreateOptions);
-  const communityStyles = useQuery(api.userStyles.community);
-  const saveCommunity = useMutation(api.userStyles.saveCommunityStyle);
-  const [selectedCommunitySourceId, setSelectedCommunitySourceId] = useState<string | undefined>();
-  const [discoveryBusy, setDiscoveryBusy] = useState(false);
-  const [styleTab, setStyleTab] = useState<"discover" | "create" | "saved">("discover");
-  const reviewedStyles = useQuery(api.styleEditorial.gallery);
+export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearch }) {
+  const catalog = useQuery(api.catalog.listCreateOptions, { includeKits: false });
   const viewer = useQuery(api.users.viewer);
-  const remixConceptId = parseOptionalSearchValue(search.remix);
-  const recommendedStyleSlug = parseOptionalSearchValue(search.recommendedStyle);
-  const recommendedMaterialSlug = parseOptionalSearchValue(search.recommendedMaterial);
-  const recommendedWorkflow = parseOptionalSearchValue(search.recommendedWorkflow);
-  const recommendedBaseModelSlug = parseOptionalSearchValue(search.recommendedBaseModel);
-  const recommendedMoodTagsParam = parseOptionalSearchValue(search.recommendedMoodTags);
-  const recommendedWeathering = parseOptionalSearchValue(search.recommendedWeathering);
-  const creatorPackSlug = parseOptionalSearchValue(search.creatorPack);
-  const creatorPackVariant = parseOptionalSearchValue(search.creatorPackVariant);
-  const remixSource = useQuery(
-    api.showcase.getRemixSeed,
-    remixConceptId ? { conceptId: remixConceptId as Id<"concepts"> } : "skip"
-  );
-  const creatorPack = useQuery(
-    api.showcase.getCreatorPackBySlug,
-    creatorPackSlug ? { slug: creatorPackSlug } : "skip"
-  );
-  const initializePrototype = useMutation(api.prototypes.initializePrototype);
-  const generateStyleSuggestion = useAction(api.prototypeTools.generateStyleSuggestion);
-  const generatePalettePlan = useAction(api.prototypeTools.generatePalettePlan);
-  const requestHdRender = useMutation(api.prototypeTools.requestHdRender);
-
-  const [selectedKitVariantId, setSelectedKitVariantId] = useState<Id<"baseModels"> | null>(
-    null
-  );
-  const [selectedStylePresetId, setSelectedStylePresetId] = useState<
-    Id<"stylePresets"> | null
-  >(null);
+  const community = useQuery(api.userStyles.community);
+  const previews = useQuery(api.styleEditorial.gallery);
+  const quote = useQuery(api.creationRuns.quote);
+  const latestRun = useQuery(api.creationRuns.latest);
+  const start = useMutation(api.creationRuns.start);
+  const retry = useMutation(api.creationRuns.retry);
+  const saveCommunity = useMutation(api.userStyles.saveCommunityStyle);
+  const remix = useQuery(api.showcase.getRemixSeed, search.remix ? { conceptId: search.remix as Id<"concepts"> } : "skip");
+  const pack = useQuery(api.showcase.getCreatorPackBySlug, search.creatorPack ? { slug: search.creatorPack } : "skip");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [tab, setTab] = useState<"discover" | "create" | "saved">("discover");
   const [styleMode, setStyleMode] = useState<"preset" | "custom">(search.communityStyle ? "custom" : "preset");
-  const [approvedCustomStyle, setApprovedCustomStyle] = useState<StyleIntent | null>(null);
-  const [savedCustomStyleId, setSavedCustomStyleId] = useState<Id<"userStyles"> | null>(null);
-  const activeUserStyleId = styleMode === "custom" ? savedCustomStyleId ?? undefined : undefined;
-  const activeIntentJson = styleMode === "custom" && approvedCustomStyle ? JSON.stringify(approvedCustomStyle) : undefined;
-  const activePresetId = styleMode === "preset" ? selectedStylePresetId ?? undefined : undefined;
-  const activeStyleRevision = activePresetId ? catalog?.stylePresets.find(style => style._id === activePresetId)?.styleIntentJson : undefined;
-  const hasActiveStyle = Boolean(activePresetId || activeIntentJson);
-  const [materialOverrideId, setSelectedMaterialPresetId] = useState<
-    Id<"materialPresets"> | null
-  >(null);
-  const [selectedMoodTags, setSelectedMoodTags] = useState<MoodTag[]>([]);
-  const [weatheringOverride, setWeatheringLevel] = useState<WeatheringLevel | null>(null);
-  const [createStep, setCreateStep] = useState<1 | 2>(1);
-  const [kitSearch, setKitSearch] = useState("");
-  const activeIntent = readStyleIntent(activeIntentJson ?? activeStyleRevision);
-  const defaults = resolveStyleRefinements(activeIntent, catalog?.materialPresets ?? [],
-    catalog?.stylePresets.find(style => style._id === activePresetId)?.recommendedMaterialSlugs);
-  const selectedMaterialPresetId = materialOverrideId ?? defaults.material?._id ?? null;
-  const weatheringLevel = weatheringOverride ?? defaults.weathering;
-
-  const [visibility, setVisibility] = useState<ConceptVisibility>("private");
+  const [presetId, setPresetId] = useState<Id<"stylePresets"> | null>(null);
+  const [custom, setCustom] = useState<StyleIntent | null>(null);
+  const [savedId, setSavedId] = useState<Id<"userStyles"> | null>(null);
+  const [communityId, setCommunityId] = useState<string>();
+  const [kitId, setKitId] = useState<Id<"baseModels"> | null>(null);
+  const kit = useQuery(api.kitPicker.selected, { kitId: kitId ?? undefined, slug: kitId ? undefined : search.recommendedBaseModel });
+  const [materialId, setMaterialId] = useState<Id<"materialPresets"> | null>(null);
+  const [weathering, setWeathering] = useState<"clean" | "light" | "heavy" | null>(null);
+  const [mood, setMood] = useState<Mood[]>([]);
   const [notes, setNotes] = useState("");
-  const [appliedRemixId, setAppliedRemixId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeneratingStyleSuggestion, setIsGeneratingStyleSuggestion] = useState(false);
-  const [isGeneratingPalettePlan, setIsGeneratingPalettePlan] = useState(false);
-  const [isQueueingHdRender, setIsQueueingHdRender] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [kitUniverse, setKitUniverse] = useState<string | null>(null);
-  const [kitScale, setKitScale] = useState<string | null>(null);
-  const [kitComplexity, setKitComplexity] = useState<string | null>(null);
-  const [kitTag, setKitTag] = useState<string | null>(null);
-  const [styleSuggestionResult, setStyleSuggestionResult] = useState<{
-    balanceAfter: number;
-    promptCompositionId: Id<"promptCompositions">;
-    promptPreview: string;
-    suggestions: Array<{
-      category?: string;
-      confidenceLabel: string;
-      name: string;
-      rationale: string;
-      shortDescription?: string;
-      slug: string;
-      stylePresetId: Id<"stylePresets">;
-    }>;
-    templateName: string;
-    priceRule: {
-      creditCost: number;
-      label: string;
-    };
-  } | null>(null);
-  const [palettePlanResult, setPalettePlanResult] = useState<{
-    balanceAfter: number;
-    promptCompositionId: Id<"promptCompositions">;
-    promptPreview: string;
-    visualPalette: {
-      version: "visual-palette.v2";
-      entries: Array<{
-        roleSlug: string;
-        roleName: string;
-        recommendedArea?: string;
-        targetHex: string;
-        paintEffect: "solid" | "metallic" | "transparent";
-        rationale: string;
-      }>;
-      sprayNotes: string[];
-    } | null;
-    plan: {
-      baseModelName: string;
-      conceptTitle: string;
-      entries: Array<{
-        rationale: string;
-        recommendedArea?: string;
-        roleName: string;
-        roleSlug: string;
-        suggestedPaint: {
-          brand: string;
-          code: string;
-          colorName: string;
-          hexPreview?: string;
-        } | null;
-      }>;
-      sprayNotes: string[];
-    };
-    templateName: string;
-    priceRule: {
-      creditCost: number;
-      label: string;
-    };
-  } | null>(null);
-  const [paletteInputKey, setPaletteInputKey] = useState<string | null>(null);
-  const [approvedPaletteId, setApprovedPaletteId] = useState<Id<"promptCompositions"> | null>(null);
-  const currentInputKey = creativeInputKey({
-    kitVariantId: selectedKitVariantId ?? undefined, stylePresetId: activePresetId, userStyleId: activeUserStyleId, styleIntentJson: activeIntentJson, styleRevision: activeStyleRevision,
-    materialPresetId: selectedMaterialPresetId ?? undefined, moodTags: selectedMoodTags, weatheringLevel, notes,
-  });
-  const paletteIsCurrent = paletteInputKey === currentInputKey;
-  const recoveredStyle = useQuery(api.creativePipeline.latest, selectedKitVariantId ? {
-    kind: "style-suggestion", inputKey: creativeInputKey({ kitVariantId: selectedKitVariantId, moodTags: selectedMoodTags, notes }),
-  } : "skip");
-  const recoveredPalette = useQuery(api.creativePipeline.latest, selectedKitVariantId && hasActiveStyle && selectedMaterialPresetId ? {
-    kind: "palette-plan", inputKey: currentInputKey,
-  } : "skip");
-  useEffect(() => {
-    if (recoveredStyle !== undefined) setStyleSuggestionResult(recoveredStyle);
-  }, [recoveredStyle]);
-  useEffect(() => {
-    if (recoveredPalette?.plan && recoveredPalette.inputKey === currentInputKey) {
-      setPalettePlanResult({ ...recoveredPalette, plan: recoveredPalette.plan });
-      setPaletteInputKey(currentInputKey);
-    }
-  }, [recoveredPalette, currentInputKey]);
-
-  const [result, setResult] = useState<{
-    title: string;
-    conceptId: Id<"concepts">;
-    generationJobId: Id<"generationJobs">;
-    balanceAfter: number;
-    templateName: string;
-    promptPreview: string;
-    visibility: ConceptVisibility;
-    moodTags: MoodTag[];
-    priceRule: {
-      label: string;
-      creditCost: number;
-    };
-  } | null>(null);
-  const liveJob = useQuery(
-    api.generation.getViewerJobSnapshot,
-    result ? { generationJobId: result.generationJobId } : "skip"
-  );
-  const shoppingList = useQuery(
-    api.shopping.getViewerConceptShoppingList,
-    result ? { conceptId: result.conceptId } : "skip"
-  );
-  const privateOriginalUrl = usePrivateAssetUrl(
-    liveJob?.status === "succeeded" && !liveJob.asset?.publicUrl
-      ? liveJob.asset?.storageObjectId
-      : null
-  );
-  const generatedImageUrl = liveJob?.asset?.publicUrl ?? privateOriginalUrl;
-
-  const selectedKitVariant =
-    catalog?.kitVariants.find((item) => item._id === selectedKitVariantId) ?? null;
-  const selectedStylePreset =
-    catalog?.stylePresets.find((item) => item._id === selectedStylePresetId) ?? null;
-  const selectedMaterialPreset =
-    catalog?.materialPresets.find((item) => item._id === selectedMaterialPresetId) ??
-    null;
-  const createCost =
-    catalog?.priceRules.find((rule) => rule.actionType === "generate-repaint-concept")
-      ?.creditCost ?? 0;
-  const palettePlanCost =
-    catalog?.priceRules.find((rule) => rule.actionType === "generate-palette")?.creditCost ?? 0;
-  const styleSuggestionCost =
-    catalog?.priceRules.find((rule) => rule.actionType === "generate-style-suggestion")
-      ?.creditCost ?? 0;
-  const hdCost =
-    catalog?.priceRules.find((rule) => rule.actionType === "generate-hd-render")
-      ?.creditCost ?? 0;
-  const notesRemaining = 100 - notes.length;
-  const creatorPackAccess = getCreatorPackAccessCopy({
-    creatorHandle: creatorPack?.creator.handle,
-    packType: creatorPack?.packType ?? "free",
-    viewer,
-  });
-  const creatorPackGateResolved = !creatorPackSlug || creatorPack !== undefined;
-  const creatorPackLocked = Boolean(
-    creatorPackSlug &&
-      creatorPack &&
-      creatorPack.packType === "premium" &&
-      !creatorPackAccess.allowed
-  );
-  const canSubmit =
-    selectedKitVariant !== null &&
-    hasActiveStyle &&
-    selectedMaterialPreset !== null &&
-    notesRemaining >= 0 &&
-    (!remixConceptId || remixSource !== undefined) &&
-    creatorPackGateResolved &&
-    !creatorPackLocked &&
-    !isSubmitting && !isGeneratingPalettePlan && !isGeneratingStyleSuggestion &&
-    paletteIsCurrent && Boolean(palettePlanResult && approvedPaletteId === palettePlanResult.promptCompositionId);
-  const liveTone = mapStatusTone(liveJob?.status);
-  const canGenerateStyleSuggestion = selectedKitVariant !== null && !isGeneratingStyleSuggestion;
-  const canGeneratePalettePlan =
-    selectedKitVariant !== null &&
-    hasActiveStyle &&
-    selectedMaterialPreset !== null &&
-    !isGeneratingPalettePlan;
-  const kitFilterOptions = useMemo(
-    () => collectKitFilterOptions(catalog?.kitVariants ?? []),
-    [catalog?.kitVariants]
-  );
-  const visibleKits = useMemo(
-    () =>
-      (catalog?.kitVariants ?? []).filter((kit) => {
-        if (kitSearch.trim() && ![kit.name, ...kit.tags].join(" ").toLowerCase().includes(kitSearch.trim().toLowerCase())) return false;
-        if (kitUniverse && kitUniverseOf(kit) !== kitUniverse) {
-          return false;
-        }
-        if (kitScale && kitScaleOf(kit) !== kitScale) {
-          return false;
-        }
-        if (kitComplexity && (kit.complexityLevel ?? "unknown") !== kitComplexity) {
-          return false;
-        }
-        if (kitTag && !kit.tags.includes(kitTag)) {
-          return false;
-        }
-        return true;
-      }),
-    [catalog?.kitVariants, kitComplexity, kitScale, kitTag, kitUniverse, kitSearch]
-  );
+  const [advanced, setAdvanced] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [watchingRunId, setWatchingRunId] = useState<string | null>(null);
+  const [dismissedRunId, setDismissedRunId] = useState<string | null>(null);
+  const appliedSearch = useRef(false);
+  const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
+  const preset = catalog?.stylePresets.find(row => row._id === presetId);
+  const intent = styleMode === "custom" ? custom : readStyleIntent(preset?.styleIntentJson);
+  const defaults = resolveStyleRefinements(intent, catalog?.materialPresets ?? [], preset?.recommendedMaterialSlugs);
+  const hasStyle = styleMode === "custom" ? Boolean(custom) : Boolean(preset);
+  const styleName = styleMode === "custom" ? custom?.name : preset?.name;
+  const colors = styleMode === "preset" ? displayPalette(preset?.slug ?? "") : [];
+  const isRunning = latestRun?.status === "queued" || latestRun?.status === "running";
+  const access = getCreatorPackAccessCopy({ creatorHandle: pack?.creator.handle, packType: pack?.packType ?? "free", viewer });
+  const locked = Boolean(search.creatorPack && (!pack || (pack.packType === "premium" && !access.allowed)));
+  const actualKitId = kit?._id;
+  const resolvedMaterial = materialId ?? defaults.material?._id;
+  const resolvedWeathering = weathering ?? defaults.weathering;
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [step]);
 
   useEffect(() => {
-    if (!remixSource || appliedRemixId === remixSource._id) {
-      return;
+    if (latestRun && (latestRun.status === "queued" || latestRun.status === "running")) {
+      setWatchingRunId(latestRun.id);
     }
-
-    setSelectedKitVariantId(remixSource.kitVariantId);
-    setSelectedStylePresetId(remixSource.stylePresetId);
-    setSelectedMaterialPresetId(remixSource.materialPresetId);
-    setSelectedMoodTags(remixSource.moodTags);
-    setWeatheringLevel(remixSource.weatheringLevel);
-    setVisibility("private");
-    setStyleSuggestionResult(null);
-    setPalettePlanResult(null);
-    setResult(null);
-    setErrorMessage(null);
-    if (!notes.trim()) {
-      setNotes(clampNotes(remixSource.notes));
-    }
-    setAppliedRemixId(remixSource._id);
-  }, [appliedRemixId, notes, remixSource]);
+  }, [latestRun]);
 
   useEffect(() => {
-    if (!catalog) {
-      return;
-    }
-    if (creatorPackSlug && creatorPack === undefined) {
-      return;
-    }
-    if (creatorPackLocked) {
-      return;
-    }
+    if (latestRun?.status === "succeeded" || latestRun?.status === "failed") requestRef.current = null;
+  }, [latestRun?.status]);
 
-    if (recommendedStyleSlug) {
-      const stylePreset = catalog.stylePresets.find((item) => item.slug === recommendedStyleSlug);
-      if (stylePreset) {
-        setSelectedStylePresetId(stylePreset._id);
-      }
+  useEffect(() => {
+    if (!catalog || appliedSearch.current || (search.remix && remix === undefined)) return;
+    appliedSearch.current = true;
+    const recommended = catalog.stylePresets.find(row => row.slug === search.recommendedStyle);
+    if (recommended) setPresetId(recommended._id);
+    const material = catalog.materialPresets.find(row => row.slug === search.recommendedMaterial);
+    if (material) setMaterialId(material._id);
+    if (["clean", "light", "heavy"].includes(search.recommendedWeathering ?? "")) setWeathering(search.recommendedWeathering as "clean" | "light" | "heavy");
+    if (search.recommendedMoodTags) setMood(search.recommendedMoodTags.split(",").filter((value): value is Mood => moodOptions.includes(value as Mood)));
+    if (search.recommendedWorkflow === "light-weathering") setWeathering("light");
+    if (remix) {
+      setKitId(remix.kitVariantId); setPresetId(remix.stylePresetId); setMaterialId(remix.materialPresetId);
+      setWeathering(remix.weatheringLevel); setMood(remix.moodTags); setNotes(remix.notes?.slice(0, 100) ?? "");
     }
+  }, [catalog, remix, search]);
 
-    if (recommendedBaseModelSlug) {
-      const kitVariant = catalog.kitVariants.find((item) => item.slug === recommendedBaseModelSlug);
-      if (kitVariant) {
-        setSelectedKitVariantId(kitVariant._id);
-      }
-    }
-
-    if (recommendedMaterialSlug) {
-      const materialPreset = catalog.materialPresets.find(
-        (item) => item.slug === recommendedMaterialSlug
-      );
-      if (materialPreset) {
-        setSelectedMaterialPresetId(materialPreset._id);
-      }
-    }
-
-    if (recommendedMoodTagsParam) {
-      const nextMoodTags = recommendedMoodTagsParam
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag): tag is MoodTag => moodOptions.some((option) => option.value === tag));
-      if (nextMoodTags.length > 0) {
-        setSelectedMoodTags(nextMoodTags);
-      }
-    }
-
-    if (
-      recommendedWeathering === "clean" ||
-      recommendedWeathering === "light" ||
-      recommendedWeathering === "heavy"
-    ) {
-      setWeatheringLevel(recommendedWeathering);
-    }
-
-    if (recommendedWorkflow === "light-weathering") {
-      setWeatheringLevel("light");
-    }
-    if (recommendedWorkflow === "lower-contrast-blocking") {
-      setSelectedMoodTags((current) =>
-        current.filter((tag) => tag !== "industrial-hazard" && tag !== "reactor-glow")
-      );
-    }
-    if (recommendedWorkflow === "merge-accent-roles") {
-      setSelectedMoodTags((current) => current.filter((tag) => tag !== "reactor-glow"));
-    }
-  }, [
-    catalog,
-    recommendedBaseModelSlug,
-    recommendedMaterialSlug,
-    recommendedMoodTagsParam,
-    recommendedStyleSlug,
-    recommendedWeathering,
-    recommendedWorkflow,
-    creatorPack,
-    creatorPackLocked,
-    creatorPackSlug,
-  ]);
-
-  function toggleMoodTag(tag: MoodTag) {
-    setSelectedMoodTags((current) =>
-      current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]
-    );
-  }
-
-  async function onInitializePrototype() {
-    if (!canSubmit) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setResult(null);
-
+  async function generate() {
+    if (!hasStyle || !actualKitId || !resolvedMaterial || !quote || isRunning || busy || locked) return;
+    const input = {
+      kitVariantId: actualKitId, stylePresetId: styleMode === "preset" ? presetId ?? undefined : undefined,
+      userStyleId: styleMode === "custom" ? savedId ?? undefined : undefined,
+      styleIntentJson: styleMode === "custom" && custom ? JSON.stringify(custom) : undefined,
+      styleRevision: styleMode === "preset" ? preset?.styleIntentJson : undefined,
+      materialPresetId: resolvedMaterial, moodTags: mood, weatheringLevel: resolvedWeathering,
+      notes: notes.trim() || undefined, sourceConceptId: remix?._id,
+    };
+    const fingerprint = JSON.stringify(input);
+    if (requestRef.current?.fingerprint !== fingerprint) requestRef.current = { fingerprint, key: crypto.randomUUID() };
+    setBusy(true); setError(null);
     try {
-      const response = await initializePrototype({
-        sourceConceptId: remixSource?._id,
-        paletteCompositionId: approvedPaletteId ?? undefined,
-        requestKey: crypto.randomUUID(),
-        kitVariantId: selectedKitVariantId!,
-        stylePresetId: activePresetId,
-        userStyleId: activeUserStyleId,
-        styleRevision: activeStyleRevision,
-        materialPresetId: selectedMaterialPresetId!,
-        moodTags: selectedMoodTags,
-        weatheringLevel,
-        visibility,
-        notes: notes.trim() === "" ? undefined : notes.trim(),
-        styleIntentJson: activeIntentJson,
-        styleIntentVersion: activeIntentJson ? approvedCustomStyle?.version : undefined,
-      });
-
-      setResult({
-        title: response.title,
-        conceptId: response.conceptId,
-        generationJobId: response.generationJobId,
-        balanceAfter: response.balanceAfter,
-        templateName: response.templateName,
-        promptPreview: response.promptPreview,
-        visibility,
-        moodTags: selectedMoodTags,
-        priceRule: response.priceRule,
-      });
-    } catch (error) {
-      setErrorMessage(creativeErrorMessage(error, "Failed to create repaint specification"));
-    } finally {
-      setIsSubmitting(false);
+      const runId = await start({ input, requestKey: requestRef.current.key, expectedCost: quote.cost });
+      setWatchingRunId(runId);
+      setDismissedRunId(null);
     }
+    catch (failure) { setError(errorText(failure)); }
+    finally { setBusy(false); }
   }
 
-  async function onGenerateStyleSuggestion() {
-    if (!selectedKitVariantId || !canGenerateStyleSuggestion) {
-      return;
-    }
-
-    setIsGeneratingStyleSuggestion(true);
-    setErrorMessage(null);
-
+  async function handleRetry(runId: Id<"creationRuns">) {
+    setBusy(true);
+    setError(null);
     try {
-      const response = await generateStyleSuggestion({
-        requestKey: crypto.randomUUID(),
-        kitVariantId: selectedKitVariantId,
-        moodTags: selectedMoodTags,
-        notes: notes.trim() === "" ? undefined : notes.trim(),
-      });
-      setStyleSuggestionResult(response);
-    } catch (error) {
-      setErrorMessage(
-        creativeErrorMessage(error, "Failed to generate Style DNA suggestion")
-      );
+      await retry({ runId });
+      setWatchingRunId(runId);
+      setDismissedRunId(null);
+    } catch (failure) {
+      setError(errorText(failure));
     } finally {
-      setIsGeneratingStyleSuggestion(false);
+      setBusy(false);
     }
   }
 
-  async function onGeneratePalettePlan() {
-    if (
-      !selectedKitVariantId ||
-      !hasActiveStyle ||
-      !selectedMaterialPresetId ||
-      !canGeneratePalettePlan
-    ) {
-      return;
-    }
+  if (!catalog || viewer === undefined) return <div className="workbench-page" role="status">Opening your creative workspace…</div>;
 
-    setIsGeneratingPalettePlan(true);
-    setApprovedPaletteId(null);
-    setErrorMessage(null);
+  const shouldShowJobSheet = Boolean(
+    latestRun &&
+    dismissedRunId !== latestRun.id &&
+    (isRunning || watchingRunId === latestRun.id)
+  );
 
-    try {
-      const response = await generatePalettePlan({
-        requestKey: crypto.randomUUID(),
-        kitVariantId: selectedKitVariantId,
-        stylePresetId: activePresetId,
-        userStyleId: activeUserStyleId,
-        styleRevision: activeStyleRevision,
-        styleIntentJson: activeIntentJson,
-        materialPresetId: selectedMaterialPresetId,
-        moodTags: selectedMoodTags,
-        weatheringLevel,
-        notes: notes.trim() === "" ? undefined : notes.trim(),
-      });
-      setPalettePlanResult(response);
-      setPaletteInputKey(currentInputKey);
-    } catch (error) {
-      setErrorMessage(creativeErrorMessage(error, "Failed to generate palette plan"));
-    } finally {
-      setIsGeneratingPalettePlan(false);
-    }
-  }
-
-  async function onRequestHdRender() {
-    if (!result) {
-      return;
-    }
-
-    setIsQueueingHdRender(true);
-    setErrorMessage(null);
-    try {
-      const response = await requestHdRender({ conceptId: result.conceptId });
-      setResult((current) =>
-        current
-          ? {
-              ...current,
-              title: response.title,
-              generationJobId: response.generationJobId,
-              balanceAfter: response.balanceAfter,
-              templateName: response.templateName,
-              promptPreview: response.promptPreview,
-              priceRule: response.priceRule,
-            }
-          : current
-      );
-    } catch (error) {
-      setErrorMessage(creativeErrorMessage(error, "Failed to queue HD render"));
-    } finally {
-      setIsQueueingHdRender(false);
-    }
-  }
-
-  if (catalog === undefined || viewer === undefined) {
+  if (shouldShowJobSheet && latestRun) {
     return (
-      <div className="workbench-page">
-        <Kicker>Create</Kicker>
-        <h2>Loading catalog</h2>
+      <div className="create-workspace is-job-sheet">
+        <GenerationJobSheet
+          run={latestRun}
+          retryBusy={busy}
+          onRetry={() => void handleRetry(latestRun.id)}
+          onReset={() => {
+            setDismissedRunId(latestRun.id);
+            setWatchingRunId(null);
+            setStep(1);
+          }}
+        />
+        {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
       </div>
     );
   }
 
-  const previewFinish = materialFinishOf(selectedMaterialPreset);
-  const previewMass = kitMassOf(selectedKitVariant);
-
-  return (
-    <div className={cn("workbench-page workbench-layout create-flow", createStep === 1 && "is-style-step")}>
-      <nav className="col-span-full flex gap-4" aria-label="Creation steps">
-        <button type="button" aria-current={createStep === 1 ? "step" : undefined} onClick={() => setCreateStep(1)}>01 · Style</button>
-        <button type="button" disabled={!hasActiveStyle} aria-current={createStep === 2 ? "step" : undefined} onClick={() => setCreateStep(2)}>02 · Model</button>
-      </nav>
-      <div className="workbench-form">
-        {remixConceptId ? (
-          <section className="workbench-step">
-            {remixSource === undefined ? (
-              <FieldHint>Loading remix source</FieldHint>
-            ) : remixSource === null ? (
-              <FieldHint>Remix source unavailable. Continue as a new prototype.</FieldHint>
-            ) : (
-              <FieldHint>
-                Remixing {remixSource.title}.{" "}
-                <a href={`/prototype/${remixSource._id}`}>Open source</a>
-              </FieldHint>
-            )}
-          </section>
-        ) : null}
-
-        <section className="workbench-step" hidden={createStep !== 1}>
-          <StepHeader step="01" title="Choose a style" />
-          <p className="mb-6">Choose a repaint language, then apply it to a kit.</p>
-          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-          <div className="style-main-tabs" aria-label="Style workspace">
-            {(["discover", "create", "saved"] as const).map(tab => <button key={tab} type="button" aria-pressed={styleTab === tab} onClick={() => setStyleTab(tab)}>{tab === "discover" ? "Discover" : tab === "create" ? "Create" : "Saved"}</button>)}
-          </div>
-          <div hidden={styleTab !== "discover"}>
-            <StyleDiscovery presets={catalog.stylePresets} community={communityStyles} previews={reviewedStyles ?? []}
-              selectedId={styleMode === "preset" ? selectedStylePresetId ?? undefined : selectedCommunitySourceId ?? savedCustomStyleId ?? undefined}
-              busy={discoveryBusy} initialCommunity={search.communityStyle}
-              onPreset={preset => { setStyleMode("preset"); setSelectedStylePresetId(preset._id); }}
-              onCommunity={style => {
-                setDiscoveryBusy(true); setErrorMessage(null);
-                void saveCommunity({ styleId: style.id }).then(saved => {
-                  setStyleMode("custom"); setApprovedCustomStyle(saved.intent); setSavedCustomStyleId(saved.styleId); setSelectedCommunitySourceId(style.id);
-                }).catch(error => setErrorMessage(creativeErrorMessage(error, "Unable to save style"))).finally(() => setDiscoveryBusy(false));
-              }} />
-          </div>
-          <div hidden={styleTab === "discover"}>
-            <CustomStylePicker
-              userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(rule => rule.actionType === "generate-style-suggestion")?.creditCost}
-              selectedId={savedCustomStyleId} view={styleTab === "saved" ? "mine" : "describe"}
-              onUse={(intent, styleId) => { setStyleMode("custom"); setApprovedCustomStyle(intent); setSavedCustomStyleId(styleId); }}
-              onClear={() => { setApprovedCustomStyle(null); setSavedCustomStyleId(null); if (styleTab === "create") setStyleMode("custom"); }}
-              onApply={() => setCreateStep(2)}
-            />
-          </div>
-          {styleTab !== "create" ? <div className="mt-6"><CommandButton disabled={!hasActiveStyle || discoveryBusy} onClick={() => setCreateStep(2)}>Apply to a model →</CommandButton></div> : null}
-
-        </section>
-
-        <section className="workbench-step" hidden={createStep !== 2}>
-          <StepHeader step="02" title="Apply to a model" />
-          <div className="workbench-notice">
-            <strong>{styleMode === "custom" ? approvedCustomStyle?.name : selectedStylePreset?.name}</strong>
-            <p>{activeIntent ? Object.values(activeIntent.palette).flat().join(" · ") : selectedStylePreset?.shortDescription}</p>
-            <GhostButton onClick={() => setCreateStep(1)}>Change style</GhostButton>
-          </div>
-          <p className="my-4">Which kit should wear this style?</p>
-          <input className="mb-4 w-full border border-line-secondary bg-transparent p-3" aria-label="Search kits" placeholder="Search kits…" value={kitSearch} onChange={event => setKitSearch(event.target.value)} />
-          <div className="kit-browser">
-            <div className="kit-filters">
-              <KitFilterGroup
-                label="Universe"
-                options={kitFilterOptions.universes}
-                value={kitUniverse}
-                onChange={setKitUniverse}
-              />
-              <KitFilterGroup
-                label="Scale"
-                options={kitFilterOptions.scales}
-                value={kitScale}
-                onChange={setKitScale}
-              />
-              <KitFilterGroup
-                label="Complexity"
-                options={kitFilterOptions.complexities}
-                value={kitComplexity}
-                onChange={setKitComplexity}
-              />
-              <KitFilterGroup
-                label="Tags"
-                options={kitFilterOptions.tags}
-                value={kitTag}
-                onChange={setKitTag}
-              />
-            </div>
-            <div className="kit-grid">
-              {visibleKits.length === 0 ? (
-                <FieldHint>No kits match these filters.</FieldHint>
-              ) : (
-                visibleKits.map((kit) => (
-                <button
-                  className={selectedKitVariantId === kit._id ? "kit-tile is-active" : "kit-tile"}
-                  key={kit._id}
-                  onClick={() => setSelectedKitVariantId(kit._id)}
-                  type="button"
-                >
-                  <div className={`kit-tile__board is-${kitMassOf(kit)}`}>
-                    <span className="kit-tile__grade">{kit.grade ?? kit.scale ?? "Kit"}</span>
-                    <span className="silhouette-figure" />
-                  </div>
-                  <p className="kit-tile__name">{kit.name}</p>
-                  <p className="kit-tile__tags">{kit.tags.join(" · ")}</p>
-                </button>
-              ))
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="workbench-step" hidden={createStep !== 2}>
-          <details>
-            <summary className="cursor-pointer">Refine · Optional</summary>
-            <div className="space-y-5 py-5">
-              <label className="block">Finish
-                <select className="block w-full border border-line-secondary bg-transparent p-3" value={materialOverrideId ?? "auto"} onChange={event => setSelectedMaterialPresetId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}>
-                  <option value="auto">Auto · {defaults.material?.name ?? "No material available"}</option>
-                  {catalog.materialPresets.map(material => <option key={material._id} value={material._id}>{material.name} · {material.finishType}</option>)}
-                </select>
-              </label>
-              <label className="block">Weathering
-                <select className="block w-full border border-line-secondary bg-transparent p-3" value={weatheringOverride ?? "auto"} onChange={event => setWeatheringLevel(event.target.value === "auto" ? null : event.target.value as WeatheringLevel)}>
-                  <option value="auto">Auto · {defaults.weathering}</option>
-                  {weatheringOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-              </label>
-              <div><p>Mood</p><div className="choice-chip-row">
-                <ChoiceChip compact active={!selectedMoodTags.length} onClick={() => setSelectedMoodTags([])}>Auto · {defaults.mood}</ChoiceChip>
-                {moodOptions.map(option => <ChoiceChip key={option.value} compact active={selectedMoodTags.includes(option.value)} onClick={() => toggleMoodTag(option.value)}>{option.label}</ChoiceChip>)}
-              </div></div>
-              <label className="block">Notes · {notes.length}/100
-                <Textarea maxLength={100} value={notes} onChange={event => setNotes(event.target.value)} placeholder="Optional: restrained warning decals" />
-              </label>
-              <p>Visibility</p><div className="choice-chip-row">
-                {visibilityOptions.map(option => <ChoiceChip key={option.value} compact active={visibility === option.value} onClick={() => setVisibility(option.value)}>{option.label}</ChoiceChip>)}
-              </div>
-              <FieldHint>Sharing a preview requires publishing it from your library.</FieldHint>
-            </div>
-          </details>
-          <FieldHint>Resolved: {selectedMaterialPreset?.name ?? "No material available"} · {weatheringLevel} · {selectedMoodTags.length ? selectedMoodTags.join(", ") : defaults.mood}</FieldHint>
-        </section>
+  const canGenerate = hasStyle && Boolean(actualKitId && resolvedMaterial && quote) && !busy && !isRunning && !locked;
+  return <div className={`create-workspace ${step === 1 ? "is-style" : "is-model"}`}>
+    <nav className="create-step-nav" aria-label="Creation steps"><button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>01 · Style</button><button type="button" disabled={!hasStyle} aria-current={step === 2 ? "step" : undefined} onClick={() => setStep(2)}>02 · Model</button></nav>
+    {step === 1 ? <section className="create-style-workspace">
+      <p className="workbench-kicker">01 · Style</p><h2>Choose a repaint language.</h2>
+      <div className="style-main-tabs" aria-label="Style workspace">{(["discover", "create", "saved"] as const).map(value => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)}>{value === "discover" ? "Discover" : value === "create" ? "Create" : "Saved"}</button>)}</div>
+      <div hidden={tab !== "discover"}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={busy || Boolean(isRunning)} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
+        onPreset={row => { setStyleMode("preset"); setPresetId(row._id); setMaterialId(null); setWeathering(null); setMood([]); }}
+        onCommunity={row => { setBusy(true); setError(null); void saveCommunity({ styleId: row.id }).then(saved => { setStyleMode("custom"); setCustom(saved.intent); setSavedId(saved.styleId); setCommunityId(row.id); setMaterialId(null); setWeathering(null); setMood([]); }).catch(failure => setError(errorText(failure))).finally(() => setBusy(false)); }} /></div>
+      <div hidden={tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} selectedId={savedId} view={tab === "saved" ? "mine" : "describe"}
+        onUse={(value, id) => { setStyleMode("custom"); setCustom(value); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setSavedId(null); }} onApply={() => setStep(2)} /></div>
+      {tab !== "create" ? <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a model →</Button> : null}
+    </section> : <>
+      <section className="selected-style-strip" aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change →</button></section>
+      <div className="create-model-layout"><KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} />
+        <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kit?.portrait} name={kit?.name ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kit?.name ?? "Select a kit"}</h3><p>{kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
+          <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
+          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><Button className="create-generate-button" disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating preview…" : "Generate preview →"}</Button><button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button></section>
+        </aside>
       </div>
-
-      <aside className="workbench-focus-col" hidden={createStep !== 2}>
-        <FocusPanel>
-          <div className="workbench-focus__preview">
-            {generatedImageUrl ? (
-              <img src={generatedImageUrl} alt={`${result?.title ?? "Prototype"} preview`} />
-            ) : (
-              <div
-                className={cn(
-                  "silhouette-stage",
-                  selectedKitVariant && "is-kit",
-                  `is-${previewMass}`,
-                  previewFinish && `is-${previewFinish}`
-                )}
-              >
-                <span className="silhouette-figure" />
-                <p className="silhouette-stage__kicker">
-                  {selectedKitVariant
-                    ? selectedKitVariant.grade ?? selectedKitVariant.scale ?? "Kit"
-                    : "Silhouette"}
-                </p>
-                <p className="silhouette-stage__name">
-                  {selectedKitVariant?.name ?? "Select a kit"}
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="workbench-focus__body">
-            <Kicker>Prototype</Kicker>
-            <TowerField
-              label="Kit"
-              value={
-                selectedKitVariant
-                  ? `${selectedKitVariant.grade ? `${selectedKitVariant.grade} ` : ""}${selectedKitVariant.name}`
-                  : "—"
-              }
-            />
-            <TowerField label="Style" value={styleMode === "custom" ? approvedCustomStyle?.name ?? "Choose a custom style" : selectedStylePreset?.name ?? "—"} />
-            <TowerField label="Material" value={selectedMaterialPreset?.name ?? "—"} />
-            <TowerField
-              label="Mood"
-              value={
-                selectedMoodTags.length > 0
-                  ? selectedMoodTags.map(formatMoodTagLabel).join(", ")
-                  : "—"
-              }
-            />
-            <TowerField label="Weathering" value={weatheringLevel} />
-            {selectedKitVariant ? (
-              <p className="kit-tile__tags">
-                {[
-                  selectedKitVariant.baseUnit?.ipSeries?.name,
-                  selectedKitVariant.complexityLevel,
-                  ...selectedKitVariant.tags,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            ) : null}
-
-            {creatorPackLocked ? (
-              <WorkbenchNotice tone="danger">
-                <p>{creatorPackAccess.message}</p>
-              </WorkbenchNotice>
-            ) : null}
-            {errorMessage ? (
-              <WorkbenchNotice tone="danger">
-                <p>{errorMessage}</p>
-              </WorkbenchNotice>
-            ) : null}
-
-            <div className="tower-credits">
-              <span className="workbench-kicker">Credits</span>
-              <strong>{palettePlanCost + createCost + hdCost}</strong>
-              <small>Full preview flow · palette {palettePlanCost} + specification {createCost} + render {hdCost}</small>
-            </div>
-
-            <CommandButton
-              type="button"
-              onClick={() => {
-                void onInitializePrototype();
-              }}
-              disabled={!canSubmit}
-              className="w-full"
-              commandLabel="COMMAND"
-            >
-              {isSubmitting ? "PREPARING SPECIFICATION" : "Create repaint specification"}
-            </CommandButton>
-
-            {!paletteIsCurrent || !approvedPaletteId ? <FieldHint>Generate and approve a palette before creating the repaint specification.</FieldHint> : null}
-            <details className="tower-tools" open>
-              <summary>Style and palette planning</summary>
-              <GhostButton
-                disabled={!canGenerateStyleSuggestion}
-                loading={isGeneratingStyleSuggestion}
-                onClick={() => {
-                  void onGenerateStyleSuggestion();
-                }}
-              >
-                {isGeneratingStyleSuggestion
-                  ? "Resolving Style DNA"
-                  : `Style suggestion · ${styleSuggestionCost} cr`}
-              </GhostButton>
-              <GhostButton
-                disabled={!canGeneratePalettePlan}
-                loading={isGeneratingPalettePlan}
-                onClick={() => {
-                  void onGeneratePalettePlan();
-                }}
-              >
-                {isGeneratingPalettePlan
-                  ? "Composing palette"
-                  : `Palette plan · ${palettePlanCost} cr`}
-              </GhostButton>
-              {styleSuggestionResult
-                ? styleSuggestionResult.suggestions.map((suggestion) => (
-                    <GhostButton
-                      key={suggestion.stylePresetId}
-                      compact
-                      onClick={() => { setStyleMode("preset"); setSelectedStylePresetId(suggestion.stylePresetId); }}
-                    >
-                      Apply {suggestion.name}
-                    </GhostButton>
-                  ))
-                : null}
-              {palettePlanResult?.visualPalette && paletteIsCurrent
-                ? <div className="create-palette-preview" aria-label="Visual color plan">
-                    {palettePlanResult.visualPalette.entries.map((entry) => (
-                      <div className="create-palette-preview__row" key={entry.roleSlug}>
-                        <span aria-hidden="true" style={{ backgroundColor: entry.targetHex }} />
-                        <div>
-                          <strong>{entry.roleName}</strong>
-                          <small>{entry.targetHex} · {entry.paintEffect}</small>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                : null}
-              {palettePlanResult && paletteIsCurrent ? (
-                <GhostButton onClick={() => setApprovedPaletteId(palettePlanResult.promptCompositionId)} disabled={approvedPaletteId === palettePlanResult.promptCompositionId}>
-                  {approvedPaletteId === palettePlanResult.promptCompositionId ? "Palette approved" : "Use this palette"}
-                </GhostButton>
-              ) : null}
-            </details>
-
-            {result ? (
-              <div className="workbench-block">
-                <div className="choice-chip-row">
-                  <StatusPill label={liveJob?.status ?? "syncing"} tone={liveTone} />
-                  <StatusPill
-                    label={liveJob?.concept?.status ?? "draft"}
-                    tone={mapStatusTone(liveJob?.concept?.status)}
-                  />
-                </div>
-                {liveJob?.outputSummary?.label ? <FieldHint>{liveJob.outputSummary.label}</FieldHint> : null}
-                {liveJob?.errorMessage ? (
-                  <WorkbenchNotice tone="danger">
-                    <p>{liveJob.errorMessage}</p>
-                  </WorkbenchNotice>
-                ) : null}
-                {liveJob?.status === "succeeded" ? (
-                  <GhostButton
-                    disabled={isQueueingHdRender}
-                    loading={isQueueingHdRender}
-                    onClick={() => {
-                      void onRequestHdRender();
-                    }}
-                  >
-                    {isQueueingHdRender ? "Queueing HD" : `HD render · ${hdCost} cr`}
-                  </GhostButton>
-                ) : (
-                  <GhostButton href="/library">Open library</GhostButton>
-                )}
-                {shoppingList ? (
-                  <ShoppingListActions
-                    className="mt-2"
-                    data={{
-                      conceptTitle: shoppingList.conceptTitle,
-                      baseModelName: shoppingList.baseModelName,
-                      stylePresetName: shoppingList.stylePresetName,
-                      materialPresetName: shoppingList.materialPresetName,
-                      bundles: shoppingList.bundles,
-                      notes: shoppingList.notes,
-                    }}
-                  />
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </FocusPanel>
-      </aside>
-    </div>
-  );
+      <div className="create-mobile-generate"><div><strong>{kit?.name ?? "Choose a kit"}</strong><span>{quote?.cost ?? "—"} credits · Image + plan</span></div><Button disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating…" : "Generate →"}</Button></div>
+    </>}
+    {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
+    {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
+    {latestRun && !shouldShowJobSheet ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "Generation failed."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
+      <Button variant="outline" onClick={() => { setDismissedRunId(null); setWatchingRunId(latestRun.id); }}>View job status →</Button>
+      {latestRun.conceptId ? <Button asChild variant="outline"><Link to="/library/$conceptId" params={{ conceptId: latestRun.conceptId }} search={{ tab: "overview" }}>View details →</Link></Button> : <Link to="/library">Open library →</Link>}
+    </section> : null}
+    <Sheet open={advanced} onOpenChange={setAdvanced}><SheetContent className="create-advanced-sheet"><SheetHeader><SheetTitle>Advanced options</SheetTitle><SheetDescription>Defaults come from your selected style. The standard output includes both the image and paint plan.</SheetDescription></SheetHeader><div className="create-advanced-fields"><label>Finish<select disabled={Boolean(isRunning)} value={materialId ?? "auto"} onChange={event => setMaterialId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}><option value="auto">Style default · {defaults.material?.slug ?? "Unavailable"}</option>{catalog.materialPresets.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select></label><label>Weathering<select disabled={Boolean(isRunning)} value={weathering ?? "auto"} onChange={event => setWeathering(event.target.value === "auto" ? null : event.target.value as "clean" | "light" | "heavy")}><option value="auto">Style default · {defaults.weathering}</option>{["clean", "light", "heavy"].map(value => <option key={value}>{value}</option>)}</select></label><fieldset disabled={Boolean(isRunning)}><legend>Mood</legend><button type="button" aria-pressed={!mood.length} onClick={() => setMood([])}>Style default · {defaults.mood}</button>{moodOptions.map(value => <button type="button" key={value} aria-pressed={mood.includes(value)} onClick={() => setMood(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}>{value.replace(/-/g, " ")}</button>)}</fieldset><label>Notes · {notes.length}/100<Textarea value={notes} disabled={Boolean(isRunning)} maxLength={100} onChange={event => setNotes(event.target.value)} placeholder="Optional refinements" /></label><p>New works are private. Publish them later from your library.</p><Button onClick={() => setAdvanced(false)}>Done</Button></div></SheetContent></Sheet>
+  </div>;
 }
 
-function KitFilterGroup({
-  label,
-  onChange,
-  options,
-  value,
-}: {
-  label: string;
-  onChange: (value: string | null) => void;
-  options: string[];
-  value: string | null;
-}) {
-  if (options.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="kit-filter">
-      <Kicker>{label}</Kicker>
-      <div className="choice-chip-row">
-        <ChoiceChip compact active={value === null} onClick={() => onChange(null)}>
-          All
-        </ChoiceChip>
-        {options.map((option) => (
-          <ChoiceChip
-            key={option}
-            compact
-            active={value === option}
-            onClick={() => onChange(option)}
-          >
-            {option}
-          </ChoiceChip>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function collectKitFilterOptions(kits: KitOption[]) {
-  return {
-    universes: uniqueSorted(kits.map(kitUniverseOf).filter(Boolean) as string[]),
-    scales: uniqueSorted(kits.map(kitScaleOf).filter(Boolean) as string[]),
-    complexities: uniqueSorted(
-      kits.map((kit) => kit.complexityLevel).filter((value): value is string => Boolean(value))
-    ),
-    tags: uniqueSorted(kits.flatMap((kit) => kit.tags)),
-  };
-}
-
-function uniqueSorted(values: string[]) {
-  return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
-}
-
-function kitUniverseOf(kit: KitOption) {
-  return kit.baseUnit?.ipSeries?.universe ?? kit.baseUnit?.ipSeries?.name ?? null;
-}
-
-function kitScaleOf(kit: KitOption) {
-  return kit.grade ?? kit.scale ?? null;
-}
-
-function kitMassOf(kit: KitOption | null) {
-  const silhouette = kit?.silhouetteType ?? kit?.baseUnit?.silhouetteType ?? "";
-  if (silhouette.includes("heavy")) {
-    return "heavy";
-  }
-  if (silhouette.includes("agile") || silhouette.includes("frame")) {
-    return "agile";
-  }
-  return "hero";
-}
-
-function materialFinishOf(preset: { finishType?: string; sheenLevel?: string } | null) {
-  const blob = `${preset?.finishType ?? ""} ${preset?.sheenLevel ?? ""}`.toLowerCase();
-  if (blob.includes("chrome") || blob.includes("metal") || blob.includes("high") || blob.includes("gun")) {
-    return "chrome";
-  }
-  if (blob.includes("semi") || blob.includes("medium") || blob.includes("gloss")) {
-    return "semi";
-  }
-  return "matte";
-}
-
-type KitOption = {
-  _id: Id<"baseModels">;
-  name: string;
-  grade?: string;
-  scale?: string;
-  complexityLevel?: string;
-  silhouetteType?: string;
-  tags: string[];
-  baseUnit?: {
-    silhouetteType?: string;
-    ipSeries?: { name?: string; universe?: string } | null;
-  } | null;
-};
-
-function formatMoodTagLabel(tag: MoodTag) {
-  if (tag === "command-presence") {
-    return "Command Presence";
-  }
-  if (tag === "stealth-tension") {
-    return "Stealth Tension";
-  }
-  if (tag === "industrial-hazard") {
-    return "Industrial Hazard";
-  }
-  if (tag === "reactor-glow") {
-    return "Reactor Glow";
-  }
-  if (tag === "field-fatigue") {
-    return "Field Fatigue";
-  }
-  return "Ceremonial Clean";
-}
-
-function clampNotes(notes?: string | null) {
-  return notes?.slice(0, 100) ?? "";
-}
-
-function creativeErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof ConvexError && typeof error.data === "string") return error.data;
-  if (!(error instanceof Error)) return fallback;
-  const message = error.message.match(/Uncaught (?:Error|ConvexError): ([^\n]+)/)?.[1] ?? error.message.split("\n")[0];
-  return message.replace(/^(?:Uncaught Error:\s*)+/, "");
+function errorText(error: unknown) {
+  const text = error instanceof Error ? error.message : "Could not start this preview";
+  return (text.match(/Uncaught (?:Error|ConvexError): ([^\n]+)/)?.[1] ?? text.split("\n")[0]).replace(/^(?:Uncaught Error:\s*)+/, "");
 }

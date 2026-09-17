@@ -140,6 +140,19 @@ const schema = defineSchema({
       searchField: "searchText",
     }),
 
+  kitFavorites: defineTable({ userId: v.id("users"), kitId: v.id("baseModels"), createdAt: v.number() })
+    .index("by_user", ["userId"]).index("by_user_kit", ["userId", "kitId"]),
+
+  creationRuns: defineTable({
+    userId: v.id("users"), requestKey: v.string(), inputJson: v.string(), inputKey: v.string(),
+    status: v.union(v.literal("queued"), v.literal("running"), v.literal("succeeded"), v.literal("failed")),
+    stage: v.union(v.literal("palette"), v.literal("specification"), v.literal("render")),
+    cost: v.number(), attempt: v.number(), refunded: v.boolean(), error: v.optional(v.string()),
+    paletteId: v.optional(v.id("promptCompositions")), specificationId: v.optional(v.id("promptCompositions")),
+    conceptId: v.optional(v.id("concepts")), renderJobId: v.optional(v.id("generationJobs")),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]).index("by_user_request", ["userId", "requestKey"]),
+
   baseModels: defineTable({
     baseUnitId: v.optional(v.id("baseUnits")),
     name: v.string(),
@@ -1131,6 +1144,8 @@ const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   promptCompositions: defineTable({
+    creationRunId: v.optional(v.id("creationRuns")),
+    creationAttempt: v.optional(v.number()),
     requestKey: v.optional(v.string()),
     executionStartedAt: v.optional(v.number()),
     reservedCredits: v.optional(v.number()),
@@ -1195,6 +1210,8 @@ const schema = defineSchema({
     .index("by_promptTemplateVersionId", ["promptTemplateVersionId"]),
 
   generationJobs: defineTable({
+    creationRunId: v.optional(v.id("creationRuns")),
+    creationAttempt: v.optional(v.number()),
     userId: v.id("users"),
     kind: vGenerationKind,
     status: vGenerationStatus,

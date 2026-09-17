@@ -613,6 +613,10 @@ export const markJobSucceeded = internalMutation({
       ctx.db.get(generationJobId),
       ctx.db.get(conceptId),
     ]);
+    if (job?.creationRunId) {
+      const run = await ctx.db.get(job.creationRunId);
+      if (!run || run.status !== "running" || run.attempt !== job.creationAttempt) throw new Error("Preview attempt is no longer active");
+    }
     const assetRecords = await createAssetGraph(ctx, {
       legacyAsset: asset,
       mediaKind: "generated-image",
@@ -963,6 +967,7 @@ export const refundFailedJobCredits = internalMutation({
     if (job.status !== "failed") {
       return;
     }
+    if (job.creationRunId) return;
 
     const existingRefund = await ctx.db
       .query("creditTransactions")

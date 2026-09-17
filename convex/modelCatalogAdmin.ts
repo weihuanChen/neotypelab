@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { portraitUrl } from "./kitPicker";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { vModelCatalogStatus } from "./domain";
@@ -148,6 +149,7 @@ export const listModelCatalogData = query({
             aliases: variant.aliases,
             tags: variant.tags,
             thumbnailAssetKey: variant.thumbnailAssetKey,
+            portraitUrl: portraitUrl(variant.thumbnailAssetKey),
             defaultMaterialPresetId: variant.defaultMaterialPresetId,
             promptAnchor: variant.promptAnchor,
             status: resolveModelCatalogStatus(variant),
@@ -383,6 +385,7 @@ export const upsertKitVariant = mutation({
       throw new Error("Select a valid base unit before saving the kit variant");
     }
     const name = requireName(args.name, "Kit variant name");
+    if (args.thumbnailAssetKey?.includes(":") && !/^https:\/\//.test(args.thumbnailAssetKey)) throw new Error("Use an HTTPS image URL or an R2 object key");
     const aliases = compactStringArray(args.aliases);
     const tags = compactStringArray(args.tags);
     const slug = await resolveKitVariantSlug(ctx, args.slug, name, args.kitVariantId);

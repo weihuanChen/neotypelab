@@ -1,4 +1,5 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import type { MutationCtx as ViewerMutationCtx } from "./types";
 import { ownedStyle } from "./userStyles";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, query } from "./functions";
@@ -58,9 +59,9 @@ type Snapshot = {
   visualPalette?: VisualPalette;
 };
 
-export const begin = internalMutation({
-  args: { ...creativeArgs, kind: v.union(v.literal("style-suggestion"), v.literal("palette-plan")) },
-  handler: async (ctx, args) => {
+const beginArgs = { ...creativeArgs, kind: v.union(v.literal("style-suggestion"), v.literal("palette-plan")) };
+export const begin = internalMutation({ args: beginArgs, handler: (ctx, args) => beginCreative(ctx, args) });
+export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnType<typeof beginValidator>>, prepaid = false) {
     const viewer = ctx.viewerX();
     if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
     if (!args.requestKey.trim() || args.requestKey.length > 120) throw new Error("Invalid request key");
@@ -92,7 +93,8 @@ export const begin = internalMutation({
     const template = await resolvePipelineTemplate(ctx, args.kind);
     if (!template) throw new Error("No published creative template is configured");
     const actionType = args.kind === "palette-plan" ? "generate-palette" : "generate-style-suggestion";
-    const priceRule = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", actionType)).collect()).find(p => p.isActive);
+    const configuredPrice = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", actionType)).collect()).find(p => p.isActive);
+    const priceRule = configuredPrice ? { ...configuredPrice, creditCost: prepaid ? 0 : configuredPrice.creditCost } : null;
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
     if (!priceRule || !account || account.balance < priceRule.creditCost) throw new Error("Insufficient credits or missing active price rule");
     const modelContext = await buildModelPromptContext(ctx, model);
@@ -128,19 +130,25 @@ export const begin = internalMutation({
       additionalNotes: args.notes?.trim(), inputSnapshotJson: JSON.stringify(snapshot),
     });
     const balance = account.balance - priceRule.creditCost;
-    await ctx.db.patch(account._id, { balance, lifetimeSpent: account.lifetimeSpent + priceRule.creditCost, lastCreditEventAt: Date.now() });
-    await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType, delta: -priceRule.creditCost, creditAmount: priceRule.creditCost,
-      balanceAfter: balance, referenceTable: "promptCompositions", referenceId: id, description: `Reserved ${args.kind} generation` });
+    if (!prepaid) {
+      await ctx.db.patch(account._id, { balance, lifetimeSpent: account.lifetimeSpent + priceRule.creditCost, lastCreditEventAt: Date.now() });
+      await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType, delta: -priceRule.creditCost, creditAmount: priceRule.creditCost,
+        balanceAfter: balance, referenceTable: "promptCompositions", referenceId: id, description: `Reserved ${args.kind} generation` });
+    }
     await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId: id });
     return id;
-  },
-});
+}
+function beginValidator() { return v.object(beginArgs); }
 
 export const claim = systemMutation({
   args: { promptCompositionId: v.id("promptCompositions") },
   handler: async (ctx, { promptCompositionId }) => {
     const composition = await ctx.db.get(promptCompositionId);
     if (!composition || composition.status !== "ready" || composition.executionStartedAt) return null;
+    if (composition.creationRunId) {
+      const run = await ctx.db.get(composition.creationRunId);
+      if (!run || run.status !== "running" || run.attempt !== composition.creationAttempt) return null;
+    }
     await ctx.db.patch(composition._id, { executionStartedAt: Date.now() });
     if (composition.generationJobId) await ctx.db.patch(composition.generationJobId, { status: "running" });
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
@@ -153,6 +161,10 @@ export const complete = systemMutation({
   handler: async (ctx, args) => {
     const composition = await ctx.db.get(args.promptCompositionId);
     if (!composition || composition.status !== "ready") return;
+    if (composition.creationRunId) {
+      const run = await ctx.db.get(composition.creationRunId);
+      if (!run || run.status !== "running" || run.attempt !== composition.creationAttempt) return;
+    }
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
     const raw: unknown = JSON.parse(args.responseJson);
     let suggestions: CreativeResult["suggestions"] = [];

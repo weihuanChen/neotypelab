@@ -1,4 +1,5 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import type { MutationCtx } from "./types";
 import { ownedStyle } from "./userStyles";
 import { internal } from "./_generated/api";
 import { vConceptVisibility, vMoodTag, vWeatheringLevel } from "./domain";
@@ -18,8 +19,7 @@ import {
   visualPaletteSchema,
 } from "./paintRecommendationEngine";
 
-export const initializePrototype = mutation({
-  args: {
+export const prototypeArgs = {
     userStyleId: v.optional(v.id("userStyles")),
     sourceConceptId: v.optional(v.id("concepts")),
     baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
@@ -28,8 +28,9 @@ export const initializePrototype = mutation({
     visibility: v.optional(vConceptVisibility), notes: v.optional(v.string()),
     paletteCompositionId: v.optional(v.id("promptCompositions")), requestKey: v.optional(v.string()),
     styleRevision: v.optional(v.string()), styleIntentJson: v.optional(v.string()), styleIntentVersion: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
+  };
+export const initializePrototype = mutation({ args: prototypeArgs, handler: (ctx, args) => initializeConcept(ctx, args) });
+export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType<typeof prototypeValidator>>, prepaid = false) {
     const viewer = ctx.viewerX();
     if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
     if (args.stylePresetId && args.styleIntentJson) throw new Error("Choose either a preset or custom style");
@@ -76,7 +77,8 @@ export const initializePrototype = mutation({
     const source = args.sourceConceptId ? await ctx.db.get(args.sourceConceptId) : null;
     if (args.sourceConceptId && (!source || source.visibility === "private" || source.status === "draft")) throw new Error("Remix source is unavailable");
     const template = await resolvePipelineTemplate(ctx, "repaint-concept");
-    const price = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", "generate-repaint-concept")).collect()).find(p => p.isActive);
+    const configuredPrice = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", "generate-repaint-concept")).collect()).find(p => p.isActive);
+    const price = configuredPrice ? { ...configuredPrice, creditCost: prepaid ? 0 : configuredPrice.creditCost } : null;
     if (!template || !price) throw new Error("Repaint specification template or price rule is missing");
     if (account.balance < price.creditCost) throw new Error("Insufficient credits");
     const modelContext = await buildModelPromptContext(ctx, model);
@@ -125,11 +127,13 @@ export const initializePrototype = mutation({
     await ctx.db.patch(conceptId, { generationJobId });
     await ctx.db.patch(promptCompositionId, { generationJobId });
     const balanceAfter = account.balance - price.creditCost;
-    await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeSpent: account.lifetimeSpent + price.creditCost, lastCreditEventAt: Date.now() });
-    await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType: "generate-repaint-concept", delta: -price.creditCost,
-      creditAmount: price.creditCost, balanceAfter, generationJobId, conceptId, referenceTable: "promptCompositions", referenceId: promptCompositionId, description: `Queued repaint specification for ${title}` });
-    await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, { generationJobId });
+    if (!prepaid) {
+      await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeSpent: account.lifetimeSpent + price.creditCost, lastCreditEventAt: Date.now() });
+      await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType: "generate-repaint-concept", delta: -price.creditCost,
+        creditAmount: price.creditCost, balanceAfter, generationJobId, conceptId, referenceTable: "promptCompositions", referenceId: promptCompositionId, description: `Queued repaint specification for ${title}` });
+    }
+    if (!prepaid) await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, { generationJobId });
     await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId });
     return { conceptId, promptCompositionId, generationJobId, balanceAfter, title, templateName: template.name, promptPreview: composedPrompt, priceRule };
-  },
-});
+}
+function prototypeValidator() { return v.object(prototypeArgs); }

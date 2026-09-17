@@ -358,6 +358,7 @@ export const executeQueuedJob = internalAction({
     generationJobId: v.id("generationJobs"),
   },
   handler: async (ctx, { generationJobId }) => {
+    if (!await ctx.runQuery(internal.creationRuns.jobIsRunnable, { generationJobId })) return;
     const textCompositionId = await ctx.runQuery(internal.creativePipeline.getRepaintComposition, { generationJobId });
     if (textCompositionId) {
       await ctx.runAction(internal.creativeNode.executeComposition, { promptCompositionId: textCompositionId });
@@ -408,6 +409,8 @@ export const executeQueuedJob = internalAction({
         },
       });
       attemptedProvider = generated.provider;
+
+      if (!await ctx.runQuery(internal.creationRuns.jobIsRunnable, { generationJobId })) return;
 
       const processed = await createImageRenditions(
         generated.buffer,

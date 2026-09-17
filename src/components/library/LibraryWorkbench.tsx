@@ -1,4 +1,5 @@
 "use client";
+import { CreationRunNotice } from "./CreationRunNotice";
 
 import {
   AlertDialog,
@@ -100,6 +101,7 @@ export function LibraryWorkbench({ search: _search }: { search: LibrarySearch })
       </Unauthenticated>
 
       <Authenticated>
+        <CreationRunNotice />
         <AuthenticatedLibraryWorkbench />
       </Authenticated>
     </div>

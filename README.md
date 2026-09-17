@@ -1,5 +1,12 @@
 # NeotypeLab
 
+The Create workspace now uses **Style → Kit → Generate preview**. Step 2 offers
+server-side kit lookup, account favorites, recent builds, filters, configurable
+portraits, and one combined price for preview image + paint plan. Generation runs
+on the server, survives page closure and refunds the full price on final failure.
+See [Kit picker and preview runs](docs/kit-picker-and-preview-runs.md) for resource
+guidelines, retry semantics and catalog-size bounds.
+
 NeotypeLab is a TanStack Start frontend deployed on Cloudflare Workers with
 Convex as the canonical backend. The app exposes public prototype discovery
 routes, OG/social cards, sitemap/robots output, and an authenticated terminal for

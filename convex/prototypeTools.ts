@@ -154,11 +154,12 @@ export const requestBuildStageVisualization = mutation({
   },
 });
 
-async function queueConceptRender(
+export async function queueConceptRender(
   ctx: MutationCtx,
   conceptId: Id<"concepts">,
   renderMode: RenderMode,
-  simulationStage?: SimulationStage
+  simulationStage?: SimulationStage,
+  prepaid = false
 ) {
   const viewer = ctx.viewerX();
   await assertGenerationCapacity(ctx, viewer._id);
@@ -213,6 +214,7 @@ async function queueConceptRender(
   if (priceRule === null) {
     throw new Error(`No active price rule is configured for ${getRenderLabel(renderMode)}`);
   }
+  if (prepaid) priceRule.creditCost = 0;
   if (account.balance < priceRule.creditCost) {
     throw new Error(
       `Insufficient credits. ${priceRule.creditCost} credits required, ${account.balance} available.`
@@ -381,7 +383,7 @@ async function queueConceptRender(
     generationJobId,
   });
 
-  const balanceAfter = await debitCredits({
+  const balanceAfter = prepaid ? account.balance : await debitCredits({
     ctx,
     accountId: account._id,
     currentBalance: account.balance,
@@ -396,7 +398,7 @@ async function queueConceptRender(
     conceptId: concept._id,
   });
 
-  await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, {
+  if (!prepaid) await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, {
     generationJobId,
   });
 
