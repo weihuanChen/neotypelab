@@ -113,6 +113,34 @@
   padding: clamp(1.15rem, 2.8vw, 2.5rem);
 }
 
+.exhibition-feature-card__image .exhibition-preview-missing,
+.exhibition-card__media .exhibition-preview-missing,
+.exhibition-collection__works .exhibition-preview-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.exhibition-recent__item .exhibition-preview-missing {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+  margin-bottom: 0.5rem;
+  background: var(--color-paper-3);
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .exhibition-feature-card__actions {
   position: absolute;
   z-index: 2;

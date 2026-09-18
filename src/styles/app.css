@@ -318,6 +318,8 @@ select {
 }
 
 .app-shell__content .showcase-page,
+.app-shell__content .explore-landing,
+.app-shell__content .exhibition-page,
 .app-shell__content .terminal-shell,
 .app-shell__content .spike-page,
 .app-shell__content .prototype-page,
@@ -329,38 +331,6 @@ select {
   max-width: none;
   margin: 0;
   padding: 0;
-}
-
-.explore-masthead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: var(--rule-hair) solid var(--color-rule-2);
-}
-
-.explore-masthead__mark {
-  margin: 0 0 0.45rem;
-  color: var(--color-muted);
-  font-family: var(--font-label);
-  font-size: 0.88rem;
-  letter-spacing: 0.04em;
-}
-
-.explore-masthead h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 3vw, 2.6rem);
-  font-weight: 400;
-  line-height: 1;
-}
-
-.explore-masthead__actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 0.6rem;
 }
 
 @media (max-width: 860px) {
@@ -418,11 +388,6 @@ select {
   .app-topbar__credits,
   .app-topbar__auth-missing {
     min-width: 4.75rem;
-  }
-
-  .explore-masthead {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 

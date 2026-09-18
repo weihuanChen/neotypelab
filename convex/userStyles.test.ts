@@ -103,6 +103,25 @@ describe("Style interpretation lifecycle", () => {
     await f.t.run(ctx => ctx.db.patch(f.other.userId, { accountStatus: "suspended" }));
     await expect(f.other.client.mutation(internal.styleInterpretations.begin, { description: "Cyan", requestKey: "suspended" })).rejects.toThrow(/suspended/);
   });
+
+  it("rejects interpretation when credits are missing or the tariff is inactive", async () => {
+    const f = await fixture();
+    await f.t.run(async ctx => {
+      const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.owner.userId)).unique();
+      await ctx.db.patch(account!._id, { balance: 0 });
+    });
+    await expect(f.owner.client.mutation(internal.styleInterpretations.begin, { description: "Cyan", requestKey: "broke" })).rejects.toThrow(
+      new RegExp(`Insufficient credits\\. ${f.cost} credits required, 0 available`)
+    );
+    await f.t.run(async ctx => {
+      const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.owner.userId)).unique();
+      await ctx.db.patch(account!._id, { balance: 40 });
+      for (const rule of await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", "generate-style-suggestion")).collect()) {
+        await ctx.db.patch(rule._id, { isActive: false });
+      }
+    });
+    await expect(f.owner.client.mutation(internal.styleInterpretations.begin, { description: "Cyan", requestKey: "unpriced" })).rejects.toThrow(/currently unavailable/);
+  });
 });
 
 describe("Private and community styles", () => {

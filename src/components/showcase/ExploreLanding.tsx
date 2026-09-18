@@ -8,6 +8,8 @@ import { api } from "@/convex/_generated/api";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import {
   buildShowcaseHref,
+  hasActiveShowcaseQuery,
+  isPublicArchivePending,
   publicConceptImageUrl,
   showcaseSortOptions,
 } from "./showcaseUtils";
@@ -38,221 +40,6 @@ type ExplorePrototype = {
   saveCount: number;
 };
 
-const editorialAnchor = Date.UTC(2026, 7, 16);
-
-const editorialFallbacks: ExplorePrototype[] = [
-  fallbackPrototype({
-    id: "n001",
-    title: "Gundam MK–II / Field Hazard",
-    kit: "MG 1/100 Gundam MK–II",
-    kitSlug: "mg-gundam-mk-ii",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Chipped Enamel + Oil Stain",
-    materialSlug: "chipped-enamel",
-    weathering: "Field worn",
-    creator: "NeotypeLab",
-    image: "/assets/explore/editorial-hero.png",
-    remixCount: 24,
-    saveCount: 91,
-  }),
-  fallbackPrototype({
-    id: "n002",
-    title: "Jesta / Night Dispatch",
-    kit: "MG 1/100 Jesta",
-    kitSlug: "mg-jesta",
-    style: "Command Unit",
-    styleSlug: "command-unit",
-    material: "Graphite Ceramic",
-    materialSlug: "graphite-ceramic",
-    weathering: "Clean",
-    creator: "S. Kondo",
-    image: "/assets/explore/editorial-detail-dark.png",
-    remixCount: 18,
-    saveCount: 67,
-  }),
-  fallbackPrototype({
-    id: "n003",
-    title: "Zaku II / Jungle Recon",
-    kit: "MG 1/100 Zaku II",
-    kitSlug: "mg-zaku-ii",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Matte Armor",
-    materialSlug: "matte-armor",
-    weathering: "Dust",
-    creator: "T. Hayashi",
-    image: "/assets/explore/editorial-detail-olive.png",
-    remixCount: 15,
-    saveCount: 52,
-  }),
-  fallbackPrototype({
-    id: "n004",
-    title: "Ball / Ceremonial Relay",
-    kit: "MG 1/100 Ball Ver.Ka",
-    kitSlug: "mg-ball-ver-ka",
-    style: "Ceremonial Clean",
-    styleSlug: "ceremonial-clean",
-    material: "Pearl Lacquer",
-    materialSlug: "pearl-lacquer",
-    weathering: "Clean",
-    creator: "R. Okada",
-    image: "/assets/explore/editorial-detail-white.png",
-    remixCount: 11,
-    saveCount: 48,
-  }),
-  fallbackPrototype({
-    id: "n005",
-    title: "Gundam EZ–8 / Urban Patrol",
-    kit: "MG 1/100 Gundam EZ–8",
-    kitSlug: "mg-gundam-ez-8",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Chipped Enamel",
-    materialSlug: "chipped-enamel",
-    weathering: "Panel wash",
-    creator: "M. Fujita",
-    image: "/assets/explore/trending-white-industrial.png",
-    remixCount: 21,
-    saveCount: 79,
-  }),
-  fallbackPrototype({
-    id: "n006",
-    title: "Zaku II / Red Command",
-    kit: "HG 1/144 Zaku II",
-    kitSlug: "hg-zaku-ii",
-    style: "Command Unit",
-    styleSlug: "command-unit",
-    material: "Satin Plated",
-    materialSlug: "satin-plated",
-    weathering: "Soft wear",
-    creator: "K. Matsuda",
-    image: "/assets/explore/trending-red-command.png",
-    remixCount: 19,
-    saveCount: 72,
-  }),
-  fallbackPrototype({
-    id: "n007",
-    title: "GM Sniper II / Desert Watch",
-    kit: "MG 1/100 GM Sniper II",
-    kitSlug: "mg-gm-sniper-ii",
-    style: "Ceremonial Clean",
-    styleSlug: "ceremonial-clean",
-    material: "Sand Ceramic",
-    materialSlug: "sand-ceramic",
-    weathering: "Dust",
-    creator: "Y. Nakamura",
-    image: "/assets/explore/trending-sand-sniper.png",
-    remixCount: 16,
-    saveCount: 63,
-  }),
-  fallbackPrototype({
-    id: "n008",
-    title: "Rick Dias / Harbor Guard",
-    kit: "MG 1/100 Rick Dias",
-    kitSlug: "mg-rick-dias",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Oxide Metal",
-    materialSlug: "oxide-metal",
-    weathering: "Soot",
-    creator: "A. Mori",
-    image: "/assets/explore/trending-blue-hazard.png",
-    remixCount: 14,
-    saveCount: 59,
-  }),
-  fallbackPrototype({
-    id: "n009",
-    title: "Gundam TR–1 [Hazel]",
-    kit: "MG 1/100 Hazel",
-    kitSlug: "mg-hazel",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Ivory Ceramic",
-    materialSlug: "ivory-ceramic",
-    weathering: "Oil stain",
-    creator: "N. Iwata",
-    image: "/assets/explore/archive-hazel-white.png",
-    remixCount: 13,
-    saveCount: 57,
-  }),
-  fallbackPrototype({
-    id: "n010",
-    title: "Jegan / Signal 21",
-    kit: "HG 1/144 Jegan",
-    kitSlug: "hg-jegan",
-    style: "Command Unit",
-    styleSlug: "command-unit",
-    material: "Teal Matte",
-    materialSlug: "teal-matte",
-    weathering: "Clean",
-    creator: "Yinglian",
-    image: "/assets/explore/archive-jegan-teal.png",
-    remixCount: 12,
-    saveCount: 55,
-  }),
-  fallbackPrototype({
-    id: "n011",
-    title: "Tallgeese EW / Ivory Standard",
-    kit: "MG 1/100 Tallgeese EW",
-    kitSlug: "mg-tallgeese-ew",
-    style: "Ceremonial Clean",
-    styleSlug: "ceremonial-clean",
-    material: "Pearl + Gold",
-    materialSlug: "pearl-gold",
-    weathering: "Clean",
-    creator: "H. Ito",
-    image: "/assets/explore/archive-ceremonial-white.png",
-    remixCount: 10,
-    saveCount: 51,
-  }),
-  fallbackPrototype({
-    id: "n012",
-    title: "Nu Gundam / Black Vanguard",
-    kit: "RG 1/144 Nu Gundam",
-    kitSlug: "rg-nu-gundam",
-    style: "Command Unit",
-    styleSlug: "command-unit",
-    material: "Black Ceramic",
-    materialSlug: "black-ceramic",
-    weathering: "Clean",
-    creator: "A. Sato",
-    image: "/assets/explore/archive-black-vanguard.png",
-    remixCount: 9,
-    saveCount: 46,
-  }),
-  fallbackPrototype({
-    id: "n013",
-    title: "Guncannon / Foundry Unit",
-    kit: "MG 1/100 Guncannon",
-    kitSlug: "mg-guncannon",
-    style: "Industrial Hazard",
-    styleSlug: "industrial-hazard",
-    material: "Safety Enamel",
-    materialSlug: "safety-enamel",
-    weathering: "Heavy wear",
-    creator: "F. Abe",
-    image: "/assets/explore/archive-orange-worker.png",
-    remixCount: 8,
-    saveCount: 43,
-  }),
-  fallbackPrototype({
-    id: "n014",
-    title: "Geara Doga / Field Recon",
-    kit: "MG 1/100 Geara Doga",
-    kitSlug: "mg-geara-doga",
-    style: "Command Unit",
-    styleSlug: "command-unit",
-    material: "Olive Matte",
-    materialSlug: "olive-matte",
-    weathering: "Field worn",
-    creator: "C. Watanabe",
-    image: "/assets/explore/archive-green-field.png",
-    remixCount: 7,
-    saveCount: 39,
-  }),
-];
-
 export function ExploreLanding({
   search,
   snapshot,
@@ -266,10 +53,34 @@ export function ExploreLanding({
     providerStatus.hasConvexClient ? {} : "skip"
   );
   const concepts = liveConcepts ?? snapshot.concepts;
-  const isFallback = concepts.length === 0;
-  const allItems = isFallback
-    ? editorialFallbacks
-    : concepts.map((concept, index) => normalizeConcept(concept, index));
+  const querying = hasActiveShowcaseQuery(search);
+
+  if (isPublicArchivePending(liveConcepts, snapshot.concepts.length, providerStatus.hasConvexClient)) {
+    return (
+      <main className="explore-landing">
+        <SystemState {...systemStates.exploreLoading} />
+      </main>
+    );
+  }
+
+  if (concepts.length === 0) {
+    return (
+      <main className="explore-landing">
+        <SystemState
+          {...(querying ? systemStates.emptyQuery : systemStates.emptyShowcase)}
+          primary={
+            querying ? (
+              <SystemStateLink href="/">Clear filters</SystemStateLink>
+            ) : (
+              <SystemStateLink href="/create">Start a prototype →</SystemStateLink>
+            )
+          }
+        />
+      </main>
+    );
+  }
+
+  const allItems = concepts.map((concept) => normalizeConcept(concept));
   const editorialItems = allItems.slice(0, 4);
   const trendingItems = cycleItems(allItems.slice(1), allItems, 4);
   const archiveItems = sortDisplayItems(
@@ -308,7 +119,7 @@ function EditorialFeature({ items }: { items: ExplorePrototype[] }) {
       <div className="explore-feature">
         <a className="explore-feature__image" href={lead.href}>
           <span>N.001</span>
-          <img src={lead.image} alt={`${lead.title} repaint prototype`} />
+          <PreviewImage alt={`${lead.title} repaint prototype`} src={lead.image} />
         </a>
         <aside className="explore-feature__meta" aria-label="Featured prototype record">
           <div className="explore-feature__record">
@@ -349,6 +160,10 @@ function EditorialMeta({ label, value }: { label: string; value: string }) {
 }
 
 function TrendingStrip({ items }: { items: ExplorePrototype[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <section className="explore-trending" aria-labelledby="trending-title">
       <h2 id="trending-title">Trending</h2>
@@ -483,7 +298,7 @@ function DiscoveryFilter({
                 href={buildShowcaseHref(search, { [config.param]: option.slug }, "/")}
                 key={option.slug}
               >
-                <img src={option.image} alt="" />
+                <PreviewImage alt="" src={option.image} />
                 <span>{option.label}</span>
                 {selected ? <CheckIcon aria-hidden="true" /> : null}
               </a>
@@ -505,7 +320,7 @@ function PrototypeCard({
   return (
     <article className={compact ? "explore-prototype-card is-compact" : "explore-prototype-card"}>
       <a className="explore-prototype-card__image" href={item.href}>
-        <img src={item.image} alt={`${item.title} repaint prototype`} />
+        <PreviewImage alt={`${item.title} repaint prototype`} src={item.image} />
       </a>
       <div className="explore-prototype-card__body">
         <p>{item.kit}</p>
@@ -523,8 +338,15 @@ function PrototypeCard({
   );
 }
 
-function normalizeConcept(concept: ShowcaseConcept, index: number): ExplorePrototype {
-  const fallback = editorialFallbacks[index % editorialFallbacks.length];
+function PreviewImage({ alt, src }: { alt: string; src: string }) {
+  if (!src) {
+    return <div className="explore-preview-missing">Preview unavailable</div>;
+  }
+
+  return <img alt={alt} src={src} />;
+}
+
+function normalizeConcept(concept: ShowcaseConcept): ExplorePrototype {
   return {
     id: String(concept._id),
     title: concept.title,
@@ -536,24 +358,12 @@ function normalizeConcept(concept: ShowcaseConcept, index: number): ExploreProto
     materialSlug: concept.materialPreset?.slug ?? "unknown-material",
     weathering: concept.weatheringLevel,
     creator: concept.owner?.handle ?? "NeotypeLab",
-    image: publicConceptImageUrl(concept.previewAsset, fallback.image),
+    image: publicConceptImageUrl(concept.previewAsset),
     href: `/prototype/${concept._id}`,
     remixHref: `/create?remix=${concept._id}`,
     createdAt: concept._creationTime,
     remixCount: concept.remixCount,
     saveCount: concept.engagement.saveCount,
-  };
-}
-
-function fallbackPrototype(
-  prototype: Omit<ExplorePrototype, "createdAt" | "href" | "remixHref">
-): ExplorePrototype {
-  const index = Number(prototype.id.replace(/\D/g, "")) || 1;
-  return {
-    ...prototype,
-    createdAt: editorialAnchor - index * 86_400_000,
-    href: "/showcase",
-    remixHref: "/create",
   };
 }
 

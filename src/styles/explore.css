@@ -126,6 +126,31 @@
   padding: clamp(1.1rem, 3vw, 2.4rem);
 }
 
+.explore-feature__image .explore-preview-missing,
+.explore-prototype-card__image .explore-preview-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.explore-filter__list .explore-preview-missing,
+.explore-filter__visual-grid .explore-preview-missing {
+  display: grid;
+  width: 3rem;
+  height: 2.7rem;
+  place-items: center;
+  overflow: hidden;
+  background: var(--color-paper-2);
+  color: var(--color-muted);
+  font-size: 0;
+}
+
 .explore-filter__panel img {
   display: block;
   width: 100%;

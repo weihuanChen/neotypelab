@@ -206,6 +206,30 @@ export const systemStates = {
     purpose: "progress",
     context: "Prototype library",
   },
+  exploreLoading: {
+    code: "SYNC",
+    archive: "Explore / Indexing",
+    headline: "Opening\nthe public archive.",
+    message: [
+      "Published prototypes are being resolved for this view.",
+    ],
+    signal: "loading",
+    signalLabel: "Archive / Sync",
+    purpose: "progress",
+    context: "Public archive",
+  },
+  showcaseLoading: {
+    code: "SYNC",
+    archive: "Showcase / Indexing",
+    headline: "Opening\nthe public archive.",
+    message: [
+      "Selected works, collections and recent publications are being resolved.",
+    ],
+    signal: "loading",
+    signalLabel: "Archive / Sync",
+    purpose: "progress",
+    context: "Public archive",
+  },
   recordMissing: {
     code: "404",
     archive: "Library / Missing record",

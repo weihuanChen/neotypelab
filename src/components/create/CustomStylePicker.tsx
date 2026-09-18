@@ -11,13 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 type Props = {
   userId: string;
   creditCost?: number;
+  creditBalance?: number;
   selectedId: Id<"userStyles"> | null;
   onUse: (intent: StyleIntent, styleId: Id<"userStyles">) => void;
   onClear: () => void;
   view: "describe" | "mine";
   onApply: () => void;
 };
-export function CustomStylePicker({ userId, creditCost, selectedId, onUse, onClear, view: tab, onApply }: Props) {
+export function CustomStylePicker({ userId, creditCost, creditBalance, selectedId, onUse, onClear, view: tab, onApply }: Props) {
   const [description, setDescription] = useState("");
   const [queryDescription, setQueryDescription] = useState("");
   const [requestKey, setRequestKey] = useState<string | null>(null);
@@ -47,10 +48,12 @@ export function CustomStylePicker({ userId, creditCost, selectedId, onUse, onCle
     const timer = setTimeout(() => setQueryDescription(description.trim()), 300);
     return () => clearTimeout(timer);
   }, [description]);
+  const interpretationUnavailable = creditCost === undefined;
+  const insufficientCredits = creditCost !== undefined && creditBalance !== undefined && creditBalance < creditCost;
   async function run(task: () => Promise<void>) {
     setBusy(true);
     setError("");
-    try { await task(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update style"); }
+    try { await task(); } catch (cause) { setError(convexErrorText(cause)); }
     finally { setBusy(false); }
   }
   async function onInterpret() {
@@ -91,10 +94,10 @@ export function CustomStylePicker({ userId, creditCost, selectedId, onUse, onCle
           }} />
         <div className="style-command-examples">{["Crimson armor with restrained gold accents", "Cyan idol colors with racing graphics", "Cold-war naval aviation"].map(example =>
           <button type="button" key={example} disabled={busy} onClick={() => { setDescription(example); setRequestKey(null); setResult(null); onClear(); }}>“{example}”</button>)}</div>
-        <Button disabled={busy || checkingHistory || creditCost === undefined || !description.trim()} onClick={() => { void run(onInterpret); }}>
+        <Button disabled={busy || checkingHistory || interpretationUnavailable || insufficientCredits || !description.trim()} onClick={() => { void run(onInterpret); }}>
           {busy ? "Interpreting…" : checkingHistory ? "Checking saved interpretation…" : "Interpret →"}
         </Button>
-        <p className="style-command-cost">{creditCost === undefined ? "Interpretation currently unavailable" : `Costs ${creditCost} credit${creditCost === 1 ? "" : "s"} · failed requests refunded`}</p>
+        <p className="style-command-cost">{costCopy(creditCost, creditBalance)}</p>
       </>}
     </div> : null}
     {tab === "mine" ? <div className="space-y-5">
@@ -115,6 +118,19 @@ export function CustomStylePicker({ userId, creditCost, selectedId, onUse, onCle
 
   </div>;
 }
+function costCopy(creditCost?: number, creditBalance?: number) {
+  if (creditCost === undefined) return "Interpretation currently unavailable";
+  if (creditBalance !== undefined && creditBalance < creditCost) {
+    return `Needs ${creditCost} credit${creditCost === 1 ? "" : "s"} · ${creditBalance} available`;
+  }
+  return `Costs ${creditCost} credit${creditCost === 1 ? "" : "s"} · failed requests refunded`;
+}
+
+function convexErrorText(error: unknown) {
+  const text = error instanceof Error ? error.message : "Unable to update style";
+  return (text.match(/Uncaught (?:Error|ConvexError): ([^\n]+)/)?.[1] ?? text.split("\n")[0]).replace(/^(?:Uncaught Error:\s*)+/, "");
+}
+
 export function IntentSummary({ intent }: { intent: StyleIntent }) {
   return <dl className="grid grid-cols-2 gap-3 text-sm">
     <div><dt>Palette</dt><dd>{Object.values(intent.palette).flat().join(" · ")}</dd></div>

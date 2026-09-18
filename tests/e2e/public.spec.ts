@@ -4,8 +4,29 @@ test("renders the public discovery page", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/");
   await expect(page).toHaveTitle(/NeotypeLab/);
-  await expect(page.getByRole("heading", { name: "Today's prototypes" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: "Today's prototypes" })
+      .or(page.getByRole("heading", { name: /Opening the public archive/i }))
+      .or(page.getByRole("heading", { name: /Nothing published yet/i }))
+      .or(page.getByRole("heading", { name: /No matching records/i }))
+  ).toBeVisible();
+  expect(consoleErrors).toEqual([]);
+});
+
+test("renders the public showcase page", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  await page.goto("/showcase");
+  await expect(page).toHaveTitle(/Showcase/);
+  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: "Selected works" })
+      .or(page.getByRole("heading", { name: /Opening the public archive/i }))
+      .or(page.getByRole("heading", { name: /Nothing published yet/i }))
+      .or(page.getByRole("heading", { name: /No matching records/i }))
+  ).toBeVisible();
   expect(consoleErrors).toEqual([]);
 });
 

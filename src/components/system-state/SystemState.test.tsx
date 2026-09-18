@@ -73,4 +73,13 @@ describe("SystemState", () => {
     expect(html).toContain("system-signal__node");
     expect(html).toContain("System / Sync");
   });
+
+  it("keeps public archive loading as a progress state", () => {
+    const html = renderToStaticMarkup(<SystemState {...systemStates.exploreLoading} />);
+    expect(html).toContain("Explore / Indexing");
+    expect(html).toContain("Opening");
+    expect(html).toContain("the public archive.");
+    expect(html).toContain("is-progress");
+    expect(html).toContain("Archive / Sync");
+  });
 });

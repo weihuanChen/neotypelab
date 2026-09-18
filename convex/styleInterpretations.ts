@@ -49,7 +49,11 @@ export const begin = internalMutation({
     const price = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q =>
       q.eq("actionType", "generate-style-suggestion")).collect()).find(row => row.isActive);
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
-    if (!price || !account || account.balance < price.creditCost) throw new Error("Insufficient credits or missing active style interpretation price");
+    if (!price) throw new Error("Style interpretation is currently unavailable");
+    if (!account) throw new Error("Credit account is not initialized");
+    if (account.balance < price.creditCost) {
+      throw new Error(`Insufficient credits. ${price.creditCost} credits required, ${account.balance} available.`);
+    }
     const snapshot: Snapshot = { kind: "style-interpreter", inputKey, description, systemPrompt: styleInterpreterSystemPrompt, templateVersion: version };
     const id = await ctx.db.insert("promptCompositions", {
       userId: viewer._id, requestKey: args.requestKey, reservedCredits: price.creditCost, status: "ready",

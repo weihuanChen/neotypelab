@@ -110,6 +110,14 @@ export function hasActiveShowcaseQuery(search: ShowcaseSearch) {
   );
 }
 
+export function isPublicArchivePending(
+  live: unknown[] | undefined,
+  snapshotCount: number,
+  hasConvexClient: boolean
+) {
+  return hasConvexClient && live === undefined && snapshotCount === 0;
+}
+
 export function selectExhibitionSections<T extends { id: string; createdAt: number }>(
   allWorks: T[],
   filteredWorks: T[],
@@ -223,7 +231,7 @@ export function publicConceptImageUrl(
       }
     | null
     | undefined,
-  fallback: string
+  fallback = ""
 ) {
   return (
     previewAsset?.publicUrl ??

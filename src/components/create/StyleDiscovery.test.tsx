@@ -41,4 +41,9 @@ describe("style workspace", () => {
     expect(html).not.toContain("My Styles");
     expect(html).not.toContain('aria-label="Custom style sources"');
   });
+  it("blocks interpretation when the viewer cannot pay the tariff", () => {
+    const html = renderToStaticMarkup(<CustomStylePicker userId="test" creditCost={1} creditBalance={0} selectedId={null} view="describe" onUse={() => {}} onClear={() => {}} onApply={() => {}} />);
+    expect(html).toContain("Needs 1 credit · 0 available");
+    expect(html).toMatch(/disabled=""[^>]*>Interpret/);
+  });
 });

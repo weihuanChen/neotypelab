@@ -11,6 +11,7 @@ import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import {
   buildShowcaseHref,
   hasActiveShowcaseQuery,
+  isPublicArchivePending,
   publicConceptImageUrl,
   selectExhibitionSections,
 } from "./showcaseUtils";
@@ -38,31 +39,17 @@ type ExhibitionWork = {
   saveCount: number;
 };
 
-const exhibitionAnchor = Date.UTC(2026, 7, 16);
-
-const fallbackWorks: ExhibitionWork[] = [
-  work("042", "Crimson Command", "MG Sazabi Ver.Ka", "mg-sazabi-ver-ka", "Command Unit", "command-unit", "Pseudo Plated", "pseudo-plated", "Clean", "yinglian", "/assets/explore/trending-red-command.png", 48, 132),
-  work("037", "Field Hazard", "MG Gundam MK–II", "mg-gundam-mk-ii", "Industrial Hazard", "industrial-hazard", "Chipped Enamel", "chipped-enamel", "Heavy", "NeotypeLab", "/assets/explore/editorial-hero.png", 34, 108),
-  work("031", "Night Dispatch", "MG Jesta", "mg-jesta", "Command Unit", "command-unit", "Graphite Ceramic", "graphite-ceramic", "Clean", "S. Kondo", "/assets/explore/editorial-detail-dark.png", 29, 96),
-  work("028", "Jungle Recon", "MG Zaku II", "mg-zaku-ii", "Industrial Hazard", "industrial-hazard", "Matte Armor", "matte-armor", "Light", "T. Hayashi", "/assets/explore/editorial-detail-olive.png", 25, 88),
-  work("024", "Ivory Relay", "MG Ball Ver.Ka", "mg-ball-ver-ka", "Ceremonial Clean", "ceremonial-clean", "Pearl Lacquer", "pearl-lacquer", "Clean", "R. Okada", "/assets/explore/editorial-detail-white.png", 21, 84),
-  work("021", "Urban Patrol", "MG Gundam EZ–8", "mg-gundam-ez-8", "Industrial Hazard", "industrial-hazard", "Chipped Enamel", "chipped-enamel", "Heavy", "M. Fujita", "/assets/explore/trending-white-industrial.png", 19, 79),
-  work("018", "Desert Watch", "MG GM Sniper II", "mg-gm-sniper-ii", "Ceremonial Clean", "ceremonial-clean", "Sand Ceramic", "sand-ceramic", "Light", "Y. Nakamura", "/assets/explore/trending-sand-sniper.png", 18, 76),
-  work("016", "Harbor Guard", "MG Rick Dias", "mg-rick-dias", "Industrial Hazard", "industrial-hazard", "Oxide Metal", "oxide-metal", "Light", "A. Mori", "/assets/explore/trending-blue-hazard.png", 16, 70),
-  work("013", "Hazel Test Frame", "MG Gundam TR–1", "mg-hazel", "Industrial Hazard", "industrial-hazard", "Ivory Ceramic", "ivory-ceramic", "Light", "N. Iwata", "/assets/explore/archive-hazel-white.png", 14, 65),
-  work("011", "Signal 21", "HG Jegan", "hg-jegan", "Command Unit", "command-unit", "Teal Matte", "teal-matte", "Clean", "yinglian", "/assets/explore/archive-jegan-teal.png", 13, 61),
-  work("009", "Ivory Standard", "MG Tallgeese EW", "mg-tallgeese-ew", "Ceremonial Clean", "ceremonial-clean", "Pearl + Gold", "pearl-gold", "Clean", "H. Ito", "/assets/explore/archive-ceremonial-white.png", 11, 58),
-  work("007", "Black Vanguard", "RG Nu Gundam", "rg-nu-gundam", "Command Unit", "command-unit", "Black Ceramic", "black-ceramic", "Clean", "A. Sato", "/assets/explore/archive-black-vanguard.png", 10, 54),
-  work("005", "Foundry Unit", "MG Guncannon", "mg-guncannon", "Industrial Hazard", "industrial-hazard", "Safety Enamel", "safety-enamel", "Heavy", "F. Abe", "/assets/explore/archive-orange-worker.png", 8, 49),
-  work("003", "Field Recon", "MG Geara Doga", "mg-geara-doga", "Command Unit", "command-unit", "Olive Matte", "olive-matte", "Light", "C. Watanabe", "/assets/explore/archive-green-field.png", 7, 44),
-];
-
 export function ShowcaseLanding({ search, snapshot }: { search: ShowcaseSearch; snapshot: ShowcaseSnapshot }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const providerStatus = useStartProviderStatus();
   const liveConcepts = useQuery(api.showcase.listPublicConcepts, providerStatus.hasConvexClient ? {} : "skip");
   const concepts = liveConcepts ?? snapshot.concepts;
-  const allWorks = concepts.length ? concepts.map(normalizeConcept) : fallbackWorks;
+  const pending = isPublicArchivePending(
+    liveConcepts,
+    snapshot.concepts.length,
+    providerStatus.hasConvexClient
+  );
+  const allWorks = concepts.map(normalizeConcept);
   const filteredWorks = useMemo(
     () => sortWorks(allWorks.filter((item) => matchesSearch(item, search)), search),
     [allWorks, search]
@@ -73,6 +60,31 @@ export function ShowcaseLanding({ search, snapshot }: { search: ShowcaseSearch; 
   );
   const collection = allWorks.filter((item) => ["pseudo-plated", "graphite-ceramic", "oxide-metal", "black-ceramic"].includes(item.materialSlug)).slice(0, 4);
   const querying = hasActiveShowcaseQuery(search);
+
+  if (pending) {
+    return (
+      <main className="exhibition-page">
+        <SystemState {...systemStates.showcaseLoading} />
+      </main>
+    );
+  }
+
+  if (concepts.length === 0) {
+    return (
+      <main className="exhibition-page">
+        <SystemState
+          {...(querying ? systemStates.emptyQuery : systemStates.emptyShowcase)}
+          primary={
+            querying ? (
+              <SystemStateLink href="/showcase">Clear filters</SystemStateLink>
+            ) : (
+              <SystemStateLink href="/">Explore works ↗</SystemStateLink>
+            )
+          }
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="exhibition-page">
@@ -147,7 +159,7 @@ function FeaturedCompositionCard({ item, primary = false }: { item: ExhibitionWo
     <article className={primary ? "exhibition-feature-card is-primary" : "exhibition-feature-card"}>
       <div className="exhibition-feature-card__image">
         <span>N°.{item.number}</span>
-        <img src={item.image} alt={`${item.title} repaint prototype`} />
+        <PreviewImage alt={`${item.title} repaint prototype`} src={item.image} />
         <div className="exhibition-feature-card__actions">
           <a href={item.href}>View</a>
           <a href={item.remixHref}>Remix <ArrowTopRightIcon aria-hidden="true" /></a>
@@ -214,7 +226,7 @@ function ExhibitionCard({ item, size }: { item: ExhibitionWork; size: "large" | 
     <article className={`exhibition-card is-${size}`}>
       <p className="exhibition-card__number">N°.{item.number}</p>
       <div className="exhibition-card__media">
-        <img src={item.image} alt={`${item.title} repaint prototype`} />
+        <PreviewImage alt={`${item.title} repaint prototype`} src={item.image} />
         <div className="exhibition-card__hover"><a href={item.href}>View prototype</a><a href={item.remixHref}>Remix <ArrowTopRightIcon aria-hidden="true" /></a></div>
       </div>
       <div className="exhibition-card__caption">
@@ -229,7 +241,7 @@ function CuratedCollection({ items }: { items: ExhibitionWork[] }) {
   return (
     <section className="exhibition-collection" aria-labelledby="collection-title">
       <div className="exhibition-collection__intro"><p>Material Study / 006</p><h2 id="collection-title">Pseudo-Plated</h2><p>Layered metallic depth, controlled gloss and dark command-type silhouettes.</p><a href="/showcase/archive?material=pseudo-plated">Explore collection <ArrowTopRightIcon aria-hidden="true" /></a></div>
-      <div className="exhibition-collection__works">{items.map((item, index) => <a href={item.href} key={item.id}><span>{String(index + 1).padStart(2, "0")}</span><img src={item.image} alt={item.title} /></a>)}</div>
+      <div className="exhibition-collection__works">{items.map((item, index) => <a href={item.href} key={item.id}><span>{String(index + 1).padStart(2, "0")}</span><PreviewImage alt={item.title} src={item.image} /></a>)}</div>
     </section>
   );
 }
@@ -242,7 +254,7 @@ function RecentlyPublished({ items }: { items: ExhibitionWork[] }) {
   return (
     <section className="exhibition-recent" aria-labelledby="recent-title">
       <div className="exhibition-section-heading"><div><p>Public ledger</p><h2 id="recent-title">Recently published</h2></div></div>
-      <div className="exhibition-recent__grid">{items.map((item) => <a className="exhibition-recent__item" href={item.href} key={item.id}><img src={item.image} alt={item.title} /><span>N°.{item.number}</span><strong>{item.title}</strong><small>{item.kit}</small></a>)}</div>
+      <div className="exhibition-recent__grid">{items.map((item) => <a className="exhibition-recent__item" href={item.href} key={item.id}><PreviewImage alt={item.title} src={item.image} /><span>N°.{item.number}</span><strong>{item.title}</strong><small>{item.kit}</small></a>)}</div>
       <a className="exhibition-archive-link" href="/showcase/archive">Browse full archive <ArrowTopRightIcon aria-hidden="true" /></a>
     </section>
   );
@@ -271,13 +283,16 @@ function DrawerSelect({ label, name, options, value }: { label: string; name: st
   return <label className="exhibition-drawer__field"><span>{label}</span><select defaultValue={value ?? ""} name={name}><option value="">All</option>{options.map((option) => <option key={option.slug} value={option.slug}>{option.label}</option>)}</select></label>;
 }
 
-function work(number: string, title: string, kit: string, kitSlug: string, style: string, styleSlug: string, material: string, materialSlug: string, weathering: string, creator: string, image: string, remixCount: number, saveCount: number): ExhibitionWork {
-  return { id: `work-${number}`, number, title, kit, kitSlug, style, styleSlug, material, materialSlug, weathering, weatheringSlug: weathering.toLowerCase(), creator, image, href: "/showcase/archive", remixHref: "/create", createdAt: exhibitionAnchor - Number(number) * 86_400_000, remixCount, saveCount };
+function PreviewImage({ alt, src }: { alt: string; src: string }) {
+  if (!src) {
+    return <div className="exhibition-preview-missing">Preview unavailable</div>;
+  }
+
+  return <img alt={alt} src={src} />;
 }
 
 function normalizeConcept(concept: ShowcaseConcept, index: number): ExhibitionWork {
-  const fallback = fallbackWorks[index % fallbackWorks.length];
-  return { id: String(concept._id), number: String(index + 1).padStart(3, "0"), title: concept.title, kit: concept.baseModel?.name ?? "Unknown kit", kitSlug: concept.baseModel?.slug ?? "unknown-kit", style: concept.stylePreset?.name ?? "Unknown Style DNA", styleSlug: concept.stylePreset?.slug ?? "unknown-style", material: concept.materialPreset?.name ?? "Unknown material", materialSlug: concept.materialPreset?.slug ?? "unknown-material", weathering: concept.weatheringLevel, weatheringSlug: concept.weatheringLevel.toLowerCase(), creator: concept.owner?.handle ?? "NeotypeLab", image: publicConceptImageUrl(concept.previewAsset, fallback.image), href: `/prototype/${concept._id}`, remixHref: `/create?remix=${concept._id}`, createdAt: concept._creationTime, remixCount: concept.remixCount, saveCount: concept.engagement.saveCount };
+  return { id: String(concept._id), number: String(index + 1).padStart(3, "0"), title: concept.title, kit: concept.baseModel?.name ?? "Unknown kit", kitSlug: concept.baseModel?.slug ?? "unknown-kit", style: concept.stylePreset?.name ?? "Unknown Style DNA", styleSlug: concept.stylePreset?.slug ?? "unknown-style", material: concept.materialPreset?.name ?? "Unknown material", materialSlug: concept.materialPreset?.slug ?? "unknown-material", weathering: concept.weatheringLevel, weatheringSlug: concept.weatheringLevel.toLowerCase(), creator: concept.owner?.handle ?? "NeotypeLab", image: publicConceptImageUrl(concept.previewAsset), href: `/prototype/${concept._id}`, remixHref: `/create?remix=${concept._id}`, createdAt: concept._creationTime, remixCount: concept.remixCount, saveCount: concept.engagement.saveCount };
 }
 
 function matchesSearch(item: ExhibitionWork, search: ShowcaseSearch) {

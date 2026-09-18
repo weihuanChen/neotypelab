@@ -10,6 +10,7 @@ import {
   compareConcepts,
   compareCreatorPacks,
   formatMoodTagLabel,
+  isPublicArchivePending,
   showcaseSortOptions,
   uniqueOptions,
 } from "./showcaseUtils";
@@ -77,6 +78,11 @@ function LiveShowcaseFeed({
   const liveConcepts = useQuery(api.showcase.listPublicConcepts);
   const liveCreatorPacks = useQuery(api.showcase.listPublicCreatorPacks);
   const liveRankedCreators = useQuery(api.showcase.listRankedPublicCreators);
+
+  if (isPublicArchivePending(liveConcepts, snapshot.concepts.length, true)) {
+    return <SystemState {...systemStates.showcaseLoading} />;
+  }
+
   const data: ShowcaseData = {
     concepts: liveConcepts ?? snapshot.concepts,
     creatorPacks: liveCreatorPacks ?? snapshot.creatorPacks,
