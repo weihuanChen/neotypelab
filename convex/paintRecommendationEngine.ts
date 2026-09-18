@@ -33,7 +33,7 @@ const recommendationPaintSchema = z.object({
 }).passthrough();
 
 export const paintRecommendationSetsSchema = z.object({
-  version: z.literal("paint-recommendations.v1"),
+  version: z.union([z.literal("paint-recommendations.v1"), z.literal("paint-recommendations.v2")]),
   generatedAt: z.number(),
   sets: z.array(z.object({
     id: z.string(),
@@ -68,6 +68,8 @@ type PaintSystem = {
   label: string;
   candidates: ResolvedPaintMapping[];
 };
+
+const MAX_RECOMMENDATION_DELTA_E = 10;
 
 export function buildVisualPalette(input: {
   entries: Array<{
@@ -117,7 +119,7 @@ export function buildPaintRecommendationSets(
     throw new Error("No catalog paint system can cover every approved color role");
   }
   return paintRecommendationSetsSchema.parse({
-    version: "paint-recommendations.v1",
+    version: "paint-recommendations.v2",
     generatedAt,
     sets: ranked,
   });
@@ -254,16 +256,63 @@ function groupPaintSystems(mappings: ResolvedPaintMapping[]) {
 }
 
 function matchSystem(palette: VisualPalette, system: PaintSystem) {
-  const entries = palette.entries.flatMap((entry) => {
-    const candidates = system.candidates.filter((candidate) => compatibleEffect(entry.paintEffect, candidate));
+  const candidateSets = palette.entries.map((entry) => {
     const targetLab = hexToLabD65(entry.targetHex);
-    const best = candidates.map((paint) => ({
-      paint,
-      deltaE00: deltaE2000(
-        targetLab,
-        paint.preferredMeasurement?.lab ?? hexToLabD65(paint.hexPreview!)
-      ),
-    })).sort((left, right) => left.deltaE00 - right.deltaE00 || left.paint.code.localeCompare(right.paint.code))[0];
+    return {
+      entry,
+      candidates: system.candidates
+        .filter((candidate) => compatibleEffect(entry.paintEffect, candidate))
+        .map((paint) => ({
+          paint,
+          deltaE00: deltaE2000(
+            targetLab,
+            paint.preferredMeasurement?.lab ?? hexToLabD65(paint.hexPreview!)
+          ),
+        }))
+        .filter((candidate) => candidate.deltaE00 <= MAX_RECOMMENDATION_DELTA_E)
+        .sort((left, right) => left.deltaE00 - right.deltaE00 || left.paint.code.localeCompare(right.paint.code)),
+    };
+  });
+
+  // Assign the best one-to-one mapping for this paint system. A role may be
+  // left uncovered when the catalog has no distinct, sufficiently close paint.
+  const ordered = [...candidateSets].sort((left, right) => left.candidates.length - right.candidates.length);
+  let bestAssignment = new Map<string, { paint: ResolvedPaintMapping; deltaE00: number }>();
+  let bestScore = { coverage: -1, distance: Number.POSITIVE_INFINITY };
+  function search(index: number, usedPaintIds: Set<string>, assignment: typeof bestAssignment, distance: number) {
+    if (index === ordered.length) {
+      const coverage = assignment.size;
+      if (coverage > bestScore.coverage || (coverage === bestScore.coverage && distance < bestScore.distance)) {
+        bestScore = { coverage, distance };
+        bestAssignment = new Map(assignment);
+      }
+      return;
+    }
+    const current = ordered[index];
+    search(index + 1, usedPaintIds, assignment, distance);
+    for (const candidate of current.candidates) {
+      if (usedPaintIds.has(candidate.paint._id)) continue;
+      usedPaintIds.add(candidate.paint._id);
+      assignment.set(current.entry.roleSlug, candidate);
+      search(index + 1, usedPaintIds, assignment, distance + candidate.deltaE00);
+      assignment.delete(current.entry.roleSlug);
+      usedPaintIds.delete(candidate.paint._id);
+    }
+  }
+  search(0, new Set(), new Map(), 0);
+
+  const reusedRoleSlugs = new Set<string>();
+  if (bestAssignment.size < palette.entries.length) {
+    for (const current of candidateSets) {
+      if (bestAssignment.has(current.entry.roleSlug) || current.candidates.length === 0) continue;
+      const fallback = current.candidates[0];
+      bestAssignment.set(current.entry.roleSlug, fallback);
+      reusedRoleSlugs.add(current.entry.roleSlug);
+    }
+  }
+
+  const entries = palette.entries.flatMap((entry) => {
+    const best = bestAssignment.get(entry.roleSlug);
     if (!best) return [];
     return [{
       roleSlug: entry.roleSlug,
@@ -271,7 +320,10 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
       paintEffect: entry.paintEffect,
       deltaE00: round(best.deltaE00),
       matchBand: matchBand(best.deltaE00),
-      warnings: matchWarnings(best.paint),
+      warnings: [
+        ...matchWarnings(best.paint),
+        ...(reusedRoleSlugs.has(entry.roleSlug) ? ["duplicate_paint_model"] : []),
+      ],
       paint: serializeRecommendationPaint(best.paint),
     }];
   });
@@ -288,6 +340,8 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
     ...(missingRoleSlugs.length ? [`Missing ${missingRoleSlugs.length} color role${missingRoleSlugs.length === 1 ? "" : "s"}.`] : []),
     ...(entries.some((entry) => entry.warnings.includes("approximate_color_data"))
       ? ["Some matches use approximate digital color data."] : []),
+    ...(entries.some((entry) => entry.warnings.includes("duplicate_paint_model"))
+      ? ["Some roles reuse the same paint model because no distinct close catalog match was available."] : []),
   ]));
   return {
     id: system.id,

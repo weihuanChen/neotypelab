@@ -81,6 +81,29 @@ describe("paint recommendation sets", () => {
       sprayNotes: ["Thin coats"],
     });
   });
+
+  it("does not reuse one paint for distinct roles or accept distant matches", () => {
+    const mappings = [
+      fakePaint("GSI Creos", "Mr. Color", "C", "C9", "#DFB512", "metallic", "mr-color"),
+      fakePaint("Tamiya", "Tamiya Color Acrylic", "X", "X-12", "#CCA208", "metallic", "tamiya-acrylic"),
+      fakePaint("Tamiya", "Tamiya Color Acrylic", "X", "X-13", "#B7A15A", "metallic", "tamiya-acrylic"),
+    ];
+    const palette = buildVisualPalette({
+      roles: [
+        { slug: "accent", name: "Accent" },
+        { slug: "markings", name: "Markings" },
+      ],
+      entries: [
+        { roleSlug: "accent", targetHex: "#D4AF37", paintEffect: "metallic", rationale: "Gold accent." },
+        { roleSlug: "markings", targetHex: "#C5A059", paintEffect: "metallic", rationale: "Pale gold markings." },
+      ],
+      sprayNotes: [],
+    });
+    const recommendations = buildPaintRecommendationSets(palette, mappings, 123);
+    const mrColor = recommendations.sets.find((set) => set.label === "Mr. Color C Series");
+    expect(mrColor).toMatchObject({ coverageCount: 1, missingRoleSlugs: ["markings"] });
+    expect(mrColor?.entries.map((entry) => entry.paint.code)).toEqual(["C9"]);
+  });
 });
 
 function fakePaint(
