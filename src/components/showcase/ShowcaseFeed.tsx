@@ -19,6 +19,7 @@ import type {
   ShowcaseSearch,
   ShowcaseSnapshot,
 } from "./types";
+import { SystemState, SystemStateLink, systemStates } from "@/src/components/system-state";
 
 export function ShowcaseFeed({
   basePath = "/showcase",
@@ -325,41 +326,33 @@ function ShowcaseFeedView({
       ) : null}
 
       {sortedConcepts.length === 0 ? (
-        <section className="showcase-empty">
-          <p className="showcase-kicker">
-            {hasActiveFilters ? "No filtered concepts" : "No public concepts"}
-          </p>
-          <h2>
-            {hasActiveFilters
-              ? "No public concepts matched this discovery filter."
-              : "The showcase has not been populated yet."}
-          </h2>
-          <p>
-            {hasActiveFilters
-              ? "Try clearing one or more filters, or publish more concepts that cover this base model and Style DNA combination."
-              : "Move a generated concept to public from the library to expose it here."}
-          </p>
-          {hasActiveFilters ? (
-            <a
-              className="showcase-button"
-              href={buildShowcaseHref(
-                search,
-                {
-                  baseModel: null,
-                  category: null,
-                  creator: null,
-                  material: null,
-                  q: null,
-                  style: null,
-                  weathering: null,
-                },
-                basePath
-              )}
-            >
-              Clear Filters
-            </a>
-          ) : null}
-        </section>
+        <SystemState
+          {...(hasActiveFilters ? systemStates.emptyQuery : systemStates.emptyShowcase)}
+          layout="inline"
+          primary={
+            hasActiveFilters ? (
+              <SystemStateLink
+                href={buildShowcaseHref(
+                  search,
+                  {
+                    baseModel: null,
+                    category: null,
+                    creator: null,
+                    material: null,
+                    q: null,
+                    style: null,
+                    weathering: null,
+                  },
+                  basePath
+                )}
+              >
+                Clear filters
+              </SystemStateLink>
+            ) : (
+              <SystemStateLink to="/library">Return to Library ←</SystemStateLink>
+            )
+          }
+        />
       ) : (
         <section className="showcase-grid showcase-grid--concepts">
           {sortedConcepts.map((concept) => (

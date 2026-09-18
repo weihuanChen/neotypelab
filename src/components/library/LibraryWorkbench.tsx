@@ -13,8 +13,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowTopRightIcon } from "@radix-ui/react-icons";
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { BuildBriefInspector } from "./BuildBriefInspector";
+import {
+  SystemSignInButton,
+  SystemSignInLink,
+  SystemState,
+  SystemStateButtonLink,
+  systemStates,
+} from "@/src/components/system-state";
 import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
 import {
   Select,
@@ -72,30 +78,15 @@ export function LibraryWorkbench({ search: _search }: { search: LibrarySearch })
   return (
     <div className="library-page">
       <AuthLoading>
-        <section className="library-empty">
-          <p className="showcase-kicker is-teal">Hangar sync</p>
-          <h1>Opening operator library.</h1>
-          <p>
-            Clerk is present and Convex is negotiating the authenticated viewer
-            token.
-          </p>
-        </section>
+        <SystemState {...systemStates.sessionLoading} />
       </AuthLoading>
 
       <Unauthenticated>
-        <section className="library-empty">
-          <p className="showcase-kicker is-orange">Signed out</p>
-          <h1>Sign in to open your prototype library.</h1>
-          <p>
-            The library is backed by your private concepts, saved public builds,
-            render tools, and generation job ledger.
-          </p>
-          <SignInButton mode="modal">
-            <button className="showcase-button" type="button">
-              Sign in
-            </button>
-          </SignInButton>
-        </section>
+        <SystemState
+          {...systemStates.authWorkspace}
+          primary={<SystemSignInButton />}
+          secondary={<SystemSignInLink />}
+        />
       </Unauthenticated>
 
       <Authenticated>
@@ -271,12 +262,7 @@ function AuthenticatedLibraryWorkbench() {
   }, [savedConcepts, selectedSavedId]);
 
   if (concepts === undefined || savedConcepts === undefined) {
-    return (
-      <div className="workbench-page">
-        <Kicker>Hangar sync</Kicker>
-        <h2>Indexing saved prototypes and reactor jobs</h2>
-      </div>
-    );
+    return <SystemState {...systemStates.libraryLoading} />;
   }
 
   const statusCounts = concepts.reduce(
@@ -379,6 +365,12 @@ function AuthenticatedLibraryWorkbench() {
       </nav>
 
       {scope === "prototypes" ? (
+        concepts.length === 0 ? (
+          <SystemState
+            {...systemStates.emptyLibrary}
+            primary={<SystemStateButtonLink to="/create">Create first prototype →</SystemStateButtonLink>}
+          />
+        ) : (
         <>
           <div className="library-status-tabs" aria-label="Prototype status">
             {(["all", "draft", "rendering", "ready", "failed"] as const).map((status) => (
@@ -424,14 +416,25 @@ function AuthenticatedLibraryWorkbench() {
           <div className="library-operations__workspace">
             <section className="library-assets" aria-label="Prototypes">
               <div className="library-assets__label"><Kicker>My Builds / {filteredConcepts.length}</Kicker><span>Workbench record</span></div>
-              {concepts.length === 0 ? (
-                <div className="library-compact-empty">
-                  <Kicker>No builds yet</Kicker>
-                  <p>Your initialized prototype builds will appear here.</p>
-                  <GhostButton compact href="/create">Initialize first build</GhostButton>
-                </div>
-              ) : filteredConcepts.length === 0 ? (
-                <div className="library-compact-empty"><Kicker>No matches</Kicker><p>Adjust the status or discovery controls.</p></div>
+              {filteredConcepts.length === 0 ? (
+                <SystemState
+                  {...systemStates.emptyQuery}
+                  layout="inline"
+                  primary={
+                    <button
+                      className="system-state__link"
+                      onClick={() => {
+                        setStatusFilter("all");
+                        setSearchQuery("");
+                        setKitFilter("all");
+                        setStyleFilter("all");
+                      }}
+                      type="button"
+                    >
+                      Clear filters
+                    </button>
+                  }
+                />
               ) : view === "list" ? (
                 <div className="library-asset-list">
                   <div className="library-asset-list__head" aria-hidden="true"><span>Preview / Prototype</span><span>Status</span><span>Visibility</span><span>Updated</span></div>
@@ -507,13 +510,16 @@ function AuthenticatedLibraryWorkbench() {
             </aside>
           </div>
         </>
+        )
+      ) : savedConcepts.length === 0 ? (
+        <SystemState
+          {...systemStates.emptyCollection}
+          primary={<SystemStateButtonLink to="/showcase">Explore works →</SystemStateButtonLink>}
+        />
       ) : (
         <div className="library-operations__workspace">
           <section className="library-assets" aria-label="Collection">
             <div className="library-assets__label"><Kicker>Collection / {savedConcepts.length}</Kicker><span>Reference archive</span></div>
-            {savedConcepts.length === 0 ? (
-              <div className="library-compact-empty"><Kicker>No builds in collection</Kicker><p>Save a public build from Showcase to keep it here in your reference archive.</p><GhostButton compact href="/showcase">Browse showcase</GhostButton></div>
-            ) : (
               <div className="library-asset-list">
                 {savedConcepts.map((concept) => (
                   <button className={selectedSaved?._id === concept._id ? "library-asset-row is-active" : "library-asset-row"} key={concept._id} onClick={() => setSelectedSavedId(concept._id)} type="button">
@@ -522,7 +528,6 @@ function AuthenticatedLibraryWorkbench() {
                   </button>
                 ))}
               </div>
-            )}
           </section>
           <aside className="library-inspector">
             {selectedSaved ? (

@@ -13,14 +13,9 @@ test("shows the signed-out create gate", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/create");
   await expect(
-    page.getByRole("heading", { name: "Prototype a spray-ready repaint before you paint." })
+    page.getByRole("heading", { name: /Start a prototype record/i })
   ).toBeVisible();
-  const createGate = page.locator("section").filter({
-    has: page.getByRole("heading", {
-      name: "Prototype a spray-ready repaint before you paint.",
-    }),
-  });
-  await expect(createGate.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sign in/i }).first()).toBeVisible();
   expect(consoleErrors).toEqual([]);
 });
 
@@ -36,9 +31,8 @@ test("redirects the spec admin index", async ({ page }) => {
 
 test("renders the application not-found boundary", async ({ page }) => {
   await page.goto("/integration-test-missing-route");
-  await expect(
-    page.getByRole("heading", { name: "This NeotypeLab route does not exist." })
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
+  await expect(page.getByText("Route / Missing")).toBeVisible();
 });
 
 function collectConsoleErrors(page: Page) {
@@ -54,10 +48,10 @@ function collectConsoleErrors(page: Page) {
 test("gates private work details and preserves the resource tab URL", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/library/unavailable-work?tab=resources");
-  await expect(page.getByRole("heading", { name: "Sign in to view this work." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /This record is private/i })).toBeVisible();
   await expect(page).toHaveURL(/\/library\/unavailable-work\?tab=resources$/);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.getByRole("link", { name: "Back to library" })).toHaveAttribute("href", "/library");
+  await expect(page.getByRole("link", { name: /Return to Library/i })).toHaveAttribute("href", "/library");
   await expect(page.getByRole("tab", { name: /Resources/ })).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
 });
@@ -65,7 +59,7 @@ test("gates private work details and preserves the resource tab URL", async ({ p
 test("keeps the Styles gallery closed and hides its discovery entry", async ({ page }) => {
   const response = await page.goto("/styles");
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Styles", exact: true })).toHaveCount(0);
   await expect(page.locator('nav[aria-label="Primary"] a[href="/styles"]')).toHaveCount(0);
@@ -73,19 +67,19 @@ test("keeps the Styles gallery closed and hides its discovery entry", async ({ p
 
 test("does not index an unavailable or unreviewed style pairing", async ({ page }) => {
   await page.goto("/styles/integration-missing-style/integration-missing-kit");
-  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
 });
 
 test("gates the editorial review workspace", async ({ page }) => {
   await page.goto("/admin/style-editorial");
-  await expect(page.getByRole("heading", { name: "Sign in to open the admin console." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Restricted record/i })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
 test("keeps the community gallery closed and hides its discovery entry", async ({ page }) => {
   const response = await page.goto("/community/styles");
   expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "This NeotypeLab route does not exist." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Community", exact: true })).toHaveCount(0);
   await expect(page.locator('a[href="/community/styles"]')).toHaveCount(0);
@@ -99,6 +93,6 @@ test("does not index unavailable custom style links", async ({ page }) => {
 test("preserves the community style when opening the create sign-in gate", async ({ page }) => {
   await page.goto("/create?communityStyle=integration-shared-style");
   await expect(page).toHaveURL(/communityStyle=integration-shared-style/);
-  await expect(page.getByRole("heading", { name: "Prototype a spray-ready repaint before you paint." })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true }).last()).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Start a prototype record/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sign in/i }).last()).toBeVisible();
 });

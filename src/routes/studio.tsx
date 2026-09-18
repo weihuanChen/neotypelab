@@ -1,10 +1,15 @@
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { DashboardOverview } from "@/src/components/terminal/DashboardOverview";
 import { noIndexRobots } from "@/src/lib/appPaths";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
+import {
+  SystemSignInButton,
+  SystemSignInLink,
+  SystemState,
+  systemStates,
+} from "@/src/components/system-state";
 
 export const Route = createFileRoute("/studio")({
   head: () => ({
@@ -30,10 +35,14 @@ function StudioRoute() {
       title="Studio"
     >
       {!providerStatus.hasClerkProvider || !providerStatus.hasConvexClient ? (
-        <section className="library-empty">
-          <p className="showcase-kicker is-orange">Auth config</p>
-          <h1>Studio needs Clerk and Convex before it can load private state.</h1>
-        </section>
+        <SystemState
+          {...systemStates.serverError}
+          archive="Studio / Auth config"
+          headline={"Studio needs\nClerk and Convex."}
+          message={[
+            "Studio cannot load private state until Clerk and Convex are present.",
+          ]}
+        />
       ) : (
         <StudioAuthGate />
       )}
@@ -45,21 +54,14 @@ function StudioAuthGate() {
   return (
     <>
       <AuthLoading>
-        <section className="library-empty">
-          <p className="showcase-kicker is-teal">Session sync</p>
-          <h1>Opening studio.</h1>
-        </section>
+        <SystemState {...systemStates.sessionLoading} />
       </AuthLoading>
       <Unauthenticated>
-        <section className="library-empty">
-          <p className="showcase-kicker is-orange">Signed out</p>
-          <h1>Sign in to open your studio.</h1>
-          <SignInButton mode="modal">
-            <button className="showcase-button" type="button">
-              Sign in
-            </button>
-          </SignInButton>
-        </section>
+        <SystemState
+          {...systemStates.authStudio}
+          primary={<SystemSignInButton />}
+          secondary={<SystemSignInLink />}
+        />
       </Unauthenticated>
       <Authenticated>
         <DashboardOverview />

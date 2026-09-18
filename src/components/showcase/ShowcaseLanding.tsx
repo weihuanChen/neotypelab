@@ -8,8 +8,14 @@ import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
-import { buildShowcaseHref, publicConceptImageUrl } from "./showcaseUtils";
+import {
+  buildShowcaseHref,
+  hasActiveShowcaseQuery,
+  publicConceptImageUrl,
+  selectExhibitionSections,
+} from "./showcaseUtils";
 import type { ShowcaseConcept, ShowcaseSearch, ShowcaseSnapshot } from "./types";
+import { SystemState, SystemStateLink, systemStates } from "@/src/components/system-state";
 
 type ExhibitionWork = {
   id: string;
@@ -61,11 +67,12 @@ export function ShowcaseLanding({ search, snapshot }: { search: ShowcaseSearch; 
     () => sortWorks(allWorks.filter((item) => matchesSearch(item, search)), search),
     [allWorks, search]
   );
-  const featuredItems = allWorks.slice(0, 3);
-  const featuredIds = new Set(featuredItems.map((item) => item.id));
-  const selected = filteredWorks.filter((item) => !featuredIds.has(item.id)).slice(0, 6);
-  const recent = [...allWorks].sort((a, b) => b.createdAt - a.createdAt).slice(6, 14);
+  const { featured: featuredItems, selected, recent } = useMemo(
+    () => selectExhibitionSections(allWorks, filteredWorks, search),
+    [allWorks, filteredWorks, search]
+  );
   const collection = allWorks.filter((item) => ["pseudo-plated", "graphite-ceramic", "oxide-metal", "black-ceramic"].includes(item.materialSlug)).slice(0, 4);
+  const querying = hasActiveShowcaseQuery(search);
 
   return (
     <main className="exhibition-page">
@@ -94,7 +101,17 @@ export function ShowcaseLanding({ search, snapshot }: { search: ShowcaseSearch; 
             })}
           </div>
         ) : (
-          <div className="exhibition-empty"><p>No selected works match this lens.</p><a href="/showcase">Reset selection</a></div>
+          <SystemState
+            {...(querying ? systemStates.emptyQuery : systemStates.emptyShowcase)}
+            layout="inline"
+            primary={
+              querying ? (
+                <SystemStateLink href="/showcase">Clear filters</SystemStateLink>
+              ) : (
+                <SystemStateLink href="/">Explore works ↗</SystemStateLink>
+              )
+            }
+          />
         )}
       </section>
       <RecentlyPublished items={recent} />
@@ -150,7 +167,7 @@ function ShowcaseToolbar({ allWorks, onOpenFilters, search }: { allWorks: Exhibi
   return (
     <div className="exhibition-toolbar">
       <nav aria-label="Selected works order" className="exhibition-toolbar__modes">
-        <a className={sortMode === "featured" ? "is-active" : undefined} href="/showcase">Featured</a>
+        <a className={sortMode === "featured" ? "is-active" : undefined} href={buildShowcaseHref(search, { sort: null, view: null })}>Featured</a>
         <a className={sortMode === "trending" ? "is-active" : undefined} href={buildShowcaseHref(search, { sort: null, view: "trending" })}>Trending</a>
         <a className={sortMode === "recent" ? "is-active" : undefined} href={buildShowcaseHref(search, { sort: "recent", view: null })}>Recent</a>
         <a className={sortMode === "most-remixed" ? "is-active" : undefined} href={buildShowcaseHref(search, { sort: "most-remixed", view: null })}>Most Remixed</a>
@@ -159,7 +176,17 @@ function ShowcaseToolbar({ allWorks, onOpenFilters, search }: { allWorks: Exhibi
         <ToolbarFilter kind="kit" items={allWorks} search={search} />
         <ToolbarFilter kind="style" items={allWorks} search={search} />
         <ToolbarFilter kind="material" items={allWorks} search={search} />
-        <form action="/showcase" className="exhibition-search" method="get"><MagnifyingGlassIcon aria-hidden="true" /><input aria-label="Search works" defaultValue={search.q} name="q" placeholder="Search" /></form>
+        <form action="/showcase" className="exhibition-search" method="get">
+          {search.sort ? <input name="sort" type="hidden" value={search.sort} /> : null}
+          {search.view ? <input name="view" type="hidden" value={search.view} /> : null}
+          {search.baseModel ? <input name="baseModel" type="hidden" value={search.baseModel} /> : null}
+          {search.style ? <input name="style" type="hidden" value={search.style} /> : null}
+          {search.material ? <input name="material" type="hidden" value={search.material} /> : null}
+          {search.weathering ? <input name="weathering" type="hidden" value={search.weathering} /> : null}
+          {search.creator ? <input name="creator" type="hidden" value={search.creator} /> : null}
+          <MagnifyingGlassIcon aria-hidden="true" />
+          <input aria-label="Search works" defaultValue={search.q} name="q" placeholder="Search" />
+        </form>
         <button className="exhibition-filters-button" onClick={onOpenFilters} type="button">Filters +</button>
       </div>
     </div>
@@ -208,6 +235,10 @@ function CuratedCollection({ items }: { items: ExhibitionWork[] }) {
 }
 
 function RecentlyPublished({ items }: { items: ExhibitionWork[] }) {
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <section className="exhibition-recent" aria-labelledby="recent-title">
       <div className="exhibition-section-heading"><div><p>Public ledger</p><h2 id="recent-title">Recently published</h2></div></div>

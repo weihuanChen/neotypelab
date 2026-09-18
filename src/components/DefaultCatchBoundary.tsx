@@ -1,15 +1,20 @@
-import type { ErrorComponentProps } from "@tanstack/react-router";
+"use client";
 
-export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import { SystemState, SystemStateLink, systemStates } from "@/src/components/system-state";
+
+export function DefaultCatchBoundary({ error, reset }: ErrorComponentProps) {
   return (
-    <main className="spike-page spike-page--compact">
-      <section className="spike-panel">
-        <p className="spike-kicker">Runtime fault</p>
-        <h1>NeotypeLab could not render this route.</h1>
-        <pre className="spike-code">
-          {error instanceof Error ? error.message : String(error)}
-        </pre>
-      </section>
-    </main>
+    <SystemState
+      {...systemStates.serverError}
+      details={error instanceof Error ? error.message : String(error)}
+      layout="page"
+      primary={
+        <button className="system-state__button" onClick={reset} type="button">
+          Try again
+        </button>
+      }
+      secondary={<SystemStateLink to="/">Return home ←</SystemStateLink>}
+    />
   );
 }

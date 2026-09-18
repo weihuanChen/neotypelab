@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { LibraryDetailPage } from "@/src/components/library/LibraryDetailPage";
 import { parseLibraryDetailSearch } from "@/src/components/library/libraryDetailSearch";
 import { noIndexRobots } from "@/src/lib/appPaths";
-import { Button } from "@/components/ui/button";
+import { SystemState, SystemStateLink, systemStates } from "@/src/components/system-state";
 
 export const Route = createFileRoute("/library_/$conceptId")({
   validateSearch: parseLibraryDetailSearch,
@@ -11,12 +11,18 @@ export const Route = createFileRoute("/library_/$conceptId")({
   component: LibraryDetailRoute,
   errorComponent: ({ reset }) => (
     <AppShell title="Work details">
-      <section className="work-detail-state" role="alert">
-        <h1>We couldn’t load this work.</h1>
-        <p>Try again, or return to your library.</p>
-        <Button variant="outline" onClick={reset}>Try again</Button>
-        <Link to="/library">Back to library</Link>
-      </section>
+      <SystemState
+        {...systemStates.serverError}
+        archive="Library / Render interrupted"
+        headline={"We could not\nload this work."}
+        message={["Try again, or return to a known record in your library."]}
+        primary={
+          <button className="system-state__button" onClick={reset} type="button">
+            Try again
+          </button>
+        }
+        secondary={<SystemStateLink to="/library">Return to Library ←</SystemStateLink>}
+      />
     </AppShell>
   ),
 });

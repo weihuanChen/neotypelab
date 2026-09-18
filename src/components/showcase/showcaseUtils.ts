@@ -98,6 +98,45 @@ export function buildShowcaseHref(
   return query ? `${basePath}?${query}` : basePath;
 }
 
+export function hasActiveShowcaseQuery(search: ShowcaseSearch) {
+  return Boolean(
+    search.q ||
+      search.baseModel ||
+      search.style ||
+      search.material ||
+      search.weathering ||
+      search.creator ||
+      search.category
+  );
+}
+
+export function selectExhibitionSections<T extends { id: string; createdAt: number }>(
+  allWorks: T[],
+  filteredWorks: T[],
+  search: ShowcaseSearch,
+  counts: { featured?: number; selected?: number; recent?: number } = {}
+) {
+  const featuredCount = counts.featured ?? 3;
+  const selectedCount = counts.selected ?? 6;
+  const recentCount = counts.recent ?? 8;
+  const querying = hasActiveShowcaseQuery(search);
+  const featured = allWorks.slice(0, featuredCount);
+  const featuredIds = new Set(featured.map((item) => item.id));
+  const remainder = filteredWorks.filter((item) => !featuredIds.has(item.id));
+  const selectedSource = querying
+    ? filteredWorks
+    : remainder.length > 0
+      ? remainder
+      : filteredWorks;
+  const selected = selectedSource.slice(0, selectedCount);
+  const usedIds = new Set([...featured, ...selected].map((item) => item.id));
+  const newest = [...allWorks].sort((a, b) => b.createdAt - a.createdAt);
+  const unusedNewest = newest.filter((item) => !usedIds.has(item.id));
+  const recent = (unusedNewest.length > 0 ? unusedNewest : newest).slice(0, recentCount);
+
+  return { featured, selected, recent, querying };
+}
+
 export function uniqueOptions(
   options: Array<{ value?: string | null; label?: string | null }>
 ) {

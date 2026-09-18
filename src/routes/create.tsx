@@ -1,10 +1,15 @@
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { CreateWorkbench } from "@/src/components/create/CreateWorkbench";
 import { parseCreateSearch } from "@/src/components/create/createSearch";
+import {
+  SystemSignInButton,
+  SystemSignInLink,
+  SystemState,
+  systemStates,
+} from "@/src/components/system-state";
 
 export const Route = createFileRoute("/create")({
   validateSearch: parseCreateSearch,
@@ -38,38 +43,19 @@ function CreateRoute() {
       title="Create"
     >
       <AuthLoading>
-        <section className="library-empty">
-          <p className="showcase-kicker is-teal">Session sync</p>
-          <h1>Opening create console.</h1>
-        </section>
+        <SystemState {...systemStates.sessionLoading} />
       </AuthLoading>
 
       <Unauthenticated>
-        <section className="library-empty">
-          <p className="showcase-kicker is-orange">Create</p>
-          <h1>Prototype a spray-ready repaint before you paint.</h1>
-          <p>
-            NeotypeLab uses structured inputs instead of open-ended prompts. Pick a
-            kit silhouette, apply Style DNA, then generate a concept you can save,
-            remix, or publish. Sign in to use your credit balance and private ledger.
-          </p>
-          <SignInButton mode="modal">
-            <button className="showcase-button" type="button">
-              Sign in
-            </button>
-          </SignInButton>
-        </section>
+        <SystemState
+          {...systemStates.authCreate}
+          primary={<SystemSignInButton />}
+          secondary={<SystemSignInLink />}
+        />
       </Unauthenticated>
 
       <Authenticated>
-        <Suspense
-          fallback={
-            <section className="library-empty">
-              <p className="showcase-kicker is-teal">Create</p>
-              <h2>Loading creation workbench.</h2>
-            </section>
-          }
-        >
+        <Suspense fallback={<SystemState {...systemStates.sessionLoading} />}>
           <CreateWorkbench search={search} />
         </Suspense>
       </Authenticated>

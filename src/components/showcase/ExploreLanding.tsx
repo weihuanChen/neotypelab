@@ -17,6 +17,7 @@ import type {
   ShowcaseSnapshot,
   ShowcaseSort,
 } from "./types";
+import { SystemState, SystemStateLink, systemStates } from "@/src/components/system-state";
 
 type ExplorePrototype = {
   id: string;
@@ -416,10 +417,11 @@ function ArchiveSection({
           ))}
         </div>
       ) : (
-        <div className="explore-archive__empty">
-          <p>No prototypes match this combination.</p>
-          <a href="/">Clear discovery filters</a>
-        </div>
+        <SystemState
+          {...systemStates.emptyQuery}
+          layout="inline"
+          primary={<SystemStateLink href="/">Clear filters</SystemStateLink>}
+        />
       )}
       <a className="explore-load-more" href="/showcase">
         Load more

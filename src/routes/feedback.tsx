@@ -1,10 +1,15 @@
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { createFileRoute } from "@tanstack/react-router";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { FeedbackWorkbench } from "@/src/components/feedback/FeedbackWorkbench";
 import { parseFeedbackSearch } from "@/src/components/feedback/feedbackUtils";
+import {
+  SystemSignInButton,
+  SystemSignInLink,
+  SystemState,
+  systemStates,
+} from "@/src/components/system-state";
 
 export const Route = createFileRoute("/feedback")({
   validateSearch: parseFeedbackSearch,
@@ -31,37 +36,19 @@ function FeedbackRoute() {
       title="Feedback"
     >
       <AuthLoading>
-        <section className="feedback-loading">
-          <span>Feedback</span>
-          <strong>Preparing your report.</strong>
-        </section>
+        <SystemState {...systemStates.sessionLoading} />
       </AuthLoading>
 
       <Unauthenticated>
-        <section className="feedback-sign-in">
-          <p>Sign in to send feedback</p>
-          <h2>Reports stay connected to your pilot profile.</h2>
-          <span>
-            Sign in to attach prototype context and follow each report from
-            received to resolved.
-          </span>
-          <SignInButton mode="modal">
-            <button className="showcase-button" type="button">
-              Sign in
-            </button>
-          </SignInButton>
-        </section>
+        <SystemState
+          {...systemStates.authFeedback}
+          primary={<SystemSignInButton />}
+          secondary={<SystemSignInLink />}
+        />
       </Unauthenticated>
 
       <Authenticated>
-        <Suspense
-          fallback={
-            <section className="feedback-loading">
-              <span>Feedback</span>
-              <strong>Preparing your report.</strong>
-            </section>
-          }
-        >
+        <Suspense fallback={<SystemState {...systemStates.sessionLoading} />}>
           <FeedbackWorkbench search={search} />
         </Suspense>
       </Authenticated>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { Authenticated, AuthLoading, Unauthenticated, useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
@@ -26,6 +25,12 @@ import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
 import type { LibraryDetailTab } from "./libraryDetailSearch";
 import { computeMaskingSummary } from "./libraryBriefData";
 import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
+import {
+  SystemSignInButton,
+  SystemState,
+  SystemStateLink,
+  systemStates,
+} from "@/src/components/system-state";
 
 export type WorkDetail = NonNullable<FunctionReturnType<typeof api.libraryDetails.get>>;
 export type PaintSystemSet = NonNullable<WorkDetail["paintRecommendations"]>["sets"][number];
@@ -39,13 +44,11 @@ export function LibraryDetailPage(props: { conceptId: string; tab: LibraryDetail
   return <>
     <AuthLoading><DetailLoading /></AuthLoading>
     <Unauthenticated>
-      <section className="work-detail-state">
-        <LockClosedIcon aria-hidden="true" />
-        <h1>Sign in to view this work.</h1>
-        <p>Work details and resources are available to their owner.</p>
-        <SignInButton mode="modal"><Button className="work-detail-action">Sign in</Button></SignInButton>
-        <Link to="/library">Back to library</Link>
-      </section>
+      <SystemState
+        {...systemStates.authRecord}
+        primary={<SystemSignInButton />}
+        secondary={<SystemStateLink to="/library">Return to Library ←</SystemStateLink>}
+      />
     </Unauthenticated>
     <Authenticated><OwnedWorkDetail {...props} /></Authenticated>
   </>;
@@ -66,10 +69,12 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   const activeSystem = recommendations?.sets.find((set) => set.id === (selectedSystemId || defaultSystem?.id)) ?? defaultSystem;
 
   if (detail === undefined) return <DetailLoading />;
-  if (detail === null) return <section className="work-detail-state">
-    <h1>Work not found.</h1><p>This work is unavailable in your library.</p>
-    <Button asChild className="work-detail-action" variant="outline"><Link to="/library"><ArrowLeftIcon />Back to library</Link></Button>
-  </section>;
+  if (detail === null) return (
+    <SystemState
+      {...systemStates.recordMissing}
+      primary={<SystemStateLink to="/library">Return to Library ←</SystemStateLink>}
+    />
+  );
   const resources = detail.collections.reduce((total, collection) => total + collection.versions.reduce((count, version) => count + version.files.length, 0), 0)
     + Number(Boolean(detail.palette)) + Number(Boolean(detail.specification)) + detail.documents.length;
   const workId = detail.id as Id<"concepts">;

@@ -614,7 +614,9 @@
 }
 
 .exhibition-recent {
-  padding: clamp(4rem, 8vw, 7rem) 0 3rem;
+  display: grid;
+  gap: 0;
+  padding: clamp(4rem, 8vw, 7rem) 0 clamp(2.75rem, 5vw, 4.25rem);
 }
 
 .exhibition-recent__grid {
@@ -657,8 +659,9 @@
 }
 
 .exhibition-archive-link {
-  margin-top: 2.5rem;
-  float: right;
+  display: flex;
+  width: max-content;
+  margin: 2.75rem 0 0 auto;
 }
 
 .exhibition-empty {
