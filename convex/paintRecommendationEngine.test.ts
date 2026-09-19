@@ -4,6 +4,7 @@ import { hexToLabD65 } from "./paintColor";
 import {
   buildPaintRecommendationSets,
   buildVisualPalette,
+  summarizePaintCatalogForPrompt,
   visualPaletteForRender,
   visualPaletteFromLegacyPlan,
 } from "./paintRecommendationEngine";
@@ -103,6 +104,52 @@ describe("paint recommendation sets", () => {
     const mrColor = recommendations.sets.find((set) => set.label === "Mr. Color C Series");
     expect(mrColor).toMatchObject({ coverageCount: 1, missingRoleSlugs: ["markings"] });
     expect(mrColor?.entries.map((entry) => entry.paint.code)).toEqual(["C9"]);
+  });
+
+  it("keeps an incomplete Mr. Color set instead of failing the palette", () => {
+    const mappings = [
+      fakePaint("GSI Creos", "Mr. Color", "C", "C9", "#DFB512", "metallic", "mr-color"),
+      fakePaint("GSI Creos", "Mr. Color", "C", "C47", "#E60012", "transparent", "mr-color"),
+    ];
+    const palette = buildVisualPalette({
+      roles: [
+        { slug: "accent", name: "Accent" },
+        { slug: "sensor-color", name: "Sensor Color" },
+      ],
+      entries: [
+        { roleSlug: "accent", targetHex: "#D4AF37", paintEffect: "metallic", rationale: "Gold accent." },
+        { roleSlug: "sensor-color", targetHex: "#33FFFF", paintEffect: "transparent", rationale: "Electric cyan optics." },
+      ],
+      sprayNotes: [],
+    });
+    const recommendations = buildPaintRecommendationSets(palette, mappings, 123);
+    const mrColor = recommendations.sets.find((set) => set.recommended);
+    expect(mrColor).toMatchObject({
+      label: "Mr. Color C Series",
+      recommended: true,
+      coverageCount: 1,
+      missingRoleSlugs: ["sensor-color"],
+    });
+    expect(mrColor?.uncoveredRoles).toEqual([
+      { roleSlug: "sensor-color", targetHex: "#33FFFF", paintEffect: "transparent" },
+    ]);
+    expect(mrColor?.warnings.some((warning) => /custom mix/.test(warning))).toBe(true);
+  });
+
+  it("summarizes each paint line's usable hues for the planner prompt", () => {
+    const summary = summarizePaintCatalogForPrompt([
+      fakePaint("GSI Creos", "Mr. Color", "C", "C47", "#E60012", "transparent", "mr-color"),
+      fakePaint("GSI Creos", "Mr. Color", "C", "C9", "#DFB512", "metallic", "mr-color"),
+      fakePaint("Tamiya", "Tamiya Color Acrylic", "X", "X-23", "#33B4D1", "transparent", "tamiya-acrylic"),
+    ]);
+    expect(summary.preferredSystem).toBe("Mr. Color C Series");
+    expect(summary.availableEffects).toEqual(expect.arrayContaining(["metallic", "transparent"]));
+    expect(summary.systems[0]).toMatchObject({
+      label: "Mr. Color C Series",
+      preferred: true,
+    });
+    expect(summary.systems[0].transparents.map((paint) => paint.hex)).toContain("#E60012");
+    expect(summary.matchRule).toMatch(/custom mix/);
   });
 });
 

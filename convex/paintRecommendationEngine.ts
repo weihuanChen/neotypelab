@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ResolvedPaintMapping } from "./paintCatalogCompatibility";
-import { deltaE2000, hexToLabD65 } from "./paintColor";
+import { deltaE2000, hexToLabD65, hexToRgb } from "./paintColor";
 
 export const visualPaintEffectSchema = z.enum(["solid", "metallic", "transparent"]);
 
@@ -46,6 +46,11 @@ export const paintRecommendationSetsSchema = z.object({
     averageDeltaE: z.number().nullable(),
     maxDeltaE: z.number().nullable(),
     missingRoleSlugs: z.array(z.string()),
+    uncoveredRoles: z.array(z.object({
+      roleSlug: z.string(),
+      targetHex: z.string(),
+      paintEffect: visualPaintEffectSchema,
+    }).strict()).optional(),
     warnings: z.array(z.string()),
     entries: z.array(z.object({
       roleSlug: z.string(),
@@ -110,19 +115,69 @@ export function buildPaintRecommendationSets(
       (mapping.preferredMeasurement !== null || /^#[0-9a-f]{6}$/i.test(mapping.hexPreview ?? ""))
     )
   );
-  const ranked = systems
+  const matched = systems
     .map((system) => matchSystem(palette, system))
-    .filter((set) => set.coverageCount > 0)
-    .sort(compareSets)
-    .map((set, index) => ({ ...set, recommended: index === 0 }));
-  if (!ranked.some((set) => set.coverageCount === set.roleCount)) {
-    throw new Error("No catalog paint system can cover every approved color role");
-  }
+    .filter((set) => set.coverageCount > 0 || isPreferredMrColor(set));
+  const preferred = pickPreferredSystem(matched);
+  const ranked = (matched.length > 0 ? matched : [uncoveredMrColorSet(palette)])
+    .sort((left, right) => compareSets(left, right, preferred?.id))
+    .map((set, index) => ({
+      ...set,
+      recommended: preferred ? set.id === preferred.id : index === 0,
+    }));
   return paintRecommendationSetsSchema.parse({
     version: "paint-recommendations.v2",
     generatedAt,
     sets: ranked,
   });
+}
+
+export function summarizePaintCatalogForPrompt(mappings: ResolvedPaintMapping[]) {
+  const usable = mappings.filter((mapping) =>
+    mapping.isActive &&
+    (mapping.preferredMeasurement !== null || /^#[0-9a-f]{6}$/i.test(mapping.hexPreview ?? ""))
+  );
+  const systems = groupPaintSystems(usable).map((system) => {
+    const effects = { solid: 0, metallic: 0, transparent: 0 };
+    const solidHues = new Set<string>();
+    const metallicHues = new Set<string>();
+    const transparents: Array<{ name: string; hex: string; hue: string }> = [];
+    for (const paint of system.candidates) {
+      const hex = paint.preferredMeasurement?.hex ?? paint.hexPreview ?? "";
+      const hue = hueFamily(hex);
+      if (paint.opacity === "transparent") {
+        effects.transparent += 1;
+        transparents.push({ name: paint.name, hex: hex.toUpperCase(), hue });
+      } else if (paint.effects.includes("metallic")) {
+        effects.metallic += 1;
+        if (hue) metallicHues.add(hue);
+      } else {
+        effects.solid += 1;
+        if (hue) solidHues.add(hue);
+      }
+    }
+    return {
+      label: system.label,
+      preferred: isPreferredMrColor(system),
+      sampleCount: system.candidates.length,
+      effects,
+      solidHues: Array.from(solidHues).sort(),
+      metallicHues: Array.from(metallicHues).sort(),
+      transparents: transparents
+        .sort((left, right) => left.name.localeCompare(right.name))
+        .slice(0, 16),
+    };
+  }).sort((left, right) => Number(right.preferred) - Number(left.preferred) || right.sampleCount - left.sampleCount);
+
+  return {
+    preferredSystem: systems.find((system) => system.preferred)?.label ?? "Mr. Color C Series",
+    matchRule: "Prefer Mr. Color. Stay inside a system's listed hues and effects when possible. A catalog SKU requires the same effect and ΔE≤10. Out-of-gamut roles are kept and marked as custom mix; do not invent paint codes.",
+    systems,
+    activeColorSamples: usable.length,
+    availableEffects: Array.from(new Set(systems.flatMap((system) =>
+      (Object.keys(system.effects) as Array<keyof typeof system.effects>).filter((effect) => system.effects[effect] > 0)
+    ))),
+  };
 }
 
 export function materializePrimaryPaintPlan(input: {
@@ -137,8 +192,8 @@ export function materializePrimaryPaintPlan(input: {
   moodTags: string[];
 }) {
   const primary = input.recommendations.sets.find((set) => set.recommended)
-    ?? input.recommendations.sets.find((set) => set.coverageCount === set.roleCount);
-  if (!primary) throw new Error("No complete paint recommendation set is available");
+    ?? input.recommendations.sets[0];
+  if (!primary) throw new Error("No paint recommendation set is available");
   return {
     conceptId: input.conceptId,
     conceptTitle: input.conceptTitle,
@@ -227,6 +282,89 @@ export function visualPaletteFromLegacyPlan(value?: string): VisualPalette | nul
     });
   } catch {
     return null;
+  }
+}
+
+function isPreferredMrColor(system: { id: string; brand: string; line: string; label: string }) {
+  if (system.id === "gsi-creos:mr-color" || system.label === "Mr. Color C Series") return true;
+  const brand = system.brand.toLowerCase();
+  const line = system.line.toLowerCase();
+  return (brand === "gsi creos" && line === "mr. color") || brand === "mr. color";
+}
+
+function pickPreferredSystem<T extends { id: string; brand: string; line: string; label: string; coverageCount: number }>(
+  sets: T[]
+) {
+  const mrColor = sets.filter((set) => isPreferredMrColor(set) && set.coverageCount > 0);
+  return mrColor.find((set) => set.id === "gsi-creos:mr-color" || set.label === "Mr. Color C Series")
+    ?? mrColor[0]
+    ?? sets.find((set) => set.coverageCount > 0)
+    ?? sets[0];
+}
+
+function uncoveredMrColorSet(palette: VisualPalette) {
+  const uncoveredRoles = palette.entries.map((entry) => ({
+    roleSlug: entry.roleSlug,
+    targetHex: entry.targetHex,
+    paintEffect: entry.paintEffect,
+  }));
+  return {
+    id: "gsi-creos:mr-color",
+    brand: "GSI Creos",
+    line: "Mr. Color",
+    label: "Mr. Color C Series",
+    recommended: false,
+    coverageCount: 0,
+    roleCount: palette.entries.length,
+    averageDeltaE: null,
+    maxDeltaE: null,
+    missingRoleSlugs: uncoveredRoles.map((entry) => entry.roleSlug),
+    uncoveredRoles,
+    warnings: [customMixWarning(palette.entries.map((entry) => roleLabel(entry.roleSlug, entry.roleName)))],
+    entries: [] as ReturnType<typeof matchSystem>["entries"],
+  };
+}
+
+function customMixWarning(roleNames: string[]) {
+  if (roleNames.length === 1) {
+    return `${roleNames[0]} has no direct catalog SKU and needs a custom mix.`;
+  }
+  const head = roleNames.slice(0, -1).join(", ");
+  return `${head} and ${roleNames[roleNames.length - 1]} have no direct catalog SKU and need a custom mix.`;
+}
+
+function roleLabel(roleSlug: string, roleName?: string) {
+  return roleName?.trim() || roleSlug.replace(/-/g, " ");
+}
+
+function hueFamily(hex: string) {
+  try {
+    const { r, g, b } = hexToRgb(hex);
+    const red = r / 255;
+    const green = g / 255;
+    const blue = b / 255;
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const light = (max + min) / 2;
+    const delta = max - min;
+    if (light < 0.1) return "black";
+    if (light > 0.9) return "white";
+    if (delta < 0.08) return "neutral";
+    let hue = 0;
+    if (max === red) hue = ((green - blue) / delta) % 6;
+    else if (max === green) hue = (blue - red) / delta + 2;
+    else hue = (red - green) / delta + 4;
+    hue = (hue * 60 + 360) % 360;
+    if (hue < 18 || hue >= 345) return "red";
+    if (hue < 45) return "orange";
+    if (hue < 70) return "yellow";
+    if (hue < 160) return "green";
+    if (hue < 200) return "cyan";
+    if (hue < 255) return "blue";
+    if (hue < 290) return "purple";
+    return "pink";
+  } catch {
+    return "";
   }
 }
 
@@ -327,9 +465,13 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
       paint: serializeRecommendationPaint(best.paint),
     }];
   });
-  const missingRoleSlugs = palette.entries
-    .filter((entry) => !entries.some((match) => match.roleSlug === entry.roleSlug))
-    .map((entry) => entry.roleSlug);
+  const uncovered = palette.entries.filter((entry) => !entries.some((match) => match.roleSlug === entry.roleSlug));
+  const missingRoleSlugs = uncovered.map((entry) => entry.roleSlug);
+  const uncoveredRoles = uncovered.map((entry) => ({
+    roleSlug: entry.roleSlug,
+    targetHex: entry.targetHex,
+    paintEffect: entry.paintEffect,
+  }));
   const weights = new Map(palette.entries.map((entry) => [entry.roleSlug, roleWeight(entry.roleSlug)]));
   const totalWeight = entries.reduce((sum, entry) => sum + (weights.get(entry.roleSlug) ?? 1), 0);
   const averageDeltaE = totalWeight > 0
@@ -337,7 +479,7 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
     : null;
   const maxDeltaE = entries.length ? Math.max(...entries.map((entry) => entry.deltaE00)) : null;
   const warnings = Array.from(new Set([
-    ...(missingRoleSlugs.length ? [`Missing ${missingRoleSlugs.length} color role${missingRoleSlugs.length === 1 ? "" : "s"}.`] : []),
+    ...(uncovered.length ? [customMixWarning(uncovered.map((entry) => roleLabel(entry.roleSlug, entry.roleName)))] : []),
     ...(entries.some((entry) => entry.warnings.includes("approximate_color_data"))
       ? ["Some matches use approximate digital color data."] : []),
     ...(entries.some((entry) => entry.warnings.includes("duplicate_paint_model"))
@@ -354,6 +496,7 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
     averageDeltaE: averageDeltaE === null ? null : round(averageDeltaE),
     maxDeltaE: maxDeltaE === null ? null : round(maxDeltaE),
     missingRoleSlugs,
+    uncoveredRoles,
     warnings,
     entries,
   };
@@ -361,8 +504,13 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
 
 function compareSets(
   left: ReturnType<typeof matchSystem>,
-  right: ReturnType<typeof matchSystem>
+  right: ReturnType<typeof matchSystem>,
+  preferredId?: string
 ) {
+  if (preferredId) {
+    if (left.id === preferredId && right.id !== preferredId) return -1;
+    if (right.id === preferredId && left.id !== preferredId) return 1;
+  }
   const coverageDelta = right.coverageCount - left.coverageCount;
   if (coverageDelta !== 0) return coverageDelta;
   const averageDelta = (left.averageDeltaE ?? Number.POSITIVE_INFINITY) - (right.averageDeltaE ?? Number.POSITIVE_INFINITY);

@@ -3,6 +3,7 @@
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useMemo, useState, type FormEvent } from "react";
+import { SystemState, systemStates } from "@/src/components/system-state";
 
 type StudioSection = "overview" | "spray-plans" | "paint-bench" | "orders";
 
@@ -65,6 +66,16 @@ export function DashboardOverview() {
     } finally {
       setUpdatingPaintId(null);
     }
+  }
+
+  if (
+    viewer === undefined ||
+    transactions === undefined ||
+    orders === undefined ||
+    sprayPlans === undefined ||
+    paints === undefined
+  ) {
+    return <SystemState {...systemStates.studioLoading} />;
   }
 
   return (
@@ -144,7 +155,7 @@ export function DashboardOverview() {
                 <article key={plan._id}>
                   <header><span>N°.{String(plan.conceptRecordNumber ?? 0).padStart(3, "0")}</span><small>Version {plan.currentVersion} / {plan.status}</small></header>
                   <h3>{plan.title}</h3><p>{plan.snapshot?.baseModelName ?? "Prototype source"} · {plan.snapshot?.stylePresetName ?? "Style DNA pending"}</p>
-                  <ol>{(plan.snapshot?.entries ?? []).slice(0, 4).map((entry: PlanEntry, index: number) => <li key={entry.roleSlug}><span>{String(index + 1).padStart(2, "0")}</span><strong>{entry.roleName}</strong><b>{entry.suggestedPaint ? `${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}` : "Mapping pending"}</b></li>)}</ol>
+                  <ol>{(plan.snapshot?.entries ?? []).slice(0, 4).map((entry: PlanEntry, index: number) => <li key={entry.roleSlug}><span>{String(index + 1).padStart(2, "0")}</span><strong>{entry.roleName}</strong><b>{entry.suggestedPaint ? `${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}` : "Custom mix required"}</b></li>)}</ol>
                 </article>
               ))}
             </div>

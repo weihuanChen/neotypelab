@@ -50,8 +50,31 @@ describe("Style interpretation lifecycle", () => {
     expect(await balance(f)).toBe(40 - f.cost);
     expect((await f.owner.client.query(api.styleInterpretations.latest, { description: "Private reference phrase" }))?.intent).toEqual(intent);
     expect(await f.other.client.query(api.styleInterpretations.latest, { description: "Private reference phrase" })).toBeNull();
+    expect(await f.owner.client.query(api.styleInterpretations.matchDirection, { description: "Private reference phrase" })).toMatchObject({
+      interpretation: { sourceDescription: "Private reference phrase" },
+      style: null,
+      records: [],
+    });
     await expect(f.other.client.query(internal.styleInterpretations.result, { promptCompositionId: id })).rejects.toThrow(/not found/);
     await expect(f.owner.client.mutation(internal.styleInterpretations.begin, { description: "different", requestKey: "interpret-1" })).rejects.toThrow(/different/);
+  });
+
+  it("matches a saved style and its generated records for a repeated direction", async () => {
+    const f = await fixture();
+    const id = await interpreted(f);
+    const savedStyle = await f.owner.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId: id });
+    const conceptId = await f.t.run(async ctx => ctx.db.insert("concepts", {
+      userId: f.owner.userId, title: "Iron Man build", status: "generated", visibility: "private",
+      userStyleId: savedStyle.styleId, styleRootId: savedStyle.styleId, styleIntentJson: JSON.stringify(intent),
+      weatheringLevel: "clean", searchText: "Iron Man build", recordNumber: 42,
+    }));
+    expect(await f.owner.client.query(api.styleInterpretations.matchDirection, { description: "Private reference phrase" })).toMatchObject({
+      style: { id: savedStyle.styleId, name: intent.name },
+      records: [expect.objectContaining({ conceptId, title: "Iron Man build", recordNumber: 42 })],
+    });
+    expect(await f.other.client.query(api.styleInterpretations.matchDirection, { description: "Private reference phrase" })).toEqual({
+      interpretation: null, style: null, records: [],
+    });
   });
 
   it("runs the public action through the text provider and reuses its request key", async () => {

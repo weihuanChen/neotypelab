@@ -66,7 +66,7 @@ const concept = {
     viewerHasLiked: false,
     viewerHasSaved: false,
   },
-} as ShowcaseConcept;
+} as unknown as ShowcaseConcept;
 
 describe("ExploreLanding", () => {
   it("shows SystemState while the public archive is still opening", () => {

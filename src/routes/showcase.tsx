@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ShowcaseLanding } from "@/src/components/showcase/ShowcaseLanding";
-import { SystemState, systemStates } from "@/src/components/system-state";
+import { RoutePending } from "@/src/components/system-state/RoutePending";
+import { systemStates } from "@/src/components/system-state";
 import {
   buildShowcaseStructuredData,
   getShowcaseSnapshot,
@@ -16,6 +17,7 @@ const showcaseShell = {
 export const Route = createFileRoute("/showcase")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
+  pendingMs: 0,
   pendingComponent: ShowcasePending,
   head: () => ({
     meta: [
@@ -40,11 +42,7 @@ export const Route = createFileRoute("/showcase")({
 });
 
 function ShowcasePending() {
-  return (
-    <AppShell {...showcaseShell}>
-      <SystemState {...systemStates.showcaseLoading} />
-    </AppShell>
-  );
+  return <RoutePending {...showcaseShell} state={systemStates.showcaseLoading} />;
 }
 
 function ShowcaseRoute() {

@@ -82,4 +82,10 @@ describe("SystemState", () => {
     expect(html).toContain("is-progress");
     expect(html).toContain("Archive / Sync");
   });
+
+  it("uses route-specific loading language for create, feedback, and studio", () => {
+    expect(renderToStaticMarkup(<SystemState {...systemStates.createLoading} />)).toContain("Create / Opening");
+    expect(renderToStaticMarkup(<SystemState {...systemStates.feedbackLoading} />)).toContain("Feedback / Opening");
+    expect(renderToStaticMarkup(<SystemState {...systemStates.studioLoading} />)).toContain("Studio / Opening");
+  });
 });

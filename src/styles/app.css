@@ -5,6 +5,7 @@
 @import "./prototype-case.css";
 @import "./create-workspace.css";
 @import "./system-state.css";
+@import "./job-wait.css";
 
 :root {
   color-scheme: light;

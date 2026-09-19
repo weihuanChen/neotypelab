@@ -3,6 +3,7 @@ import { canManagePlatform, isSuperAdminEmail, requireSuperAdmin, writeAdminAudi
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { buildPaintPlan } from "./paintMappingEngine";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
+import { summarizePaintCatalogForPrompt } from "./paintRecommendationEngine";
 import { buildOptionalModelPromptContext } from "./modelPromptContext";
 import { Doc, Id } from "./_generated/dataModel";
 import {
@@ -4387,7 +4388,7 @@ async function composePromptLabPayload(
       })),
     }),
     renderSpecification: "Production uses the concept's saved specification; this manual preview has none.",
-    paintCatalog: JSON.stringify({ availableEffects: Array.from(new Set(paintMappings.filter(p=>p.isActive).map(p=>p.opacity === "transparent" ? "transparent" : p.effects.includes("metallic") ? "metallic" : "solid"))) }),
+    paintCatalog: JSON.stringify(summarizePaintCatalogForPrompt(paintMappings.filter((paint) => paint.isActive))),
     availableStyles,
     baseModel: modelPromptContext?.promptText ?? "Unselected kit variant",
     colorRoles: JSON.stringify(colorRoles.map((role) => ({ slug: role.slug, name: role.name, recommendedArea: role.recommendedArea }))),

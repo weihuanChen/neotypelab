@@ -447,7 +447,9 @@ function ColorSystemSection({
                   <p>
                     {row.paint
                       ? `${row.paint.code} ${row.paint.colorName}`
-                      : row.targetHex ?? "No catalog match"}
+                      : row.targetHex
+                        ? `${row.targetHex} · No catalog SKU · custom mix`
+                        : "No catalog SKU · custom mix"}
                   </p>
                   {row.area ? <small>{row.area}</small> : null}
                 </div>
@@ -484,7 +486,7 @@ function ColorSystemSection({
                       <small>{row.paint.brand} · {row.paint.colorName}</small>
                     </>
                   ) : (
-                    <span className="case-muted">No catalog match</span>
+                    <span className="case-muted">No catalog SKU · custom mix</span>
                   )}
                 </td>
                 <td>{row.area ?? "—"}</td>

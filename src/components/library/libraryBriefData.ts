@@ -37,7 +37,17 @@ export interface BriefPaintSystem {
   coverageCount: number;
   roleCount: number;
   averageDeltaE: number | null;
+  missingRoleSlugs: string[];
   entries: BriefPaintMatch[];
+}
+
+export const CUSTOM_MIX_LABEL = "No catalog SKU";
+export const CUSTOM_MIX_NOTE = "No direct paint code covers this target. Mix from nearby catalog colors.";
+
+export function roleNeedsCustomMix(system: { missingRoleSlugs?: string[]; entries: Array<{ roleSlug: string }> } | undefined, roleSlug: string) {
+  if (!system) return true;
+  if (system.missingRoleSlugs?.includes(roleSlug)) return true;
+  return !system.entries.some((entry) => entry.roleSlug === roleSlug);
 }
 
 export interface BriefRepaintPanel {
@@ -167,6 +177,7 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
     coverageCount?: unknown;
     roleCount?: unknown;
     averageDeltaE?: unknown;
+    missingRoleSlugs?: unknown;
     entries?: unknown;
   }
 
@@ -215,6 +226,9 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
     coverageCount: typeof chosenSet.coverageCount === "number" ? chosenSet.coverageCount : entries.length,
     roleCount: typeof chosenSet.roleCount === "number" ? chosenSet.roleCount : entries.length,
     averageDeltaE: typeof chosenSet.averageDeltaE === "number" ? chosenSet.averageDeltaE : null,
+    missingRoleSlugs: Array.isArray(chosenSet.missingRoleSlugs)
+      ? chosenSet.missingRoleSlugs.filter((slug): slug is string => typeof slug === "string")
+      : [],
     entries,
   };
 }

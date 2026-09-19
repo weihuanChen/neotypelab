@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ShowcaseFeed } from "@/src/components/showcase/ShowcaseFeed";
-import { SystemState, systemStates } from "@/src/components/system-state";
+import { RoutePending } from "@/src/components/system-state/RoutePending";
+import { systemStates } from "@/src/components/system-state";
 import {
   getShowcaseSnapshot,
   parseShowcaseSearch,
@@ -15,6 +16,7 @@ const archiveShell = {
 export const Route = createFileRoute("/showcase_/archive")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
+  pendingMs: 0,
   pendingComponent: ShowcaseArchivePending,
   head: () => ({
     meta: [
@@ -30,11 +32,7 @@ export const Route = createFileRoute("/showcase_/archive")({
 });
 
 function ShowcaseArchivePending() {
-  return (
-    <AppShell {...archiveShell}>
-      <SystemState {...systemStates.showcaseLoading} />
-    </AppShell>
-  );
+  return <RoutePending {...archiveShell} state={systemStates.showcaseLoading} />;
 }
 
 function ShowcaseArchiveRoute() {

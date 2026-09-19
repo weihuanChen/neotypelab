@@ -1,0 +1,429 @@
+.job-wait,
+.job-result {
+  display: grid;
+  gap: clamp(1.4rem, 4vh, 2.4rem);
+  min-width: 0;
+  padding: clamp(0.5rem, 3vh, 1.5rem) 0 clamp(1.5rem, 5vh, 3rem);
+  color: var(--color-ink);
+}
+
+.job-wait__identity {
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.job-wait__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(12rem, 0.9fr);
+  gap: clamp(1.5rem, 6vw, 4.5rem);
+  align-items: start;
+}
+
+.job-wait__verb {
+  margin: 0;
+  max-width: 12ch;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: clamp(2.1rem, 5.4vw, 4.1rem);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.job-wait__verb span {
+  display: block;
+  margin-top: 0.12em;
+}
+
+.job-wait__summary {
+  margin: 1.15rem 0 0;
+  max-width: 28ch;
+  color: var(--color-ink-2);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.job-plot {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  color: var(--color-ink);
+}
+
+.job-plot__glyph {
+  display: block;
+  width: min(18rem, 100%);
+  height: auto;
+  overflow: visible;
+}
+
+.job-plot__index {
+  fill: currentColor;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.job-plot__caption {
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.job-plot__frame {
+  opacity: 0;
+}
+
+.job-plot__frame:nth-child(1) {
+  animation: job-plot-hold 9.6s 0s infinite;
+}
+
+.job-plot__frame:nth-child(2) {
+  animation: job-plot-hold 9.6s 2.4s infinite;
+}
+
+.job-plot__frame:nth-child(3) {
+  animation: job-plot-hold 9.6s 4.8s infinite;
+}
+
+.job-plot__frame:nth-child(4) {
+  animation: job-plot-hold 9.6s 7.2s infinite;
+}
+
+.job-plot__stroke {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: job-plot-draw 2.2s var(--ease-out) both;
+}
+
+.job-plot__node {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.35);
+  animation: job-plot-node 2.2s var(--ease-out) 420ms both;
+}
+
+.job-wait.is-interrupted .job-plot__frame {
+  animation: none;
+}
+
+.job-wait.is-interrupted .job-plot__frame:nth-child(1) {
+  opacity: 1;
+}
+
+.job-wait.is-interrupted .job-plot__stroke,
+.job-wait.is-interrupted .job-plot__node {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  stroke-dashoffset: 0;
+}
+
+.job-wait__lifecycle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-wait__lifecycle li {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.job-wait__index,
+.job-wait__lifecycle small {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.job-wait__lifecycle strong {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.job-wait__lifecycle .is-output,
+.job-wait__lifecycle .is-output small,
+.job-wait__lifecycle .is-interrupted strong {
+  color: var(--color-muted);
+}
+
+.job-wait__rail {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  align-items: center;
+  min-height: 0.7rem;
+}
+
+.job-wait__rail span,
+.job-wait__rail i {
+  display: block;
+}
+
+.job-wait__rail span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.job-wait__rail span.is-filled,
+.job-wait__rail span.is-active {
+  background: var(--color-ink);
+}
+
+.job-wait__rail span.is-interrupted {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.job-wait__rail i {
+  height: 1px;
+  background: var(--color-ink);
+}
+
+.job-wait__meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1rem 1.8rem;
+  align-items: baseline;
+}
+
+.job-wait__elapsed {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.job-wait__elapsed span,
+.job-wait__message span {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.job-wait__elapsed time {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+}
+
+.job-wait__exit,
+.job-wait__message {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--color-ink-2);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.job-wait__message {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.job-wait__recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem 1.4rem;
+  align-items: center;
+}
+
+.job-result__kicker {
+  margin: 0;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.job-result__title {
+  margin: 0;
+  max-width: 16ch;
+  font-family: var(--font-body);
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.job-result__message {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--color-ink-2);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.job-result__details {
+  min-width: 0;
+}
+
+.job-result__details dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.6rem;
+  margin: 0;
+  padding: 1.15rem 0;
+  border-block: var(--rule-hair) solid var(--color-rule-2);
+  text-align: left;
+}
+
+.job-result__details dt {
+  margin: 0 0 0.35rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.job-result__details dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.job-result__note {
+  margin: 0.9rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+}
+
+.job-result__records {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1.15rem 0 0;
+  padding: 1.15rem 0 0;
+  border-top: var(--rule-hair) solid var(--color-rule-2);
+  list-style: none;
+}
+
+.job-result__records li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: baseline;
+}
+
+.job-result__records span {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+
+.job-result__records strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.job-result__records small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+.job-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1rem;
+}
+
+.job-result__secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.5rem;
+}
+
+.create-workspace.is-job-wait {
+  min-height: calc(100dvh - 8.5rem);
+  align-content: center;
+  max-width: 68rem;
+}
+
+@keyframes job-plot-hold {
+  0%,
+  22% {
+    opacity: 1;
+  }
+  25%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes job-plot-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes job-plot-node {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 860px) {
+  .job-wait__split,
+  .job-wait__meta,
+  .job-wait__lifecycle,
+  .job-result__details dl {
+    grid-template-columns: 1fr;
+  }
+
+  .job-wait__verb {
+    max-width: none;
+  }
+
+  .job-plot__glyph {
+    width: min(14rem, 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-plot__frame,
+  .job-plot__stroke,
+  .job-plot__node {
+    animation: none;
+  }
+
+  .job-plot__frame:nth-child(1) {
+    opacity: 1;
+  }
+
+  .job-plot__stroke {
+    stroke-dashoffset: 0;
+  }
+
+  .job-plot__node {
+    opacity: 1;
+    transform: none;
+  }
+}

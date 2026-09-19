@@ -4,6 +4,7 @@ import { AppShell } from "@/src/components/app-shell/AppShell";
 import { DashboardOverview } from "@/src/components/terminal/DashboardOverview";
 import { noIndexRobots } from "@/src/lib/appPaths";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
+import { RoutePending } from "@/src/components/system-state/RoutePending";
 import {
   SystemSignInButton,
   SystemSignInLink,
@@ -11,7 +12,14 @@ import {
   systemStates,
 } from "@/src/components/system-state";
 
+const studioShell = {
+  description: "Production resources and account activity.",
+  title: "Studio",
+} as const;
+
 export const Route = createFileRoute("/studio")({
+  pendingMs: 0,
+  pendingComponent: StudioPending,
   head: () => ({
     meta: [
       { title: "Studio | NeotypeLab" },
@@ -26,14 +34,15 @@ export const Route = createFileRoute("/studio")({
   component: StudioRoute,
 });
 
+function StudioPending() {
+  return <RoutePending {...studioShell} state={systemStates.studioLoading} />;
+}
+
 function StudioRoute() {
   const providerStatus = useStartProviderStatus();
 
   return (
-    <AppShell
-      description="Production resources and account activity."
-      title="Studio"
-    >
+    <AppShell {...studioShell}>
       {!providerStatus.hasClerkProvider || !providerStatus.hasConvexClient ? (
         <SystemState
           {...systemStates.serverError}
@@ -54,7 +63,7 @@ function StudioAuthGate() {
   return (
     <>
       <AuthLoading>
-        <SystemState {...systemStates.sessionLoading} />
+        <SystemState {...systemStates.studioLoading} />
       </AuthLoading>
       <Unauthenticated>
         <SystemState

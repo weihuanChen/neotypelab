@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ExploreLanding } from "@/src/components/showcase/ExploreLanding";
-import { SystemState, systemStates } from "@/src/components/system-state";
+import { RoutePending } from "@/src/components/system-state/RoutePending";
+import { systemStates } from "@/src/components/system-state";
 import {
   buildShowcaseStructuredData,
   getShowcaseSnapshot,
@@ -17,6 +18,7 @@ const exploreShell = {
 export const Route = createFileRoute("/")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
+  pendingMs: 0,
   pendingComponent: ExplorePending,
   head: () => ({
     meta: [
@@ -40,11 +42,7 @@ export const Route = createFileRoute("/")({
 });
 
 function ExplorePending() {
-  return (
-    <AppShell {...exploreShell}>
-      <SystemState {...systemStates.exploreLoading} />
-    </AppShell>
-  );
+  return <RoutePending {...exploreShell} state={systemStates.exploreLoading} />;
 }
 
 function Home() {

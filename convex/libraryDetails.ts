@@ -95,11 +95,15 @@ export const get = query({
       ? paintRecommendationSetsSchema.safeParse(objectJson(concept.paintRecommendationSetsJson))
       : null;
     let paintRecommendations = storedRecommendations?.success ? storedRecommendations.data : null;
-    if (!paintRecommendations && visualPalette) {
+    if (visualPalette) {
       try {
-        paintRecommendations = buildPaintRecommendationSets(visualPalette, paintMappings);
+        const live = buildPaintRecommendationSets(visualPalette, paintMappings);
+        const liveCoverage = Math.max(0, ...live.sets.map((set) => set.coverageCount));
+        if (live.sets.length > 0 && (liveCoverage > 0 || !paintRecommendations)) {
+          paintRecommendations = live;
+        }
       } catch {
-        paintRecommendations = null;
+        paintRecommendations = storedRecommendations?.success ? storedRecommendations.data : null;
       }
     }
     const rawSpec = objectJson(concept.renderSpecificationJson);

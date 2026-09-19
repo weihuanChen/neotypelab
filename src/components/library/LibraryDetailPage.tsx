@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
 import type { LibraryDetailTab } from "./libraryDetailSearch";
-import { computeMaskingSummary } from "./libraryBriefData";
+import { computeMaskingSummary, CUSTOM_MIX_LABEL, CUSTOM_MIX_NOTE, roleNeedsCustomMix } from "./libraryBriefData";
 import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
 import {
   SystemSignInButton,
@@ -323,7 +323,7 @@ function WorkbenchActionBar({
         <span className="work-detail-workbench-bar__badge">MODELER MANUAL</span>
         <span className="work-detail-workbench-bar__desc">
           {selectedSystem
-            ? `Ready to spray · ${selectedSystem.brand} ${selectedSystem.line} (${selectedSystem.coverageCount}/${selectedSystem.roleCount} matched)`
+            ? `${(selectedSystem.missingRoleSlugs?.length ?? 0) > 0 ? "Mix required" : "Ready to spray"} · ${selectedSystem.brand} ${selectedSystem.line} (${selectedSystem.coverageCount}/${selectedSystem.roleCount} matched)`
             : "Physical Kit Painting Directives"}
         </span>
       </div>
@@ -410,6 +410,13 @@ function Overview({
             <p className="work-detail-intro">
               Complete workbench matrix mapping kit parts to visual color roles, catalog paint codes, and surface prep instructions.
             </p>
+            {selectedSystem && (selectedSystem.missingRoleSlugs?.length ?? 0) > 0 ? (
+              <p className="work-detail-mix-banner">
+                {selectedSystem.missingRoleSlugs.length === 1
+                  ? "1 color role has no direct catalog SKU in this system and needs a custom mix."
+                  : `${selectedSystem.missingRoleSlugs.length} color roles have no direct catalog SKU in this system and need a custom mix.`}
+              </p>
+            ) : null}
 
             {detail.paintRecommendations && detail.paintRecommendations.sets.length > 1 ? (
               <div className="work-detail-system-switch" role="group" aria-label="Paint system selector">
@@ -473,7 +480,7 @@ function Overview({
                           </div>
                         </td>
                         <td className="work-detail-matrix__match">
-                          {match ? (
+                          {match && !roleNeedsCustomMix(selectedSystem, color.roleSlug) ? (
                             <>
                               <div className="work-detail-matrix__code-row">
                                 <strong>{match.paint.code}</strong>
@@ -485,8 +492,8 @@ function Overview({
                             </>
                           ) : (
                             <div className="work-detail-matrix__missing">
-                              <span>No single-system match</span>
-                              <small>Match visually</small>
+                              <span>{CUSTOM_MIX_LABEL}</span>
+                              <small>{CUSTOM_MIX_NOTE}</small>
                             </div>
                           )}
                         </td>

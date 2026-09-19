@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, query } from "./functions";
 import { internalMutation as systemMutation } from "./_generated/server";
 import { styleIntentSchema, styleInterpreterSystemPrompt, styleInterpreterUserPromptTemplate, type StyleIntent } from "./creativeContracts";
+import type { QueryCtx } from "./types";
 
 const version = "style-interpreter.v1";
 export type InterpretationResult = {
@@ -123,14 +124,71 @@ export const result = internalQuery({
     return resultFromRow(row);
   },
 });
+export type DirectionMatch = {
+  interpretation: InterpretationResult | null;
+  style: { id: string; name: string } | null;
+  records: Array<{
+    conceptId: string;
+    title: string;
+    recordNumber: number | null;
+    kitName: string | null;
+    status: string;
+  }>;
+};
+
+async function matchingRows(ctx: QueryCtx, description: string) {
+  const viewer = ctx.viewer;
+  if (!viewer || !description.trim() || description.trim().length > 2000) return [];
+  const inputKey = JSON.stringify({ version, description: description.trim() });
+  const rows = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", viewer._id)).order("desc").take(50);
+  return rows.filter(row => row.status === "consumed" && JSON.parse(row.inputSnapshotJson).inputKey === inputKey);
+}
+
 export const latest = query({
   args: { description: v.string() },
   handler: async (ctx, { description }): Promise<InterpretationResult | null> => {
-    if (!ctx.viewer || !description.trim() || description.trim().length > 2000) return null;
-    const inputKey = JSON.stringify({ version, description: description.trim() });
-    const rows = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", ctx.viewer!._id)).order("desc").take(50);
-    const row = rows.find(row => row.status === "consumed" && JSON.parse(row.inputSnapshotJson).inputKey === inputKey);
+    const row = (await matchingRows(ctx, description))[0];
     return row ? resultFromRow(row) : null;
+  },
+});
+
+export const matchDirection = query({
+  args: { description: v.string() },
+  handler: async (ctx, { description }): Promise<DirectionMatch> => {
+    const empty: DirectionMatch = { interpretation: null, style: null, records: [] };
+    const viewer = ctx.viewer;
+    if (!viewer) return empty;
+    const rows = await matchingRows(ctx, description);
+    const latestRow = rows[0];
+    if (!latestRow) return empty;
+    const styles = [];
+    for (const row of rows) {
+      const style = await ctx.db.query("userStyles").withIndex("by_user_composition", q =>
+        q.eq("userId", viewer._id).eq("promptCompositionId", row._id)).unique();
+      if (style?.status === "active") styles.push(style);
+    }
+    const style = styles[0] ?? null;
+    const seen = new Set<string>();
+    const records: DirectionMatch["records"] = [];
+    for (const saved of styles) {
+      const rootId = saved.rootStyleId ?? saved._id;
+      const concepts = await ctx.db.query("concepts").withIndex("by_styleRoot", q => q.eq("styleRootId", rootId)).order("desc").take(8);
+      for (const concept of concepts) {
+        if (seen.has(concept._id) || concept.userId !== viewer._id) continue;
+        seen.add(concept._id);
+        const kit = concept.baseModelId ? await ctx.db.get(concept.baseModelId) : null;
+        records.push({
+          conceptId: concept._id,
+          title: concept.title,
+          recordNumber: concept.recordNumber ?? null,
+          kitName: kit?.name ?? null,
+          status: concept.status,
+        });
+        if (records.length >= 8) break;
+      }
+      if (records.length >= 8) break;
+    }
+    return { interpretation: resultFromRow(latestRow), style: style ? { id: style._id, name: style.name } : null, records };
   },
 });
 

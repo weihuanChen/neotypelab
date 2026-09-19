@@ -112,6 +112,31 @@ describe("libraryBriefData parsers", () => {
     expect(parsed?.averageDeltaE).toBe(1.8);
     expect(parsed?.entries).toHaveLength(1);
     expect(parsed?.entries[0].paint.code).toBe("C67");
+    expect(parsed?.missingRoleSlugs).toEqual([]);
+  });
+
+  it("keeps missing roles so the brief can mark a custom mix", () => {
+    const parsed = parsePaintRecommendations(JSON.stringify({
+      sets: [{
+        id: "gsi-creos:mr-color",
+        brand: "GSI Creos",
+        line: "Mr. Color",
+        label: "Mr. Color C Series",
+        recommended: true,
+        coverageCount: 1,
+        roleCount: 2,
+        missingRoleSlugs: ["sensor-color"],
+        entries: [{
+          roleSlug: "primary-armor",
+          targetHex: "#00B4D8",
+          paintEffect: "solid",
+          deltaE00: 7,
+          matchBand: "usable",
+          paint: { brand: "GSI Creos", code: "C323", colorName: "Light Blue" },
+        }],
+      }],
+    }));
+    expect(parsed?.missingRoleSlugs).toEqual(["sensor-color"]);
   });
 
   it("parses render specification and calculates masking summary", () => {

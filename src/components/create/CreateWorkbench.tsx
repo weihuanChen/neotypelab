@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import { api } from "@/convex/_generated/api";
@@ -17,6 +17,8 @@ import { StylePalette, displayPalette } from "./StylePalette";
 import { KitPicker, KitPortrait } from "./KitPicker";
 import { GenerationJobSheet } from "./GenerationJobSheet";
 import type { CreateWorkbenchSearch } from "./createSearch";
+import { SystemState, systemStates } from "@/src/components/system-state";
+import type { StyleJobPhase } from "@/src/components/job-wait";
 
 const moodOptions = ["command-presence", "stealth-tension", "industrial-hazard", "reactor-glow", "field-fatigue", "ceremonial-clean"] as const;
 type Mood = typeof moodOptions[number];
@@ -51,6 +53,13 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const [error, setError] = useState<string | null>(null);
   const [watchingRunId, setWatchingRunId] = useState<string | null>(null);
   const [dismissedRunId, setDismissedRunId] = useState<string | null>(null);
+  const [stylePhase, setStylePhase] = useState<StyleJobPhase>("input");
+  const handleStylePhase = useCallback((phase: StyleJobPhase) => {
+    setStylePhase(phase);
+    if (phase === "existing" || phase === "forming" || phase === "review" || phase === "stored" || phase === "interrupted") {
+      setTab("create");
+    }
+  }, []);
   const appliedSearch = useRef(false);
   const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
   const preset = catalog?.stylePresets.find(row => row._id === presetId);
@@ -129,7 +138,9 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
     }
   }
 
-  if (!catalog || viewer === undefined) return <div className="workbench-page" role="status">Opening your creative workspace…</div>;
+  if (!catalog || viewer === undefined) {
+    return <SystemState {...systemStates.createLoading} />;
+  }
 
   const shouldShowJobSheet = Boolean(
     latestRun &&
@@ -156,17 +167,19 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   }
 
   const canGenerate = hasStyle && Boolean(actualKitId && resolvedMaterial && quote) && !busy && !isRunning && !locked;
-  return <div className={`create-workspace ${step === 1 ? "is-style" : "is-model"}`}>
-    <nav className="create-step-nav" aria-label="Creation steps"><button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>01 · Style</button><button type="button" disabled={!hasStyle} aria-current={step === 2 ? "step" : undefined} onClick={() => setStep(2)}>02 · Model</button></nav>
+  const styleTakeover = stylePhase === "forming" || stylePhase === "interrupted";
+  return <div className={`create-workspace ${styleTakeover ? "is-job-wait" : step === 1 ? "is-style" : "is-model"}`}>
+    {styleTakeover ? null : <nav className="create-step-nav" aria-label="Creation steps"><button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>01 · Style</button><button type="button" disabled={!hasStyle} aria-current={step === 2 ? "step" : undefined} onClick={() => setStep(2)}>02 · Model</button></nav>}
     {step === 1 ? <section className="create-style-workspace">
-      <p className="workbench-kicker">01 · Style</p><h2>Choose a repaint language.</h2>
-      <div className="style-main-tabs" aria-label="Style workspace">{(["discover", "create", "saved"] as const).map(value => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)}>{value === "discover" ? "Discover" : value === "create" ? "Create" : "Saved"}</button>)}</div>
-      <div hidden={tab !== "discover"}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={busy || Boolean(isRunning)} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
+      {styleTakeover ? null : <><p className="workbench-kicker">01 · Style</p><h2>Choose a repaint language.</h2>
+      <div className="style-main-tabs" aria-label="Style workspace">{(["discover", "create", "saved"] as const).map(value => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)}>{value === "discover" ? "Discover" : value === "create" ? "Create" : "Saved"}</button>)}</div></>}
+      <div hidden={styleTakeover || tab !== "discover"}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={busy || Boolean(isRunning)} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
         onPreset={row => { setStyleMode("preset"); setPresetId(row._id); setMaterialId(null); setWeathering(null); setMood([]); }}
         onCommunity={row => { setBusy(true); setError(null); void saveCommunity({ styleId: row.id }).then(saved => { setStyleMode("custom"); setCustom(saved.intent); setSavedId(saved.styleId); setCommunityId(row.id); setMaterialId(null); setWeathering(null); setMood([]); }).catch(failure => setError(errorText(failure))).finally(() => setBusy(false)); }} /></div>
-      <div hidden={tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={viewer?.credits?.balance ?? 0} selectedId={savedId} view={tab === "saved" ? "mine" : "describe"}
+      <div hidden={!styleTakeover && tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={viewer?.credits?.balance ?? 0} selectedId={savedId} view={styleTakeover || tab !== "saved" ? "describe" : "mine"}
+        onPhaseChange={handleStylePhase}
         onUse={(value, id) => { setStyleMode("custom"); setCustom(value); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setSavedId(null); }} onApply={() => setStep(2)} /></div>
-      {tab !== "create" ? <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a model →</Button> : null}
+      {styleTakeover || tab === "create" ? null : <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a model →</Button>}
     </section> : <>
       <section className="selected-style-strip" aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change →</button></section>
       <div className="create-model-layout"><KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} />
@@ -179,7 +192,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
     </>}
     {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
     {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
-    {latestRun && !shouldShowJobSheet ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "Generation failed."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
+    {latestRun && !shouldShowJobSheet && !styleTakeover ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "Generation failed."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
       <Button variant="outline" onClick={() => { setDismissedRunId(null); setWatchingRunId(latestRun.id); }}>View job status →</Button>
       {latestRun.conceptId ? <Button asChild variant="outline"><Link to="/library/$conceptId" params={{ conceptId: latestRun.conceptId }} search={{ tab: "overview" }}>View details →</Link></Button> : <Link to="/library">Open library →</Link>}
     </section> : null}

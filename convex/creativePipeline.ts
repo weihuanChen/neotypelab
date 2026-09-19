@@ -13,6 +13,7 @@ import {
   buildPaintRecommendationSets,
   buildVisualPalette,
   materializePrimaryPaintPlan,
+  summarizePaintCatalogForPrompt,
   type PaintRecommendationSets,
   type VisualPalette,
   visualPaletteFromLegacyPlan,
@@ -102,7 +103,6 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
     if (args.kind === "style-suggestion" && !styles.length) throw new Error("No active styles available");
     const roles = await ctx.db.query("colorRoles").withIndex("by_sortOrder").collect();
     const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive && /^#[0-9a-f]{6}$/i.test(p.hexPreview ?? ""));
-    const effects = Array.from(new Set(mappings.map(p => p.opacity === "transparent" ? "transparent" : p.effects.includes("metallic") ? "metallic" : "solid")));
     if (args.kind === "palette-plan" && !mappings.length) throw new Error("Paint catalog has no active color samples");
     const snapshot: Snapshot = {
       userStyleId: savedStyle?._id, styleRootId: savedStyle ? savedStyle.rootStyleId ?? savedStyle._id : undefined,
@@ -121,7 +121,7 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
       notes: args.notes?.trim() || "None",
       availableStyles: JSON.stringify(styles.map(s => ({ id: s._id, name: s.name, slug: s.slug, description: s.shortDescription, spec: s.styleSpec }))),
       colorRoles: JSON.stringify(roles.map(r => ({ slug: r.slug, name: r.name, recommendedArea: r.recommendedArea }))),
-      paintCatalog: JSON.stringify({ availableEffects: effects, activeColorSamples: mappings.length }),
+      paintCatalog: JSON.stringify(summarizePaintCatalogForPrompt(mappings)),
     });
     const id = await ctx.db.insert("promptCompositions", {
       userId: viewer._id, requestKey: args.requestKey, reservedCredits: priceRule.creditCost,

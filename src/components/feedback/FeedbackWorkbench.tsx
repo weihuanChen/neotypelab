@@ -14,6 +14,7 @@ import {
   type FeedbackCategory,
   type FeedbackWorkbenchSearch,
 } from "./feedbackUtils";
+import { SystemState, systemStates } from "@/src/components/system-state";
 
 export function FeedbackWorkbench({
   search,
@@ -175,21 +176,11 @@ export function FeedbackWorkbench({
   }
 
   if (viewer === undefined || concepts === undefined || reports === undefined) {
-    return (
-      <section className="feedback-loading" aria-live="polite">
-        <span>Feedback</span>
-        <strong>Preparing your report.</strong>
-      </section>
-    );
+    return <SystemState {...systemStates.feedbackLoading} />;
   }
 
   if (viewer === null) {
-    return (
-      <section className="feedback-loading is-danger">
-        <span>Session required</span>
-        <strong>Sign in before sending a report.</strong>
-      </section>
-    );
+    return <SystemState {...systemStates.authFeedback} />;
   }
 
   return (

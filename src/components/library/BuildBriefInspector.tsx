@@ -41,9 +41,12 @@ import {
 import type { LibraryConcept } from "./types";
 import {
   computeMaskingSummary,
+  CUSTOM_MIX_LABEL,
+  CUSTOM_MIX_NOTE,
   parsePaintRecommendations,
   parseRenderSpecification,
   parseVisualPalette,
+  roleNeedsCustomMix,
 } from "./libraryBriefData";
 
 type BuildStage = "primer-pass" | "decal-pass" | "weathering-pass";
@@ -328,6 +331,13 @@ export function BuildBriefInspector({
                     : ""}
                 </span>
               </div>
+              {paintSystem.missingRoleSlugs.length > 0 ? (
+                <p className="font-mono text-[10px] text-ink-muted leading-relaxed">
+                  {paintSystem.missingRoleSlugs.length === 1
+                    ? "1 role has no catalog SKU and needs a custom mix."
+                    : `${paintSystem.missingRoleSlugs.length} roles have no catalog SKU and need a custom mix.`}
+                </p>
+              ) : null}
 
               {/* Paint Swatch Pills */}
               <div className="brief-paint-chips grid grid-cols-2 gap-1.5 mt-2">
@@ -351,6 +361,28 @@ export function BuildBriefInspector({
                     </div>
                   </div>
                 ))}
+                {(visualPalette?.entries ?? [])
+                  .filter((color) => roleNeedsCustomMix(paintSystem, color.roleSlug))
+                  .map((color) => (
+                    <div
+                      key={`mix-${color.roleSlug}`}
+                      className="flex items-center gap-2 p-1.5 bg-surface-muted border border-dashed border-line-secondary text-xs"
+                      title={CUSTOM_MIX_NOTE}
+                    >
+                      <span
+                        className="w-3.5 h-3.5 shrink-0 border border-black/20"
+                        style={{ backgroundColor: color.targetHex }}
+                      />
+                      <div className="min-w-0">
+                        <strong className="font-mono text-[11px] block truncate">
+                          {CUSTOM_MIX_LABEL}
+                        </strong>
+                        <span className="text-[10px] text-ink-muted block truncate">
+                          {color.roleName}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
               </div>
 
               <div className="mt-2 text-right">

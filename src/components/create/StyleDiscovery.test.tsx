@@ -5,7 +5,13 @@ import type { ComponentProps } from "react";
 import { StyleDiscovery } from "./StyleDiscovery";
 import { displayPalette, StylePalette } from "./StylePalette";
 import { CustomStylePicker } from "./CustomStylePicker";
+import { resolveStyleJobPhase } from "./styleJobPhase";
 vi.mock("convex/react", () => ({ useQuery: () => null, useMutation: () => vi.fn(), useAction: () => vi.fn() }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, to, ...props }: { children: unknown; to?: string } & Record<string, unknown>) => (
+    <a href={typeof to === "string" ? to : "#"} {...props}>{children as never}</a>
+  ),
+}));
 describe("style workspace", () => {
   it("keeps the default discovery rail to four directions", () => {
     const presets = Array.from({ length: 20 }, (_, i) => ({
@@ -36,7 +42,8 @@ describe("style workspace", () => {
   it("renders only a command task in Create without nested source tabs", () => {
     const html = renderToStaticMarkup(<CustomStylePicker userId="test" creditCost={1} selectedId={null} view="describe" onUse={() => {}} onClear={() => {}} onApply={() => {}} />);
     expect(html).toContain("What should this kit become?");
-    expect(html).toContain("Interpret");
+    expect(html).toContain("Form style");
+    expect(html).not.toContain("Interpreting");
     expect(html).not.toContain("Publish to Community");
     expect(html).not.toContain("My Styles");
     expect(html).not.toContain('aria-label="Custom style sources"');
@@ -44,6 +51,64 @@ describe("style workspace", () => {
   it("blocks interpretation when the viewer cannot pay the tariff", () => {
     const html = renderToStaticMarkup(<CustomStylePicker userId="test" creditCost={1} creditBalance={0} selectedId={null} view="describe" onUse={() => {}} onClear={() => {}} onApply={() => {}} />);
     expect(html).toContain("Needs 1 credit · 0 available");
-    expect(html).toMatch(/disabled=""[^>]*>Interpret/);
+    expect(html).toMatch(/disabled=""[^>]*>Form style/);
+  });
+
+  it("keeps Custom Style review and stored able to return to input", () => {
+    const interpretation = {
+      promptCompositionId: "comp-1",
+      sourceDescription: "Matte armor",
+      model: "test",
+      profileId: "p",
+      creditCost: 1,
+      intent: { name: "Matte Armor" },
+    };
+
+    const idle = {
+      acceptedExisting: false,
+      adjusting: false,
+      busy: false,
+      error: "",
+      hasDirectionMatch: false,
+      hasSavedStyle: false,
+      interpretation: null,
+      savedCompositionId: null,
+    };
+
+    expect(resolveStyleJobPhase({ ...idle, busy: true })).toBe("forming");
+    expect(resolveStyleJobPhase({ ...idle, error: "failed" })).toBe("interrupted");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      hasDirectionMatch: true,
+    })).toBe("existing");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      acceptedExisting: true,
+      hasDirectionMatch: true,
+      interpretation: interpretation as never,
+    })).toBe("review");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      acceptedExisting: true,
+      hasDirectionMatch: true,
+      hasSavedStyle: true,
+      interpretation: interpretation as never,
+    })).toBe("stored");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      interpretation: interpretation as never,
+    })).toBe("review");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      interpretation: interpretation as never,
+      savedCompositionId: "comp-1",
+    })).toBe("stored");
+    expect(resolveStyleJobPhase({
+      ...idle,
+      adjusting: true,
+      hasDirectionMatch: true,
+      interpretation: interpretation as never,
+      savedCompositionId: "comp-1",
+    })).toBe("input");
   });
 });

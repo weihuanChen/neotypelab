@@ -218,4 +218,22 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).not.toContain("Publish to Showcase");
     mockDetail.visibility = "private";
   });
+
+  it("marks roles without a catalog SKU as a custom mix", () => {
+    const previous = {
+      missingRoleSlugs: mockDetail.paintRecommendations.sets[0].missingRoleSlugs,
+      entries: mockDetail.paintRecommendations.sets[0].entries,
+    };
+    mockDetail.paintRecommendations.sets[0].missingRoleSlugs = ["secondary-armor"];
+    mockDetail.paintRecommendations.sets[0].entries = previous.entries.filter(
+      (entry) => entry.roleSlug !== "secondary-armor"
+    );
+    const html = renderToStaticMarkup(
+      <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />
+    );
+    expect(html).toContain("No catalog SKU");
+    expect(html).toContain("Mix from nearby catalog colors");
+    mockDetail.paintRecommendations.sets[0].missingRoleSlugs = previous.missingRoleSlugs;
+    mockDetail.paintRecommendations.sets[0].entries = previous.entries;
+  });
 });

@@ -79,7 +79,7 @@ describe("creative pipeline", () => {
     await expect(f.client.mutation(internal.creativePipeline.begin, { ...args, notes: "changed" })).rejects.toThrow(/different creative inputs/);
   });
 
-  it("rejects unavailable paint effects rather than inventing a match", async () => {
+  it("marks unavailable paint effects as a custom mix instead of inventing a match", async () => {
     const f = await fixture();
     const id = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, kind: "palette-plan", requestKey: "effect" });
     await f.t.run(async ctx => {
@@ -91,9 +91,14 @@ describe("creative pipeline", () => {
       entries: f.catalog.roles.map(role => ({ roleSlug: role.slug, targetHex: "#00FFFF", paintEffect: "metallic", rationale: "Reflective armor" })),
       sprayNotes: ["Thin coats"],
     };
-    await expect(f.t.mutation(internal.creativePipeline.complete, {
+    await f.t.mutation(internal.creativePipeline.complete, {
       promptCompositionId: id, responseJson: JSON.stringify(output), executionJson: "{}",
-    })).rejects.toThrow(/No catalog paint system/);
+    });
+    const result = await f.client.query(internal.creativePipeline.result, { promptCompositionId: id });
+    const recommended = result.paintRecommendations?.sets.find((set) => set.recommended);
+    expect(recommended?.coverageCount).toBe(0);
+    expect(recommended?.missingRoleSlugs).toEqual(f.catalog.roles.map((role) => role.slug));
+    expect(result.plan?.entries.every((entry) => entry.suggestedPaint === null)).toBe(true);
   });
 
   it("rejects a stale official revision and isolates palette recovery across revisions", async () => {

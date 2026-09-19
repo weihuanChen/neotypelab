@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { CreateWorkbench } from "@/src/components/create/CreateWorkbench";
 import { parseCreateSearch } from "@/src/components/create/createSearch";
+import { RoutePending } from "@/src/components/system-state/RoutePending";
 import {
   SystemSignInButton,
   SystemSignInLink,
@@ -11,8 +12,15 @@ import {
   systemStates,
 } from "@/src/components/system-state";
 
+const createShell = {
+  description: "Choose a repaint language, then apply it to a kit.",
+  title: "Create",
+} as const;
+
 export const Route = createFileRoute("/create")({
   validateSearch: parseCreateSearch,
+  pendingMs: 0,
+  pendingComponent: CreatePending,
   head: () => ({
     meta: [
       { title: "Create | NeotypeLab" },
@@ -34,16 +42,17 @@ export const Route = createFileRoute("/create")({
   component: CreateRoute,
 });
 
+function CreatePending() {
+  return <RoutePending {...createShell} state={systemStates.createLoading} />;
+}
+
 function CreateRoute() {
   const search = Route.useSearch();
 
   return (
-    <AppShell
-      description="Choose a repaint language, then apply it to a kit."
-      title="Create"
-    >
+    <AppShell {...createShell}>
       <AuthLoading>
-        <SystemState {...systemStates.sessionLoading} />
+        <SystemState {...systemStates.createLoading} />
       </AuthLoading>
 
       <Unauthenticated>
@@ -55,7 +64,7 @@ function CreateRoute() {
       </Unauthenticated>
 
       <Authenticated>
-        <Suspense fallback={<SystemState {...systemStates.sessionLoading} />}>
+        <Suspense fallback={<SystemState {...systemStates.createLoading} />}>
           <CreateWorkbench search={search} />
         </Suspense>
       </Authenticated>

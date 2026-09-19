@@ -230,6 +230,42 @@ export const systemStates = {
     purpose: "progress",
     context: "Public archive",
   },
+  createLoading: {
+    code: "SYNC",
+    archive: "Create / Opening",
+    headline: "Opening\nthe create console.",
+    message: [
+      "Style DNA, kit options and your credit balance are being resolved for this session.",
+    ],
+    signal: "loading",
+    signalLabel: "Console / Sync",
+    purpose: "progress",
+    context: "Create console",
+  },
+  feedbackLoading: {
+    code: "SYNC",
+    archive: "Feedback / Opening",
+    headline: "Opening\nthe report archive.",
+    message: [
+      "Your reports and attached prototype context are being resolved.",
+    ],
+    signal: "loading",
+    signalLabel: "Archive / Sync",
+    purpose: "progress",
+    context: "Feedback archive",
+  },
+  studioLoading: {
+    code: "SYNC",
+    archive: "Studio / Opening",
+    headline: "Opening\nstudio resources.",
+    message: [
+      "Credits, spray plans, paint bench and order records are being resolved for this operator.",
+    ],
+    signal: "loading",
+    signalLabel: "Archive / Sync",
+    purpose: "progress",
+    context: "Studio",
+  },
   recordMissing: {
     code: "404",
     archive: "Library / Missing record",

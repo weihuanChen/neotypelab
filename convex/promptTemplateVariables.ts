@@ -9,7 +9,7 @@ export type PromptTemplateVariableDefinition = {
 };
 
 export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition[] = [
-  { key: "paintCatalog", label: "Paint catalog capabilities", description: "Available paint effects and catalog sample count.", kinds: ["palette-plan"], example: "solid, metallic" },
+  { key: "paintCatalog", label: "Paint catalog capabilities", description: "Per-line hues, effects, transparent samples, and the preferred Mr. Color system.", kinds: ["palette-plan"], example: "Mr. Color C Series: solid red/white, clear blue" },
   { key: "approvedPalette", label: "Approved palette", description: "Full persisted palette JSON.", kinds: ["repaint-concept", "hd-render"], example: "Approved color-role paint assignments" },
   { key: "renderSpecification", label: "Approved repaint specification", description: "Persisted panel, material, weathering and decal instructions.", kinds: ["hd-render"], example: "Approved repaint specification JSON" },
   {
