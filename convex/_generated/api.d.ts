@@ -51,6 +51,8 @@ import type * as libraryDetails from "../libraryDetails.js";
 import type * as libraryDownloadsNode from "../libraryDownloadsNode.js";
 import type * as llmProtocol from "../llmProtocol.js";
 import type * as modelCatalogAdmin from "../modelCatalogAdmin.js";
+import type * as modelCatalogImages from "../modelCatalogImages.js";
+import type * as modelCatalogNode from "../modelCatalogNode.js";
 import type * as modelCatalogStatus from "../modelCatalogStatus.js";
 import type * as modelPromptContext from "../modelPromptContext.js";
 import type * as orders from "../orders.js";
@@ -150,6 +152,8 @@ declare const fullApi: ApiFromModules<{
   libraryDownloadsNode: typeof libraryDownloadsNode;
   llmProtocol: typeof llmProtocol;
   modelCatalogAdmin: typeof modelCatalogAdmin;
+  modelCatalogImages: typeof modelCatalogImages;
+  modelCatalogNode: typeof modelCatalogNode;
   modelCatalogStatus: typeof modelCatalogStatus;
   modelPromptContext: typeof modelPromptContext;
   orders: typeof orders;

@@ -1,12 +1,19 @@
 import { v } from "convex/values";
 import { portraitUrl } from "./kitPicker";
 import { Doc, Id } from "./_generated/dataModel";
-import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
+import { canManagePlatform, requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { vModelCatalogStatus } from "./domain";
-import { mutation, query } from "./functions";
+import { internalMutation, mutation, query } from "./functions";
+import {
+  assertCatalogImageReference,
+  isManagedCatalogKey,
+  kitImageField,
+  vKitImageKind,
+} from "./modelCatalogImages";
 import { resolveModelCatalogStatus } from "./modelCatalogStatus";
 import { MutationCtx } from "./types";
 import { normalizeStringForSearch } from "./utils";
+
 
 export const listModelCatalogData = query({
   args: {},
@@ -149,7 +156,9 @@ export const listModelCatalogData = query({
             aliases: variant.aliases,
             tags: variant.tags,
             thumbnailAssetKey: variant.thumbnailAssetKey,
+            fullBodyAssetKey: variant.fullBodyAssetKey,
             portraitUrl: portraitUrl(variant.thumbnailAssetKey),
+            fullBodyUrl: portraitUrl(variant.fullBodyAssetKey),
             defaultMaterialPresetId: variant.defaultMaterialPresetId,
             promptAnchor: variant.promptAnchor,
             status: resolveModelCatalogStatus(variant),
@@ -373,6 +382,7 @@ export const upsertKitVariant = mutation({
     aliases: v.array(v.string()),
     tags: v.array(v.string()),
     thumbnailAssetKey: v.optional(v.string()),
+    fullBodyAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
     promptAnchor: v.optional(v.string()),
     status: vModelCatalogStatus,
@@ -385,7 +395,8 @@ export const upsertKitVariant = mutation({
       throw new Error("Select a valid base unit before saving the kit variant");
     }
     const name = requireName(args.name, "Kit variant name");
-    if (args.thumbnailAssetKey?.includes(":") && !/^https:\/\//.test(args.thumbnailAssetKey)) throw new Error("Use an HTTPS image URL or an R2 object key");
+    assertCatalogImageReference(args.thumbnailAssetKey);
+    assertCatalogImageReference(args.fullBodyAssetKey);
     const aliases = compactStringArray(args.aliases);
     const tags = compactStringArray(args.tags);
     const slug = await resolveKitVariantSlug(ctx, args.slug, name, args.kitVariantId);
@@ -402,6 +413,7 @@ export const upsertKitVariant = mutation({
       aliases,
       tags,
       thumbnailAssetKey: cleanOptionalString(args.thumbnailAssetKey),
+      fullBodyAssetKey: cleanOptionalString(args.fullBodyAssetKey),
       promptAnchor: cleanOptionalString(args.promptAnchor),
       status: args.status,
       isActive: statusToIsActive(args.status),
@@ -447,6 +459,90 @@ export const upsertKitVariant = mutation({
     });
 
     return kitVariantId;
+  },
+});
+
+export const generateKitImageStagingUrl = mutation({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const applyKitImageKey = internalMutation({
+  args: {
+    kitVariantId: v.id("baseModels"),
+    kind: vKitImageKind,
+    key: v.string(),
+    actorTokenIdentifier: v.string(),
+  },
+  async handler(ctx, args) {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", args.actorTokenIdentifier))
+      .unique();
+    if (!viewer) {
+      throw new Error("Super admin access required");
+    }
+    if (!canManagePlatform(viewer)) {
+      throw new Error("Super admin access required");
+    }
+
+    const kit = await ctx.db.get(args.kitVariantId);
+    if (!kit) {
+      throw new Error("Kit variant not found");
+    }
+
+    const field = kitImageField(args.kind);
+    const previousKey = kit[field];
+    await ctx.db.patch(args.kitVariantId, { [field]: args.key });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "upload-kit-image",
+      entityType: "kitVariant",
+      entityId: args.kitVariantId,
+      detailsJson: JSON.stringify({ kind: args.kind, key: args.key, previousKey }),
+    });
+
+    return {
+      previousKey: isManagedCatalogKey(previousKey) ? previousKey : null,
+      publicUrl: portraitUrl(args.key),
+    };
+  },
+});
+
+export const clearKitImageKey = internalMutation({
+  args: {
+    kitVariantId: v.id("baseModels"),
+    kind: vKitImageKind,
+    actorTokenIdentifier: v.string(),
+  },
+  async handler(ctx, args) {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", args.actorTokenIdentifier))
+      .unique();
+    if (!viewer || !canManagePlatform(viewer)) {
+      throw new Error("Super admin access required");
+    }
+    const kit = await ctx.db.get(args.kitVariantId);
+    if (!kit) {
+      throw new Error("Kit variant not found");
+    }
+    const field = kitImageField(args.kind);
+    const previousKey = kit[field];
+    await ctx.db.patch(args.kitVariantId, { [field]: undefined });
+    await writeAdminAuditLog(ctx, {
+      actorUserId: viewer._id,
+      action: "clear-kit-image",
+      entityType: "kitVariant",
+      entityId: args.kitVariantId,
+      detailsJson: JSON.stringify({ kind: args.kind, previousKey }),
+    });
+    return {
+      previousKey: isManagedCatalogKey(previousKey) ? previousKey : null,
+    };
   },
 });
 

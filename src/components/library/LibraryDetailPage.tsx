@@ -77,7 +77,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   );
   const resources = detail.collections.reduce((total, collection) => total + collection.versions.reduce((count, version) => count + version.files.length, 0), 0)
     + Number(Boolean(detail.palette)) + Number(Boolean(detail.specification)) + detail.documents.length;
-  const workId = detail.id as Id<"concepts">;
+  const workId = detail.id;
 
   async function handleConfirmPublish() {
     setPublishing(true);
@@ -465,7 +465,7 @@ function Overview({
 
                     return (
                       <tr key={`${color.roleSlug}-${index}`}>
-                        <td className="work-detail-matrix__role">
+                        <td className="work-detail-matrix__role" data-label="Color Role">
                           <div className="work-detail-matrix__role-inner">
                             <span
                               className="work-detail-matrix__swatch"
@@ -479,7 +479,7 @@ function Overview({
                             </div>
                           </div>
                         </td>
-                        <td className="work-detail-matrix__match">
+                        <td className="work-detail-matrix__match" data-label={selectedSystem ? `Paint Match · ${selectedSystem.brand} ${selectedSystem.line}` : "Paint Match"}>
                           {match && !roleNeedsCustomMix(selectedSystem, color.roleSlug) ? (
                             <>
                               <div className="work-detail-matrix__code-row">
@@ -497,10 +497,10 @@ function Overview({
                             </div>
                           )}
                         </td>
-                        <td className="work-detail-matrix__areas">
+                        <td className="work-detail-matrix__areas" data-label="Target Areas">
                           {areas.length > 0 ? joinList(areas) : "—"}
                         </td>
-                        <td className="work-detail-matrix__technique">
+                        <td className="work-detail-matrix__technique" data-label="Technique & Primer">
                           <span>{primerAdvice}</span>
                           {panel?.maskingNotes ? (
                             <p>

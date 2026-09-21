@@ -12,6 +12,24 @@ import { internalQuery, mutation, query } from "./functions";
 import { QueryCtx } from "./types";
 import { nextArchiveNumber } from "./archiveNumbers";
 import { getPublishedRenditions } from "./publications";
+import { summarizeConceptStyle } from "./styleRefinements";
+
+function attachOwnedStylePreset(
+  stylePreset: { _id: Id<"stylePresets">; name: string; slug: string; category?: string } | null,
+  styleIntentJson?: string,
+) {
+  const summary = summarizeConceptStyle(stylePreset, styleIntentJson);
+  if (!summary) return null;
+  if (stylePreset && summary.category !== "custom") {
+    return {
+      _id: stylePreset._id,
+      name: summary.name,
+      slug: summary.slug,
+      category: summary.category,
+    };
+  }
+  return summary;
+}
 
 export const listMine = query({
   args: {},
@@ -184,14 +202,7 @@ export const listLibrary = query({
             : null,
           kitVariant: kitVariantSummary,
           baseModel: kitVariantSummary,
-          stylePreset: stylePreset
-            ? {
-                _id: stylePreset._id,
-                name: stylePreset.name,
-                slug: stylePreset.slug,
-                category: stylePreset.category,
-              }
-            : null,
+          stylePreset: attachOwnedStylePreset(stylePreset, concept.styleIntentJson),
           materialPreset: materialPreset
             ? {
                 _id: materialPreset._id,
@@ -302,13 +313,7 @@ export const listSavedPublicConcepts = query({
               }
             : null,
           baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
-          stylePreset: stylePreset
-            ? {
-                name: stylePreset.name,
-                slug: stylePreset.slug,
-                category: stylePreset.category,
-              }
-            : null,
+          stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
           materialPreset: materialPreset
             ? {
                 name: materialPreset.name,
@@ -510,12 +515,7 @@ async function getConceptSourceSummary(
     visibility: concept.visibility,
     status: concept.status,
     baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
-    stylePreset: stylePreset
-      ? {
-          name: stylePreset.name,
-          slug: stylePreset.slug,
-        }
-      : null,
+    stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
     owner: owner
       ? {
           handle: owner.handle,

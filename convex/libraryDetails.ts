@@ -10,6 +10,7 @@ import {
   visualPaletteFromLegacyPlan,
   visualPaletteSchema,
 } from "./paintRecommendationEngine";
+import { styleDisplayName } from "./styleRefinements";
 
 function objectJson(value?: string): Record<string, unknown> {
   try {
@@ -127,7 +128,7 @@ export const get = query({
       status: concept.status, visibility: concept.visibility, notes: concept.notes ?? null,
       mood: concept.moodTags ?? [], weathering: concept.weatheringLevel,
       kit: kit ? { name: kit.name, grade: kit.grade ?? null, scale: kit.scale ?? null, manufacturer: kit.manufacturer ?? null } : null,
-      style: style?.name ?? null, material: material?.name ?? null,
+      style: styleDisplayName(style, concept.styleIntentJson), material: material?.name ?? null,
       hero: { storageObjectId: preview?.id ?? readableLegacyObject?._id ?? null,
         publicUrl: preview || readableLegacyObject ? null : httpUrl(safeLegacy?.publicUrl),
         width: preview?.width ?? readableLegacyObject?.width ?? null, height: preview?.height ?? readableLegacyObject?.height ?? null,

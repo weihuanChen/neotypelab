@@ -6,6 +6,7 @@ import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { vFeedbackCategory, vFeedbackSource } from "./domain";
 import { mutation, query } from "./functions";
 import type { MutationCtx, QueryCtx } from "./types";
+import { styleDisplayName, summarizeConceptStyle } from "./styleRefinements";
 
 const MIN_FEEDBACK_LENGTH = 12;
 const MAX_FEEDBACK_LENGTH = 500;
@@ -71,7 +72,14 @@ export const getContext = query({
         : null,
       kitVariant,
       baseModel: kitVariant,
-      stylePreset: stylePreset ? { _id: stylePreset._id, name: stylePreset.name } : null,
+      stylePreset: (() => {
+        const summary = summarizeConceptStyle(stylePreset, concept?.styleIntentJson);
+        if (!summary) return null;
+        if (stylePreset && summary.category !== "custom") {
+          return { _id: stylePreset._id, name: summary.name };
+        }
+        return { name: summary.name };
+      })(),
       materialPreset: materialPreset
         ? { _id: materialPreset._id, name: materialPreset.name }
         : null,
@@ -376,7 +384,7 @@ async function buildContextSnapshot(
         }
       : null,
     kitVariant: baseModel?.name ?? null,
-    styleDna: stylePreset?.name ?? null,
+    styleDna: styleDisplayName(stylePreset, input.concept?.styleIntentJson) ?? null,
     material: materialPreset?.name ?? null,
     generation: input.generationJob
       ? {

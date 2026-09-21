@@ -169,7 +169,10 @@ const schema = defineSchema({
     panelDensity: v.optional(v.string()),
     aliases: v.array(v.string()),
     tags: v.array(v.string()),
+    // Create kit-picker cover image (HTTPS URL or public R2 object key).
     thumbnailAssetKey: v.optional(v.string()),
+    // Generation loading full-body image (HTTPS URL or public R2 object key).
+    fullBodyAssetKey: v.optional(v.string()),
     defaultMaterialPresetId: v.optional(v.id("materialPresets")),
     promptAnchor: v.optional(v.string()),
     status: v.optional(vModelCatalogStatus),

@@ -57,6 +57,7 @@ export type KitVariantDraft = {
   status: ModelCatalogStatus;
   tags: string[];
   thumbnailAssetKey: string;
+  fullBodyAssetKey: string;
 };
 
 export type CatalogDraft = IpSeriesDraft | BaseUnitDraft | KitVariantDraft;
@@ -101,6 +102,7 @@ export const emptyKitVariantDraft: KitVariantDraft = {
   status: "active",
   tags: [],
   thumbnailAssetKey: "",
+  fullBodyAssetKey: "",
 };
 
 export function createIpSeriesDraft(item: IpSeriesItem): IpSeriesDraft {
@@ -148,6 +150,7 @@ export function createKitVariantDraft(item: KitVariantItem): KitVariantDraft {
     status: item.status,
     tags: item.tags,
     thumbnailAssetKey: item.thumbnailAssetKey ?? "",
+    fullBodyAssetKey: item.fullBodyAssetKey ?? "",
   };
 }
 

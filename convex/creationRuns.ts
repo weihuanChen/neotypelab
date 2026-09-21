@@ -171,6 +171,7 @@ export const latest = query({ args: {}, handler: async ctx => {
       grade: kit.grade ?? "",
       scale: kit.scale ?? "",
       portrait: portraitUrl(kit.thumbnailAssetKey),
+      fullBody: portraitUrl(kit.fullBodyAssetKey) ?? portraitUrl(kit.thumbnailAssetKey),
     } : null,
     styleName,
     styleSlug,

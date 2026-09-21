@@ -109,6 +109,20 @@ describe("library work details", () => {
     expect(detail?.hero.storageObjectId).toBeNull();
   });
 
+  it("surfaces a custom style name when no official preset is attached", async () => {
+    const f = await fixture();
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, {
+      styleIntentJson: JSON.stringify({
+        version: "style-intent.v1", source: "private", styleType: "custom", name: "Digital Teal Idol",
+        palette: { primary: "teal", secondary: "black", accent: "pink" },
+        surfaceLogic: "smooth armor", graphicLanguage: "idol graphics", contrast: "high", markingDensity: "medium",
+        materialIntent: ["painted armor"], mood: "electric", weathering: "clean", finish: "semi-gloss", paintability: "high",
+      }),
+    }));
+    const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
+    expect(detail?.style).toBe("Digital Teal Idol");
+  });
+
   it("automatically includes reference-image resources without replacing the main render", async () => {
     const f = await fixture();
     await f.t.run(async ctx => {

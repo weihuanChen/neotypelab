@@ -178,6 +178,7 @@ describe("LibraryDetailPage overview language", () => {
     );
 
     expect(html).toContain("work-detail-matrix");
+    expect(html).toContain("data-label=\"Color Role\"");
     expect(html).toContain("Chest outer plates · Shoulder armor · Forearm guards");
     expect(html).not.toContain("work-detail-matrix__area-tag");
 
@@ -220,12 +221,13 @@ describe("LibraryDetailPage overview language", () => {
   });
 
   it("marks roles without a catalog SKU as a custom mix", () => {
+    const paintSet = mockDetail.paintRecommendations!.sets[0];
     const previous = {
-      missingRoleSlugs: mockDetail.paintRecommendations.sets[0].missingRoleSlugs,
-      entries: mockDetail.paintRecommendations.sets[0].entries,
+      missingRoleSlugs: paintSet.missingRoleSlugs,
+      entries: paintSet.entries,
     };
-    mockDetail.paintRecommendations.sets[0].missingRoleSlugs = ["secondary-armor"];
-    mockDetail.paintRecommendations.sets[0].entries = previous.entries.filter(
+    paintSet.missingRoleSlugs = ["secondary-armor"];
+    paintSet.entries = previous.entries.filter(
       (entry) => entry.roleSlug !== "secondary-armor"
     );
     const html = renderToStaticMarkup(
@@ -233,7 +235,7 @@ describe("LibraryDetailPage overview language", () => {
     );
     expect(html).toContain("No catalog SKU");
     expect(html).toContain("Mix from nearby catalog colors");
-    mockDetail.paintRecommendations.sets[0].missingRoleSlugs = previous.missingRoleSlugs;
-    mockDetail.paintRecommendations.sets[0].entries = previous.entries;
+    paintSet.missingRoleSlugs = previous.missingRoleSlugs;
+    paintSet.entries = previous.entries;
   });
 });

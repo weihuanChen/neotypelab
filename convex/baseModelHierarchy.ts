@@ -100,6 +100,7 @@ export function summarizeBaseModel(baseModel: Doc<"baseModels">) {
     aliases: baseModel.aliases,
     tags: baseModel.tags,
     thumbnailAssetKey: baseModel.thumbnailAssetKey,
+    fullBodyAssetKey: baseModel.fullBodyAssetKey,
     defaultMaterialPresetId: baseModel.defaultMaterialPresetId,
     promptAnchor: baseModel.promptAnchor,
     status: baseModel.status,

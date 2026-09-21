@@ -5,6 +5,62 @@ export function readStyleIntent(json?: string): StyleIntent | null {
   try { return styleIntentSchema.parse(JSON.parse(json)); } catch { return null; }
 }
 
+export type ConceptStyleSummary = {
+  name: string;
+  slug: string;
+  category?: string;
+  shortDescription?: string;
+  isFeaturedStyle?: boolean;
+};
+
+export function styleDisplayName(
+  stylePreset?: { name?: string } | null,
+  styleIntentJson?: string,
+) {
+  const intent = readStyleIntent(styleIntentJson);
+  if (intent?.styleType === "custom" && intent.name) return intent.name;
+  const presetName = stylePreset?.name?.trim();
+  if (presetName) return presetName;
+  return intent?.name ?? null;
+}
+
+export function summarizeConceptStyle(
+  stylePreset?: {
+    name: string;
+    slug: string;
+    category?: string;
+    shortDescription?: string;
+    isFeaturedStyle?: boolean;
+  } | null,
+  styleIntentJson?: string,
+): ConceptStyleSummary | null {
+  const intent = readStyleIntent(styleIntentJson);
+  if (intent?.styleType === "custom") {
+    return {
+      name: intent.name,
+      slug: "",
+      category: "custom",
+      isFeaturedStyle: false,
+    };
+  }
+  if (stylePreset) {
+    return {
+      name: stylePreset.name,
+      slug: stylePreset.slug,
+      category: stylePreset.category,
+      shortDescription: stylePreset.shortDescription,
+      isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
+    };
+  }
+  if (!intent) return null;
+  return {
+    name: intent.name,
+    slug: "",
+    category: "custom",
+    isFeaturedStyle: false,
+  };
+}
+
 export function resolveStyleRefinements<T extends { _id: string; slug: string; finishType: string; sheenLevel?: string }>(
   intent: StyleIntent | null, materials: T[], recommendedSlugs: string[] = [],
 ) {

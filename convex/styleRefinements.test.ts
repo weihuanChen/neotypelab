@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readStyleIntent, resolveStyleRefinements } from "./styleRefinements";
+import { readStyleIntent, resolveStyleRefinements, styleDisplayName, summarizeConceptStyle } from "./styleRefinements";
 import { styleIntentSchema } from "./creativeContracts";
 const materials = [
   { _id: "matte", slug: "military", finishType: "matte" },
@@ -22,5 +22,15 @@ describe("Auto refinements", () => {
   });
   it("matches semi-gloss with satin when exact finish is unavailable", () => {
     expect(resolveStyleRefinements({ ...intent, finish: "semi-gloss" }, materials).material?._id).toBe("satin");
+  });
+  it("reads a custom style name even when a leftover official preset is still linked", () => {
+    expect(styleDisplayName(null, JSON.stringify(intent))).toBe("Desert");
+    expect(styleDisplayName({ name: "EVA-inspired" }, JSON.stringify(intent))).toBe("Desert");
+    expect(styleDisplayName({ name: "EVA-inspired" }, JSON.stringify({ ...intent, styleType: "preset", source: "official" }))).toBe("EVA-inspired");
+    expect(summarizeConceptStyle({ name: "EVA-inspired", slug: "eva" }, JSON.stringify(intent))).toMatchObject({
+      name: "Desert",
+      slug: "",
+      category: "custom",
+    });
   });
 });

@@ -178,13 +178,6 @@
   .work-detail-file { gap: .65rem; }
   .work-detail-file .work-detail-action { font-size: .75rem; padding: .4rem .55rem; }
   .work-detail-tab-list { gap: 1rem; }
-  .work-detail-workbench-bar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .work-detail-workbench-bar__desc {
-    white-space: normal;
-  }
   .work-detail-exhibition {
     align-items: flex-start;
     flex-direction: column;
@@ -247,6 +240,101 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+@media screen and (max-width: 760px) {
+  .work-detail {
+    overflow-x: clip;
+  }
+
+  .work-detail-workbench-bar {
+    display: grid;
+    gap: 0.9rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.9rem 1rem;
+  }
+
+  .work-detail-workbench-bar__info {
+    display: grid;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .work-detail-workbench-bar__desc {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.45;
+  }
+
+  .work-detail-workbench-bar__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .work-detail-workbench-bar .work-detail-action {
+    width: 100%;
+    justify-content: center;
+    flex-shrink: 1;
+    white-space: nowrap;
+  }
+
+  .work-detail-matrix-container {
+    overflow: visible;
+    border-top: 1px solid var(--color-ink);
+    border-bottom: 0;
+  }
+
+  .work-detail-matrix,
+  .work-detail-matrix tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .work-detail-matrix thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .work-detail-matrix tbody tr {
+    display: grid;
+    gap: 0.7rem;
+    width: 100%;
+    min-width: 0;
+    padding: 1.05rem 0 1.15rem;
+    border-bottom: 1px solid var(--color-ink);
+  }
+
+  .work-detail-matrix tbody td,
+  .work-detail-matrix__role,
+  .work-detail-matrix__match,
+  .work-detail-matrix__areas,
+  .work-detail-matrix__technique {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .work-detail-matrix tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.22rem;
+    font-family: var(--font-label);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
 }
 
 .work-detail-action.is-primary {

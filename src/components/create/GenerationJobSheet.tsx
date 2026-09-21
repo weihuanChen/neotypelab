@@ -24,6 +24,7 @@ export type CreationRunRecord = {
     grade?: string;
     scale?: string;
     portrait?: string | null;
+    fullBody?: string | null;
   } | null;
   styleName: string;
   styleSlug?: string;
@@ -186,7 +187,10 @@ export function GenerationJobSheet({
 
             {/* Silhouette Base */}
             <div className="job-silhouette-media">
-              <KitPortrait url={run.kit?.portrait} name={run.kit?.name ?? "Kit"} />
+              <KitPortrait
+                url={run.kit?.fullBody ?? run.kit?.portrait}
+                name={run.kit?.name ?? "Kit"}
+              />
             </div>
 
             {/* Completed Render Image */}

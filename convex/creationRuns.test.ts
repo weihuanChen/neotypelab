@@ -93,4 +93,29 @@ describe("complete preview runs", () => {
     expect((await f.client.query(api.creationRuns.latest, {}))?.status).toBe("succeeded");
     expect((await f.t.run(ctx => ctx.db.query("creditAccounts").first()))?.balance).toBe(20 - f.cost);
   });
+
+  it("exposes full-body loading image with cover fallback on the latest run payload", async () => {
+    process.env.R2_PUBLIC_BASE_URL = "https://cdn.example.test";
+    const f = await fixture();
+    await f.t.run(async (ctx) => {
+      await ctx.db.patch(f.data.kit._id, {
+        thumbnailAssetKey: "catalog/kits/demo/cover.webp",
+        fullBodyAssetKey: "catalog/kits/demo/fullbody.webp",
+      });
+    });
+    await f.client.mutation(api.creationRuns.start, {
+      input: f.input,
+      requestKey: "images",
+      expectedCost: f.cost,
+    });
+    const latest = await f.client.query(api.creationRuns.latest, {});
+    expect(latest?.kit?.portrait).toBe("https://cdn.example.test/catalog/kits/demo/cover.webp");
+    expect(latest?.kit?.fullBody).toBe("https://cdn.example.test/catalog/kits/demo/fullbody.webp");
+
+    await f.t.run(async (ctx) => {
+      await ctx.db.patch(f.data.kit._id, { fullBodyAssetKey: undefined });
+    });
+    const fallback = await f.client.query(api.creationRuns.latest, {});
+    expect(fallback?.kit?.fullBody).toBe("https://cdn.example.test/catalog/kits/demo/cover.webp");
+  });
 });

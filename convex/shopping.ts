@@ -7,6 +7,7 @@ import {
 } from "./paintCatalogCompatibility";
 import { rankPaintMatches, type PaintMatchBand } from "./paintMatchingEngine";
 import { query } from "./functions";
+import { styleDisplayName } from "./styleRefinements";
 import { QueryCtx } from "./types";
 
 type BrandAlternative = {
@@ -117,7 +118,7 @@ async function buildShoppingListSnapshot(
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,
-      stylePresetName: stylePreset?.name,
+      stylePresetName: styleDisplayName(stylePreset, concept.styleIntentJson) ?? undefined,
       styleSlug: stylePreset?.slug,
       materialPresetName: materialPreset?.name,
       materialSlug: materialPreset?.slug,
@@ -299,7 +300,7 @@ async function buildShoppingListSnapshot(
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name ?? "Unknown base model",
-      stylePresetName: stylePreset?.name ?? "Unknown Style DNA",
+      stylePresetName: styleDisplayName(stylePreset, concept.styleIntentJson) ?? "Unknown Style DNA",
       materialPresetName: materialPreset?.name ?? "Unknown material profile",
       estimatedItemCount: primaryItems.length + alternateItems.length,
       purchaseSummary,

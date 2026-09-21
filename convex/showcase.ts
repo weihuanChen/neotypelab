@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { hasIndexableStyle } from "./creativeContracts";
+import { styleDisplayName, summarizeConceptStyle } from "./styleRefinements";
 import {
   BaseModelWithHierarchy,
   summarizeBaseModelWithHierarchy,
@@ -108,14 +109,7 @@ export const listPublicConcepts = query({
               }
             : null,
           baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
-          stylePreset: stylePreset
-            ? {
-                name: stylePreset.name,
-                slug: stylePreset.slug,
-                category: stylePreset.category,
-                isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
-              }
-            : null,
+          stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
           materialPreset: materialPreset
             ? {
                 name: materialPreset.name,
@@ -359,7 +353,7 @@ export const getSharedConcept = query({
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,
-      stylePresetName: stylePreset?.name,
+      stylePresetName: styleDisplayName(stylePreset, concept.styleIntentJson) ?? undefined,
       styleSlug: stylePreset?.slug,
       materialPresetName: materialPreset?.name,
       materialSlug: materialPreset?.slug,
@@ -388,15 +382,18 @@ export const getSharedConcept = query({
           }
         : null,
       baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
-      stylePreset: stylePreset
-        ? {
-            name: stylePreset.name,
-            slug: stylePreset.slug,
-            category: stylePreset.category,
-            shortDescription: stylePreset.shortDescription,
-            isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
-          }
-        : null,
+      stylePreset: summarizeConceptStyle(
+        stylePreset
+          ? {
+              name: stylePreset.name,
+              slug: stylePreset.slug,
+              category: stylePreset.category,
+              shortDescription: stylePreset.shortDescription,
+              isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
+            }
+          : null,
+        concept.styleIntentJson,
+      ),
       materialPreset: materialPreset
         ? {
             name: materialPreset.name,
@@ -1251,14 +1248,7 @@ async function getConceptShareCard(
         }
       : null,
     baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
-    stylePreset: stylePreset
-      ? {
-          name: stylePreset.name,
-          slug: stylePreset.slug,
-          category: stylePreset.category,
-          isFeaturedStyle: stylePreset.isFeaturedStyle ?? false,
-        }
-      : null,
+    stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
     materialPreset: materialPreset
       ? {
           name: materialPreset.name,

@@ -22,7 +22,8 @@ describe("GenerationJobSheet Component", () => {
       name: "MG Barbatos",
       grade: "MG",
       scale: "1/100",
-      portrait: null,
+      portrait: "https://cdn.example.test/cover.webp",
+      fullBody: "https://cdn.example.test/fullbody.webp",
     },
     styleName: "Eva-Inspired",
     styleSlug: "eva-inspired",
@@ -51,6 +52,26 @@ describe("GenerationJobSheet Component", () => {
     expect(html).toContain("#684690");
     expect(html).toContain("#96C843");
     expect(html).toContain("Primary Armor");
+    expect(html).toContain("https://cdn.example.test/fullbody.webp");
+    expect(html).not.toContain("https://cdn.example.test/cover.webp");
+  });
+
+  it("falls back to cover portrait when full-body image is missing", () => {
+    const coverOnly: CreationRunRecord = {
+      ...baseRun,
+      kit: {
+        id: "kit-001" as any,
+        name: "MG Barbatos",
+        grade: "MG",
+        scale: "1/100",
+        portrait: "https://cdn.example.test/cover.webp",
+        fullBody: null,
+      },
+    };
+    const html = renderToStaticMarkup(
+      <GenerationJobSheet run={coverOnly} onRetry={() => {}} onReset={() => {}} />
+    );
+    expect(html).toContain("https://cdn.example.test/cover.webp");
   });
 
   it("renders mapping stage as active when running stage is specification", () => {

@@ -110,5 +110,6 @@ describe("official style editorial publication", () => {
     const shared = await f.t.query(api.showcase.getSharedConcept, { conceptId: f.conceptId });
     expect(shared).not.toBeNull();
     expect(shared?.indexable).toBe(false);
+    expect(shared?.stylePreset?.name).toBe("Cyan Digital");
   });
 });
