@@ -25,6 +25,7 @@ import type * as catalogMigrations from "../catalogMigrations.js";
 import type * as concepts from "../concepts.js";
 import type * as creationRuns from "../creationRuns.js";
 import type * as creationRunsNode from "../creationRunsNode.js";
+import type * as creationWorkflow from "../creationWorkflow.js";
 import type * as creativeContracts from "../creativeContracts.js";
 import type * as creativeNode from "../creativeNode.js";
 import type * as creativePipeline from "../creativePipeline.js";
@@ -92,10 +93,12 @@ import type * as styleEditorial from "../styleEditorial.js";
 import type * as styleInterpretations from "../styleInterpretations.js";
 import type * as styleRefinements from "../styleRefinements.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as textGenerationNode from "../textGenerationNode.js";
 import type * as types from "../types.js";
 import type * as userStyles from "../userStyles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
+import type * as workflowManager from "../workflowManager.js";
 
 import type {
   ApiFromModules,
@@ -121,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   concepts: typeof concepts;
   creationRuns: typeof creationRuns;
   creationRunsNode: typeof creationRunsNode;
+  creationWorkflow: typeof creationWorkflow;
   creativeContracts: typeof creativeContracts;
   creativeNode: typeof creativeNode;
   creativePipeline: typeof creativePipeline;
@@ -188,10 +192,12 @@ declare const fullApi: ApiFromModules<{
   styleInterpretations: typeof styleInterpretations;
   styleRefinements: typeof styleRefinements;
   subscriptions: typeof subscriptions;
+  textGenerationNode: typeof textGenerationNode;
   types: typeof types;
   userStyles: typeof userStyles;
   users: typeof users;
   utils: typeof utils;
+  workflowManager: typeof workflowManager;
 }>;
 
 /**
@@ -220,4 +226,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+};

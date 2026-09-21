@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { vResultValidator, vWorkflowId } from "@convex-dev/workflow";
 import { mutation, query } from "./functions";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -8,6 +9,7 @@ import { queueConceptRender } from "./prototypeTools";
 import { creativeInputKey } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
 import { portraitUrl } from "./kitPicker";
+import { creationWorkflowManager } from "./workflowManager";
 
 const { paletteCompositionId: _palette, visibility: _visibility, requestKey: _key, ...inputArgs } = prototypeArgs;
 const inputValidator = v.object(inputArgs);
@@ -61,13 +63,24 @@ export const start = mutation({
       const source = await ctx.db.get(args.input.sourceConceptId);
       if (!source || source.visibility === "private" || source.status === "draft") throw new Error("Remix source unavailable");
     }
+    const now = Date.now();
     const id = await ctx.db.insert("creationRuns", { userId: viewer._id, requestKey: args.requestKey, inputJson: JSON.stringify(args.input), inputKey,
-      status: "queued", stage: "palette", cost, attempt: 1, refunded: false, updatedAt: Date.now() });
+      status: "queued", stage: "palette", cost, attempt: 1, refunded: false, queuedAt: now, updatedAt: now });
     await reserve(ctx, viewer._id, id, cost);
     const paletteId = await beginCreative(ctx, { ...args.input, kind: "palette-plan", requestKey: `run:${id}:palette:1` }, true);
     await ctx.db.patch(paletteId, { creationRunId: id, creationAttempt: 1 });
     await ctx.db.patch(id, { paletteId });
-    await ctx.scheduler.runAfter(0, internal.creationRunsNode.execute, { runId: id, attempt: 1 });
+    const workflowId = await creationWorkflowManager.start(
+      ctx,
+      internal.creationWorkflow.execute,
+      { runId: id, attempt: 1 },
+      {
+        startAsync: true,
+        onComplete: internal.creationRuns.completeWorkflow,
+        context: { runId: id, attempt: 1 },
+      }
+    );
+    await ctx.db.patch(id, { workflowId });
     await ctx.scheduler.runAfter(25 * 60 * 1000, internal.creationRuns.expire, { runId: id, attempt: 1 });
     return id;
   },
@@ -173,13 +186,28 @@ export const latest = query({ args: {}, handler: async ctx => {
 export const claim = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: async (ctx, args) => {
   const run = await ctx.db.get(args.runId);
   if (!run || run.attempt !== args.attempt || run.status !== "queued") return null;
-  await ctx.db.patch(run._id, { status: "running", updatedAt: Date.now() });
+  const now = Date.now();
+  await ctx.db.patch(run._id, { status: "running", startedAt: run.startedAt ?? now, updatedAt: now });
   return run;
 } });
 
-export const advance = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: async (ctx, args) => {
+export const claimWorkflowStage = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: async (ctx, args) => {
   const run = await ctx.db.get(args.runId);
-  if (!run || run.attempt !== args.attempt || run.status !== "running") return;
+  if (!run || run.attempt !== args.attempt || run.status !== "queued") return null;
+  const now = Date.now();
+  await ctx.db.patch(run._id, { status: "running", startedAt: run.startedAt ?? now, updatedAt: now });
+  if (run.stage === "render") {
+    if (!run.renderJobId) throw new Error("Render task missing");
+    return { kind: "render" as const, generationJobId: run.renderJobId };
+  }
+  const promptCompositionId = run.stage === "palette" ? run.paletteId : run.specificationId;
+  if (!promptCompositionId) throw new Error("Planning task missing");
+  return { kind: run.stage, promptCompositionId };
+} });
+
+async function advanceRun(ctx: MutationCtx, args: { runId: Id<"creationRuns">; attempt: number }, scheduleLegacyStep: boolean) {
+  const run = await ctx.db.get(args.runId);
+  if (!run || run.attempt !== args.attempt || run.status !== "running") return "ignored" as const;
   const input = JSON.parse(run.inputJson) as RunInput;
   const viewerCtx = await viewerContext(ctx, run.userId);
   if (run.stage === "palette") {
@@ -198,17 +226,28 @@ export const advance = internalMutation({ args: { runId: v.id("creationRuns"), a
   } else {
     const job = run.renderJobId ? await ctx.db.get(run.renderJobId) : null;
     if (job?.status !== "succeeded") throw new Error(job?.errorMessage ?? "Image generation did not finish");
-    await ctx.db.patch(run._id, { status: "succeeded", updatedAt: Date.now() });
-    return;
+    const now = Date.now();
+    await ctx.db.patch(run._id, { status: "succeeded", completedAt: now, updatedAt: now });
+    return "succeeded" as const;
   }
-  await ctx.scheduler.runAfter(0, internal.creationRunsNode.execute, args);
+  if (scheduleLegacyStep) await ctx.scheduler.runAfter(0, internal.creationRunsNode.execute, args);
+  return "queued" as const;
+}
+
+export const advance = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: (ctx, args) => {
+  return advanceRun(ctx, args, true);
+} });
+
+export const advanceWorkflow = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: (ctx, args) => {
+  return advanceRun(ctx, args, false);
 } });
 
 async function failRun(ctx: MutationCtx, runId: Id<"creationRuns">, attempt: number, reason: string) {
   const run = await ctx.db.get(runId);
   if (!run || run.attempt !== attempt || run.status === "succeeded" || run.refunded) return;
   if (run.renderJobId && (await ctx.db.get(run.renderJobId))?.status === "succeeded") {
-    await ctx.db.patch(runId, { status: "succeeded", updatedAt: Date.now() });
+    const now = Date.now();
+    await ctx.db.patch(runId, { status: "succeeded", completedAt: now, updatedAt: now });
     return;
   }
   const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", run.userId)).unique();
@@ -216,7 +255,8 @@ async function failRun(ctx: MutationCtx, runId: Id<"creationRuns">, attempt: num
   await ctx.db.patch(account._id, { balance: account.balance + run.cost, lifetimeSpent: Math.max(0, account.lifetimeSpent - run.cost), lastCreditEventAt: Date.now() });
   await ctx.db.insert("creditTransactions", { userId: run.userId, actionType: "generation-refund", delta: run.cost, creditAmount: run.cost,
     balanceAfter: account.balance + run.cost, referenceTable: "creationRuns", referenceId: runId, description: "Full preview refund" });
-  await ctx.db.patch(runId, { status: "failed", refunded: true, error: reason.slice(0, 500), updatedAt: Date.now() });
+  const now = Date.now();
+  await ctx.db.patch(runId, { status: "failed", refunded: true, error: reason.slice(0, 500), completedAt: now, updatedAt: now });
   for (const id of [run.paletteId, run.specificationId]) {
     if (!id) continue;
     const composition = await ctx.db.get(id);
@@ -231,6 +271,27 @@ async function failRun(ctx: MutationCtx, runId: Id<"creationRuns">, attempt: num
 }
 export const fail = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number(), reason: v.string() }, handler: (ctx, args) => failRun(ctx, args.runId, args.attempt, args.reason) });
 export const expire = internalMutation({ args: { runId: v.id("creationRuns"), attempt: v.number() }, handler: (ctx, args) => failRun(ctx, args.runId, args.attempt, "Preview timed out. Your credits were returned") });
+
+export const completeWorkflow = internalMutation({
+  args: {
+    workflowId: vWorkflowId,
+    result: vResultValidator,
+    context: v.object({ runId: v.id("creationRuns"), attempt: v.number() }),
+  },
+  handler: async (ctx, { workflowId, result, context }) => {
+    const run = await ctx.db.get(context.runId);
+    if (run && run.attempt === context.attempt && run.workflowId === workflowId) {
+      if (result.kind === "failed") {
+        await failRun(ctx, context.runId, context.attempt, result.error);
+      } else if (result.kind === "canceled") {
+        await failRun(ctx, context.runId, context.attempt, "Preview generation was canceled");
+      } else if (run.status !== "succeeded" && run.status !== "failed") {
+        await failRun(ctx, context.runId, context.attempt, "Preview workflow stopped before completion");
+      }
+    }
+    await creationWorkflowManager.cleanup(ctx, workflowId);
+  },
+});
 
 export const retry = mutation({ args: { runId: v.id("creationRuns") }, handler: async (ctx, { runId }) => {
   const viewer = ctx.viewerX();
@@ -262,8 +323,20 @@ export const retry = mutation({ args: { runId: v.id("creationRuns") }, handler: 
     await ctx.db.patch(render.generationJobId, { creationRunId: runId, creationAttempt: attempt });
     await ctx.db.patch(runId, { stage: "render", renderJobId: render.generationJobId });
   }
-  await ctx.db.patch(runId, { attempt, status: "queued", refunded: false, error: undefined, updatedAt: Date.now() });
-  await ctx.scheduler.runAfter(0, internal.creationRunsNode.execute, { runId, attempt });
+  const now = Date.now();
+  await ctx.db.patch(runId, { attempt, status: "queued", refunded: false, error: undefined,
+    workflowId: undefined, queuedAt: now, startedAt: undefined, completedAt: undefined, updatedAt: now });
+  const workflowId = await creationWorkflowManager.start(
+    ctx,
+    internal.creationWorkflow.execute,
+    { runId, attempt },
+    {
+      startAsync: true,
+      onComplete: internal.creationRuns.completeWorkflow,
+      context: { runId, attempt },
+    }
+  );
+  await ctx.db.patch(runId, { workflowId });
   await ctx.scheduler.runAfter(25 * 60 * 1000, internal.creationRuns.expire, { runId, attempt });
   return runId;
 } });

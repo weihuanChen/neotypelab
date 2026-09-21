@@ -150,7 +150,8 @@ const schema = defineSchema({
     cost: v.number(), attempt: v.number(), refunded: v.boolean(), error: v.optional(v.string()),
     paletteId: v.optional(v.id("promptCompositions")), specificationId: v.optional(v.id("promptCompositions")),
     conceptId: v.optional(v.id("concepts")), renderJobId: v.optional(v.id("generationJobs")),
-    updatedAt: v.number(),
+    workflowId: v.optional(v.string()), queuedAt: v.optional(v.number()),
+    startedAt: v.optional(v.number()), completedAt: v.optional(v.number()), updatedAt: v.number(),
   }).index("by_user", ["userId"]).index("by_user_request", ["userId", "requestKey"]),
 
   baseModels: defineTable({

@@ -2,6 +2,8 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { executeCompositionHandler } from "./creativeNode";
+import { executeQueuedJobHandler } from "./generationNode";
 
 export const execute = internalAction({
   args: { runId: v.id("creationRuns"), attempt: v.number() },
@@ -11,11 +13,11 @@ export const execute = internalAction({
     try {
       if (run.stage === "render") {
         if (!run.renderJobId) throw new Error("Render task missing");
-        await ctx.runAction(internal.generationNode.executeQueuedJob, { generationJobId: run.renderJobId });
+        await executeQueuedJobHandler(ctx, { generationJobId: run.renderJobId });
       } else {
         const id = run.stage === "palette" ? run.paletteId : run.specificationId;
         if (!id) throw new Error("Planning task missing");
-        await ctx.runAction(internal.creativeNode.executeComposition, { promptCompositionId: id });
+        await executeCompositionHandler(ctx, { promptCompositionId: id });
       }
       await ctx.runMutation(internal.creationRuns.advance, args);
     } catch (error) {

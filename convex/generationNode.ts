@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { action, internalAction } from "./_generated/server";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import type { GenerationProvider } from "./domain";
 import { getPublicR2ObjectUrl, getR2ConnectionConfig } from "./r2Config";
 import {
@@ -11,6 +11,8 @@ import {
   uploadR2Object,
 } from "./r2Storage";
 import { createImageRenditions } from "./imageRenditions";
+import { executeTextRequest } from "./textGenerationNode";
+import { executeCompositionHandler } from "./creativeNode";
 
 import { chatImage, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, requestTextCompletion } from "./llmProtocol";
 
@@ -23,33 +25,7 @@ export const executeText = internalAction({
     userPrompt: v.string(),
     jsonOutput: v.optional(v.boolean()),
   },
-  handler: async (ctx, args): Promise<Awaited<ReturnType<typeof requestTextCompletion>> & { profileId: string }> => {
-    const { route, policy } = await ctx.runQuery(internal.generation.getTextExecutionContext, {
-      templateKind: args.templateKind, promptTemplateId: args.promptTemplateId,
-    });
-    const routes = policy.fallbackBehavior === "secondary-provider" && route.fallback
-      ? [route.primary, route.fallback] : [route.primary];
-    const attempts = policy.fallbackBehavior === "fail-job" ? 1 : policy.maxRetryCount + 1;
-    let lastError: unknown;
-    const deadline = Date.now() + 8 * 60 * 1000;
-    for (const candidate of routes) {
-      for (let attempt = 0; attempt < attempts; attempt++) {
-        if (Date.now() >= deadline) break;
-        try {
-          const result = await requestTextCompletion({
-            ...args,
-            profile: { ...candidate.profile, timeoutMs: Math.min(candidate.profile.timeoutMs ?? policy.timeoutMs, deadline - Date.now()) },
-            parameterOverridesJson: candidate.binding?.parameterOverridesJson,
-          });
-          return { ...result, profileId: candidate.profile._id };
-        } catch (error) {
-          lastError = error;
-          if (error instanceof Error && /HTTP (400|401|403|404|422)\b/.test(error.message)) break;
-        }
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error("Text generation failed");
-  },
+  handler: executeTextRequest,
 });
 
 // Explicit administrator smoke test, separate from the read-only /models connection check.
@@ -192,7 +168,7 @@ export const rerunJob = action({
     generationJobId: v.id("generationJobs"),
   },
   handler: async (ctx, { generationJobId }) => {
-    await ctx.runAction(internal.generationNode.executeQueuedJob, { generationJobId });
+    await executeQueuedJobHandler(ctx, { generationJobId });
   },
 });
 
@@ -353,15 +329,14 @@ export const stabilizeConceptPreviewAsset = action({
   },
 });
 
-export const executeQueuedJob = internalAction({
-  args: {
-    generationJobId: v.id("generationJobs"),
-  },
-  handler: async (ctx, { generationJobId }) => {
+export async function executeQueuedJobHandler(
+  ctx: ActionCtx,
+  { generationJobId }: { generationJobId: Id<"generationJobs"> }
+): Promise<void> {
     if (!await ctx.runQuery(internal.creationRuns.jobIsRunnable, { generationJobId })) return;
     const textCompositionId = await ctx.runQuery(internal.creativePipeline.getRepaintComposition, { generationJobId });
     if (textCompositionId) {
-      await ctx.runAction(internal.creativeNode.executeComposition, { promptCompositionId: textCompositionId });
+      await executeCompositionHandler(ctx, { promptCompositionId: textCompositionId });
       return;
     }
     const job = await ctx.runQuery(internal.generation.getJobForExecution, {
@@ -576,7 +551,13 @@ export const executeQueuedJob = internalAction({
         });
       }
     }
+}
+
+export const executeQueuedJob = internalAction({
+  args: {
+    generationJobId: v.id("generationJobs"),
   },
+  handler: executeQueuedJobHandler,
 });
 
 async function generateWithPolicy({

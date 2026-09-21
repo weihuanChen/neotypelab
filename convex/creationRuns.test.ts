@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
+import workflowTest from "@convex-dev/workflow/test";
+import type { WorkflowId } from "@convex-dev/workflow";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
@@ -10,6 +12,7 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 async function fixture(balance = 20) {
   const t = convexTest(schema, modules);
+  workflowTest.register(t);
   await t.mutation(internal.init.init, {});
   const owner = await seedUser(t, { tokenIdentifier: "run-owner", email: "owner@example.test", balance });
   const data = await t.run(async ctx => ({ kit: (await ctx.db.query("baseModels").first())!, style: (await ctx.db.query("stylePresets").first())!, material: (await ctx.db.query("materialPresets").first())!, roles: await ctx.db.query("colorRoles").collect() }));
@@ -43,7 +46,13 @@ describe("complete preview runs", () => {
   it("refunds a failed run only once, rejects foreign retries, and ignores expired attempts", async () => {
     const f = await fixture();
     const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "refund", expectedCost: f.cost });
-    await f.t.mutation(internal.creationRuns.fail, { runId, attempt: 1, reason: "Provider failed" });
+    const started = (await f.t.run(ctx => ctx.db.get(runId)))!;
+    expect(started.workflowId).toBeDefined();
+    await f.t.mutation(internal.creationRuns.completeWorkflow, {
+      workflowId: started.workflowId! as WorkflowId,
+      result: { kind: "failed", error: "Provider failed" },
+      context: { runId, attempt: 1 },
+    });
     await f.t.mutation(internal.creationRuns.expire, { runId, attempt: 1 });
     expect((await f.t.run(ctx => ctx.db.query("creditAccounts").first()))?.balance).toBe(20);
     const other = await seedUser(f.t, { tokenIdentifier: "other", email: "other@example.test", balance: 20 });
