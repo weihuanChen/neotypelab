@@ -21,6 +21,7 @@ import {
 import { vMoodTag, vWeatheringLevel } from "./domain";
 import { assertExactRoles, creativeInputKey, fillCreativeTemplate, paletteSchema, repaintSchema, styleSuggestionSchema, styleIntentSchema, stylePlanningRules, type StyleIntent } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
+import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
 
 export const creativeArgs = {
   userStyleId: v.optional(v.id("userStyles")),
@@ -129,11 +130,18 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
       status: "ready", composedPrompt: prompt, negativePrompt: template.negativePromptTemplate,
       additionalNotes: args.notes?.trim(), inputSnapshotJson: JSON.stringify(snapshot),
     });
-    const balance = account.balance - priceRule.creditCost;
-    if (!prepaid) {
-      await ctx.db.patch(account._id, { balance, lifetimeSpent: account.lifetimeSpent + priceRule.creditCost, lastCreditEventAt: Date.now() });
-      await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType, delta: -priceRule.creditCost, creditAmount: priceRule.creditCost,
-        balanceAfter: balance, referenceTable: "promptCompositions", referenceId: id, description: `Reserved ${args.kind} generation` });
+    if (!prepaid && priceRule.creditCost > 0) {
+      await debitCredits(ctx, {
+        userId: viewer._id,
+        actionType,
+        amount: priceRule.creditCost,
+        metadata: {
+          referenceTable: "promptCompositions",
+          referenceId: id,
+          description: `Reserved ${args.kind} generation`,
+          sourceType: "generation-spend",
+        },
+      });
     }
     await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId: id });
     return id;
@@ -245,13 +253,21 @@ export async function failComposition(ctx: MutationCtx, id: Id<"promptCompositio
   if (!composition || composition.status !== "ready") return;
   await ctx.db.patch(id, { status: "failed", failureReason: reason });
   if (composition.generationJobId) await ctx.db.patch(composition.generationJobId, { status: "failed", errorMessage: reason });
-  const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", composition.userId)).unique();
   const cost = composition.reservedCredits ?? 0;
-  if (!account || !cost) return;
-  const balance = account.balance + cost;
-  await ctx.db.patch(account._id, { balance, lifetimeSpent: Math.max(0, account.lifetimeSpent - cost), lastCreditEventAt: Date.now() });
-  await ctx.db.insert("creditTransactions", { userId: composition.userId, actionType: "generation-refund", delta: cost, creditAmount: cost, balanceAfter: balance,
-    generationJobId: composition.generationJobId, conceptId: composition.conceptId, referenceTable: "promptCompositions", referenceId: id, description: `Refunded failed text generation: ${reason.slice(0,200)}` });
+  if (!cost) return;
+  const debit = await findDebitByReference(ctx, "promptCompositions", id);
+  if (!debit) return;
+  await refundCreditTransaction(ctx, {
+    debitTransactionId: debit._id,
+    actionType: "generation-refund",
+    metadata: {
+      generationJobId: composition.generationJobId,
+      conceptId: composition.conceptId,
+      referenceTable: "promptCompositions",
+      referenceId: id,
+      description: `Refunded failed text generation: ${reason.slice(0,200)}`,
+    },
+  });
 }
 export const fail = systemMutation({
   args: { promptCompositionId: v.id("promptCompositions"), reason: v.string() },

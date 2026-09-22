@@ -19,6 +19,7 @@ import { buildModelPromptContext } from "./modelPromptContext";
 import { MutationCtx } from "./types";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 import { reserveGenerationStorageForJob } from "./storageAccounting";
+import { debitCredits } from "./creditLedger";
 
 type RenderMode =
   | "hd-render"
@@ -383,20 +384,21 @@ export async function queueConceptRender(
     generationJobId,
   });
 
-  const balanceAfter = prepaid ? account.balance : await debitCredits({
-    ctx,
-    accountId: account._id,
-    currentBalance: account.balance,
-    currentLifetimeSpent: account.lifetimeSpent,
-    userId: viewer._id,
-    actionType: getRenderActionType(renderMode),
-    creditAmount: priceRule.creditCost,
-    referenceTable: "generationJobs",
-    referenceId: generationJobId,
-    description: `Queued ${getRenderLabel(renderMode).toLowerCase()} for ${concept.title}`,
-    generationJobId,
-    conceptId: concept._id,
-  });
+  const balanceAfter = !prepaid && priceRule.creditCost > 0
+    ? (await debitCredits(ctx, {
+        userId: viewer._id,
+        actionType: getRenderActionType(renderMode),
+        amount: priceRule.creditCost,
+        metadata: {
+          referenceTable: "generationJobs",
+          referenceId: generationJobId,
+          description: `Queued ${getRenderLabel(renderMode).toLowerCase()} for ${concept.title}`,
+          generationJobId,
+          conceptId: concept._id,
+          sourceType: "generation-spend",
+        },
+      })).balanceAfter
+    : account.balance;
 
   if (!prepaid) await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, {
     generationJobId,
@@ -418,46 +420,6 @@ export async function queueConceptRender(
       creditCost: priceRule.creditCost,
     },
   };
-}
-
-async function debitCredits(input: {
-  ctx: MutationCtx;
-  accountId: Id<"creditAccounts">;
-  currentBalance: number;
-  currentLifetimeSpent: number;
-  userId: Id<"users">;
-  actionType:
-    | "generate-palette"
-    | "generate-style-suggestion"
-    | "generate-hd-render"
-    | "generate-multi-angle-preview"
-    | "generate-high-fidelity-render";
-  creditAmount: number;
-  referenceTable: string;
-  referenceId: string;
-  description: string;
-  generationJobId?: Id<"generationJobs">;
-  conceptId?: Id<"concepts">;
-}) {
-  const balanceAfter = input.currentBalance - input.creditAmount;
-  await input.ctx.db.patch(input.accountId, {
-    balance: balanceAfter,
-    lifetimeSpent: input.currentLifetimeSpent + input.creditAmount,
-    lastCreditEventAt: Date.now(),
-  });
-  await input.ctx.db.insert("creditTransactions", {
-    userId: input.userId,
-    actionType: input.actionType,
-    delta: -input.creditAmount,
-    creditAmount: input.creditAmount,
-    balanceAfter,
-    generationJobId: input.generationJobId,
-    conceptId: input.conceptId,
-    referenceTable: input.referenceTable,
-    referenceId: input.referenceId,
-    description: input.description,
-  });
-  return balanceAfter;
 }
 
 function applyTemplate(template: string, values: Record<string, string>) {

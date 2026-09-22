@@ -5,6 +5,7 @@ import { internalMutation, internalQuery, query } from "./functions";
 import { internalMutation as systemMutation } from "./_generated/server";
 import { styleIntentSchema, styleInterpreterSystemPrompt, styleInterpreterUserPromptTemplate, type StyleIntent } from "./creativeContracts";
 import type { QueryCtx } from "./types";
+import { debitCredits } from "./creditLedger";
 
 const version = "style-interpreter.v1";
 export type InterpretationResult = {
@@ -61,13 +62,19 @@ export const begin = internalMutation({
       composedPrompt: styleInterpreterUserPromptTemplate.replace("{{description}}", description),
       inputSnapshotJson: JSON.stringify(snapshot),
     });
-    const balance = account.balance - price.creditCost;
-    await ctx.db.patch(account._id, { balance, lifetimeSpent: account.lifetimeSpent + price.creditCost, lastCreditEventAt: Date.now() });
-    await ctx.db.insert("creditTransactions", {
-      userId: viewer._id, actionType: "generate-style-suggestion", delta: -price.creditCost,
-      creditAmount: price.creditCost, balanceAfter: balance, referenceTable: "promptCompositions",
-      referenceId: id, description: "Reserved Custom Style interpretation",
-    });
+    if (price.creditCost > 0) {
+      await debitCredits(ctx, {
+        userId: viewer._id,
+        actionType: "generate-style-suggestion",
+        amount: price.creditCost,
+        metadata: {
+          referenceTable: "promptCompositions",
+          referenceId: id,
+          description: "Reserved Custom Style interpretation",
+          sourceType: "generation-spend",
+        },
+      });
+    }
     await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId: id });
     return id;
   },

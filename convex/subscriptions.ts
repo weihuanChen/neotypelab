@@ -3,8 +3,15 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, query } from "./functions";
 import { vBillingEventType, vUserPlan, type BillingEventType, type UserPlan } from "./domain";
 import type { MutationCtx } from "./types";
+import { internal } from "./_generated/api";
+import {
+  expireSubscriptionCredits,
+  grantSubscriptionPeriodCredits,
+  setSubscriptionBalanceExpiration,
+} from "./creditLedger";
 
 const GRACE_PERIOD_MS = 14 * 24 * 60 * 60 * 1000;
+const MAX_SCHEDULE_DELAY_MS = 24 * 24 * 60 * 60 * 1000;
 
 export const viewerCurrent = query({
   args: {},
@@ -143,10 +150,31 @@ export const processWebhookEvent = internalMutation({
       creditGrantId = await grantPeriodCredits(ctx, {
         subscriptionId,
         userId,
+        planType: args.planType,
         periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
         amount: args.monthlyCredits,
         billingEventId: eventId,
       });
+    }
+    if (args.eventType === "subscription.refunded") {
+      await setSubscriptionBalanceExpiration(ctx, userId, args.occurredAt);
+      await expireSubscriptionCredits(ctx, {
+        userId,
+        subscriptionId,
+        reasonCode: "subscription-refunded",
+      });
+    } else if (status === "canceling" || status === "canceled" || status === "past-due") {
+      const creditExpiresAt = gracePeriodEndsAt;
+      await setSubscriptionBalanceExpiration(ctx, userId, creditExpiresAt);
+      await scheduleSubscriptionCreditExpiration(
+        ctx,
+        subscriptionId,
+        args.periodEnd,
+        creditExpiresAt
+      );
+    } else {
+      await setSubscriptionBalanceExpiration(ctx, userId, undefined);
     }
     await recordEvent(ctx, args, "processed", subscriptionId);
     return { status: "processed" as const, subscriptionId, grantId, creditGrantId };
@@ -216,38 +244,81 @@ async function upsertSubscriptionGrant(
 
 async function grantPeriodCredits(
   ctx: MutationCtx,
-  input: { subscriptionId: Id<"subscriptions">; userId: Id<"users">; periodStart: number; amount: number; billingEventId: string }
+  input: {
+    subscriptionId: Id<"subscriptions">;
+    userId: Id<"users">;
+    planType: "pro" | "studio";
+    periodStart: number;
+    periodEnd: number;
+    amount: number;
+    billingEventId: string;
+  }
 ) {
   const existing = await ctx.db.query("subscriptionCreditGrants").withIndex("by_subscription_period", (q) => q.eq("subscriptionId", input.subscriptionId).eq("periodStart", input.periodStart)).unique();
   if (existing) return existing._id;
-  let account = await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", input.userId)).unique();
-  if (!account) {
-    const accountId = await ctx.db.insert("creditAccounts", { userId: input.userId, balance: 0, lifetimeGranted: 0, lifetimeSpent: 0, lastCreditEventAt: Date.now() });
-    account = await ctx.db.get(accountId);
-  }
-  if (!account) throw new Error("Credit account could not be initialized");
-  const balanceAfter = account.balance + input.amount;
-  await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeGranted: account.lifetimeGranted + input.amount, lastCreditEventAt: Date.now() });
-  const creditTransactionId = await ctx.db.insert("creditTransactions", {
+  const grant = await grantSubscriptionPeriodCredits(ctx, {
     userId: input.userId,
-    actionType: "subscription-credit",
-    delta: input.amount,
-    creditAmount: input.amount,
-    balanceAfter,
-    referenceTable: "subscriptions",
-    referenceId: input.subscriptionId,
-    description: "Subscription monthly Credits",
-    sourceType: "subscription",
+    subscriptionId: input.subscriptionId,
+    planType: input.planType,
+    amount: input.amount,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
   });
   return await ctx.db.insert("subscriptionCreditGrants", {
     subscriptionId: input.subscriptionId,
     userId: input.userId,
     periodStart: input.periodStart,
     creditAmount: input.amount,
-    creditTransactionId,
+    rolloverExpiredAmount: grant.rolloverExpiredAmount,
+    subscriptionBalanceAfter: grant.subscriptionBalance,
+    creditTransactionId: grant.transactionId,
     billingEventId: input.billingEventId,
     grantedAt: Date.now(),
   });
+}
+
+export const expireSubscriptionCreditBalance = internalMutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+    expectedPeriodEnd: v.number(),
+  },
+  async handler(ctx, args) {
+    const subscription = await ctx.db.get(args.subscriptionId);
+    if (!subscription || subscription.currentPeriodEnd !== args.expectedPeriodEnd) return;
+    if (subscription.status === "active") return;
+    const account = await ctx.db
+      .query("creditAccounts")
+      .withIndex("by_userId", (q) => q.eq("userId", subscription.userId))
+      .unique();
+    if (!account?.subscriptionBalanceExpiresAt) return;
+    if (account.subscriptionBalanceExpiresAt > Date.now()) {
+      await scheduleSubscriptionCreditExpiration(
+        ctx,
+        subscription._id,
+        subscription.currentPeriodEnd,
+        account.subscriptionBalanceExpiresAt
+      );
+      return;
+    }
+    await expireSubscriptionCredits(ctx, {
+      userId: subscription.userId,
+      subscriptionId: subscription._id,
+      reasonCode: "subscription-ended",
+    });
+  },
+});
+
+async function scheduleSubscriptionCreditExpiration(
+  ctx: MutationCtx,
+  subscriptionId: Id<"subscriptions">,
+  expectedPeriodEnd: number,
+  expiresAt: number
+) {
+  await ctx.scheduler.runAfter(
+    Math.min(MAX_SCHEDULE_DELAY_MS, Math.max(0, expiresAt - Date.now())),
+    internal.subscriptions.expireSubscriptionCreditBalance,
+    { subscriptionId, expectedPeriodEnd }
+  );
 }
 
 async function recordEvent(

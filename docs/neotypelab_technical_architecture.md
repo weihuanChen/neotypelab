@@ -378,7 +378,7 @@ Payment adapters POST normalized events to `/billing/webhook`. Requests carry
   "planType": "pro",
   "periodStart": 1788652800000,
   "periodEnd": 1791244800000,
-  "monthlyCredits": 200,
+  "monthlyCredits": 160,
   "cancelAtPeriodEnd": false,
   "occurredAt": 1788652800000
 }
@@ -391,6 +391,14 @@ subscription plus period start prevents duplicate monthly Credits. Upgrades
 apply immediately, downgrades wait until renewal, cancellation and payment
 failure retain a 14-day grace period, and refunds revoke entitlement access
 immediately without forcing the account Credit balance below zero.
+
+Credit accounts maintain separate subscription and permanent balances. Monthly
+subscription Credits roll over in full, but the subscription balance after a
+renewal is capped at twice the current monthly allowance. Subscription Credits
+are consumed before permanent Credits. Credit Pack, starter and grandfathered
+balances are permanent and excluded from the rollover cap. Debit transactions
+record their bucket allocation so technical-failure refunds restore the same
+source; a refund issued after subscription access has ended becomes permanent.
 
 ---
 

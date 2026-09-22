@@ -2,6 +2,8 @@ export const COMPLETE_BUILD_CREDITS = 8;
 
 export const STARTER_CREDITS = 20;
 
+export const SUBSCRIPTION_CREDIT_BALANCE_MULTIPLIER = 2;
+
 export const PRODUCT_PLAN_ENTITLEMENTS = {
   free: {
     workspaceGb: 0.5,

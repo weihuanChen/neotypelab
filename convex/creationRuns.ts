@@ -10,6 +10,7 @@ import { creativeInputKey } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
 import { portraitUrl } from "./kitPicker";
 import { creationWorkflowManager } from "./workflowManager";
+import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
 
 const { paletteCompositionId: _palette, visibility: _visibility, requestKey: _key, ...inputArgs } = prototypeArgs;
 const inputValidator = v.object(inputArgs);
@@ -23,12 +24,18 @@ export const quote = query({ args: {}, handler: async ctx => {
 } });
 
 async function reserve(ctx: MutationCtx, userId: Id<"users">, runId: Id<"creationRuns">, cost: number) {
-  const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", userId)).unique();
-  if (!account || account.balance < cost) throw new Error(`This preview requires ${cost} credits`);
-  const balanceAfter = account.balance - cost;
-  await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeSpent: account.lifetimeSpent + cost, lastCreditEventAt: Date.now() });
-  await ctx.db.insert("creditTransactions", { userId, actionType: "generate-repaint-concept", delta: -cost, creditAmount: cost, balanceAfter,
-    referenceTable: "creationRuns", referenceId: runId, description: "Preview image + paint plan" });
+  return await debitCredits(ctx, {
+    userId,
+    actionType: "generate-repaint-concept",
+    amount: cost,
+    insufficientMessage: `This preview requires ${cost} credits`,
+    metadata: {
+      referenceTable: "creationRuns",
+      referenceId: runId,
+      description: "Preview image + paint plan",
+      sourceType: "generation-spend",
+    },
+  });
 }
 
 async function viewerContext(ctx: MutationCtx, userId: Id<"users">) {
@@ -66,7 +73,8 @@ export const start = mutation({
     const now = Date.now();
     const id = await ctx.db.insert("creationRuns", { userId: viewer._id, requestKey: args.requestKey, inputJson: JSON.stringify(args.input), inputKey,
       status: "queued", stage: "palette", cost, attempt: 1, refunded: false, queuedAt: now, updatedAt: now });
-    await reserve(ctx, viewer._id, id, cost);
+    const debit = await reserve(ctx, viewer._id, id, cost);
+    await ctx.db.patch(id, { creditTransactionId: debit.transactionId });
     const paletteId = await beginCreative(ctx, { ...args.input, kind: "palette-plan", requestKey: `run:${id}:palette:1` }, true);
     await ctx.db.patch(paletteId, { creationRunId: id, creationAttempt: 1 });
     await ctx.db.patch(id, { paletteId });
@@ -251,11 +259,19 @@ async function failRun(ctx: MutationCtx, runId: Id<"creationRuns">, attempt: num
     await ctx.db.patch(runId, { status: "succeeded", completedAt: now, updatedAt: now });
     return;
   }
-  const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", run.userId)).unique();
-  if (!account) throw new Error("Credit account missing");
-  await ctx.db.patch(account._id, { balance: account.balance + run.cost, lifetimeSpent: Math.max(0, account.lifetimeSpent - run.cost), lastCreditEventAt: Date.now() });
-  await ctx.db.insert("creditTransactions", { userId: run.userId, actionType: "generation-refund", delta: run.cost, creditAmount: run.cost,
-    balanceAfter: account.balance + run.cost, referenceTable: "creationRuns", referenceId: runId, description: "Full preview refund" });
+  const debit = run.creditTransactionId
+    ? await ctx.db.get(run.creditTransactionId)
+    : await findDebitByReference(ctx, "creationRuns", runId);
+  if (!debit) throw new Error("Credit debit transaction missing");
+  await refundCreditTransaction(ctx, {
+    debitTransactionId: debit._id,
+    actionType: "generation-refund",
+    metadata: {
+      referenceTable: "creationRuns",
+      referenceId: runId,
+      description: "Full preview refund",
+    },
+  });
   const now = Date.now();
   await ctx.db.patch(runId, { status: "failed", refunded: true, error: reason.slice(0, 500), completedAt: now, updatedAt: now });
   for (const id of [run.paletteId, run.specificationId]) {

@@ -1,8 +1,7 @@
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { mutation, query } from "./functions";
-import { MutationCtx } from "./types";
+import { grantPermanentCredits } from "./creditLedger";
 
 const MAX_CODE_BATCH_SIZE = 200;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -412,37 +411,28 @@ export const redeemActivationCode = mutation({
       throw new Error("Campaign redemption limit reached for this account");
     }
 
-    const account = await ensureCreditAccount(ctx, viewer._id);
     const creditAmount = activationCode.creditAmount;
-    const balanceAfter = account.balance + creditAmount;
-
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeGranted: account.lifetimeGranted + creditAmount,
-      lastCreditEventAt: now,
-    });
-
-    const transactionId = await ctx.db.insert("creditTransactions", {
+    const grant = await grantPermanentCredits(ctx, {
       userId: viewer._id,
       actionType: "campaign-code-redemption",
-      delta: creditAmount,
-      creditAmount,
-      balanceAfter,
-      referenceTable: "creditActivationCodes",
-      referenceId: activationCode._id,
-      description: `Redeemed activation code for ${campaign.name}`,
-      sourceType: "activation-code",
-      reasonCode: "campaign-code-redemption",
-      campaignId: campaign._id,
+      amount: creditAmount,
+      metadata: {
+        referenceTable: "creditActivationCodes",
+        referenceId: activationCode._id,
+        description: `Redeemed activation code for ${campaign.name}`,
+        sourceType: "activation-code",
+        reasonCode: "campaign-code-redemption",
+        campaignId: campaign._id,
+      },
     });
 
     await ctx.db.insert("creditCodeRedemptions", {
       campaignId: campaign._id,
       activationCodeId: activationCode._id,
       userId: viewer._id,
-      creditTransactionId: transactionId,
+      creditTransactionId: grant.transactionId,
       creditAmount,
-      balanceAfter,
+      balanceAfter: grant.balanceAfter,
       redeemedAt: now,
     });
 
@@ -459,33 +449,10 @@ export const redeemActivationCode = mutation({
     return {
       campaignName: campaign.name,
       creditAmount,
-      balanceAfter,
+      balanceAfter: grant.balanceAfter,
     };
   },
 });
-
-async function ensureCreditAccount(ctx: MutationCtx, userId: Id<"users">) {
-  const account = await ctx.db
-    .query("creditAccounts")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-  if (account !== null) {
-    return account;
-  }
-
-  const accountId = await ctx.db.insert("creditAccounts", {
-    userId,
-    balance: 0,
-    lifetimeGranted: 0,
-    lifetimeSpent: 0,
-    lastCreditEventAt: Date.now(),
-  });
-  const createdAccount = await ctx.db.get(accountId);
-  if (createdAccount === null) {
-    throw new Error("Failed to initialize credit account");
-  }
-  return createdAccount;
-}
 
 function groupBy<T, K>(items: T[], getKey: (item: T) => K) {
   const grouped = new Map<K, T[]>();

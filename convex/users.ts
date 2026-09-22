@@ -5,6 +5,7 @@ import { MutationCtx } from "./types";
 import { slugify } from "./utils";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { STARTER_CREDITS } from "@/lib/productPricing";
+import { creditBuckets, grantPermanentCredits } from "./creditLedger";
 
 export const store = mutation({
   args: {},
@@ -88,6 +89,10 @@ export const viewer = query({
       resolveEffectiveEntitlements(ctx, ctx.viewerX()._id),
     ]);
 
+    const buckets = creditAccount ? creditBuckets(creditAccount) : {
+      permanentBalance: 0,
+      subscriptionBalance: 0,
+    };
     return {
       _id: ctx.viewer._id,
       email: ctx.viewer.email,
@@ -102,6 +107,11 @@ export const viewer = query({
       canManagePlatform: canManagePlatform(ctx.viewer),
       credits: {
         balance: creditAccount?.balance ?? 0,
+        permanentBalance: buckets.permanentBalance,
+        subscriptionBalance: buckets.subscriptionBalance,
+        subscriptionBalanceCap: creditAccount?.subscriptionBalanceCap ?? null,
+        subscriptionMonthlyAllowance: creditAccount?.subscriptionMonthlyAllowance ?? null,
+        subscriptionBalanceExpiresAt: creditAccount?.subscriptionBalanceExpiresAt ?? null,
         lifetimeGranted: creditAccount?.lifetimeGranted ?? 0,
         lifetimeSpent: creditAccount?.lifetimeSpent ?? 0,
       },
@@ -185,21 +195,17 @@ async function createStarterCreditAccount(
   ctx: MutationCtx,
   userId: Id<"users">
 ) {
-  const accountId = await ctx.db.insert("creditAccounts", {
-    userId,
-    balance: STARTER_CREDITS,
-    lifetimeGranted: STARTER_CREDITS,
-    lifetimeSpent: 0,
-    lastCreditEventAt: Date.now(),
-  });
-  await ctx.db.insert("creditTransactions", {
+  const result = await grantPermanentCredits(ctx, {
     userId,
     actionType: "starter-grant",
-    delta: STARTER_CREDITS,
-    creditAmount: STARTER_CREDITS,
-    balanceAfter: STARTER_CREDITS,
+    amount: STARTER_CREDITS,
+    metadata: {
+      description: "Initialized account with starter Credits",
+      sourceType: "starter",
+    },
+  });
+  await ctx.db.patch(result.transactionId, {
     referenceTable: "creditAccounts",
-    referenceId: accountId,
-    description: `Initialized account ${accountId} with starter credits`,
+    referenceId: result.accountId,
   });
 }

@@ -12,6 +12,11 @@ import { canManagePlatform } from "./adminAccess";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { settleGenerationStorageReservation } from "./storageAccounting";
+import {
+  findDebitByGenerationJob,
+  refundCreditTransaction,
+  refundUnlinkedCredits,
+} from "./creditLedger";
 
 const vWebRendition = v.union(
   v.literal("master"),
@@ -981,32 +986,28 @@ export const refundFailedJobCredits = internalMutation({
       return;
     }
 
-    const account = await ctx.db
-      .query("creditAccounts")
-      .withIndex("by_userId", (q) => q.eq("userId", job.userId))
-      .unique();
-    if (account === null) {
-      return;
-    }
-
-    const balanceAfter = account.balance + job.requestedCredits;
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeSpent: Math.max(0, account.lifetimeSpent - job.requestedCredits),
-      lastCreditEventAt: Date.now(),
-    });
-    await ctx.db.insert("creditTransactions", {
-      userId: job.userId,
-      actionType: "generation-refund",
-      delta: job.requestedCredits,
-      creditAmount: job.requestedCredits,
-      balanceAfter,
+    const debit = await findDebitByGenerationJob(ctx, job.userId, generationJobId);
+    const metadata = {
       generationJobId,
       conceptId: job.conceptId,
       referenceTable: "generationJobs",
       referenceId: generationJobId,
       description: `Refunded failed generation job ${generationJobId}`,
-    });
+    };
+    if (debit) {
+      await refundCreditTransaction(ctx, {
+        debitTransactionId: debit._id,
+        actionType: "generation-refund",
+        metadata,
+      });
+    } else {
+      await refundUnlinkedCredits(ctx, {
+        userId: job.userId,
+        actionType: "generation-refund",
+        amount: job.requestedCredits,
+        metadata,
+      });
+    }
   },
 });
 function safeTemplateVersion(summaryJson?: string) {

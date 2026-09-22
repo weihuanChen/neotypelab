@@ -1,10 +1,11 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { internalMutation, mutation, query } from "./functions";
 import { vEntitlementGrantSource } from "./domain";
 import { resolveEffectiveEntitlements } from "./entitlements";
+import { grantPermanentCredits } from "./creditLedger";
 
 const GIB = 1024 ** 3;
 
@@ -348,42 +349,30 @@ export const grantCredits = mutation({
     if (!Number.isInteger(args.amount) || args.amount < 1 || args.amount > 10000) throw new Error("Grant amount must be an integer between 1 and 10,000");
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Target user not found");
-    let account = await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", args.userId)).unique();
-    if (!account) {
-      const accountId = await ctx.db.insert("creditAccounts", { userId: args.userId, balance: 0, lifetimeGranted: 0, lifetimeSpent: 0, lastCreditEventAt: Date.now() });
-      account = await ctx.db.get(accountId);
-    }
-    if (!account) throw new Error("Credit account could not be initialized");
-    const balanceAfter = account.balance + args.amount;
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeGranted: account.lifetimeGranted + args.amount,
-      lastCreditEventAt: Date.now(),
-    });
-    const transactionId = await ctx.db.insert("creditTransactions", {
+    const grant = await grantPermanentCredits(ctx, {
       userId: args.userId,
       actionType: "admin-adjustment",
-      delta: args.amount,
-      creditAmount: args.amount,
-      balanceAfter,
-      referenceTable: "users",
-      referenceId: args.userId,
-      description: formatReason(args.reasonCode),
-      sourceType: args.reasonCode === "early-pilot-reward" ? "promotional" : "admin-grant",
-      reasonCode: args.reasonCode,
-      operatorUserId: viewer._id,
-      campaignId: args.campaignId,
-      expiresAt: args.expiresAt,
-      internalNote: args.internalNote?.trim() || undefined,
+      amount: args.amount,
+      metadata: {
+        referenceTable: "users",
+        referenceId: args.userId,
+        description: formatReason(args.reasonCode),
+        sourceType: args.reasonCode === "early-pilot-reward" ? "promotional" : "admin-grant",
+        reasonCode: args.reasonCode,
+        operatorUserId: viewer._id,
+        campaignId: args.campaignId,
+        expiresAt: args.expiresAt,
+        internalNote: args.internalNote?.trim() || undefined,
+      },
     });
     await writeAdminAuditLog(ctx, {
       actorUserId: viewer._id,
       action: "grant-user-credits",
       entityType: "user",
       entityId: args.userId,
-      detailsJson: JSON.stringify({ transactionId, amount: args.amount, reasonCode: args.reasonCode, balanceAfter }),
+      detailsJson: JSON.stringify({ transactionId: grant.transactionId, amount: args.amount, reasonCode: args.reasonCode, balanceAfter: grant.balanceAfter }),
     });
-    return { transactionId, balanceAfter };
+    return { transactionId: grant.transactionId, balanceAfter: grant.balanceAfter };
   },
 });
 

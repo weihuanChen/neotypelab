@@ -247,6 +247,7 @@ export const vCreditActionType = v.union(
   v.literal("keep-original"),
   v.literal("keep-original-refund"),
   v.literal("subscription-credit"),
+  v.literal("subscription-credit-expiration"),
   v.literal("campaign-code-redemption"),
   v.literal("admin-adjustment")
 );

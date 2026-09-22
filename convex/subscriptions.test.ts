@@ -5,6 +5,7 @@ import schema from "./schema";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { verifyBillingWebhookSignature } from "./billingWebhook";
 import { seedUser } from "@/tests/convexTestHelpers";
+import { debitCredits, refundCreditTransaction } from "./creditLedger";
 
 const modules = import.meta.glob("./**/*.ts");
 type Backend = TestConvex<typeof schema>;
@@ -63,7 +64,14 @@ describe("subscription billing", () => {
 
     expect(first.status).toBe("processed");
     expect(duplicate.status).toBe("duplicate");
-    expect(state.account).toMatchObject({ balance: 110, lifetimeGranted: 110 });
+    expect(state.account).toMatchObject({
+      balance: 110,
+      permanentBalance: 10,
+      subscriptionBalance: 100,
+      subscriptionMonthlyAllowance: 100,
+      subscriptionBalanceCap: 200,
+      lifetimeGranted: 110,
+    });
     expect(state.subscriptions).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
     expect(state.events).toHaveLength(1);
@@ -93,12 +101,101 @@ describe("subscription billing", () => {
     expect(subscription).toMatchObject({ planType: "pro", status: "active" });
     expect(subscription?.pendingPlanType).toBeUndefined();
     expect(effective?.planType).toBe("pro");
-    expect(state.account?.balance).toBe(700);
+    expect(state.account).toMatchObject({
+      balance: 400,
+      permanentBalance: 0,
+      subscriptionBalance: 400,
+      subscriptionMonthlyAllowance: 200,
+      subscriptionBalanceCap: 400,
+    });
     expect(state.grants).toHaveLength(2);
+    expect(state.grants.find((grant) => grant.periodStart === now + 30 * DAY_MS)).toMatchObject({
+      creditAmount: 200,
+      rolloverExpiredAmount: 300,
+      subscriptionBalanceAfter: 400,
+    });
+  });
+
+  it("rolls the full subscription balance up to twice the monthly allowance", async () => {
+    const user = await seedUser(t, { tokenIdentifier: "rollover-subscriber", email: "rollover@example.test" });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    const now = Date.now();
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      userId: user.userId,
+      planType: "pro",
+      monthlyCredits: 160,
+      periodStart: now,
+      periodEnd: now + 30 * DAY_MS,
+    }));
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      eventId: "evt-rollover-2",
+      eventType: "subscription.renewed",
+      planType: "pro",
+      monthlyCredits: 160,
+      periodStart: now + 30 * DAY_MS,
+      periodEnd: now + 60 * DAY_MS,
+      occurredAt: now + 1,
+    }));
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      eventId: "evt-rollover-3",
+      eventType: "subscription.renewed",
+      planType: "pro",
+      monthlyCredits: 160,
+      periodStart: now + 60 * DAY_MS,
+      periodEnd: now + 90 * DAY_MS,
+      occurredAt: now + 2,
+    }));
+
+    const state = await t.run(async (ctx) => ({
+      account: await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique(),
+      expirations: await ctx.db.query("creditTransactions").withIndex("by_user_actionType", (q) =>
+        q.eq("userId", user.userId).eq("actionType", "subscription-credit-expiration")
+      ).collect(),
+    }));
+    expect(state.account).toMatchObject({
+      balance: 320,
+      permanentBalance: 0,
+      subscriptionBalance: 320,
+      subscriptionMonthlyAllowance: 160,
+      subscriptionBalanceCap: 320,
+    });
+    expect(state.expirations).toHaveLength(1);
+    expect(state.expirations[0]).toMatchObject({
+      delta: -160,
+      reasonCode: "rollover-cap",
+      subscriptionDelta: -160,
+    });
+  });
+
+  it("spends subscription Credits first and refunds the original bucket split", async () => {
+    const user = await seedUser(t, { tokenIdentifier: "mixed-balance", email: "mixed@example.test", balance: 40 });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    const now = Date.now();
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      userId: user.userId,
+      monthlyCredits: 160,
+      periodStart: now,
+      periodEnd: now + 30 * DAY_MS,
+    }));
+    const debit = await t.run((ctx) => debitCredits(ctx, {
+      userId: user.userId,
+      actionType: "generate-hd-render",
+      amount: 180,
+      metadata: { referenceTable: "tests", referenceId: "mixed-debit" },
+    }));
+    expect(debit).toMatchObject({ subscriptionSpent: 160, permanentSpent: 20, balanceAfter: 20 });
+
+    await t.run((ctx) => refundCreditTransaction(ctx, {
+      debitTransactionId: debit.transactionId,
+      actionType: "generation-refund",
+      metadata: { referenceTable: "tests", referenceId: "mixed-refund" },
+    }));
+    const account = await t.run((ctx) => ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique());
+    expect(account).toMatchObject({ balance: 200, permanentBalance: 40, subscriptionBalance: 160 });
   });
 
   it("keeps cancellation access through grace and revokes immediately on refund", async () => {
-    const user = await seedUser(t, { tokenIdentifier: "cancel-subscriber", email: "cancel@example.test" });
+    const user = await seedUser(t, { tokenIdentifier: "cancel-subscriber", email: "cancel@example.test", balance: 25 });
     await t.mutation(internal.init.seedEntitlementProfiles, {});
     const now = Date.now();
     const periodEnd = now + DAY_MS;
@@ -113,7 +210,47 @@ describe("subscription billing", () => {
     expect((await user.client.query(api.entitlements.viewerEffective, {}))?.planType).toBe("free");
     expect((await user.client.query(api.subscriptions.viewerCurrent, {}))?.status).toBe("refunded");
     const account = await t.run((ctx) => ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique());
-    expect(account?.balance).toBe(100);
+    expect(account).toMatchObject({ balance: 25, permanentBalance: 25, subscriptionBalance: 0 });
+  });
+
+  it("expires only subscription Credits when cancellation grace ends", async () => {
+    const user = await seedUser(t, {
+      tokenIdentifier: "expired-subscription-balance",
+      email: "expired-balance@example.test",
+      balance: 25,
+    });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    const now = Date.now();
+    const periodEnd = now + DAY_MS;
+    const started = event({ userId: user.userId, periodStart: now, periodEnd, monthlyCredits: 100 });
+    const result = await t.mutation(internal.subscriptions.processWebhookEvent, started);
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      eventId: "evt-expiring-cancel",
+      eventType: "subscription.canceled",
+      periodStart: now,
+      periodEnd,
+      monthlyCredits: 0,
+      occurredAt: now + 1,
+    }));
+    await t.run(async (ctx) => {
+      const account = await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique();
+      if (!account) throw new Error("Credit account missing");
+      await ctx.db.patch(account._id, { subscriptionBalanceExpiresAt: Date.now() - 1 });
+    });
+    if (!result.subscriptionId) throw new Error("Subscription was not created");
+    await t.mutation(internal.subscriptions.expireSubscriptionCreditBalance, {
+      subscriptionId: result.subscriptionId,
+      expectedPeriodEnd: periodEnd,
+    });
+
+    const state = await t.run(async (ctx) => ({
+      account: await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique(),
+      expirations: await ctx.db.query("creditTransactions").withIndex("by_user_actionType", (q) =>
+        q.eq("userId", user.userId).eq("actionType", "subscription-credit-expiration")
+      ).collect(),
+    }));
+    expect(state.account).toMatchObject({ balance: 25, permanentBalance: 25, subscriptionBalance: 0 });
+    expect(state.expirations.some((transaction) => transaction.reasonCode === "subscription-ended")).toBe(true);
   });
 
   it("records stale events without rolling subscription state backward", async () => {

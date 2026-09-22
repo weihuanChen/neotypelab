@@ -39,7 +39,7 @@ Credit Packs are planned for active subscribers. Separately purchased Credits
 do not expire. Checkout and pack fulfillment are not active yet, so the public
 page presents these as announced terms rather than functioning purchase actions.
 
-## Monthly rollover: evaluated, not committed
+## Monthly rollover
 
 The current implementation keeps one aggregate balance in `creditAccounts`.
 Subscription grants, purchased Credits, campaign rewards and refunds all change
@@ -48,7 +48,7 @@ simply reducing the aggregate balance at renewal because purchased Credits must
 remain permanent and generation refunds must return value to the source that was
 spent.
 
-The recommended MVP implementation is a two-bucket account:
+The implemented MVP policy uses a two-bucket account:
 
 - `subscriptionBalance` contains monthly and rolled subscription Credits;
 - `permanentBalance` contains purchased and grandfathered Credits;
@@ -59,25 +59,26 @@ The recommended MVP implementation is a two-bucket account:
 - cancellation expires the subscription bucket at the end of paid access while
   preserving the permanent bucket.
 
-A reasonable initial cap is 50% of the monthly grant: 80 Credits for Pro and 160
-Credits for Studio. Immediately after renewal, the maximum subscription balance
-would therefore be 240 for Pro and 480 for Studio. This cap is a recommendation,
-not yet a public promise.
+Unused monthly Credits roll over in full while the subscription remains active.
+After renewal, the subscription bucket is capped at 200% of the current plan's
+monthly allowance: 320 Credits for Pro and 640 Credits for Studio. The monthly
+grant is always recorded in full; when the account is already at the cap, the
+oldest rolled amount above the available rollover capacity expires first.
 
-Implementation complexity is medium-high because debit and refund logic is
-currently distributed across complete builds, individual generation stages,
-Custom Style interpretation, Keep Original and administrative adjustments. The
-work should be delivered as a separate billing iteration:
+Debit and refund logic is centralized so complete builds, individual generation
+stages, Custom Style interpretation, Keep Original and administrative
+adjustments share the same bucket ordering:
 
-1. Centralize all Credit debit and refund operations behind one transactional
-   helper.
-2. Add optional subscription and permanent bucket fields, plus per-transaction
-   allocation metadata.
-3. Migrate existing aggregate balances into the permanent bucket so no existing
-   user loses Credits.
-4. Add idempotent renewal, cancellation, upgrade, downgrade and refund handling.
-5. Add reconciliation checks and tests for period boundaries, mixed balances,
-   retries and duplicate webhooks.
+1. Subscription Credits are consumed before permanent Credits.
+2. Every debit records its subscription/permanent split so refunds are exact.
+3. Legacy aggregate balances migrate into the permanent bucket so existing users
+   do not lose Credits.
+4. Refunds restore the original bucket split. If subscription access has already
+   ended, the returned amount becomes permanent so the refund is not lost.
+5. Cancellation and payment-failure events schedule subscription-balance expiry
+   at the end of the existing entitlement grace period; refunds expire the
+   subscription bucket immediately.
 
-Do not advertise a numeric rollover cap until this iteration is implemented and
-the billing provider's renewal and refund behavior has been tested end to end.
+After deployment, run `npx convex run credits:migrateLegacyAccountBuckets`
+repeatedly until `remaining` is zero. The mutation processes up to 200 legacy
+accounts per call.

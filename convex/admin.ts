@@ -48,6 +48,7 @@ import {
 } from "./promptTemplateVariables";
 import { getR2ConfigurationStatus } from "./r2Config";
 import { DEFAULT_ENTITLEMENT_PROFILES } from "./entitlementPolicy";
+import { debitCredits, grantPermanentCredits } from "./creditLedger";
 
 const GIB = 1024 ** 3;
 
@@ -2508,49 +2509,33 @@ export const adjustUserCredits = mutation({
       throw new Error("Target user not found");
     }
 
-    let account = await ctx.db
-      .query("creditAccounts")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-
-    if (account === null) {
-      const accountId = await ctx.db.insert("creditAccounts", {
-        userId,
-        balance: 0,
-        lifetimeGranted: 0,
-        lifetimeSpent: 0,
-        lastCreditEventAt: Date.now(),
-      });
-      account = await ctx.db.get(accountId);
-      if (account === null) {
-        throw new Error("Failed to initialize credit account");
-      }
-    }
-
-    const balanceAfter = account.balance + delta;
-    if (balanceAfter < 0) {
-      throw new Error("Credit adjustment would produce a negative balance");
-    }
-
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeGranted: delta > 0 ? account.lifetimeGranted + delta : account.lifetimeGranted,
-      lifetimeSpent: delta < 0 ? account.lifetimeSpent + Math.abs(delta) : account.lifetimeSpent,
-      lastCreditEventAt: Date.now(),
-    });
-
-    const transactionId = await ctx.db.insert("creditTransactions", {
-      userId,
-      actionType: "admin-adjustment",
-      delta,
-      creditAmount: Math.abs(delta),
-      balanceAfter,
-      referenceTable: "users",
-      referenceId: userId,
-      description,
-      sourceType: "admin-adjustment",
-      operatorUserId: viewer._id,
-    });
+    const adjustment = delta > 0
+      ? await grantPermanentCredits(ctx, {
+          userId,
+          actionType: "admin-adjustment",
+          amount: delta,
+          metadata: {
+            referenceTable: "users",
+            referenceId: userId,
+            description,
+            sourceType: "admin-adjustment",
+            operatorUserId: viewer._id,
+          },
+        })
+      : await debitCredits(ctx, {
+          userId,
+          actionType: "admin-adjustment",
+          amount: Math.abs(delta),
+          insufficientMessage: "Credit adjustment would produce a negative balance",
+          metadata: {
+            referenceTable: "users",
+            referenceId: userId,
+            description,
+            sourceType: "admin-adjustment",
+            operatorUserId: viewer._id,
+          },
+        });
+    const { balanceAfter, transactionId } = adjustment;
 
     await writeAdminAuditLog(ctx, {
       actorUserId: viewer._id,
@@ -2740,42 +2725,23 @@ export const rewardFeedback = mutation({
     let transactionId: Id<"creditTransactions"> | null = null;
     let balanceAfter: number | null = null;
     if (credits > 0) {
-      let account = await ctx.db
-        .query("creditAccounts")
-        .withIndex("by_userId", (q) => q.eq("userId", report.userId))
-        .unique();
-      if (!account) {
-        const accountId = await ctx.db.insert("creditAccounts", {
-          userId: report.userId,
-          balance: 0,
-          lifetimeGranted: 0,
-          lifetimeSpent: 0,
-          lastCreditEventAt: now,
-        });
-        account = await ctx.db.get(accountId);
-      }
-      if (!account) throw new Error("Credit account could not be initialized");
-      balanceAfter = account.balance + credits;
-      await ctx.db.patch(account._id, {
-        balance: balanceAfter,
-        lifetimeGranted: account.lifetimeGranted + credits,
-        lastCreditEventAt: now,
-      });
-      transactionId = await ctx.db.insert("creditTransactions", {
+      const grant = await grantPermanentCredits(ctx, {
         userId: report.userId,
         actionType: "admin-adjustment",
-        delta: credits,
-        creditAmount: credits,
-        balanceAfter,
-        referenceTable: "feedbackReports",
-        referenceId: args.feedbackId,
-        description: "Feedback reward",
-        sourceType: "promotional",
-        reasonCode: "feedback-reward",
-        operatorUserId: viewer._id,
-        expiresAt: args.expiresAt,
-        internalNote: note,
+        amount: credits,
+        metadata: {
+          referenceTable: "feedbackReports",
+          referenceId: args.feedbackId,
+          description: "Feedback reward",
+          sourceType: "promotional",
+          reasonCode: "feedback-reward",
+          operatorUserId: viewer._id,
+          expiresAt: args.expiresAt,
+          internalNote: note,
+        },
       });
+      transactionId = grant.transactionId;
+      balanceAfter = grant.balanceAfter;
     }
 
     let entitlementGrantId: Id<"accountEntitlementGrants"> | null = null;

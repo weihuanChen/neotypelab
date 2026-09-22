@@ -29,6 +29,8 @@ export async function seedUser(
     await ctx.db.insert("creditAccounts", {
       userId: id,
       balance: input.balance ?? 0,
+      permanentBalance: input.balance ?? 0,
+      subscriptionBalance: 0,
       lifetimeGranted: input.balance ?? 0,
       lifetimeSpent: 0,
     });

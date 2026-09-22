@@ -1,4 +1,5 @@
-import { query } from "./functions";
+import { internalMutation, query } from "./functions";
+import { creditBuckets } from "./creditLedger";
 
 export const viewerBalance = query({
   args: {},
@@ -12,8 +13,20 @@ export const viewerBalance = query({
       .withIndex("by_userId", (q) => q.eq("userId", ctx.viewerX()._id))
       .unique();
 
+    const buckets = account ? creditBuckets(account) : {
+      balance: 0,
+      permanentBalance: 0,
+      subscriptionBalance: 0,
+    };
     return {
       balance: account?.balance ?? 0,
+      permanentBalance: buckets.permanentBalance,
+      subscriptionBalance: buckets.subscriptionBalance,
+      subscriptionMonthlyAllowance: account?.subscriptionMonthlyAllowance ?? null,
+      subscriptionBalanceCap: account?.subscriptionBalanceCap ?? null,
+      subscriptionPlanType: account?.subscriptionPlanType ?? null,
+      subscriptionPeriodEnd: account?.subscriptionPeriodEnd ?? null,
+      subscriptionBalanceExpiresAt: account?.subscriptionBalanceExpiresAt ?? null,
       lifetimeGranted: account?.lifetimeGranted ?? 0,
       lifetimeSpent: account?.lifetimeSpent ?? 0,
       lastCreditEventAt: account?.lastCreditEventAt ?? null,
@@ -56,9 +69,39 @@ export const listViewerTransactions = query({
       delta: transaction.delta,
       creditAmount: transaction.creditAmount,
       balanceAfter: transaction.balanceAfter,
+      permanentDelta: transaction.permanentDelta ?? null,
+      subscriptionDelta: transaction.subscriptionDelta ?? null,
+      permanentBalanceAfter: transaction.permanentBalanceAfter ?? null,
+      subscriptionBalanceAfter: transaction.subscriptionBalanceAfter ?? null,
       conceptId: transaction.conceptId,
       description: transaction.description,
       _creationTime: transaction._creationTime,
     }));
+  },
+});
+
+export const migrateLegacyAccountBuckets = internalMutation({
+  args: {},
+  async handler(ctx) {
+    const accounts = await ctx.db.query("creditAccounts").collect();
+    const pending = accounts
+      .filter((account) =>
+        account.permanentBalance === undefined || account.subscriptionBalance === undefined
+      )
+      .slice(0, 200);
+    for (const account of pending) {
+      const buckets = creditBuckets(account);
+      await ctx.db.patch(account._id, {
+        balance: buckets.balance,
+        permanentBalance: buckets.permanentBalance,
+        subscriptionBalance: buckets.subscriptionBalance,
+      });
+    }
+    return {
+      migrated: pending.length,
+      remaining: Math.max(0, accounts.filter((account) =>
+        account.permanentBalance === undefined || account.subscriptionBalance === undefined
+      ).length - pending.length),
+    };
   },
 });

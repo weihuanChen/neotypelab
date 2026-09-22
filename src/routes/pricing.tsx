@@ -141,9 +141,9 @@ function PricingRoute() {
             refunded under the generation failure policy.
           </p>
           <p>
-            Paid checkout is not active yet. Monthly Credit rollover will have
-            a controlled cap; final rollover terms will be shown before paid
-            plans open.
+            Unused monthly Credits roll over while your paid plan access remains
+            active, up to twice your plan&apos;s monthly allowance. Credit Packs do
+            not count toward this limit and do not expire.
           </p>
         </footer>
       </main>

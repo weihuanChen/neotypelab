@@ -122,6 +122,12 @@ documented in `docs/neotypelab_technical_architecture.md`, plus
 `v1=` followed by the lowercase HMAC-SHA256 hex digest of
 `<timestamp>.<raw-request-body>` using `BILLING_WEBHOOK_SECRET`.
 
+Subscription Credits roll over up to twice the plan's monthly allowance and are
+tracked separately from permanent starter, purchased and grandfathered Credits.
+After deploying this ledger change, run
+`npx convex run credits:migrateLegacyAccountBuckets` repeatedly until it reports
+`remaining: 0`; legacy aggregate balances are preserved as permanent Credits.
+
 Convex stays deployed separately:
 
 ```bash

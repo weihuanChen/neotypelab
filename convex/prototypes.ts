@@ -18,6 +18,7 @@ import {
   visualPaletteFromLegacyPlan,
   visualPaletteSchema,
 } from "./paintRecommendationEngine";
+import { debitCredits } from "./creditLedger";
 
 export const prototypeArgs = {
     userStyleId: v.optional(v.id("userStyles")),
@@ -126,12 +127,21 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
     });
     await ctx.db.patch(conceptId, { generationJobId });
     await ctx.db.patch(promptCompositionId, { generationJobId });
-    const balanceAfter = account.balance - price.creditCost;
-    if (!prepaid) {
-      await ctx.db.patch(account._id, { balance: balanceAfter, lifetimeSpent: account.lifetimeSpent + price.creditCost, lastCreditEventAt: Date.now() });
-      await ctx.db.insert("creditTransactions", { userId: viewer._id, actionType: "generate-repaint-concept", delta: -price.creditCost,
-        creditAmount: price.creditCost, balanceAfter, generationJobId, conceptId, referenceTable: "promptCompositions", referenceId: promptCompositionId, description: `Queued repaint specification for ${title}` });
-    }
+    const balanceAfter = !prepaid && price.creditCost > 0
+      ? (await debitCredits(ctx, {
+          userId: viewer._id,
+          actionType: "generate-repaint-concept",
+          amount: price.creditCost,
+          metadata: {
+            generationJobId,
+            conceptId,
+            referenceTable: "promptCompositions",
+            referenceId: promptCompositionId,
+            description: `Queued repaint specification for ${title}`,
+            sourceType: "generation-spend",
+          },
+        })).balanceAfter
+      : account.balance;
     if (!prepaid) await ctx.scheduler.runAfter(0, internal.generationNode.executeQueuedJob, { generationJobId });
     await ctx.scheduler.runAfter(15 * 60 * 1000, internal.creativePipeline.failStale, { promptCompositionId });
     return { conceptId, promptCompositionId, generationJobId, balanceAfter, title, templateName: template.name, promptPreview: composedPrompt, priceRule };

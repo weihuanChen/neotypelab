@@ -41,6 +41,7 @@ test("renders the public pricing plans and current Credit guide", async ({ page 
   await expect(page.getByText("64", { exact: true })).toBeVisible();
   await expect(page.getByText("400", { exact: true })).toBeVisible();
   await expect(page.getByText("Color plan 1 · Repaint specification 2 · HD render 5")).toBeVisible();
+  await expect(page.getByText(/up to twice your plan's monthly allowance/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /Go Pro · Billing soon/i })).toBeDisabled();
   expect(consoleErrors).toEqual([]);
 });

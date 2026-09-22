@@ -150,6 +150,7 @@ const schema = defineSchema({
     cost: v.number(), attempt: v.number(), refunded: v.boolean(), error: v.optional(v.string()),
     paletteId: v.optional(v.id("promptCompositions")), specificationId: v.optional(v.id("promptCompositions")),
     conceptId: v.optional(v.id("concepts")), renderJobId: v.optional(v.id("generationJobs")),
+    creditTransactionId: v.optional(v.id("creditTransactions")),
     workflowId: v.optional(v.string()), queuedAt: v.optional(v.number()),
     startedAt: v.optional(v.number()), completedAt: v.optional(v.number()), updatedAt: v.number(),
   }).index("by_user", ["userId"]).index("by_user_request", ["userId", "requestKey"]),
@@ -512,6 +513,13 @@ const schema = defineSchema({
   creditAccounts: defineTable({
     userId: v.id("users"),
     balance: v.number(),
+    permanentBalance: v.optional(v.number()),
+    subscriptionBalance: v.optional(v.number()),
+    subscriptionMonthlyAllowance: v.optional(v.number()),
+    subscriptionBalanceCap: v.optional(v.number()),
+    subscriptionPlanType: v.optional(vUserPlan),
+    subscriptionPeriodEnd: v.optional(v.number()),
+    subscriptionBalanceExpiresAt: v.optional(v.number()),
     lifetimeGranted: v.number(),
     lifetimeSpent: v.number(),
     lastCreditEventAt: v.optional(v.number()),
@@ -523,6 +531,11 @@ const schema = defineSchema({
     delta: v.number(),
     creditAmount: v.number(),
     balanceAfter: v.number(),
+    permanentDelta: v.optional(v.number()),
+    subscriptionDelta: v.optional(v.number()),
+    permanentBalanceAfter: v.optional(v.number()),
+    subscriptionBalanceAfter: v.optional(v.number()),
+    refundOfTransactionId: v.optional(v.id("creditTransactions")),
     generationJobId: v.optional(v.id("generationJobs")),
     conceptId: v.optional(v.id("concepts")),
     orderId: v.optional(v.id("orders")),
@@ -549,7 +562,8 @@ const schema = defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_user_actionType", ["userId", "actionType"])
-    .index("by_reference", ["referenceTable", "referenceId"]),
+    .index("by_reference", ["referenceTable", "referenceId"])
+    .index("by_refund_of", ["refundOfTransactionId"]),
 
   orders: defineTable({
     userId: v.id("users"),
@@ -718,6 +732,8 @@ const schema = defineSchema({
     userId: v.id("users"),
     periodStart: v.number(),
     creditAmount: v.number(),
+    rolloverExpiredAmount: v.optional(v.number()),
+    subscriptionBalanceAfter: v.optional(v.number()),
     creditTransactionId: v.id("creditTransactions"),
     billingEventId: v.string(),
     grantedAt: v.number(),

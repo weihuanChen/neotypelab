@@ -4,6 +4,7 @@ import { internalMutation, internalQuery, query } from "./functions";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { reconcileAccountStorageUsage } from "./storageAccounting";
 import { buildPinnedOriginalKey, originalPinCreditCost } from "./originalPinPolicy";
+import { debitCredits, refundCreditTransaction } from "./creditLedger";
 
 const STALE_PIN_OPERATION_MS = 30 * 60 * 1000;
 
@@ -153,24 +154,18 @@ export const begin = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
-    const balanceAfter = account.balance - creditCost;
-    await ctx.db.patch(account._id, {
-      balance: balanceAfter,
-      lifetimeSpent: account.lifetimeSpent + creditCost,
-      lastCreditEventAt: now,
-    });
-    const debitTransactionId = await ctx.db.insert("creditTransactions", {
+    const debit = await debitCredits(ctx, {
       userId: viewer._id,
       actionType: "keep-original",
-      delta: -creditCost,
-      creditAmount: creditCost,
-      balanceAfter,
-      referenceTable: "originalPinOperations",
-      referenceId: operationId,
-      description: `Keep Original (${formatBytes(verifiedByteSize)})`,
-      sourceType: "storage-spend",
+      amount: creditCost,
+      metadata: {
+        referenceTable: "originalPinOperations",
+        referenceId: operationId,
+        description: `Keep Original (${formatBytes(verifiedByteSize)})`,
+        sourceType: "storage-spend",
+      },
     });
-    await ctx.db.patch(operationId, { debitTransactionId });
+    await ctx.db.patch(operationId, { debitTransactionId: debit.transactionId });
     await reconcileAccountStorageUsage(ctx, viewer._id, now);
     return {
       status: "pending" as const,
@@ -269,29 +264,19 @@ async function refundPendingOperation(
   errorMessage: string
 ) {
   if (!operation.debitTransactionId) throw new Error("Keep Original debit transaction is missing");
-  const account = await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", operation.userId)).unique();
-  if (!account) throw new Error("Credit account not found while refunding Keep Original");
   const now = Date.now();
-  const balanceAfter = account.balance + operation.creditCost;
-  await ctx.db.patch(account._id, {
-    balance: balanceAfter,
-    lifetimeSpent: Math.max(0, account.lifetimeSpent - operation.creditCost),
-    lastCreditEventAt: now,
-  });
-  const refundTransactionId = await ctx.db.insert("creditTransactions", {
-    userId: operation.userId,
+  const refund = await refundCreditTransaction(ctx, {
+    debitTransactionId: operation.debitTransactionId,
     actionType: "keep-original-refund",
-    delta: operation.creditCost,
-    creditAmount: operation.creditCost,
-    balanceAfter,
-    referenceTable: "originalPinOperations",
-    referenceId: operation._id,
-    description: "Refunded failed Keep Original operation",
-    sourceType: "refund",
+    metadata: {
+      referenceTable: "originalPinOperations",
+      referenceId: operation._id,
+      description: "Refunded failed Keep Original operation",
+    },
   });
   await ctx.db.patch(operation._id, {
     status: "failed",
-    refundTransactionId,
+    refundTransactionId: refund.transactionId,
     errorMessage: errorMessage.slice(0, 500),
     failedAt: now,
     updatedAt: now,
