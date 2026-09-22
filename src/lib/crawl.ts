@@ -53,6 +53,10 @@ export function buildRobotsTxt(request: Request) {
     "Allow: /showcase",
     "Allow: /create",
     "Allow: /feedback",
+    "Allow: /pricing",
+    "Allow: /contact",
+    "Allow: /legal",
+    "Allow: /legal/",
     "Allow: /prototype/",
     "Allow: /pilot/",
     "Allow: /creator/",
@@ -104,6 +108,36 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.4,
+    },
+    {
+      url: new URL("/pricing", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: new URL("/contact", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.35,
+    },
+    {
+      url: new URL("/legal", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.35,
+    },
+    {
+      url: new URL("/legal/terms", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: new URL("/legal/privacy", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
   const convex = createConvexHttpClient();

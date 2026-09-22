@@ -1,11 +1,18 @@
 import { appPaths, publicStylesEnabled, type AppPath } from "@/src/lib/appPaths";
 
-export type AppNavGroupId = "discover" | "create" | "account" | "admin";
+export type AppNavGroupId =
+  | "discover"
+  | "create"
+  | "account"
+  | "information"
+  | "admin";
 
 export type AppNavItem = {
   href: AppPath;
   label: string;
   match: "exact" | "prefix";
+  /** Optional nested label inside a group (e.g. Legal → Terms / Privacy). */
+  nestUnder?: string;
 };
 
 export type AppNavGroup = {
@@ -44,6 +51,20 @@ export const appNavGroups: readonly AppNavGroup[] = [
     ],
   },
   {
+    id: "information",
+    label: "Information",
+    items: [
+      { href: appPaths.pricing, label: "Pricing", match: "exact" },
+      { href: appPaths.contact, label: "Contact", match: "exact" },
+      // Hub page "Information" is intentionally closed for now.
+      {
+        href: appPaths.legal,
+        label: "Terms & Privacy",
+        match: "prefix",
+      },
+    ],
+  },
+  {
     id: "admin",
     label: "Admin",
     adminOnly: true,
@@ -59,6 +80,29 @@ const discoverPrefixes = [
   "/creator",
   "/creator-pack",
 ];
+
+const seoLandingReservedRoots = [
+  "c",
+  "community",
+  "styles",
+  "t",
+  "showcase",
+  "create",
+  "library",
+  "feedback",
+  "studio",
+  "pricing",
+  "contact",
+  "legal",
+  "terms",
+  "privacy",
+  "prototype",
+  "pilot",
+  "creator",
+  "creator-pack",
+  "spec-admin",
+  "admin",
+] as const;
 
 export function isNavItemActive(pathname: string, item: AppNavItem) {
   if (item.match === "exact") {
@@ -85,8 +129,8 @@ function isSeoLandingPath(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   return (
     segments.length === 2 &&
-    !["c", "community", "styles", "t", "showcase", "create", "library", "feedback", "studio", "prototype", "pilot", "creator", "creator-pack", "spec-admin"].includes(
-      segments[0]
+    !seoLandingReservedRoots.includes(
+      segments[0] as (typeof seoLandingReservedRoots)[number]
     )
   );
 }

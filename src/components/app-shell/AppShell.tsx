@@ -9,6 +9,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
+  Fragment,
   type ReactNode,
   useEffect,
   useMemo,
@@ -207,22 +208,33 @@ function AppShellBody({
             <section className="app-nav__group" key={group.id}>
               <p>{group.label}</p>
               <div>
-                {group.items.map((item) => {
+                {group.items.map((item, index) => {
                   const active = isNavItemActive(pathname, item);
+                  const previous = group.items[index - 1];
+                  const showNestLabel =
+                    Boolean(item.nestUnder) &&
+                    item.nestUnder !== previous?.nestUnder;
+
                   return (
-                    <Link
-                      aria-current={active ? "page" : undefined}
-                      className={
-                        active ? "app-nav__link is-active" : "app-nav__link"
-                      }
-                      key={item.href}
-                      onClick={() => setMobileNavOpen(false)}
-                      preload="intent"
-                      tabIndex={navigationVisible ? undefined : -1}
-                      to={item.href}
-                    >
-                      {item.label}
-                    </Link>
+                    <Fragment key={item.href}>
+                      {showNestLabel ? (
+                        <p className="app-nav__subgroup">{item.nestUnder}</p>
+                      ) : null}
+                      <Link
+                        aria-current={active ? "page" : undefined}
+                        className={
+                          active
+                            ? "app-nav__link is-active"
+                            : "app-nav__link"
+                        }
+                        onClick={() => setMobileNavOpen(false)}
+                        preload="intent"
+                        tabIndex={navigationVisible ? undefined : -1}
+                        to={item.href}
+                      >
+                        {item.label}
+                      </Link>
+                    </Fragment>
                   );
                 })}
               </div>

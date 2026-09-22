@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TRouteImport } from './routes/t'
 import { Route as StylesRouteImport } from './routes/styles'
 import { Route as StudioRouteImport } from './routes/studio'
@@ -16,9 +17,13 @@ import { Route as SpecAdminRouteImport } from './routes/spec-admin'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as LibraryRouteImport } from './routes/library'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as CreateRouteImport } from './routes/create'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -44,6 +49,8 @@ import { Route as ShowcaseArchiveRouteImport } from './routes/showcase_.archive'
 import { Route as PrototypeConceptIdRouteImport } from './routes/prototype.$conceptId'
 import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
 import { Route as LibraryConceptIdRouteImport } from './routes/library_.$conceptId'
+import { Route as LegalTermsRouteImport } from './routes/legal_.terms'
+import { Route as LegalPrivacyRouteImport } from './routes/legal_.privacy'
 import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
 import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
@@ -77,6 +84,11 @@ import { Route as CreatorHandleOpengraphImageRouteImport } from './routes/creato
 import { Route as CreatorPackSlugOpengraphImageRouteImport } from './routes/creator-pack_.$slug.opengraph-image'
 import { Route as BaseModelSlugStylePresetSlugOpengraphImageRouteImport } from './routes/$baseModelSlug.$stylePresetSlug.opengraph-image'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TRoute = TRouteImport.update({
   id: '/t',
   path: '/t',
@@ -112,9 +124,24 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LibraryRoute = LibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedbackRoute = FeedbackRouteImport.update({
@@ -125,6 +152,11 @@ const FeedbackRoute = FeedbackRouteImport.update({
 const CreateRoute = CreateRouteImport.update({
   id: '/create',
   path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -250,6 +282,16 @@ const PilotHandleRoute = PilotHandleRouteImport.update({
 const LibraryConceptIdRoute = LibraryConceptIdRouteImport.update({
   id: '/library_/$conceptId',
   path: '/library/$conceptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalTermsRoute = LegalTermsRouteImport.update({
+  id: '/legal_/terms',
+  path: '/legal/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
+  id: '/legal_/privacy',
+  path: '/legal/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedbackReportsRoute = FeedbackReportsRouteImport.update({
@@ -427,9 +469,13 @@ const BaseModelSlugStylePresetSlugOpengraphImageRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/contact': typeof ContactRoute
   '/create': typeof CreateRoute
   '/feedback': typeof FeedbackRoute
+  '/legal': typeof LegalRoute
   '/library': typeof LibraryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -437,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/studio': typeof StudioRoute
   '/styles': typeof StylesRoute
   '/t': typeof TRoute
+  '/terms': typeof TermsRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/creator-packs': typeof AdminCreatorPacksRoute
@@ -459,6 +506,8 @@ export interface FileRoutesByFullPath {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
   '/library/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -495,9 +544,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contact': typeof ContactRoute
   '/create': typeof CreateRoute
   '/feedback': typeof FeedbackRoute
+  '/legal': typeof LegalRoute
   '/library': typeof LibraryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -505,6 +558,7 @@ export interface FileRoutesByTo {
   '/studio': typeof StudioRoute
   '/styles': typeof StylesRoute
   '/t': typeof TRoute
+  '/terms': typeof TermsRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/creator-packs': typeof AdminCreatorPacksRoute
@@ -527,6 +581,8 @@ export interface FileRoutesByTo {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/legal/terms': typeof LegalTermsRoute
   '/library/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -565,9 +621,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/contact': typeof ContactRoute
   '/create': typeof CreateRoute
   '/feedback': typeof FeedbackRoute
+  '/legal': typeof LegalRoute
   '/library': typeof LibraryRoute
+  '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/showcase': typeof ShowcaseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -575,6 +635,7 @@ export interface FileRoutesById {
   '/studio': typeof StudioRoute
   '/styles': typeof StylesRoute
   '/t': typeof TRoute
+  '/terms': typeof TermsRoute
   '/$baseModelSlug/$stylePresetSlug': typeof BaseModelSlugStylePresetSlugRouteWithChildren
   '/admin/audit-log': typeof AdminAuditLogRoute
   '/admin/creator-packs': typeof AdminCreatorPacksRoute
@@ -597,6 +658,8 @@ export interface FileRoutesById {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback_/reports': typeof FeedbackReportsRoute
+  '/legal_/privacy': typeof LegalPrivacyRoute
+  '/legal_/terms': typeof LegalTermsRoute
   '/library_/$conceptId': typeof LibraryConceptIdRoute
   '/pilot/$handle': typeof PilotHandleRoute
   '/prototype/$conceptId': typeof PrototypeConceptIdRoute
@@ -636,9 +699,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/contact'
     | '/create'
     | '/feedback'
+    | '/legal'
     | '/library'
+    | '/pricing'
+    | '/privacy'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
@@ -646,6 +713,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/styles'
     | '/t'
+    | '/terms'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
     | '/admin/creator-packs'
@@ -668,6 +736,8 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/legal/privacy'
+    | '/legal/terms'
     | '/library/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -704,9 +774,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/contact'
     | '/create'
     | '/feedback'
+    | '/legal'
     | '/library'
+    | '/pricing'
+    | '/privacy'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
@@ -714,6 +788,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/styles'
     | '/t'
+    | '/terms'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
     | '/admin/creator-packs'
@@ -736,6 +811,8 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/legal/privacy'
+    | '/legal/terms'
     | '/library/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -773,9 +850,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/contact'
     | '/create'
     | '/feedback'
+    | '/legal'
     | '/library'
+    | '/pricing'
+    | '/privacy'
     | '/robots.txt'
     | '/showcase'
     | '/sitemap.xml'
@@ -783,6 +864,7 @@ export interface FileRouteTypes {
     | '/studio'
     | '/styles'
     | '/t'
+    | '/terms'
     | '/$baseModelSlug/$stylePresetSlug'
     | '/admin/audit-log'
     | '/admin/creator-packs'
@@ -805,6 +887,8 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback_/$feedbackId'
     | '/feedback_/reports'
+    | '/legal_/privacy'
+    | '/legal_/terms'
     | '/library_/$conceptId'
     | '/pilot/$handle'
     | '/prototype/$conceptId'
@@ -843,9 +927,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ContactRoute: typeof ContactRoute
   CreateRoute: typeof CreateRoute
   FeedbackRoute: typeof FeedbackRoute
+  LegalRoute: typeof LegalRoute
   LibraryRoute: typeof LibraryRoute
+  PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   ShowcaseRoute: typeof ShowcaseRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -853,6 +941,7 @@ export interface RootRouteChildren {
   StudioRoute: typeof StudioRoute
   StylesRoute: typeof StylesRoute
   TRoute: typeof TRoute
+  TermsRoute: typeof TermsRoute
   BaseModelSlugStylePresetSlugRoute: typeof BaseModelSlugStylePresetSlugRouteWithChildren
   CStyleIdRoute: typeof CStyleIdRoute
   CommunityStylesRoute: typeof CommunityStylesRoute
@@ -860,6 +949,8 @@ export interface RootRouteChildren {
   CreatorHandleRoute: typeof CreatorHandleRoute
   FeedbackFeedbackIdRoute: typeof FeedbackFeedbackIdRoute
   FeedbackReportsRoute: typeof FeedbackReportsRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
+  LegalTermsRoute: typeof LegalTermsRoute
   LibraryConceptIdRoute: typeof LibraryConceptIdRoute
   PilotHandleRoute: typeof PilotHandleRoute
   PrototypeConceptIdRoute: typeof PrototypeConceptIdRoute
@@ -895,6 +986,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/t': {
       id: '/t'
       path: '/t'
@@ -944,11 +1042,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/library': {
       id: '/library'
       path: '/library'
       fullPath: '/library'
       preLoaderRoute: typeof LibraryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback': {
@@ -963,6 +1082,13 @@ declare module '@tanstack/react-router' {
       path: '/create'
       fullPath: '/create'
       preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -1138,6 +1264,20 @@ declare module '@tanstack/react-router' {
       path: '/library/$conceptId'
       fullPath: '/library/$conceptId'
       preLoaderRoute: typeof LibraryConceptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal_/terms': {
+      id: '/legal_/terms'
+      path: '/legal/terms'
+      fullPath: '/legal/terms'
+      preLoaderRoute: typeof LegalTermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal_/privacy': {
+      id: '/legal_/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback_/reports': {
@@ -1425,9 +1565,13 @@ const BaseModelSlugStylePresetSlugRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ContactRoute: ContactRoute,
   CreateRoute: CreateRoute,
   FeedbackRoute: FeedbackRoute,
+  LegalRoute: LegalRoute,
   LibraryRoute: LibraryRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   ShowcaseRoute: ShowcaseRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -1435,6 +1579,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudioRoute: StudioRoute,
   StylesRoute: StylesRoute,
   TRoute: TRoute,
+  TermsRoute: TermsRoute,
   BaseModelSlugStylePresetSlugRoute:
     BaseModelSlugStylePresetSlugRouteWithChildren,
   CStyleIdRoute: CStyleIdRoute,
@@ -1443,6 +1588,8 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorHandleRoute: CreatorHandleRoute,
   FeedbackFeedbackIdRoute: FeedbackFeedbackIdRoute,
   FeedbackReportsRoute: FeedbackReportsRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
+  LegalTermsRoute: LegalTermsRoute,
   LibraryConceptIdRoute: LibraryConceptIdRoute,
   PilotHandleRoute: PilotHandleRoute,
   PrototypeConceptIdRoute: PrototypeConceptIdRoute,
