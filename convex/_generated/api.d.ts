@@ -32,6 +32,7 @@ import type * as creativePipeline from "../creativePipeline.js";
 import type * as creativeSetup from "../creativeSetup.js";
 import type * as creativeSetupNode from "../creativeSetupNode.js";
 import type * as creditCampaigns from "../creditCampaigns.js";
+import type * as creditLedger from "../creditLedger.js";
 import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
 import type * as domain from "../domain.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   creativeSetup: typeof creativeSetup;
   creativeSetupNode: typeof creativeSetupNode;
   creditCampaigns: typeof creditCampaigns;
+  creditLedger: typeof creditLedger;
   credits: typeof credits;
   crons: typeof crons;
   domain: typeof domain;

@@ -1,6 +1,6 @@
 import type { Doc } from "./_generated/dataModel";
 import type { UserPlan } from "./domain";
-import { PRODUCT_PLAN_ENTITLEMENTS } from "@/lib/productPricing";
+import { PRODUCT_PLAN_ENTITLEMENTS } from "../lib/productPricing";
 
 const GIB = 1024 ** 3;
 

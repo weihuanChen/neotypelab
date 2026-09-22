@@ -1,7 +1,7 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import type { CreditActionType, UserPlan } from "./domain";
-import { SUBSCRIPTION_CREDIT_BALANCE_MULTIPLIER } from "@/lib/productPricing";
+import { SUBSCRIPTION_CREDIT_BALANCE_MULTIPLIER } from "../lib/productPricing";
 
 type CreditWriteCtx = Pick<MutationCtx, "db">;
 type CreditSourceType = NonNullable<Doc<"creditTransactions">["sourceType"]>;
