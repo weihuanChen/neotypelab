@@ -1,5 +1,6 @@
 import type { Doc } from "./_generated/dataModel";
 import type { UserPlan } from "./domain";
+import { PRODUCT_PLAN_ENTITLEMENTS } from "@/lib/productPricing";
 
 const GIB = 1024 ** 3;
 
@@ -28,13 +29,13 @@ export type DefaultEntitlementProfile = EntitlementValues & {
 export const DEFAULT_ENTITLEMENT_PROFILES: Record<UserPlan, DefaultEntitlementProfile> = {
   free: {
     name: "Free",
-    slug: "free-default",
+    slug: "free-mvp-v2",
     planType: "free",
-    revision: 1,
-    libraryQuotaBytes: 2 * GIB,
-    temporaryOriginalQuotaBytes: 2 * GIB,
-    pinnedOriginalQuotaBytes: 2 * GIB,
-    originalRetentionDays: 7,
+    revision: 2,
+    libraryQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.free.workspaceGb * GIB,
+    temporaryOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.free.workspaceGb * GIB,
+    pinnedOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.free.workspaceGb * GIB,
+    originalRetentionDays: PRODUCT_PLAN_ENTITLEMENTS.free.originalRetentionDays,
     versionRetentionDays: 7,
     masterMaxDimensionPx: 2048,
     exportMaxDimensionPx: 2048,
@@ -46,13 +47,13 @@ export const DEFAULT_ENTITLEMENT_PROFILES: Record<UserPlan, DefaultEntitlementPr
   },
   pro: {
     name: "Pro",
-    slug: "pro-default",
+    slug: "pro-mvp-v2",
     planType: "pro",
-    revision: 1,
-    libraryQuotaBytes: 20 * GIB,
-    temporaryOriginalQuotaBytes: 20 * GIB,
-    pinnedOriginalQuotaBytes: 20 * GIB,
-    originalRetentionDays: 90,
+    revision: 2,
+    libraryQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.pro.workspaceGb * GIB,
+    temporaryOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.pro.workspaceGb * GIB,
+    pinnedOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.pro.workspaceGb * GIB,
+    originalRetentionDays: PRODUCT_PLAN_ENTITLEMENTS.pro.originalRetentionDays,
     versionRetentionDays: 30,
     masterMaxDimensionPx: 2048,
     exportMaxDimensionPx: 4096,
@@ -64,17 +65,17 @@ export const DEFAULT_ENTITLEMENT_PROFILES: Record<UserPlan, DefaultEntitlementPr
   },
   studio: {
     name: "Studio",
-    slug: "studio-default",
+    slug: "studio-mvp-v2",
     planType: "studio",
-    revision: 1,
-    libraryQuotaBytes: 100 * GIB,
-    temporaryOriginalQuotaBytes: 100 * GIB,
-    pinnedOriginalQuotaBytes: 100 * GIB,
-    originalRetentionDays: 90,
+    revision: 2,
+    libraryQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.studio.workspaceGb * GIB,
+    temporaryOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.studio.workspaceGb * GIB,
+    pinnedOriginalQuotaBytes: PRODUCT_PLAN_ENTITLEMENTS.studio.workspaceGb * GIB,
+    originalRetentionDays: PRODUCT_PLAN_ENTITLEMENTS.studio.originalRetentionDays,
     versionRetentionDays: 90,
     masterMaxDimensionPx: 4096,
     exportMaxDimensionPx: 4096,
-    originalPermanentStorage: true,
+    originalPermanentStorage: false,
     originalDownloadAllowed: true,
     originalPinAllowed: true,
     batchDownloadAllowed: true,

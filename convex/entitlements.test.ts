@@ -26,8 +26,8 @@ describe("effective entitlements", () => {
     expect(result).toMatchObject({
       planType: "free",
       profileId: null,
-      profileSlug: "free-default",
-      libraryQuotaBytes: 2 * GIB,
+      profileSlug: "free-mvp-v2",
+      libraryQuotaBytes: 0.5 * GIB,
       originalRetentionDays: 7,
       versionRetentionDays: 7,
       masterMaxDimensionPx: 2048,
@@ -50,9 +50,9 @@ describe("effective entitlements", () => {
     expect(profileCount).toHaveLength(3);
     expect(result).toMatchObject({
       planType: "pro",
-      profileSlug: "pro-default",
-      libraryQuotaBytes: 20 * GIB,
-      originalRetentionDays: 90,
+      profileSlug: "pro-mvp-v2",
+      libraryQuotaBytes: 10 * GIB,
+      originalRetentionDays: 30,
       versionRetentionDays: 30,
       exportMaxDimensionPx: 4096,
       originalPermanentStorage: false,
@@ -100,7 +100,7 @@ describe("effective entitlements", () => {
     const result = await user.client.query(api.entitlements.viewerEffective, {});
 
     expect(result).toMatchObject({
-      libraryQuotaBytes: 7 * GIB,
+      libraryQuotaBytes: 5.5 * GIB,
       originalRetentionDays: 30,
       masterMaxDimensionPx: 4096,
       batchDownloadAllowed: true,

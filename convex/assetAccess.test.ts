@@ -105,7 +105,7 @@ describe("private asset authorization", () => {
     const records = await t.run(async (ctx) => {
       const profile = await ctx.db
         .query("entitlementProfiles")
-        .withIndex("by_slug", (q) => q.eq("slug", "free-default"))
+        .withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2"))
         .unique();
       if (!profile) throw new Error("Free entitlement profile not found");
       await ctx.db.patch(profile._id, { originalDownloadAllowed: false });

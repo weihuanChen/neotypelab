@@ -97,7 +97,7 @@ describe("library work details", () => {
     const f = await fixture();
     await f.t.mutation(internal.init.seedEntitlementProfiles, {});
     await f.t.run(async ctx => {
-      const profile = (await ctx.db.query("entitlementProfiles").withIndex("by_slug", q => q.eq("slug", "free-default")).unique())!;
+      const profile = (await ctx.db.query("entitlementProfiles").withIndex("by_slug", q => q.eq("slug", "free-mvp-v2")).unique())!;
       await ctx.db.patch(profile._id, { originalDownloadAllowed: false });
     });
     let detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });

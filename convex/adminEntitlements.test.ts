@@ -25,7 +25,7 @@ describe("admin entitlement operations", () => {
 
     const result = await admin.client.mutation(api.admin.saveEntitlementProfile, {
       planType: "free",
-      expectedRevision: 1,
+      expectedRevision: 2,
       libraryQuotaGb: 3,
       temporaryOriginalQuotaGb: 2,
       pinnedOriginalQuotaGb: 1,
@@ -39,15 +39,15 @@ describe("admin entitlement operations", () => {
       batchDownloadAllowed: false,
     });
 
-    expect(result.revision).toBe(2);
+    expect(result.revision).toBe(3);
     const revisions = await t.run((ctx) => ctx.db
       .query("entitlementProfiles")
       .withIndex("by_plan_revision", (q) => q.eq("planType", "free"))
       .collect());
-    expect(revisions.map((profile) => profile.revision).sort()).toEqual([1, 2]);
+    expect(revisions.map((profile) => profile.revision).sort()).toEqual([2, 3]);
     await expect(admin.client.mutation(api.admin.saveEntitlementProfile, {
       planType: "free",
-      expectedRevision: 1,
+      expectedRevision: 2,
       libraryQuotaGb: 4,
       temporaryOriginalQuotaGb: 2,
       pinnedOriginalQuotaGb: 1,
@@ -82,13 +82,13 @@ describe("admin entitlement operations", () => {
     });
 
     expect(await user.client.query(api.entitlements.viewerEffective, {})).toMatchObject({
-      libraryQuotaBytes: 7 * GIB,
+      libraryQuotaBytes: 5.5 * GIB,
       originalRetentionDays: 30,
       batchDownloadAllowed: true,
     });
     await admin.client.mutation(api.adminUsers.revokeEntitlementGrant, { grantId });
     expect(await user.client.query(api.entitlements.viewerEffective, {})).toMatchObject({
-      libraryQuotaBytes: 2 * GIB,
+      libraryQuotaBytes: 0.5 * GIB,
       originalRetentionDays: 7,
       batchDownloadAllowed: false,
     });

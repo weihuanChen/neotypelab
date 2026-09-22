@@ -30,6 +30,21 @@ test("renders the public showcase page", async ({ page }) => {
   expect(consoleErrors).toEqual([]);
 });
 
+test("renders the public pricing plans and current Credit guide", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  await page.goto("/pricing");
+  await expect(page).toHaveTitle(/Pricing/);
+  await expect(page.getByRole("heading", { name: /Build at your own pace/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Free" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pro" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Studio" })).toBeVisible();
+  await expect(page.getByText("64", { exact: true })).toBeVisible();
+  await expect(page.getByText("400", { exact: true })).toBeVisible();
+  await expect(page.getByText("Color plan 1 · Repaint specification 2 · HD render 5")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Go Pro · Billing soon/i })).toBeDisabled();
+  expect(consoleErrors).toEqual([]);
+});
+
 test("shows the signed-out create gate", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/create");

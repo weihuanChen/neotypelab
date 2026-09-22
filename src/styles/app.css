@@ -6,6 +6,7 @@
 @import "./create-workspace.css";
 @import "./system-state.css";
 @import "./job-wait.css";
+@import "./pricing.css";
 
 :root {
   color-scheme: light;

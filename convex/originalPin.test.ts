@@ -177,7 +177,7 @@ describe("Keep Original", () => {
     });
     await t.mutation(internal.init.seedEntitlementProfiles, {});
     await t.run(async (ctx) => {
-      const profile = await ctx.db.query("entitlementProfiles").withIndex("by_slug", (q) => q.eq("slug", "free-default")).unique();
+      const profile = await ctx.db.query("entitlementProfiles").withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2")).unique();
       if (!profile) throw new Error("Free profile not found");
       await ctx.db.patch(profile._id, { pinnedOriginalQuotaBytes: 2 * MIB });
     });
@@ -226,7 +226,7 @@ describe("Keep Original", () => {
     });
     await t.mutation(internal.init.seedEntitlementProfiles, {});
     await t.run(async (ctx) => {
-      const profile = await ctx.db.query("entitlementProfiles").withIndex("by_slug", (q) => q.eq("slug", "free-default")).unique();
+      const profile = await ctx.db.query("entitlementProfiles").withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2")).unique();
       if (!profile) throw new Error("Free profile not found");
       await ctx.db.patch(profile._id, {
         originalPermanentStorage: true,

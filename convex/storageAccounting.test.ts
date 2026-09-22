@@ -72,7 +72,7 @@ describe("storage accounting", () => {
     await t.run(async (ctx) => {
       const free = await ctx.db
         .query("entitlementProfiles")
-        .withIndex("by_slug", (q) => q.eq("slug", "free-default"))
+        .withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2"))
         .unique();
       if (!free) throw new Error("Free profile not found");
       await ctx.db.patch(free._id, {
@@ -102,7 +102,7 @@ describe("storage accounting", () => {
     await t.run(async (ctx) => {
       const free = await ctx.db
         .query("entitlementProfiles")
-        .withIndex("by_slug", (q) => q.eq("slug", "free-default"))
+        .withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2"))
         .unique();
       if (!free) throw new Error("Free profile not found");
       await ctx.db.patch(free._id, {
@@ -159,7 +159,7 @@ describe("storage accounting", () => {
     await t.run(async (ctx) => {
       const free = await ctx.db
         .query("entitlementProfiles")
-        .withIndex("by_slug", (q) => q.eq("slug", "free-default"))
+        .withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2"))
         .unique();
       if (!free) throw new Error("Free profile not found");
       await ctx.db.patch(free._id, { libraryQuotaBytes: MIB });
@@ -191,7 +191,15 @@ describe("storage accounting", () => {
       email: "studio@example.test",
     });
     await t.mutation(internal.init.seedEntitlementProfiles, {});
-    await t.run((ctx) => ctx.db.patch(user.userId, { planType: "studio" }));
+    await t.run(async (ctx) => {
+      await ctx.db.patch(user.userId, { planType: "studio" });
+      const studio = await ctx.db
+        .query("entitlementProfiles")
+        .withIndex("by_slug", (q) => q.eq("slug", "studio-mvp-v2"))
+        .unique();
+      if (!studio) throw new Error("Studio profile not found");
+      await ctx.db.patch(studio._id, { originalPermanentStorage: true });
+    });
     const generationJobId = await seedJob(user.userId);
 
     await t.mutation(internal.storageAccounting.reserveGenerationStorage, {

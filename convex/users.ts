@@ -4,8 +4,7 @@ import { Id } from "./_generated/dataModel";
 import { MutationCtx } from "./types";
 import { slugify } from "./utils";
 import { resolveEffectiveEntitlements } from "./entitlements";
-
-const STARTER_CREDITS = 25;
+import { STARTER_CREDITS } from "@/lib/productPricing";
 
 export const store = mutation({
   args: {},

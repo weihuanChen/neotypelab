@@ -67,7 +67,7 @@ describe("subscription billing", () => {
     expect(state.subscriptions).toHaveLength(1);
     expect(state.grants).toHaveLength(1);
     expect(state.events).toHaveLength(1);
-    expect(effective).toMatchObject({ accountPlanType: "free", planType: "pro", libraryQuotaBytes: 20 * 1024 ** 3 });
+    expect(effective).toMatchObject({ accountPlanType: "free", planType: "pro", libraryQuotaBytes: 10 * 1024 ** 3 });
   });
 
   it("deduplicates Credits by billing period and applies a deferred downgrade on renewal", async () => {
