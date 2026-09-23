@@ -1,3 +1,5 @@
+import { encode } from "uqr";
+
 type OpenGraphImageInput = {
   accent: string;
   eyebrow: string;
@@ -16,6 +18,7 @@ type PrototypeExportImageInput = {
   imageUrl?: string | null;
   layout: "portrait" | "square" | "wide";
   meta: string[];
+  shareUrl: string;
   subtitle: string;
   title: string;
 };
@@ -24,6 +27,9 @@ export const openGraphImageHeaders = {
   "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
   "Content-Type": "image/svg+xml; charset=utf-8",
 };
+
+const svgViewportStyle =
+  "max-width:100vw;max-height:100vh;width:auto;height:auto;display:block";
 
 export function openGraphImageResponse(input: OpenGraphImageInput) {
   return new Response(buildOpenGraphSvg(input), {
@@ -52,7 +58,7 @@ export function buildOpenGraphSvg({
   const metaItems = meta.slice(0, 3);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" style="${svgViewportStyle}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#07090D"/>
@@ -166,6 +172,7 @@ function buildPrototypeExportSvg({
   imageUrl,
   layout,
   meta,
+  shareUrl,
   subtitle,
   title,
 }: PrototypeExportImageInput) {
@@ -177,6 +184,7 @@ function buildPrototypeExportSvg({
       footer,
       imageUrl,
       meta,
+      shareUrl,
       subtitle,
       title,
     });
@@ -190,6 +198,7 @@ function buildPrototypeExportSvg({
       footer,
       imageUrl,
       meta,
+      shareUrl,
       subtitle,
       title,
     });
@@ -202,6 +211,7 @@ function buildPrototypeExportSvg({
     footer,
     imageUrl,
     meta,
+    shareUrl,
     subtitle,
     title,
   });
@@ -214,28 +224,35 @@ function buildPortraitPrototypeExportSvg({
   footer,
   imageUrl,
   meta,
+  shareUrl,
   subtitle,
   title,
 }: Omit<PrototypeExportImageInput, "layout">) {
-  const titleLines = wrapSvgText(title, 24, 4);
-  const subtitleLines = wrapSvgText(subtitle, 38, 2);
-  const footerLines = wrapSvgText(footer, 42, 2);
+  const titleLines = wrapSvgText(title, 18, 3);
+  const subtitleLines = wrapSvgText(subtitle, 34, 2);
+  const footerLines = wrapSvgText(footer, 36, 2);
   const metaItems = meta.slice(0, 3);
+  const titleSize = titleLines.length > 2 ? 40 : 46;
+  const titleStep = titleLines.length > 2 ? 46 : 52;
+  const titleStartY = 208;
+  const subtitleY =
+    titleStartY + Math.max(0, titleLines.length - 1) * titleStep + 44;
+  const headerBottom =
+    subtitleY + Math.max(0, subtitleLines.length - 1) * 32 + 28;
+  const imageTop = Math.max(390, headerBottom);
+  const imageHeight = 1188 - imageTop;
+  const qrSize = 148;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1000" height="1500" viewBox="0 0 1000 1500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1000" height="1500" viewBox="0 0 1000 1500" fill="none" xmlns="http://www.w3.org/2000/svg" style="${svgViewportStyle}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1000" y2="1500" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#07090D"/>
       <stop offset="0.58" stop-color="#10151B"/>
       <stop offset="1" stop-color="#151B20"/>
     </linearGradient>
-    <linearGradient id="fade" x1="0" y1="470" x2="0" y2="1250" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#07090D" stop-opacity="0"/>
-      <stop offset="1" stop-color="#07090D" stop-opacity="0.86"/>
-    </linearGradient>
     <clipPath id="imageClip">
-      <rect x="78" y="530" width="844" height="760" rx="0"/>
+      <rect x="56" y="${imageTop + 12}" width="888" height="${imageHeight - 24}" rx="0"/>
     </clipPath>
   </defs>
   <rect width="1000" height="1500" fill="url(#bg)"/>
@@ -250,40 +267,43 @@ function buildPortraitPrototypeExportSvg({
       .join("\n    ")}
   </g>
   <rect x="48" y="48" width="904" height="1404" stroke="#33404A" stroke-width="2"/>
-  <path d="M48 170H952" stroke="#33404A" stroke-width="1"/>
-  <text x="78" y="116" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" letter-spacing="7">${escapeXml(eyebrow.toUpperCase())}</text>
-  <text x="78" y="246" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleLines.length > 3 ? 58 : 68}" letter-spacing="0">
+  <path d="M48 158H952" stroke="#33404A" stroke-width="1"/>
+  <text x="72" y="112" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" letter-spacing="6">${escapeXml(eyebrow.toUpperCase())}</text>
+  <text x="72" y="${titleStartY}" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleSize}" letter-spacing="0">
     ${titleLines
-      .map((line, index) => `<tspan x="78" dy="${index === 0 ? 0 : titleLines.length > 3 ? 66 : 76}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="72" dy="${index === 0 ? 0 : titleStep}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
-  <text x="80" y="${322 + Math.max(0, titleLines.length - 1) * (titleLines.length > 3 ? 66 : 76)}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28">
+  <text x="74" y="${subtitleY}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
     ${subtitleLines
-      .map((line, index) => `<tspan x="80" dy="${index === 0 ? 0 : 39}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="74" dy="${index === 0 ? 0 : 32}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
   <g>
-    <rect x="64" y="516" width="872" height="788" fill="#0C1117" stroke="#33404A" stroke-width="2"/>
+    <rect x="48" y="${imageTop}" width="904" height="${imageHeight}" fill="#0C1117" stroke="#33404A" stroke-width="2"/>
     ${
       imageUrl
-        ? `<image href="${escapeXml(imageUrl)}" x="78" y="530" width="844" height="760" preserveAspectRatio="xMidYMid slice" clip-path="url(#imageClip)"/>`
-        : `<rect x="78" y="530" width="844" height="760" fill="#111922"/><path d="M156 1210L452 650L844 1210H156Z" fill="${escapeXml(accent)}" fill-opacity="0.22"/><circle cx="792" cy="670" r="86" fill="${escapeXml(accent)}" fill-opacity="0.28"/>`
+        ? `<image href="${escapeXml(imageUrl)}" x="56" y="${imageTop + 12}" width="888" height="${imageHeight - 24}" preserveAspectRatio="xMidYMin slice" clip-path="url(#imageClip)"/>`
+        : `<rect x="56" y="${imageTop + 12}" width="888" height="${imageHeight - 24}" fill="#111922"/><path d="M140 1120L430 560L880 1120H140Z" fill="${escapeXml(accent)}" fill-opacity="0.22"/><circle cx="820" cy="580" r="78" fill="${escapeXml(accent)}" fill-opacity="0.28"/>`
     }
-    <rect x="78" y="530" width="844" height="760" fill="url(#fade)"/>
-    <rect x="78" y="530" width="844" height="760" stroke="${escapeXml(accent)}" stroke-opacity="0.54" stroke-width="2"/>
+    <rect x="56" y="${imageTop + 12}" width="888" height="${imageHeight - 24}" stroke="${escapeXml(accent)}" stroke-opacity="0.54" stroke-width="2"/>
   </g>
-  <g transform="translate(90 1182)">
+  <g transform="translate(72 1230)">
     ${metaItems
-      .map((item, index) => `<g transform="translate(0 ${index * 58})"><rect width="360" height="42" fill="#0C1117" fill-opacity="0.82" stroke="#33404A"/><text x="18" y="28" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">${escapeXml(item.toUpperCase())}</text></g>`)
+      .map((item, index) => {
+        const x = index * 236;
+        return `<g transform="translate(${x} 0)"><rect width="220" height="42" fill="#0C1117" stroke="#33404A"/><text x="16" y="28" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">${escapeXml(item.toUpperCase())}</text></g>`;
+      })
       .join("\n    ")}
   </g>
-  <text x="80" y="1370" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="42">NEOTYPELAB</text>
-  <text x="80" y="1410" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" letter-spacing="5">${escapeXml(badge.toUpperCase())}</text>
-  <text x="482" y="1372" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
+  <text x="72" y="1358" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="40">NEOTYPELAB</text>
+  <text x="72" y="1398" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="5">${escapeXml(badge.toUpperCase())}</text>
+  <text x="72" y="1438" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">
     ${footerLines
-      .map((line, index) => `<tspan x="482" dy="${index === 0 ? 0 : 28}">${escapeXml(line.toUpperCase())}</tspan>`)
+      .map((line, index) => `<tspan x="72" dy="${index === 0 ? 0 : 24}">${escapeXml(line.toUpperCase())}</tspan>`)
       .join("\n    ")}
   </text>
+  ${buildQrGroup(shareUrl, 780, 1308, qrSize)}
 </svg>`;
 }
 
@@ -294,16 +314,23 @@ function buildWidePrototypeExportSvg({
   footer,
   imageUrl,
   meta,
+  shareUrl,
   subtitle,
   title,
 }: Omit<PrototypeExportImageInput, "layout">) {
-  const titleLines = wrapSvgText(title, 22, 4);
-  const subtitleLines = wrapSvgText(subtitle, 34, 3);
-  const footerLines = wrapSvgText(footer, 42, 2);
+  const titleLines = wrapSvgText(title, 15, 4);
+  const subtitleLines = wrapSvgText(subtitle, 28, 3);
+  const footerLines = wrapSvgText(footer, 32, 2);
   const metaItems = meta.slice(0, 3);
+  const titleSize = titleLines.length > 3 ? 36 : 42;
+  const titleStep = titleLines.length > 3 ? 42 : 48;
+  const titleStartY = 200;
+  const subtitleY =
+    titleStartY + Math.max(0, titleLines.length - 1) * titleStep + 40;
+  const qrSize = 132;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1400" height="788" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg" style="${svgViewportStyle}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#07090D"/>
@@ -327,34 +354,35 @@ function buildWidePrototypeExportSvg({
   </g>
   <rect x="44" y="44" width="1512" height="812" stroke="#33404A" stroke-width="2"/>
   <path d="M662 44V856" stroke="#33404A" stroke-width="1"/>
-  <text x="82" y="112" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27" letter-spacing="7">${escapeXml(eyebrow.toUpperCase())}</text>
-  <text x="82" y="218" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleLines.length > 3 ? 56 : 64}" letter-spacing="0">
+  <text x="82" y="112" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" letter-spacing="6">${escapeXml(eyebrow.toUpperCase())}</text>
+  <text x="82" y="${titleStartY}" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleSize}" letter-spacing="0">
     ${titleLines
-      .map((line, index) => `<tspan x="82" dy="${index === 0 ? 0 : titleLines.length > 3 ? 62 : 72}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="82" dy="${index === 0 ? 0 : titleStep}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
-  <text x="84" y="${294 + Math.max(0, titleLines.length - 1) * (titleLines.length > 3 ? 62 : 72)}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27">
+  <text x="84" y="${subtitleY}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
     ${subtitleLines
-      .map((line, index) => `<tspan x="84" dy="${index === 0 ? 0 : 37}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="84" dy="${index === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
-  <g transform="translate(84 596)">
+  <g transform="translate(84 540)">
     ${metaItems
-      .map((item, index) => `<g transform="translate(0 ${index * 58})"><rect width="410" height="42" fill="#0C1117" stroke="#33404A"/><text x="18" y="28" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">${escapeXml(item.toUpperCase())}</text></g>`)
+      .map((item, index) => `<g transform="translate(0 ${index * 52})"><rect width="380" height="40" fill="#0C1117" stroke="#33404A"/><text x="16" y="27" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">${escapeXml(item.toUpperCase())}</text></g>`)
       .join("\n    ")}
   </g>
-  <text x="84" y="798" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="42">NEOTYPELAB</text>
-  <text x="84" y="836" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" letter-spacing="5">${escapeXml(badge.toUpperCase())}</text>
-  <text x="336" y="804" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
+  <text x="84" y="750" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="36">NEOTYPELAB</text>
+  <text x="84" y="786" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" letter-spacing="5">${escapeXml(badge.toUpperCase())}</text>
+  <text x="84" y="824" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">
     ${footerLines
-      .map((line, index) => `<tspan x="336" dy="${index === 0 ? 0 : 28}">${escapeXml(line.toUpperCase())}</tspan>`)
+      .map((line, index) => `<tspan x="84" dy="${index === 0 ? 0 : 22}">${escapeXml(line.toUpperCase())}</tspan>`)
       .join("\n    ")}
   </text>
+  ${buildQrGroup(shareUrl, 500, 700, qrSize)}
   <g>
     <rect x="704" y="54" width="838" height="792" fill="#0C1117" stroke="#33404A" stroke-width="2"/>
     ${
       imageUrl
-        ? `<image href="${escapeXml(imageUrl)}" x="728" y="78" width="790" height="744" preserveAspectRatio="xMidYMid slice" clip-path="url(#imageClip)"/>`
+        ? `<image href="${escapeXml(imageUrl)}" x="728" y="78" width="790" height="744" preserveAspectRatio="xMidYMin slice" clip-path="url(#imageClip)"/>`
         : `<rect x="728" y="78" width="790" height="744" fill="#111922"/><path d="M790 748L1110 160L1486 748H790Z" fill="${escapeXml(accent)}" fill-opacity="0.22"/><circle cx="1438" cy="172" r="78" fill="${escapeXml(accent)}" fill-opacity="0.28"/>`
     }
     <rect x="728" y="78" width="790" height="744" stroke="${escapeXml(accent)}" stroke-opacity="0.54" stroke-width="2"/>
@@ -369,28 +397,35 @@ function buildSquarePrototypeExportSvg({
   footer,
   imageUrl,
   meta,
+  shareUrl,
   subtitle,
   title,
 }: Omit<PrototypeExportImageInput, "layout">) {
-  const titleLines = wrapSvgText(title, 24, 3);
+  const titleLines = wrapSvgText(title, 20, 2);
   const subtitleLines = wrapSvgText(subtitle, 42, 2);
-  const footerLines = wrapSvgText(footer, 46, 2);
+  const footerLines = wrapSvgText(footer, 28, 2);
   const metaItems = meta.slice(0, 3);
+  const titleSize = 42;
+  const titleStep = 48;
+  const titleStartY = 204;
+  const subtitleY =
+    titleStartY + Math.max(0, titleLines.length - 1) * titleStep + 40;
+  const headerBottom =
+    subtitleY + Math.max(0, subtitleLines.length - 1) * 30 + 24;
+  const imageTop = Math.max(340, headerBottom);
+  const imageSize = 1080 - imageTop;
+  const qrSize = 168;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg" style="${svgViewportStyle}">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="1200" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#07090D"/>
       <stop offset="0.56" stop-color="#10151B"/>
       <stop offset="1" stop-color="#151B20"/>
     </linearGradient>
-    <linearGradient id="fade" x1="0" y1="510" x2="0" y2="1010" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#07090D" stop-opacity="0"/>
-      <stop offset="1" stop-color="#07090D" stop-opacity="0.78"/>
-    </linearGradient>
     <clipPath id="imageClip">
-      <rect x="90" y="424" width="1020" height="610" rx="0"/>
+      <rect x="72" y="${imageTop + 12}" width="${imageSize - 24}" height="${imageSize - 24}" rx="0"/>
     </clipPath>
   </defs>
   <rect width="1200" height="1200" fill="url(#bg)"/>
@@ -405,41 +440,63 @@ function buildSquarePrototypeExportSvg({
       .join("\n    ")}
   </g>
   <rect x="48" y="48" width="1104" height="1104" stroke="#33404A" stroke-width="2"/>
-  <path d="M48 168H1152" stroke="#33404A" stroke-width="1"/>
-  <text x="88" y="116" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="27" letter-spacing="7">${escapeXml(eyebrow.toUpperCase())}</text>
-  <text x="88" y="226" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleLines.length > 2 ? 58 : 66}" letter-spacing="0">
+  <path d="M48 156H1152" stroke="#33404A" stroke-width="1"/>
+  <text x="76" y="112" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" letter-spacing="6">${escapeXml(eyebrow.toUpperCase())}</text>
+  <text x="76" y="${titleStartY}" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="${titleSize}" letter-spacing="0">
     ${titleLines
-      .map((line, index) => `<tspan x="88" dy="${index === 0 ? 0 : titleLines.length > 2 ? 64 : 74}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="76" dy="${index === 0 ? 0 : titleStep}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
-  <text x="90" y="${300 + Math.max(0, titleLines.length - 1) * (titleLines.length > 2 ? 64 : 74)}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26">
+  <text x="78" y="${subtitleY}" fill="#9AAAB2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
     ${subtitleLines
-      .map((line, index) => `<tspan x="90" dy="${index === 0 ? 0 : 36}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="78" dy="${index === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`)
       .join("\n    ")}
   </text>
   <g>
-    <rect x="72" y="406" width="1056" height="646" fill="#0C1117" stroke="#33404A" stroke-width="2"/>
+    <rect x="60" y="${imageTop}" width="${imageSize}" height="${imageSize}" fill="#0C1117" stroke="#33404A" stroke-width="2"/>
     ${
       imageUrl
-        ? `<image href="${escapeXml(imageUrl)}" x="90" y="424" width="1020" height="610" preserveAspectRatio="xMidYMid slice" clip-path="url(#imageClip)"/>`
-        : `<rect x="90" y="424" width="1020" height="610" fill="#111922"/><path d="M160 982L520 520L1052 982H160Z" fill="${escapeXml(accent)}" fill-opacity="0.22"/><circle cx="1012" cy="544" r="78" fill="${escapeXml(accent)}" fill-opacity="0.28"/>`
+        ? `<image href="${escapeXml(imageUrl)}" x="72" y="${imageTop + 12}" width="${imageSize - 24}" height="${imageSize - 24}" preserveAspectRatio="xMidYMin slice" clip-path="url(#imageClip)"/>`
+        : `<rect x="72" y="${imageTop + 12}" width="${imageSize - 24}" height="${imageSize - 24}" fill="#111922"/><path d="M140 980L420 420L780 980H140Z" fill="${escapeXml(accent)}" fill-opacity="0.22"/><circle cx="740" cy="450" r="70" fill="${escapeXml(accent)}" fill-opacity="0.28"/>`
     }
-    <rect x="90" y="424" width="1020" height="610" fill="url(#fade)"/>
-    <rect x="90" y="424" width="1020" height="610" stroke="${escapeXml(accent)}" stroke-opacity="0.54" stroke-width="2"/>
+    <rect x="72" y="${imageTop + 12}" width="${imageSize - 24}" height="${imageSize - 24}" stroke="${escapeXml(accent)}" stroke-opacity="0.54" stroke-width="2"/>
   </g>
-  <g transform="translate(92 918)">
+  <g transform="translate(872 ${imageTop + 12})">
     ${metaItems
-      .map((item, index) => `<g transform="translate(${index * 306} 0)"><rect width="280" height="44" fill="#0C1117" fill-opacity="0.82" stroke="#33404A"/><text x="18" y="29" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">${escapeXml(item.toUpperCase())}</text></g>`)
+      .map((item, index) => `<g transform="translate(0 ${index * 78})"><rect width="252" height="58" fill="#0C1117" stroke="#33404A"/><text x="16" y="36" fill="#C7D4DA" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">${escapeXml(item.toUpperCase())}</text></g>`)
       .join("\n    ")}
   </g>
-  <text x="90" y="1102" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="42">NEOTYPELAB</text>
-  <text x="90" y="1140" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" letter-spacing="5">${escapeXml(badge.toUpperCase())}</text>
-  <text x="494" y="1106" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">
+  ${buildQrGroup(shareUrl, 896, imageTop + 280, qrSize)}
+  <text x="872" y="${imageTop + 520}" fill="#E9F0F3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" font-size="28">NEOTYPELAB</text>
+  <text x="872" y="${imageTop + 556}" fill="${escapeXml(accent)}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" letter-spacing="4">${escapeXml(badge.toUpperCase())}</text>
+  <text x="872" y="${imageTop + 600}" fill="#8FA0A9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">
     ${footerLines
-      .map((line, index) => `<tspan x="494" dy="${index === 0 ? 0 : 28}">${escapeXml(line.toUpperCase())}</tspan>`)
+      .map((line, index) => `<tspan x="872" dy="${index === 0 ? 0 : 22}">${escapeXml(line.toUpperCase())}</tspan>`)
       .join("\n    ")}
   </text>
+  <text x="872" y="${imageTop + 690}" fill="#71848E" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" letter-spacing="3">SCAN CASE</text>
 </svg>`;
+}
+
+function buildQrGroup(url: string, x: number, y: number, size: number) {
+  const qr = encode(url, { ecc: "M", border: 2 });
+  const moduleCount = qr.size;
+  const cell = size / moduleCount;
+  const modules: string[] = [];
+
+  for (let row = 0; row < moduleCount; row += 1) {
+    for (let col = 0; col < moduleCount; col += 1) {
+      if (!qr.data[row]?.[col]) continue;
+      const px = (col * cell).toFixed(2);
+      const py = (row * cell).toFixed(2);
+      modules.push(`M${px} ${py}h${cell.toFixed(2)}v${cell.toFixed(2)}h-${cell.toFixed(2)}z`);
+    }
+  }
+
+  return `<g transform="translate(${x} ${y})">
+    <rect width="${size}" height="${size}" fill="#E9F0F3" stroke="#33404A" stroke-width="2"/>
+    <path fill="#07090D" d="${modules.join("")}"/>
+  </g>`;
 }
 
 function escapeXml(value: string) {

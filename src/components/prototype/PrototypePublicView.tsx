@@ -135,10 +135,10 @@ function PrototypePublicViewBody({
     return (
       <section className="case-empty">
         <p className="case-eyebrow">Unavailable</p>
-        <h1>This case is not on a shareable surface.</h1>
+        <h1>This paint plan is not public.</h1>
         <p>
           {message ??
-            "The work may be private, missing, or no longer public."}
+            "It may be private, missing, or no longer shared."}
         </p>
         <a className="case-back" href="/showcase">
           <ArrowLeftIcon aria-hidden="true" />
@@ -164,7 +164,7 @@ function PrototypePublicViewBody({
           <div className="case-masthead__row">
             <div>
               <p className="case-eyebrow">
-                Public case / {recordLabel(concept)}
+                Paint plan / {recordLabel(concept)}
               </p>
               <h1 id="case-title">
                 {titleLines(concept.title).map((line, index, lines) => (
@@ -195,11 +195,11 @@ function PrototypePublicViewBody({
 
       <figure className="case-artwork">
         {imageUrl ? (
-          <img src={imageUrl} alt={`${concept.title} public case`} />
+          <img src={imageUrl} alt={`${concept.title} paint plan`} />
         ) : (
           <div className="case-image-empty">
             <strong>Preview unavailable</strong>
-            <p>This case does not currently expose a published render.</p>
+            <p>This plan does not have a published preview yet.</p>
           </div>
         )}
         <figcaption className="case-frame">
@@ -391,7 +391,7 @@ function ColorSystemSection({
               <h2 id="case-color-title">Color System</h2>
             </div>
           </header>
-          <p className="case-muted">Paint roles have not been published for this case yet.</p>
+          <p className="case-muted">Paint roles have not been published for this plan yet.</p>
         </div>
       </section>
     );
@@ -1009,9 +1009,7 @@ function buildCreateRecommendationHref(
 }
 
 function buildPrototypeDescription(concept: SharedPrototype) {
-  return [
-    concept.baseModel?.name ?? "Unknown kit",
-    concept.stylePreset?.name ?? "Unknown Style DNA",
-    concept.materialPreset?.name ?? "Unknown material",
-  ].join(" / ");
+  const kit = concept.baseModel?.name ?? "this kit";
+  const direction = concept.stylePreset?.name ?? "a custom color direction";
+  return `Spray-ready paint plan for ${kit} in ${direction}.`;
 }

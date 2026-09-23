@@ -17,6 +17,7 @@ export type PilotStructuredData = ReturnType<
 export type PilotMeta = {
   title: string;
   description: string;
+  keywords?: string;
   canonicalPath: string;
   imageUrl?: string;
 };

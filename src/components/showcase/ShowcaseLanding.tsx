@@ -159,7 +159,7 @@ function FeaturedCompositionCard({ item, primary = false }: { item: ExhibitionWo
     <article className={primary ? "exhibition-feature-card is-primary" : "exhibition-feature-card"}>
       <div className="exhibition-feature-card__image">
         <span>N°.{item.number}</span>
-        <PreviewImage alt={`${item.title} repaint prototype`} src={item.image} />
+        <PreviewImage alt={`${item.title} paint plan`} src={item.image} />
         <div className="exhibition-feature-card__actions">
           <a href={item.href}>View</a>
           <a href={item.remixHref}>Remix <ArrowTopRightIcon aria-hidden="true" /></a>
@@ -208,7 +208,7 @@ function ShowcaseToolbar({ allWorks, onOpenFilters, search }: { allWorks: Exhibi
 function ToolbarFilter({ items, kind, search }: { items: ExhibitionWork[]; kind: "kit" | "style" | "material"; search: ShowcaseSearch }) {
   const config = {
     kit: { label: "Kit", param: "baseModel" as const, slug: "kitSlug" as const, value: "kit" as const },
-    style: { label: "Style DNA", param: "style" as const, slug: "styleSlug" as const, value: "style" as const },
+    style: { label: "Color direction", param: "style" as const, slug: "styleSlug" as const, value: "style" as const },
     material: { label: "Material", param: "material" as const, slug: "materialSlug" as const, value: "material" as const },
   }[kind];
   const options = uniqueWorkOptions(items, config.slug, config.value).slice(0, 8);
@@ -226,7 +226,7 @@ function ExhibitionCard({ item, size }: { item: ExhibitionWork; size: "large" | 
     <article className={`exhibition-card is-${size}`}>
       <p className="exhibition-card__number">N°.{item.number}</p>
       <div className="exhibition-card__media">
-        <PreviewImage alt={`${item.title} repaint prototype`} src={item.image} />
+        <PreviewImage alt={`${item.title} paint plan`} src={item.image} />
         <div className="exhibition-card__hover"><a href={item.href}>View prototype</a><a href={item.remixHref}>Remix <ArrowTopRightIcon aria-hidden="true" /></a></div>
       </div>
       <div className="exhibition-card__caption">
@@ -268,7 +268,7 @@ function FilterDrawer({ allWorks, onClose, open, search }: { allWorks: Exhibitio
         <div className="exhibition-drawer__header"><div><p>Public archive</p><h2>Filter works</h2></div><button aria-label="Close filters" onClick={onClose} type="button"><Cross1Icon /></button></div>
         <form action="/showcase" method="get">
           <DrawerSelect label="Kit" name="baseModel" options={uniqueWorkOptions(allWorks, "kitSlug", "kit")} value={search.baseModel} />
-          <DrawerSelect label="Style DNA" name="style" options={uniqueWorkOptions(allWorks, "styleSlug", "style")} value={search.style} />
+          <DrawerSelect label="Color direction" name="style" options={uniqueWorkOptions(allWorks, "styleSlug", "style")} value={search.style} />
           <DrawerSelect label="Material" name="material" options={uniqueWorkOptions(allWorks, "materialSlug", "material")} value={search.material} />
           <DrawerSelect label="Weathering" name="weathering" options={uniqueWorkOptions(allWorks, "weatheringSlug", "weathering")} value={search.weathering} />
           <DrawerSelect label="Creator" name="creator" options={uniqueWorkOptions(allWorks, "creator", "creator")} value={search.creator} />
@@ -292,7 +292,7 @@ function PreviewImage({ alt, src }: { alt: string; src: string }) {
 }
 
 function normalizeConcept(concept: ShowcaseConcept, index: number): ExhibitionWork {
-  return { id: String(concept._id), number: String(index + 1).padStart(3, "0"), title: concept.title, kit: concept.baseModel?.name ?? "Unknown kit", kitSlug: concept.baseModel?.slug ?? "unknown-kit", style: concept.stylePreset?.name ?? "Unknown Style DNA", styleSlug: concept.stylePreset?.slug ?? "unknown-style", material: concept.materialPreset?.name ?? "Unknown material", materialSlug: concept.materialPreset?.slug ?? "unknown-material", weathering: concept.weatheringLevel, weatheringSlug: concept.weatheringLevel.toLowerCase(), creator: concept.owner?.handle ?? "NeotypeLab", image: publicConceptImageUrl(concept.previewAsset), href: `/prototype/${concept._id}`, remixHref: `/create?remix=${concept._id}`, createdAt: concept._creationTime, remixCount: concept.remixCount, saveCount: concept.engagement.saveCount };
+  return { id: String(concept._id), number: String(index + 1).padStart(3, "0"), title: concept.title, kit: concept.baseModel?.name ?? "Unknown kit", kitSlug: concept.baseModel?.slug ?? "unknown-kit", style: concept.stylePreset?.name ?? "Color direction pending", styleSlug: concept.stylePreset?.slug ?? "unknown-style", material: concept.materialPreset?.name ?? "Unknown material", materialSlug: concept.materialPreset?.slug ?? "unknown-material", weathering: concept.weatheringLevel, weatheringSlug: concept.weatheringLevel.toLowerCase(), creator: concept.owner?.handle ?? "NeotypeLab", image: publicConceptImageUrl(concept.previewAsset), href: `/prototype/${concept._id}`, remixHref: `/create?remix=${concept._id}`, createdAt: concept._creationTime, remixCount: concept.remixCount, saveCount: concept.engagement.saveCount };
 }
 
 function matchesSearch(item: ExhibitionWork, search: ShowcaseSearch) {

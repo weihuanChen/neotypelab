@@ -11,9 +11,10 @@ import {
   SystemState,
   systemStates,
 } from "@/src/components/system-state";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const createShell = {
-  description: "Choose a repaint language, then apply it to a kit.",
+  description: "Pick a color direction, apply it to a kit, and preview the paint plan before you spray.",
   title: "Create",
 } as const;
 
@@ -22,21 +23,7 @@ export const Route = createFileRoute("/create")({
   pendingMs: 0,
   pendingComponent: CreatePending,
   head: () => ({
-    meta: [
-      { title: "Create | NeotypeLab" },
-      {
-        name: "description",
-        content:
-          "Prototype spray-ready mecha repaint concepts with structured Style DNA, material presets, and credit-aware generation.",
-      },
-      { property: "og:title", content: "Create | NeotypeLab" },
-      {
-        property: "og:description",
-        content:
-          "Prototype spray-ready mecha repaint concepts with structured Style DNA, material presets, and credit-aware generation.",
-      },
-      { property: "og:type", content: "website" },
-    ],
+    meta: documentMeta(publicSeo.create, { ogType: "website" }),
     links: [{ rel: "canonical", href: "/create" }],
   }),
   component: CreateRoute,

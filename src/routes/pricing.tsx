@@ -7,22 +7,16 @@ import {
   CREDIT_PACKS,
   PRODUCT_PLANS,
 } from "@/lib/productPricing";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const pricingShell = {
-  description: "Credits, plans, and how NeotypeLab generation usage is priced.",
+  description: "Credits and plans for prototyping Gunpla and mecha paint schemes.",
   title: "Pricing",
 } as const;
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
-    meta: [
-      { title: "Pricing | NeotypeLab" },
-      {
-        name: "description",
-        content:
-          "See how NeotypeLab credits and plans work for mecha repaint generation.",
-      },
-    ],
+    meta: documentMeta(publicSeo.pricing, { ogType: "website" }),
     links: [{ rel: "canonical", href: appPaths.pricing }],
   }),
   component: PricingRoute,
@@ -136,9 +130,9 @@ function PricingRoute() {
 
         <footer className="pricing-footnotes">
           <p>
-            A complete build combines the current Color Plan, Repaint
-            Specification and HD Render pipeline. Failed complete builds are
-            refunded under the generation failure policy.
+            A complete build is a color plan, a spray-ready repaint
+            specification, and an HD preview of the finished kit. If a complete
+            build fails, the credits are returned.
           </p>
           <p>
             Unused monthly Credits roll over while your paid plan access remains

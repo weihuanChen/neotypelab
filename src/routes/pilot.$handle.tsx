@@ -12,6 +12,7 @@ import type {
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 import { absoluteUrl } from "@/lib/site";
 import { buildPilotProfileStructuredData } from "@/lib/structuredData";
+import { documentMeta, pilotSeo } from "@/src/lib/publicSeo";
 
 const getPilotSnapshot = createServerFn({ method: "GET" })
   .validator(z.object({ handle: z.string() }))
@@ -25,7 +26,7 @@ const getPilotSnapshot = createServerFn({ method: "GET" })
         status: "missing-env",
         profile: null,
         message:
-          "VITE_CONVEX_URL is required for SSR Convex reads.",
+          "NeotypeLab could not load this page just now.",
         meta,
         structuredData: null,
       };
@@ -41,7 +42,7 @@ const getPilotSnapshot = createServerFn({ method: "GET" })
           status: "not-found",
           profile: null,
           message:
-            "This pilot profile is not currently available on a public surface.",
+            "This builder profile is not public, or the name does not match an account.",
           meta,
           structuredData: null,
         };
@@ -59,7 +60,7 @@ const getPilotSnapshot = createServerFn({ method: "GET" })
         status: "error",
         profile: null,
         message:
-          "Pilot profile data could not be loaded from Convex. Confirm the handle and deployment environment.",
+          "This builder profile could not be loaded. Check the name and try again.",
         meta,
         structuredData: null,
       };
@@ -72,26 +73,12 @@ export const Route = createFileRoute("/pilot/$handle")({
   head: ({ loaderData, params }) => {
     const handle = normalizeHandle(params.handle);
     const meta = loaderData?.meta ?? buildFallbackPilotMeta(handle);
-    const imageMeta = meta.imageUrl
-      ? [
-          { property: "og:image", content: meta.imageUrl },
-          { name: "twitter:image", content: meta.imageUrl },
-        ]
-      : [];
 
     return {
-      meta: [
-        { title: meta.title },
-        { name: "description", content: meta.description },
-        { property: "og:title", content: meta.title },
-        { property: "og:description", content: meta.description },
-        { property: "og:url", content: meta.canonicalPath },
-        { property: "og:type", content: "profile" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: meta.title },
-        { name: "twitter:description", content: meta.description },
-        ...imageMeta,
-      ],
+      meta: documentMeta(
+        { title: meta.title, description: meta.description, keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit" },
+        { ogType: "profile", twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
+      ),
       links: [{ rel: "canonical", href: meta.canonicalPath }],
     };
   },
@@ -129,16 +116,26 @@ function getHandleFromSnapshot(snapshot: PilotSnapshot) {
 
 function buildFallbackPilotMeta(handle: string): PilotMeta {
   return {
-    title: "Pilot Profile | NeotypeLab",
-    description: "Public pilot profile surface for NeotypeLab concepts.",
+    title: "Gunpla Paint Plans | NeotypeLab",
+    description: "A public builder profile of spray-ready Gunpla and mecha model paint plans.",
+    keywords: "gunpla paint, custom gunpla, mecha model kit",
     canonicalPath: `/pilot/${handle}`,
   };
 }
 
 function buildPilotMeta(profile: PublicPilotProfile): PilotMeta {
+  const copy = pilotSeo({
+    fullName: profile.pilot.fullName,
+    handle: profile.pilot.handle,
+    publicConcepts: profile.totals.publicConcepts,
+    saves: profile.totals.saves,
+    remixes: profile.totals.remixes,
+  });
+
   return {
-    title: `${profile.pilot.fullName} (@${profile.pilot.handle}) | NeotypeLab`,
-    description: buildPilotDescription(profile),
+    title: copy.title,
+    description: copy.description,
+    keywords: copy.keywords,
     canonicalPath: `/pilot/${profile.pilot.handle}`,
     imageUrl: absoluteUrl(`/pilot/${profile.pilot.handle}/opengraph-image`),
   };
@@ -154,14 +151,6 @@ function buildPilotJsonLd(profile: PublicPilotProfile) {
     totalSaves: profile.totals.saves,
     totalRemixes: profile.totals.remixes,
   });
-}
-
-function buildPilotDescription(profile: PublicPilotProfile) {
-  return [
-    `${profile.totals.publicConcepts} public concepts`,
-    `${profile.totals.saves} saves`,
-    `${profile.totals.remixes} remix branches`,
-  ].join(" / ");
 }
 
 function normalizeHandle(handle: string) {

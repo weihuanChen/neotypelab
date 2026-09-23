@@ -34,7 +34,7 @@ describe("Create step navigation", () => {
     const html = renderToStaticMarkup(<CreateWorkbench />);
     expect(html).toContain('aria-label="Creation steps"');
     expect(html).toContain('aria-current="step"');
-    expect(html).toContain("Choose a repaint language.");
+    expect(html).toContain("Choose a color direction.");
     expect(html).toContain("Crimson Command");
     expect(html).toMatch(/disabled=""[^>]*>02/);
     expect(html).toContain('hidden=""');
@@ -90,6 +90,6 @@ describe("Create step navigation", () => {
     expect(html).toContain("PAINT PLAN");
     expect(html).toContain("job-scanner-beam");
     expect(html).toContain("This build will continue in the background if you leave this page.");
-    expect(html).not.toContain("Choose a repaint language.");
+    expect(html).not.toContain("Choose a color direction.");
   });
 });

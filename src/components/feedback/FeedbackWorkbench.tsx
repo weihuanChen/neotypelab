@@ -190,9 +190,9 @@ export function FeedbackWorkbench({
           <header className="feedback-report__head">
             <div>
               <p>Feedback report</p>
-              <h2 id="feedback-report-title">Tell us what needs attention.</h2>
+              <h2 id="feedback-report-title">Request a kit, or flag a paint plan.</h2>
             </div>
-            <span>Operator / @{viewer.handle}</span>
+            <span>Builder / @{viewer.handle}</span>
           </header>
 
           {submittedReport ? (
@@ -440,7 +440,7 @@ export function FeedbackWorkbench({
                   value={attachedContext.kitVariant?.name ?? "Not specified"}
                 />
                 <ContextField
-                  label="Style DNA"
+                  label="Color direction"
                   value={attachedContext.stylePreset?.name ?? "Not specified"}
                 />
                 <ContextField

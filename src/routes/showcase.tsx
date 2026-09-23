@@ -3,6 +3,7 @@ import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ShowcaseLanding } from "@/src/components/showcase/ShowcaseLanding";
 import { RoutePending } from "@/src/components/system-state/RoutePending";
 import { systemStates } from "@/src/components/system-state";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 import {
   buildShowcaseStructuredData,
   getShowcaseSnapshot,
@@ -10,7 +11,7 @@ import {
 } from "@/src/lib/showcaseRouteData";
 
 const showcaseShell = {
-  description: "Curated public repaint prototypes selected from the community.",
+  description: "Community Gunpla and mecha color schemes, with the paint map behind each preview.",
   title: "Showcase",
 } as const;
 
@@ -20,22 +21,11 @@ export const Route = createFileRoute("/showcase")({
   pendingMs: 0,
   pendingComponent: ShowcasePending,
   head: () => ({
-    meta: [
-      { title: "NeotypeLab Showcase" },
-      {
-        name: "description",
-        content:
-          "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
-      },
-      { property: "og:title", content: "NeotypeLab Showcase" },
-      {
-        property: "og:description",
-        content:
-          "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
+    meta: documentMeta(publicSeo.showcase, {
+      ogType: "website",
+      twitter: true,
+      twitterCard: "summary_large_image",
+    }),
     links: [{ rel: "canonical", href: "/showcase" }],
   }),
   component: ShowcaseRoute,

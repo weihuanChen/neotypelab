@@ -25,7 +25,7 @@ test("opens the authenticated creation workbench", async ({ page }) => {
     page.getByRole("heading", { name: "Create", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Choose a repaint language." })
+    page.getByRole("heading", { name: "Choose a color direction." })
   ).toBeVisible();
 });
 
@@ -42,7 +42,7 @@ test("enforces authenticated admin authorization", async ({ page }) => {
 test("selects a kit with shared palette, filters, favorites and a single generation output", async ({ page }) => {
   await page.goto("/create");
   await page.getByRole("heading", { name: "EVA-inspired", exact: true }).click();
-  await page.getByRole("button", { name: "Apply to a model →", exact: true }).click();
+  await page.getByRole("button", { name: "Apply to a kit →", exact: true }).click();
   await expect(page.getByRole("region", { name: "Selected style" })).toContainText("EVA-inspired");
   await expect(page.getByRole("region", { name: "Selected style" }).getByLabel("Illustrative palette balance")).toBeVisible();
   await page.getByRole("searchbox", { name: "Search kits" }).fill("RX78");

@@ -89,7 +89,7 @@ function PilotPublicViewBody({
         <h1>This pilot profile is not available.</h1>
         <p>
           {message ??
-            "The handle may be missing or not yet connected to a public prototype surface."}
+            "This builder profile is not public, or the name does not match an account."}
         </p>
         <div className="prototype-action-row">
           <a className="showcase-button" href="/showcase">
@@ -127,9 +127,8 @@ function PilotPublicViewBody({
               <p className="pilot-lede">{profile.pilot.creatorTagline}</p>
             ) : (
               <p className="pilot-lede">
-                {profile.totals.publicConcepts} public concepts /{" "}
-                {profile.totals.saves} saves / {profile.totals.remixes} remix
-                branches
+                {profile.totals.publicConcepts} paint plans /{" "}
+                {profile.totals.saves} saves / {profile.totals.remixes} remixes
               </p>
             )}
           </div>
@@ -150,7 +149,7 @@ function PilotPublicViewBody({
             sharePath={`/pilot/${profile.pilot.handle}`}
             text={
               profile.pilot.creatorTagline ??
-              `${profile.totals.publicConcepts} public concepts from ${profile.pilot.fullName}`
+              `${profile.totals.publicConcepts} paint plans from ${profile.pilot.fullName}`
             }
             title={`${profile.pilot.fullName} | NeotypeLab`}
           />
@@ -163,8 +162,8 @@ function PilotPublicViewBody({
         </div>
 
         <div className="prototype-status-line">
-          <span>{providerReady ? "Convex live sync ready" : "SSR snapshot mode"}</span>
-          {isLivePending ? <span>Hydrating live profile query</span> : null}
+          <span>{providerReady ? "Live" : "Cached"}</span>
+          {isLivePending ? <span>Updating</span> : null}
           {status !== "ok" && message ? <span>{message}</span> : null}
         </div>
       </section>
@@ -174,28 +173,28 @@ function PilotPublicViewBody({
           <StyleCollectionPanel profile={profile} />
           <CreatorPackPanel interactive={interactive} profile={profile} />
           <ConceptSection
-            emptyDescription="Published prototypes will appear here after this pilot moves generated concepts onto the public showcase."
-            emptyTitle="No public concepts yet."
-            eyebrow="Public Launches"
+            emptyDescription="Paint plans show up here after this builder publishes one."
+            emptyTitle="No paint plans yet."
+            eyebrow="Published plans"
             interactive={interactive}
             items={profile.published}
-            title="Published concepts"
+            title="Published plans"
           />
           <ConceptSection
-            emptyDescription="Saved concepts will appear here after this pilot bookmarks public showcase entries."
-            emptyTitle="No saved public builds yet."
-            eyebrow="Saved Surfaces"
+            emptyDescription="Saved plans show up here after this builder saves a public paint plan."
+            emptyTitle="No saved plans yet."
+            eyebrow="Saved plans"
             interactive={interactive}
             items={profile.saved}
             title="Saved builds"
           />
           <ConceptSection
-            emptyDescription="Liked concepts will appear here after this pilot signals interest on public surfaces."
-            emptyTitle="No liked public concepts yet."
-            eyebrow="Liked Surfaces"
+            emptyDescription="Liked plans show up here after this builder likes a public paint plan."
+            emptyTitle="No liked plans yet."
+            eyebrow="Liked plans"
             interactive={interactive}
             items={profile.liked}
-            title="Liked concepts"
+            title="Liked plans"
           />
         </main>
 
@@ -233,15 +232,15 @@ function StyleCollectionPanel({ profile }: { profile: PublicPilotProfile }) {
       <div className="prototype-section-header">
         <div>
           <p className="showcase-kicker is-orange">Creator style collection</p>
-          <h2>Owned Style DNA</h2>
+          <h2>Color directions</h2>
         </div>
         <p>{profile.styleCollection.length} creator-linked styles</p>
       </div>
 
       {profile.styleCollection.length === 0 ? (
         <EmptyPanel
-          description="Style presets assigned to this creator will appear once they are linked in the catalog."
-          title="No owned Style DNA yet."
+          description="Color directions linked to this builder will appear here."
+          title="No color directions yet."
         />
       ) : (
         <div className="pilot-style-grid">
@@ -254,7 +253,7 @@ function StyleCollectionPanel({ profile }: { profile: PublicPilotProfile }) {
               <h3>{style.name}</h3>
               <p>
                 {style.shortDescription ??
-                  "Creator-linked Style DNA collection for remix, discovery, and landing page exploration."}
+                  "A reusable color direction for Gunpla and mecha kits."}
               </p>
               <dl className="showcase-meta">
                 <MetaRow label="Creator concepts" value={`${style.creatorConceptCount}`} />
@@ -307,7 +306,7 @@ function CreatorPackPanel({
       <div className="prototype-section-header">
         <div>
           <p className="showcase-kicker">Creator packs</p>
-          <h2>Packaged starter sets</h2>
+          <h2>Color packs</h2>
         </div>
         <p>{profile.creatorPackCollection.length} active packs</p>
       </div>
@@ -322,8 +321,8 @@ function CreatorPackPanel({
 
       {profile.creatorPackCollection.length === 0 ? (
         <EmptyPanel
-          description="Creator packs will appear after this pilot bundles Style DNA, base models, and materials into reusable sets."
-          title="No creator packs published yet."
+          description="Color packs appear here after this builder groups directions, kits, and finishes."
+          title="No color packs yet."
         />
       ) : (
         <div className="pilot-pack-grid">
@@ -373,7 +372,7 @@ function PilotCreatorPackCard({
           {pack.tagline ? <p className="showcase-card__lede">{pack.tagline}</p> : null}
           <p className="showcase-card__copy">
             {pack.description ??
-              "Creator starter pack for Style DNA, base models, and material presets."}
+              "A set of color directions, kits, and finishes to preview before you spray."}
           </p>
         </div>
         <dl className="showcase-meta">
@@ -484,7 +483,7 @@ function PilotConceptCardView({
           </a>
           <p className="showcase-card__copy">
             {concept.baseModel?.name ?? "Unknown base model"} /{" "}
-            {concept.stylePreset?.name ?? "Unknown Style DNA"} /{" "}
+            {concept.stylePreset?.name ?? "Color direction pending"} /{" "}
             {concept.materialPreset?.name ?? "Unknown material profile"}
           </p>
         </div>
@@ -546,7 +545,7 @@ function ActivityPanel({ profile }: { profile: PublicPilotProfile }) {
               <strong>{entry.concept.title}</strong>
               <p>
                 {entry.concept.baseModel?.name ?? "Unknown base model"} /{" "}
-                {entry.concept.stylePreset?.name ?? "Unknown Style DNA"}
+                {entry.concept.stylePreset?.name ?? "Color direction pending"}
               </p>
             </a>
           ))
@@ -571,7 +570,7 @@ function RemixHistoryPanel({ profile }: { profile: PublicPilotProfile }) {
             <article className="pilot-remix-item" key={entry.conceptId}>
               <a href={`/prototype/${entry.conceptId}`}>{entry.conceptTitle}</a>
               <p>
-                {entry.remixCount} remix branch
+                {entry.remixCount} remix
                 {entry.remixCount === 1 ? "" : "es"}
               </p>
               {entry.remixes.length > 0 ? (
@@ -587,8 +586,7 @@ function RemixHistoryPanel({ profile }: { profile: PublicPilotProfile }) {
           ))
         ) : (
           <p className="prototype-muted">
-            Remix history will appear after this pilot&apos;s public concepts start
-            branching.
+            Remixes appear here after someone branches one of these paint plans.
           </p>
         )}
       </div>

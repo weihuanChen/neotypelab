@@ -3098,7 +3098,7 @@
 .discover-style-card { min-width: 0; border: 1px solid var(--line-secondary); }
 .discover-style-card.is-selected { outline: 2px solid var(--text-primary); outline-offset: 3px; }
 .discover-style-select { display: block; width: 100%; text-align: left; }
-.discover-style-select > img, .palette-study { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.discover-style-select > img, .palette-study { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; }
 .palette-study { display: flex; position: relative; }
 .palette-study > span { flex-basis: 0; }
 .palette-study small { position: absolute; bottom: 12px; left: 12px; padding: 4px 8px; background: var(--bg-main); font-size: 10px; }

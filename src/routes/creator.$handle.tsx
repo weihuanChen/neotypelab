@@ -4,6 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildCreatorHubStructuredData } from "@/lib/structuredData";
+import { creatorHubSeo, documentMeta } from "@/src/lib/publicSeo";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   CreatorHubView,
@@ -28,7 +29,7 @@ const getCreatorHubSnapshot = createServerFn({ method: "GET" })
         status: "missing-env",
         profile: null,
         message:
-          "VITE_CONVEX_URL is required for SSR Convex reads.",
+          "NeotypeLab could not load this page just now.",
         meta,
         structuredData: null,
       };
@@ -44,7 +45,7 @@ const getCreatorHubSnapshot = createServerFn({ method: "GET" })
           status: "not-found",
           profile: null,
           message:
-            "The selected creator may not yet have enough public activity to support a hub surface.",
+            "This builder does not have a public hub yet.",
           meta,
           structuredData: null,
         };
@@ -62,7 +63,7 @@ const getCreatorHubSnapshot = createServerFn({ method: "GET" })
         status: "error",
         profile: null,
         message:
-          "Creator hub data could not be loaded from Convex. Confirm the handle and deployment environment.",
+          "This creator hub could not be loaded. Check the name and try again.",
         meta,
         structuredData: null,
       };
@@ -102,16 +103,26 @@ function CreatorHubRoute() {
 
 function buildFallbackCreatorHubMeta(handle: string): PublicRouteMeta {
   return {
-    title: "Creator Hub | NeotypeLab",
-    description: "Creator hub surface for packs, styles, and public concepts.",
+    title: "Gunpla Paint Plans | NeotypeLab",
+    description: "A creator hub of spray-ready Gunpla and mecha model paint plans.",
+    keywords: "gunpla paint, custom gunpla, mecha model kit",
     canonicalPath: `/creator/${handle}`,
   };
 }
 
 function buildCreatorHubMeta(profile: CreatorHubData): PublicRouteMeta {
+  const copy = creatorHubSeo({
+    fullName: profile.pilot.fullName,
+    handle: profile.pilot.handle,
+    publicConcepts: profile.totals.publicConcepts,
+    creatorPacks: profile.creatorPackCollection.length,
+    styles: profile.styleCollection.length,
+  });
+
   return {
-    title: `${profile.pilot.fullName} creator hub | NeotypeLab`,
-    description: buildCreatorHubDescription(profile),
+    title: copy.title,
+    description: copy.description,
+    keywords: copy.keywords,
     canonicalPath: `/creator/${profile.pilot.handle}`,
     imageUrl: absoluteUrl(`/creator/${profile.pilot.handle}/opengraph-image`),
   };
@@ -131,14 +142,6 @@ function buildCreatorHubJsonLd(profile: CreatorHubData) {
   });
 }
 
-function buildCreatorHubDescription(profile: CreatorHubData) {
-  return [
-    `${profile.totals.publicConcepts} public concepts`,
-    `${profile.creatorPackCollection.length} creator packs`,
-    `${profile.styleCollection.length} creator styles`,
-  ].join(" / ");
-}
-
 function StructuredData({ data }: { data: unknown }) {
   return data ? (
     <script
@@ -149,26 +152,15 @@ function StructuredData({ data }: { data: unknown }) {
 }
 
 function buildHead(meta: PublicRouteMeta, ogType: string) {
-  const imageMeta = meta.imageUrl
-    ? [
-        { property: "og:image", content: meta.imageUrl },
-        { name: "twitter:image", content: meta.imageUrl },
-      ]
-    : [];
-
   return {
-    meta: [
-      { title: meta.title },
-      { name: "description", content: meta.description },
-      { property: "og:title", content: meta.title },
-      { property: "og:description", content: meta.description },
-      { property: "og:url", content: meta.canonicalPath },
-      { property: "og:type", content: ogType },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: meta.title },
-      { name: "twitter:description", content: meta.description },
-      ...imageMeta,
-    ],
+    meta: documentMeta(
+      {
+        title: meta.title,
+        description: meta.description,
+        keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit",
+      },
+      { ogType, twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
+    ),
     links: [{ rel: "canonical", href: meta.canonicalPath }],
   };
 }

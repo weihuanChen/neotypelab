@@ -45,7 +45,7 @@ export function ContactPage() {
               Report an issue
             </h2>
             <p className="information-doc__lede">
-              For generation problems, include
+              For a preview or paint-plan problem, include
               <br />
               the Build N° when possible.
             </p>
@@ -73,8 +73,8 @@ export function ContactPage() {
             ))}
           </dl>
           <p className="contact-status__footnote">
-            Public status board. For generation faults, open a report with the
-            Build N°.
+            Public status board. For a preview or paint-plan problem, open a
+            report with the Build N°.
           </p>
         </aside>
       </div>

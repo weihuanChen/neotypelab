@@ -26,6 +26,7 @@ export type PrototypeStructuredData = ReturnType<
 export type PrototypeMeta = {
   title: string;
   description: string;
+  keywords?: string;
   canonicalPath: string;
   imageUrl?: string;
 };

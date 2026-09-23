@@ -11,9 +11,10 @@ import {
   SystemState,
   systemStates,
 } from "@/src/components/system-state";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const feedbackShell = {
-  description: "Report a model request or generation issue.",
+  description: "Request a missing mecha kit, or report a paint plan that does not match the preview.",
   title: "Feedback",
 } as const;
 
@@ -22,14 +23,7 @@ export const Route = createFileRoute("/feedback")({
   pendingMs: 0,
   pendingComponent: FeedbackPending,
   head: () => ({
-    meta: [
-      { title: "Feedback | NeotypeLab" },
-      {
-        name: "description",
-        content:
-          "Send model requests, generation quality reports, and paint mapping issues to the NeotypeLab triage queue.",
-      },
-    ],
+    meta: documentMeta(publicSeo.feedback, { ogType: "website" }),
     links: [{ rel: "canonical", href: "/feedback" }],
   }),
   component: FeedbackRoute,

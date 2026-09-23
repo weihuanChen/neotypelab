@@ -9,6 +9,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { DefaultCatchBoundary } from "@/src/components/DefaultCatchBoundary";
 import { NotFound } from "@/src/components/NotFound";
 import { AppShellStateProvider } from "@/src/components/app-shell/AppShellState";
+import { publicSeo } from "@/src/lib/publicSeo";
 import { StartProviders } from "@/src/providers/StartProviders";
 import tokensCss from "@/src/styles/tokens.css?url";
 import appCss from "@/src/styles/app.css?url";
@@ -30,14 +31,9 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      {
-        title: "NeotypeLab",
-      },
-      {
-        name: "description",
-        content:
-          "Explore public mecha repaint prototypes and start a structured create session.",
-      },
+      { title: publicSeo.home.title },
+      { name: "description", content: publicSeo.home.description },
+      { name: "keywords", content: publicSeo.home.keywords },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

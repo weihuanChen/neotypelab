@@ -21,6 +21,7 @@ export type CreatorHubData = NonNullable<
 export type PublicRouteMeta = {
   title: string;
   description: string;
+  keywords?: string;
   canonicalPath: string;
   imageUrl?: string;
 };

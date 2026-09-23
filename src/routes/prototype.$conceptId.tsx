@@ -10,9 +10,10 @@ import type {
   PrototypeSnapshot,
   SharedPrototype,
 } from "@/src/components/prototype/types";
-import { createConvexHttpClient } from "@/src/lib/convexServer";
 import { absoluteUrl } from "@/lib/site";
 import { buildPrototypeStructuredData } from "@/lib/structuredData";
+import { createConvexHttpClient } from "@/src/lib/convexServer";
+import { documentMeta, prototypeSeo } from "@/src/lib/publicSeo";
 
 const getPrototypeSnapshot = createServerFn({ method: "GET" })
   .validator(z.object({ conceptId: z.string() }))
@@ -25,7 +26,7 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
         status: "missing-env",
         concept: null,
         message:
-          "VITE_CONVEX_URL is required for SSR Convex reads.",
+          "NeotypeLab could not load this page just now.",
         meta,
         structuredData: null,
       };
@@ -41,7 +42,7 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
           status: "not-found",
           concept: null,
           message:
-            "This prototype is no longer available on a public or unlisted share surface.",
+            "This paint plan is private, missing, or no longer shared.",
           meta,
           structuredData: null,
         };
@@ -59,7 +60,7 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
         status: "error",
         concept: null,
         message:
-          "Prototype data could not be loaded from Convex. Confirm the share id and deployment environment.",
+          "This paint plan could not be loaded. Try again in a moment.",
         meta,
         structuredData: null,
       };
@@ -71,26 +72,14 @@ export const Route = createFileRoute("/prototype/$conceptId")({
     getPrototypeSnapshot({ data: { conceptId: params.conceptId } }),
   head: ({ loaderData, params }) => {
     const meta = loaderData?.meta ?? buildFallbackPrototypeMeta(params.conceptId);
-    const imageMeta = meta.imageUrl
-      ? [
-          { property: "og:image", content: meta.imageUrl },
-          { name: "twitter:image", content: meta.imageUrl },
-        ]
-      : [];
 
     return {
       meta: [
         { name: "robots", content: loaderData?.concept?.indexable ? "index, follow" : "noindex, follow" },
-        { title: meta.title },
-        { name: "description", content: meta.description },
-        { property: "og:title", content: meta.title },
-        { property: "og:description", content: meta.description },
-        { property: "og:url", content: meta.canonicalPath },
-        { property: "og:type", content: "article" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: meta.title },
-        { name: "twitter:description", content: meta.description },
-        ...imageMeta,
+        ...documentMeta(
+          { title: meta.title, description: meta.description, keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit" },
+          { ogType: "article", twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
+        ),
       ],
       links: [{ rel: "canonical", href: meta.canonicalPath }],
     };
@@ -129,8 +118,10 @@ function getConceptIdFromSnapshot(snapshot: PrototypeSnapshot) {
 
 function buildFallbackPrototypeMeta(conceptId: string): PrototypeMeta {
   return {
-    title: "Shared Prototype | NeotypeLab",
-    description: "Shared mecha repaint prototype and paint mapping surface.",
+    title: "Shared Gunpla Paint Plan | NeotypeLab",
+    description:
+      "A shared spray-ready Gunpla or mecha model paint plan, with its color layout and paint mapping.",
+    keywords: "gunpla paint, custom gunpla, mecha model kit",
     canonicalPath: `/prototype/${conceptId}`,
   };
 }
@@ -139,9 +130,17 @@ function buildPrototypeMeta(
   conceptId: string,
   concept: SharedPrototype
 ): PrototypeMeta {
+  const copy = prototypeSeo({
+    title: concept.title,
+    baseModelName: concept.baseModel?.name,
+    styleName: concept.stylePreset?.name,
+    materialName: concept.materialPreset?.name,
+  });
+
   return {
-    title: `${concept.title} | NeotypeLab`,
-    description: buildPrototypeDescription(concept),
+    title: copy.title,
+    description: copy.description,
+    keywords: copy.keywords,
     canonicalPath: `/prototype/${conceptId}`,
     imageUrl: absoluteUrl(`/prototype/${conceptId}/opengraph-image`),
   };
@@ -166,9 +165,10 @@ function buildPrototypeJsonLd(conceptId: string, concept: SharedPrototype) {
 }
 
 function buildPrototypeDescription(concept: SharedPrototype) {
-  return [
-    concept.baseModel?.name ?? "Unknown base model",
-    concept.stylePreset?.name ?? "Unknown Style DNA",
-    concept.materialPreset?.name ?? "Unknown material profile",
-  ].join(" / ");
+  return prototypeSeo({
+    title: concept.title,
+    baseModelName: concept.baseModel?.name,
+    styleName: concept.stylePreset?.name,
+    materialName: concept.materialPreset?.name,
+  }).description;
 }

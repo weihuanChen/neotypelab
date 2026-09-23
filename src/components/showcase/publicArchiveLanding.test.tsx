@@ -83,8 +83,8 @@ describe("ExploreLanding", () => {
     useQueryMock.mockReturnValue([]);
     const html = renderToStaticMarkup(<ExploreLanding search={{}} snapshot={emptySnapshot} />);
 
-    expect(html).toContain("Nothing");
-    expect(html).toContain("published yet");
+    expect(html).toContain("No paint plans");
+    expect(html).toContain("Plan a paint scheme");
     expect(html).not.toContain("Gundam MK");
     expect(html).not.toContain("/assets/explore/");
   });
@@ -114,8 +114,8 @@ describe("ShowcaseLanding", () => {
     useQueryMock.mockReturnValue([]);
     const html = renderToStaticMarkup(<ShowcaseLanding search={{}} snapshot={emptySnapshot} />);
 
-    expect(html).toContain("Nothing");
-    expect(html).toContain("published yet");
+    expect(html).toContain("No paint plans");
+    expect(html).toContain("Explore works");
     expect(html).not.toContain("Crimson Command");
     expect(html).not.toContain("/assets/explore/");
   });

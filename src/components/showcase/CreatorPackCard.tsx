@@ -75,7 +75,7 @@ function CreatorPackCardView({
           {pack.tagline ? <p className="showcase-card__lede">{pack.tagline}</p> : null}
           <p className="showcase-card__copy">
             {pack.description ??
-              "Creator starter pack for Style DNA, base models, and material presets."}
+              "A set of color directions, kits, and finishes to preview before you spray."}
           </p>
         </div>
         <dl className="showcase-meta">

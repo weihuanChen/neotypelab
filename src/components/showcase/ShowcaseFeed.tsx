@@ -217,11 +217,10 @@ function ShowcaseFeedView({
       <section className="showcase-control-panel">
         {hideIntro ? null : (
           <div>
-            <p className="showcase-kicker">Public Showcase</p>
-            <h1>Published prototype surface</h1>
+            <p className="showcase-kicker">Public archive</p>
+            <h1>Published paint plans</h1>
             <p>
-              This feed only surfaces concepts marked public. Unlisted operator work
-              stays off the grid but remains accessible by direct share link.
+              These are Gunpla and mecha paint plans marked public. Private plans stay in your library and can still be opened from a direct link.
             </p>
           </div>
         )}
@@ -251,7 +250,7 @@ function ShowcaseFeedView({
           />
           <FilterGroup
             activeValue={search.style}
-            label="Style DNA"
+            label="Color direction"
             options={filterOptions.styles}
             paramName="style"
             basePath={basePath}
@@ -284,10 +283,10 @@ function ShowcaseFeedView({
         </div>
         <div className="showcase-status-row">
           <span>
-            {sortedConcepts.length} concept
+            {sortedConcepts.length} paint plan
             {sortedConcepts.length === 1 ? "" : "s"} in view
           </span>
-          <span>{providerReady ? "Convex live sync ready" : "SSR snapshot mode"}</span>
+          <span>{providerReady ? "Live" : "Cached"}</span>
           {status !== "ok" && statusMessage ? <span>{statusMessage}</span> : null}
         </div>
       </section>
@@ -296,9 +295,9 @@ function ShowcaseFeedView({
         <section className="showcase-section">
           <SectionHeader
             accent="teal"
-            copy="Ranked public creators weighted by featured or verified status plus live concept saves, likes, and remix activity."
-            kicker="Featured / Verified Pilots"
-            title="Creator ranking surface"
+            copy="Builders ranked by saves, likes, and remixes on their public paint plans."
+            kicker="Featured builders"
+            title="Builders"
           />
           <div className="showcase-grid showcase-grid--creators">
             {data.rankedCreators.map((creator) => (
@@ -312,9 +311,9 @@ function ShowcaseFeedView({
         <section className="showcase-section">
           <SectionHeader
             accent="orange"
-            copy="Discover creator-built pack surfaces that can launch directly into create flows or serve as remix entry points."
-            kicker="Featured Creator Packs"
-            title="Reusable starter sets"
+            copy="Color packs you can apply to a kit, or use as the start of a remix."
+            kicker="Color packs"
+            title="Ready-to-apply packs"
           />
           <p className="showcase-section-note">
             Pack ranking follows the current discovery lens: {activeSort.label}
@@ -394,7 +393,7 @@ function ShowcaseFeedView({
                   </a>
                   <p className="showcase-card__copy">
                     {concept.baseModel?.name ?? "Unknown base model"} /{" "}
-                    {concept.stylePreset?.name ?? "Unknown Style DNA"} /{" "}
+                    {concept.stylePreset?.name ?? "Color direction pending"} /{" "}
                     {concept.materialPreset?.name ?? "Unknown material profile"}
                   </p>
                   {concept.moodTags.length > 0 ? (

@@ -3,6 +3,7 @@ import { AppShell } from "@/src/components/app-shell/AppShell";
 import { ExploreLanding } from "@/src/components/showcase/ExploreLanding";
 import { RoutePending } from "@/src/components/system-state/RoutePending";
 import { systemStates } from "@/src/components/system-state";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 import {
   buildShowcaseStructuredData,
   getShowcaseSnapshot,
@@ -11,7 +12,7 @@ import {
 
 const exploreShell = {
   description:
-    "Discover spray-ready repaint prototypes, then open or remix the systems behind them.",
+    "Browse spray-ready Gunpla and mecha paint plans, then open a scheme or remix it before you spray.",
   title: "Explore",
 } as const;
 
@@ -21,21 +22,7 @@ export const Route = createFileRoute("/")({
   pendingMs: 0,
   pendingComponent: ExplorePending,
   head: () => ({
-    meta: [
-      { title: "NeotypeLab" },
-      {
-        name: "description",
-        content:
-          "Explore public mecha repaint prototypes and start a structured create session.",
-      },
-      { property: "og:title", content: "NeotypeLab" },
-      {
-        property: "og:description",
-        content:
-          "Explore public mecha repaint prototypes and start a structured create session.",
-      },
-      { property: "og:type", content: "website" },
-    ],
+    meta: documentMeta(publicSeo.home, { ogType: "website" }),
     links: [{ rel: "canonical", href: "/" }],
   }),
   component: Home,

@@ -27,7 +27,7 @@ export const getShowcaseSnapshot = createServerFn({ method: "GET" }).handler(
         status: "missing-env",
         ...emptyShowcaseData,
         message:
-          "VITE_CONVEX_URL is required for SSR Convex reads.",
+          "NeotypeLab could not load this page just now.",
       };
     }
 
@@ -75,9 +75,9 @@ export function buildShowcaseStructuredData(snapshot: ShowcaseSnapshot) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "NeotypeLab Showcase",
+    name: "Gunpla Color Schemes and Mecha Repaint Gallery",
     description:
-      "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
+      "Browse spray-ready Gunpla and mecha model repaints. Compare color schemes, paint maps, and weathering, then remix a plan before you open the paint.",
     url: "/showcase",
     about: [
       {
@@ -86,10 +86,10 @@ export function buildShowcaseStructuredData(snapshot: ShowcaseSnapshot) {
       },
       {
         "@type": "Thing",
-        name: "Style DNA discovery",
+        name: "Gunpla color schemes",
       },
     ],
-    keywords: "trending, recent, most saved, most remixed",
+    keywords: "gunpla color scheme, custom gunpla, gundam custom paint, gunpla gallery, mecha model kit",
     interactionStatistic: [
       {
         "@type": "InteractionCounter",

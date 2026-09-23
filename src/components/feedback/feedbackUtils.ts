@@ -1,6 +1,6 @@
 export const categoryOptions = [
   { value: "missing-base-model", label: "Missing Kit", detail: "Request a kit or silhouette that is not available in the catalog yet." },
-  { value: "style-request", label: "Style Request", detail: "Suggest a new visual direction for the Style DNA library." },
+  { value: "style-request", label: "Color direction", detail: "Suggest a color direction that is missing from the kit library." },
   { value: "generation-quality", label: "Generation Issue", detail: "Report anatomy, masking, realism, or rendering problems." },
   { value: "paint-mapping", label: "Paint Mapping", detail: "Flag a missing, inaccurate, or impractical paint recommendation." },
   { value: "other", label: "Other", detail: "Send feedback that does not fit the main report types." },

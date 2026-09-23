@@ -19,7 +19,7 @@ export function PublicUnavailable({
       <h1>{title}</h1>
       <p>
         {message ??
-          "This public surface is not available in the current deployment."}
+          "This page is not available right now."}
       </p>
       <div className="prototype-action-row">
         <a className="showcase-button" href="/showcase">
@@ -175,7 +175,7 @@ export function CreatorPackView({ pack }: { pack: CreatorPackData }) {
           {pack.tagline ? <p className="public-lede">{pack.tagline}</p> : null}
           <p className="public-muted">
             {pack.description ??
-              "Curated starter set built from creator-owned Style DNA, supported base models, and material presets."}
+              "A set of color directions, kits, and finishes to preview before you spray."}
           </p>
           <PackEngagementBar
             compact
@@ -252,12 +252,12 @@ export function CreatorPackView({ pack }: { pack: CreatorPackData }) {
 
           <section className="public-panel">
             <SectionHeader
-              kicker="Related Public Concepts"
-              title={`${pack.concepts.length} attached concepts`}
-              note="Prototype references linked to this pack."
+              kicker="Paint plans"
+              title={`${pack.concepts.length} paint plans`}
+              note="Previews linked to this pack."
             />
             {pack.concepts.length === 0 ? (
-              <EmptyInset copy="No public concepts are currently attached to this pack." />
+              <EmptyInset copy="No paint plans are in this pack yet." />
             ) : (
               <div className="public-card-grid">
                 {pack.concepts.map((concept) => (
@@ -341,7 +341,7 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
           </div>
           <p className="public-lede">
             {profile.pilot.creatorTagline ??
-              `${profile.totals.publicConcepts} public concepts / ${profile.creatorPackCollection.length} creator packs / ${profile.styleCollection.length} creator styles`}
+              `${profile.totals.publicConcepts} paint plans, ${profile.creatorPackCollection.length} color packs, and ${profile.styleCollection.length} color directions.`}
           </p>
           <div className="prototype-action-row">
             <a className="showcase-button is-accent" href={`/pilot/${profile.pilot.handle}`}>
@@ -358,7 +358,7 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
             sharePath={`/creator/${profile.pilot.handle}`}
             text={
               profile.pilot.creatorTagline ??
-              `${profile.totals.publicConcepts} public concepts from ${profile.pilot.fullName}`
+              `${profile.totals.publicConcepts} paint plans from ${profile.pilot.fullName}`
             }
             title={`${profile.pilot.fullName} Creator Hub | NeotypeLab`}
           />
@@ -392,7 +392,7 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
                     <h3>{pack.name}</h3>
                     <p>
                       {pack.description ??
-                        "Creator starter pack for Style DNA, base models, and material presets."}
+                        "A set of color directions, kits, and finishes to preview before you spray."}
                     </p>
                     <PackEngagementBar
                       compact
@@ -414,9 +414,9 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
 
           <section className="public-panel">
             <SectionHeader
-              kicker="Creator Style DNA"
-              title={`${profile.styleCollection.length} style surfaces`}
-              note="Creator-owned style presets."
+              kicker="Color directions"
+              title={`${profile.styleCollection.length} directions`}
+              note="Reusable directions this builder can apply to a kit."
             />
             <div className="public-card-grid">
               {profile.styleCollection.map((style) => (
@@ -426,7 +426,7 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
                     {style.isFeaturedStyle ? <Pill tone="warm">featured</Pill> : null}
                   </div>
                   <h3>{style.name}</h3>
-                  <p>{style.shortDescription ?? "Creator-owned style surface."}</p>
+                  <p>{style.shortDescription ?? "A reusable color direction for a kit."}</p>
                   <dl className="showcase-meta prototype-meta-list">
                     <MetaRow label="Creator concepts" value={`${style.creatorConceptCount}`} />
                     <MetaRow label="Community concepts" value={`${style.communityConceptCount}`} />
@@ -457,10 +457,10 @@ export function CreatorHubView({ profile }: { profile: CreatorHubData }) {
           <section className="public-panel">
             <p className="showcase-kicker">Hub Metrics</p>
             <dl className="showcase-meta prototype-meta-list">
-              <MetaRow label="Public concepts" value={`${profile.totals.publicConcepts}`} />
-              <MetaRow label="Creator packs" value={`${profile.creatorPackCollection.length}`} />
-              <MetaRow label="Creator styles" value={`${profile.styleCollection.length}`} />
-              <MetaRow label="Remix branches" value={`${profile.totals.remixes}`} />
+              <MetaRow label="Paint plans" value={`${profile.totals.publicConcepts}`} />
+              <MetaRow label="Color packs" value={`${profile.creatorPackCollection.length}`} />
+              <MetaRow label="Color directions" value={`${profile.styleCollection.length}`} />
+              <MetaRow label="Remixes" value={`${profile.totals.remixes}`} />
             </dl>
           </section>
         </aside>

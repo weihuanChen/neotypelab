@@ -55,10 +55,9 @@ export const systemStates = {
   authCreate: {
     code: "AUTH",
     archive: "Create / Session required",
-    headline: "Start a\nprototype record.",
+    headline: "Plan a\npaint scheme.",
     message: [
-      "NeotypeLab uses structured inputs instead of open-ended prompts.",
-      "Sign in to use your credit balance, then choose a kit, define a direction, and generate a working record.",
+      "Sign in to pick a kit, choose a color direction, and preview the finish before you spray.",
     ],
     signal: "locked",
     signalLabel: "Access / Locked",
@@ -93,9 +92,9 @@ export const systemStates = {
   authFeedback: {
     code: "AUTH",
     archive: "Feedback / Session required",
-    headline: "Session\nrequired",
+    headline: "Sign in\nto report.",
     message: [
-      "Sign in to attach prototype context and follow each report from received to resolved.",
+      "Request a missing kit, or tell us when a paint plan does not match the preview.",
     ],
     signal: "locked",
     signalLabel: "Access / Locked",
@@ -147,9 +146,9 @@ export const systemStates = {
   emptyShowcase: {
     code: "000",
     archive: "Showcase / Public archive",
-    headline: "Nothing\npublished yet",
+    headline: "No paint plans\nyet",
     message: [
-      "Public cases will appear here after a prototype is moved from the private library onto the showcase.",
+      "Published Gunpla and mecha paint plans will show up here after a builder shares one.",
     ],
     signal: "empty",
     signalLabel: "Public / Empty",
@@ -187,7 +186,7 @@ export const systemStates = {
     archive: "Session / Opening",
     headline: "Opening\nthe archive.",
     message: [
-      "Clerk is present and Convex is negotiating the authenticated viewer token.",
+      "Signing you in.",
     ],
     signal: "loading",
     signalLabel: "System / Sync",
@@ -211,7 +210,7 @@ export const systemStates = {
     archive: "Explore / Indexing",
     headline: "Opening\nthe public archive.",
     message: [
-      "Published prototypes are being resolved for this view.",
+      "Published paint plans are loading.",
     ],
     signal: "loading",
     signalLabel: "Archive / Sync",
@@ -223,7 +222,7 @@ export const systemStates = {
     archive: "Showcase / Indexing",
     headline: "Opening\nthe public archive.",
     message: [
-      "Selected works, collections and recent publications are being resolved.",
+      "Selected color schemes and recent paint plans are loading.",
     ],
     signal: "loading",
     signalLabel: "Archive / Sync",
@@ -235,7 +234,7 @@ export const systemStates = {
     archive: "Create / Opening",
     headline: "Opening\nthe create console.",
     message: [
-      "Style DNA, kit options and your credit balance are being resolved for this session.",
+      "Color directions, kits, and your credit balance are loading.",
     ],
     signal: "loading",
     signalLabel: "Console / Sync",
@@ -247,7 +246,7 @@ export const systemStates = {
     archive: "Feedback / Opening",
     headline: "Opening\nthe report archive.",
     message: [
-      "Your reports and attached prototype context are being resolved.",
+      "Your kit requests and paint-plan reports are loading.",
     ],
     signal: "loading",
     signalLabel: "Archive / Sync",

@@ -1,14 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { getSiteUrl } from "@/lib/site";
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 import { prototypeExportImageResponse } from "@/src/lib/og";
 
 export const Route = createFileRoute("/prototype_/$conceptId/reddit-image")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         const concept = await getSharedConcept(params.conceptId);
+        const shareUrl = new URL(
+          `/prototype/${params.conceptId}`,
+          getSiteUrl(request)
+        ).toString();
 
         return prototypeExportImageResponse({
           accent: "#61C6FF",
@@ -26,6 +31,7 @@ export const Route = createFileRoute("/prototype_/$conceptId/reddit-image")({
                 `${concept.remixCount} remixes`,
               ]
             : ["Unavailable", "NeotypeLab"],
+          shareUrl,
           subtitle: concept
             ? `${concept.baseModel?.name ?? "Unknown base model"} / ${concept.stylePreset?.name ?? "Unknown Style DNA"} / ${concept.materialPreset?.name ?? "Unknown material"}`
             : "This shared prototype is no longer available on a public or unlisted surface.",

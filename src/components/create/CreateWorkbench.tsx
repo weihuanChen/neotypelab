@@ -171,7 +171,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   return <div className={`create-workspace ${styleTakeover ? "is-job-wait" : step === 1 ? "is-style" : "is-model"}`}>
     {styleTakeover ? null : <nav className="create-step-nav" aria-label="Creation steps"><button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>01 · Style</button><button type="button" disabled={!hasStyle} aria-current={step === 2 ? "step" : undefined} onClick={() => setStep(2)}>02 · Model</button></nav>}
     {step === 1 ? <section className="create-style-workspace">
-      {styleTakeover ? null : <><p className="workbench-kicker">01 · Style</p><h2>Choose a repaint language.</h2>
+      {styleTakeover ? null : <><p className="workbench-kicker">01 · Style</p><h2>Choose a color direction.</h2>
       <div className="style-main-tabs" aria-label="Style workspace">{(["discover", "create", "saved"] as const).map(value => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)}>{value === "discover" ? "Discover" : value === "create" ? "Create" : "Saved"}</button>)}</div></>}
       <div hidden={styleTakeover || tab !== "discover"}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={busy || Boolean(isRunning)} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
         onPreset={row => { setStyleMode("preset"); setPresetId(row._id); setMaterialId(null); setWeathering(null); setMood([]); }}
@@ -179,7 +179,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
       <div hidden={!styleTakeover && tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={viewer?.credits?.balance ?? 0} selectedId={savedId} view={styleTakeover || tab !== "saved" ? "describe" : "mine"}
         onPhaseChange={handleStylePhase}
         onUse={(value, id) => { setStyleMode("custom"); setCustom(value); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setSavedId(null); }} onApply={() => setStep(2)} /></div>
-      {styleTakeover || tab === "create" ? null : <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a model →</Button>}
+      {styleTakeover || tab === "create" ? null : <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a kit →</Button>}
     </section> : <>
       <section className="selected-style-strip" aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change →</button></section>
       <div className="create-model-layout"><KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} />

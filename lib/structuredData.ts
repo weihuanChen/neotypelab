@@ -116,7 +116,7 @@ export function buildPilotProfileStructuredData(input: {
         },
       ],
     },
-    description: `${input.publicConceptCount} public concepts, ${input.totalSaves} saves, ${input.totalRemixes} remix branches.`,
+    description: `${input.fullName}'s public Gunpla and mecha model paint plans: ${input.publicConceptCount} spray-ready repaints, ${input.totalSaves} saves, and ${input.totalRemixes} remixes.`,
   };
 }
 
@@ -185,9 +185,9 @@ export function buildShowcaseStructuredData(input: {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "NeotypeLab Showcase",
+    name: "Gunpla Color Schemes and Mecha Repaint Gallery",
     description:
-      "Browse public mecha repaint prototypes, paint mapping plans, and community-ready Style DNA surfaces.",
+      "Browse spray-ready Gunpla and mecha model repaints. Compare color schemes, paint maps, and weathering, then remix a plan before you open the paint.",
     url: absoluteUrl("/showcase"),
     about: [
       {
@@ -313,6 +313,6 @@ export function buildCreatorHubStructuredData(input: {
         },
       ],
     },
-    description: `${input.publicConceptCount} public concepts, ${input.creatorPackCount} creator packs, ${input.styleCollectionCount} creator styles.`,
+    description: `${input.fullName}'s creator hub of spray-ready Gunpla and mecha paint plans: ${input.publicConceptCount} repaints, ${input.creatorPackCount} color packs, and ${input.styleCollectionCount} reusable directions.`,
   };
 }

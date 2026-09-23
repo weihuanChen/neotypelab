@@ -13,22 +13,22 @@ export const showcaseSortOptions: Array<{
   {
     id: "trending",
     label: "Trending",
-    description: "Fresh public prototypes weighted by remix activity.",
+    description: "Recent paint plans with the most remixes.",
   },
   {
     id: "recent",
     label: "Recent",
-    description: "Newest public launches across the showcase.",
+    description: "The newest published paint plans.",
   },
   {
     id: "most-remixed",
     label: "Most Remixed",
-    description: "Share surfaces generating the strongest branching activity.",
+    description: "Paint plans other builders have remixed most.",
   },
   {
     id: "most-saved",
     label: "Most Saved",
-    description: "Community concepts people are actively holding onto for later.",
+    description: "Paint plans builders are keeping for later.",
   },
 ];
 

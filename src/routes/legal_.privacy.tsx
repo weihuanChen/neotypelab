@@ -2,21 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { LegalDocumentPage } from "@/src/components/information/LegalDocumentPage";
 import { appPaths } from "@/src/lib/appPaths";
+import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const privacyShell = {
-  description: "How account and usage data are handled.",
+  description: "How NeotypeLab handles your account and paint-plan data.",
   title: "Privacy Policy",
 } as const;
 
 export const Route = createFileRoute("/legal_/privacy")({
   head: () => ({
-    meta: [
-      { title: "Privacy Policy | NeotypeLab" },
-      {
-        name: "description",
-        content: "Read the NeotypeLab privacy policy.",
-      },
-    ],
+    meta: documentMeta(publicSeo.privacy, { ogType: "website" }),
     links: [{ rel: "canonical", href: appPaths.legalPrivacy }],
   }),
   component: LegalPrivacyRoute,

@@ -365,11 +365,11 @@ function StyleJobComplete({
       }
       actions={
         stored ? (
-          <Button disabled={busy} onClick={onApply}>Apply to a model →</Button>
+          <Button disabled={busy} onClick={onApply}>Apply to a kit →</Button>
         ) : (
           <>
             <Button disabled={busy} onClick={onSave}>Save style</Button>
-            <Button disabled={busy} onClick={onApply}>Apply to a model →</Button>
+            <Button disabled={busy} onClick={onApply}>Apply to a kit →</Button>
           </>
         )
       }

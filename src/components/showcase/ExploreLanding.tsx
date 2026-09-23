@@ -72,7 +72,7 @@ export function ExploreLanding({
             querying ? (
               <SystemStateLink href="/">Clear filters</SystemStateLink>
             ) : (
-              <SystemStateLink href="/create">Start a prototype →</SystemStateLink>
+              <SystemStateLink href="/create">Plan a paint scheme →</SystemStateLink>
             )
           }
         />
@@ -114,21 +114,21 @@ function EditorialFeature({ items }: { items: ExplorePrototype[] }) {
     <section className="explore-editorial" aria-labelledby="today-title">
       <div className="explore-section-title">
         <p>NeotypeLab · Almanac N°.02</p>
-        <h1 id="today-title">Today&apos;s prototypes</h1>
+        <h1 id="today-title">Today&apos;s paint plans</h1>
       </div>
       <div className="explore-feature">
         <a className="explore-feature__image" href={lead.href}>
           <span>N.001</span>
-          <PreviewImage alt={`${lead.title} repaint prototype`} src={lead.image} />
+          <PreviewImage alt={`${lead.title} paint plan`} src={lead.image} />
         </a>
-        <aside className="explore-feature__meta" aria-label="Featured prototype record">
+        <aside className="explore-feature__meta" aria-label="Featured paint plan">
           <div className="explore-feature__record">
             <span>N°.001</span>
-            <span>Prototype record</span>
+            <span>Paint plan</span>
           </div>
           <EditorialMeta label="Kit" value={lead.kit} />
           <div className="explore-feature__meta-group">
-            <EditorialMeta label="Style DNA" value={lead.style} />
+            <EditorialMeta label="Color direction" value={lead.style} />
             <EditorialMeta label="Material" value={lead.material} />
             <EditorialMeta label="Weathering" value={lead.weathering} />
           </div>
@@ -138,7 +138,7 @@ function EditorialFeature({ items }: { items: ExplorePrototype[] }) {
           </div>
           <div className="explore-feature__actions">
             <a className="explore-action is-primary" href={lead.href}>
-              View Prototype <span aria-hidden="true">→</span>
+              View plan <span aria-hidden="true">→</span>
             </a>
             <a className="explore-action" href={lead.remixHref}>
               Remix <ArrowTopRightIcon aria-hidden="true" />
@@ -258,7 +258,7 @@ function DiscoveryFilter({
 }) {
   const config = {
     kit: { label: "Kit", param: "baseModel" as const, slug: "kitSlug" as const, value: "kit" as const },
-    style: { label: "Style DNA", param: "style" as const, slug: "styleSlug" as const, value: "style" as const },
+    style: { label: "Color direction", param: "style" as const, slug: "styleSlug" as const, value: "style" as const },
     material: {
       label: "Material",
       param: "material" as const,
@@ -352,7 +352,7 @@ function normalizeConcept(concept: ShowcaseConcept): ExplorePrototype {
     title: concept.title,
     kit: concept.baseModel?.name ?? "Unknown kit",
     kitSlug: concept.baseModel?.slug ?? "unknown-kit",
-    style: concept.stylePreset?.name ?? "Unknown Style DNA",
+    style: concept.stylePreset?.name ?? "Color direction pending",
     styleSlug: concept.stylePreset?.slug ?? "unknown-style",
     material: concept.materialPreset?.name ?? "Unknown material",
     materialSlug: concept.materialPreset?.slug ?? "unknown-material",
