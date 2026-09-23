@@ -35,9 +35,12 @@ them idempotently. Older profile revisions remain available for audit history.
 | 160 Credits | $19 | 20 |
 | 400 Credits | $39 | 50 |
 
-Credit Packs are planned for active subscribers. Separately purchased Credits
-do not expire. Checkout and pack fulfillment are not active yet, so the public
-page presents these as announced terms rather than functioning purchase actions.
+Credit Packs are available to active subscribers. Separately purchased Credits
+do not expire. Pro and Studio subscription checkout is available for signed-in
+users, and active Pro subscribers can upgrade to Studio. Pack purchases are
+granted once per paid Creem order into the permanent Credit bucket.
+Partial or full pack refunds revoke the proportional permanent Credits still
+available; already spent Credits are recorded for manual review.
 
 ## Monthly rollover
 

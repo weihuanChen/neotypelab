@@ -579,7 +579,8 @@ const schema = defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_user_status", ["userId", "status"])
-    .index("by_orderNumber", ["orderNumber"]),
+    .index("by_orderNumber", ["orderNumber"])
+    .index("by_provider_payment", ["paymentProvider", "externalPaymentId"]),
 
   orderItems: defineTable({
     orderId: v.id("orders"),
@@ -592,6 +593,16 @@ const schema = defineSchema({
   })
     .index("by_orderId", ["orderId"])
     .index("by_productType", ["productType"]),
+
+  creditPackRefunds: defineTable({
+    eventId: v.string(),
+    orderId: v.id("orders"),
+    refundAmountMinor: v.number(),
+    creditAmountRevoked: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_orderId", ["orderId"]),
 
   creditPriceRules: defineTable({
     actionType: vCreditActionType,
@@ -991,7 +1002,7 @@ const schema = defineSchema({
     .searchIndex("searchText", {
       searchField: "searchText",
       filterFields: ["userId"],
-    }),
+  }),
 
   sprayPlans: defineTable({
     userId: v.id("users"),

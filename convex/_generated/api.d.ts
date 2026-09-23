@@ -34,6 +34,9 @@ import type * as creativeSetupNode from "../creativeSetupNode.js";
 import type * as creditCampaigns from "../creditCampaigns.js";
 import type * as creditLedger from "../creditLedger.js";
 import type * as credits from "../credits.js";
+import type * as creemBilling from "../creemBilling.js";
+import type * as creemEvents from "../creemEvents.js";
+import type * as creemPackOrders from "../creemPackOrders.js";
 import type * as crons from "../crons.js";
 import type * as domain from "../domain.js";
 import type * as engagement from "../engagement.js";
@@ -136,6 +139,9 @@ declare const fullApi: ApiFromModules<{
   creditCampaigns: typeof creditCampaigns;
   creditLedger: typeof creditLedger;
   credits: typeof credits;
+  creemBilling: typeof creemBilling;
+  creemEvents: typeof creemEvents;
+  creemPackOrders: typeof creemPackOrders;
   crons: typeof crons;
   domain: typeof domain;
   engagement: typeof engagement;
@@ -234,4 +240,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+  creem: import("@mmailaender/convex-creem/_generated/component.js").ComponentApi<"creem">;
 };

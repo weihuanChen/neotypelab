@@ -248,6 +248,8 @@ export const vCreditActionType = v.union(
   v.literal("keep-original-refund"),
   v.literal("subscription-credit"),
   v.literal("subscription-credit-expiration"),
+  v.literal("credit-pack-purchase"),
+  v.literal("credit-pack-refund"),
   v.literal("campaign-code-redemption"),
   v.literal("admin-adjustment")
 );
@@ -258,6 +260,7 @@ export const vOrderStatus = v.union(
   v.literal("paid"),
   v.literal("completed"),
   v.literal("canceled"),
+  v.literal("partially-refunded"),
   v.literal("refunded")
 );
 export type OrderStatus = Infer<typeof vOrderStatus>;

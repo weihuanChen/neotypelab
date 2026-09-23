@@ -6,9 +6,11 @@ import type { MutationCtx } from "./types";
 import { internal } from "./_generated/api";
 import {
   expireSubscriptionCredits,
+  grantSubscriptionUpgradeCredits,
   grantSubscriptionPeriodCredits,
   setSubscriptionBalanceExpiration,
 } from "./creditLedger";
+import { PRO_MONTHLY_CREDITS, STUDIO_MONTHLY_CREDITS } from "../lib/productPricing";
 
 const GRACE_PERIOD_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_SCHEDULE_DELAY_MS = 24 * 24 * 60 * 60 * 1000;
@@ -145,6 +147,9 @@ export const processWebhookEvent = internalMutation({
     });
     await ctx.db.patch(subscriptionId, { entitlementGrantId: grantId });
 
+    const existingPeriodGrant = existing ? await ctx.db.query("subscriptionCreditGrants")
+      .withIndex("by_subscription_period", (q) => q.eq("subscriptionId", subscriptionId).eq("periodStart", args.periodStart))
+      .unique() : null;
     let creditGrantId: Id<"subscriptionCreditGrants"> | null = null;
     if ((args.eventType === "subscription.started" || args.eventType === "subscription.renewed") && args.monthlyCredits > 0) {
       creditGrantId = await grantPeriodCredits(ctx, {
@@ -155,6 +160,20 @@ export const processWebhookEvent = internalMutation({
         periodEnd: args.periodEnd,
         amount: args.monthlyCredits,
         billingEventId: eventId,
+      });
+    }
+    if (
+      existing?.planType === "pro" && args.planType === "studio" &&
+      (args.eventType === "subscription.updated" || args.eventType === "subscription.renewed") &&
+      args.periodStart === existing.currentPeriodStart &&
+      existingPeriodGrant?.creditAmount === PRO_MONTHLY_CREDITS
+    ) {
+      await grantSubscriptionUpgradeCredits(ctx, {
+        userId,
+        subscriptionId,
+        amount: STUDIO_MONTHLY_CREDITS - PRO_MONTHLY_CREDITS,
+        monthlyAllowance: STUDIO_MONTHLY_CREDITS,
+        periodEnd: args.periodEnd,
       });
     }
     if (args.eventType === "subscription.refunded") {

@@ -116,6 +116,74 @@ describe("subscription billing", () => {
     });
   });
 
+  it("grants only the credit difference for a same-period Pro to Studio upgrade", async () => {
+    const user = await seedUser(t, { tokenIdentifier: "upgrade-buyer", email: "upgrade@example.test", balance: 0 });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    const periodStart = Date.now();
+    const periodEnd = periodStart + 30 * DAY_MS;
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      userId: user.userId,
+      periodStart,
+      periodEnd,
+      monthlyCredits: 160,
+    }));
+    const upgrade = event({
+      eventId: "evt-studio-upgrade",
+      eventType: "subscription.updated",
+      planType: "studio",
+      periodStart,
+      periodEnd,
+      monthlyCredits: 0,
+      occurredAt: periodStart + 1,
+    });
+    await t.mutation(internal.subscriptions.processWebhookEvent, upgrade);
+    await t.mutation(internal.subscriptions.processWebhookEvent, upgrade);
+    const state = await t.run(async (ctx) => ({
+      account: await ctx.db.query("creditAccounts").withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique(),
+      grants: await ctx.db.query("subscriptionCreditGrants").collect(),
+    }));
+    expect(state.account).toMatchObject({
+      balance: 320,
+      subscriptionBalance: 320,
+      subscriptionMonthlyAllowance: 320,
+      subscriptionBalanceCap: 640,
+      subscriptionPlanType: "studio",
+    });
+    expect(state.grants).toHaveLength(1);
+    expect(await user.client.query(api.entitlements.viewerEffective, {})).toMatchObject({ planType: "studio" });
+  });
+
+  it("does not miss or duplicate upgrade Credits when a payment event arrives first", async () => {
+    const user = await seedUser(t, { tokenIdentifier: "paid-first-upgrade", email: "paid-first@example.test", balance: 0 });
+    await t.mutation(internal.init.seedEntitlementProfiles, {});
+    const periodStart = Date.now();
+    const periodEnd = periodStart + 30 * DAY_MS;
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      userId: user.userId, periodStart, periodEnd, monthlyCredits: 160,
+    }));
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      eventId: "evt-paid-first",
+      eventType: "subscription.renewed",
+      planType: "studio",
+      periodStart,
+      periodEnd,
+      monthlyCredits: 320,
+      occurredAt: periodStart + 1,
+    }));
+    await t.mutation(internal.subscriptions.processWebhookEvent, event({
+      eventId: "evt-update-second",
+      eventType: "subscription.updated",
+      planType: "studio",
+      periodStart,
+      periodEnd,
+      monthlyCredits: 0,
+      occurredAt: periodStart + 2,
+    }));
+    const account = await t.run(async (ctx) => await ctx.db.query("creditAccounts")
+      .withIndex("by_userId", (q) => q.eq("userId", user.userId)).unique());
+    expect(account).toMatchObject({ balance: 320, subscriptionBalance: 320, subscriptionMonthlyAllowance: 320 });
+  });
+
   it("rolls the full subscription balance up to twice the monthly allowance", async () => {
     const user = await seedUser(t, { tokenIdentifier: "rollover-subscriber", email: "rollover@example.test" });
     await t.mutation(internal.init.seedEntitlementProfiles, {});

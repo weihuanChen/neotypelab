@@ -2,8 +2,29 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { billingWebhookPayloadSchema, verifyBillingWebhookSignature } from "./billingWebhook";
+import { creem } from "./creemBilling";
+import {
+  handleCreemCheckoutEvent,
+  handleCreemRefundEvent,
+  handleCreemSubscriptionEvent,
+} from "./creemEvents";
 
 const http = httpRouter();
+
+creem.registerRoutes(http, {
+  events: {
+    "checkout.completed": handleCreemCheckoutEvent,
+    "subscription.paid": handleCreemSubscriptionEvent,
+    "subscription.active": handleCreemSubscriptionEvent,
+    "subscription.update": handleCreemSubscriptionEvent,
+    "subscription.scheduled_cancel": handleCreemSubscriptionEvent,
+    "subscription.canceled": handleCreemSubscriptionEvent,
+    "subscription.expired": handleCreemSubscriptionEvent,
+    "subscription.unpaid": handleCreemSubscriptionEvent,
+    "subscription.past_due": handleCreemSubscriptionEvent,
+    "refund.created": handleCreemRefundEvent,
+  },
+});
 
 http.route({
   path: "/billing/webhook",

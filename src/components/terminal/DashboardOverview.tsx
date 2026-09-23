@@ -214,7 +214,7 @@ function OrdersPanel({ compact = false, onViewAll, orders }: { compact?: boolean
     <section className={compact ? "studio-orders is-compact" : "studio-orders"} role="tabpanel">
       <header className="studio-section-head"><span>Orders</span>{compact && onViewAll ? <button onClick={onViewAll} type="button">View orders →</button> : <small>Purchases and production services</small>}</header>
       <div className="studio-order-head" aria-hidden="true"><span>Order</span><span>Type</span><span>Status</span><span>Total</span><span>Date</span></div>
-      {orders.length > 0 ? orders.map((order) => <article className="studio-order-row" key={order._id}><strong>{order.orderNumber}</strong><span>{order.items.map((item) => item.title).join(", ")}</span><b>{order.status}</b><span>{formatMoney(order.totalMinor, order.currency)}</span><time>{formatDate(order.completedAt ?? order._creationTime)}</time></article>) : <StudioEmpty compact title="No orders yet." copy="Purchases and production services will appear here." />}
+      {orders.length > 0 ? orders.map((order) => <article className="studio-order-row" key={order._id}><strong>{order.orderNumber}</strong><span>{order.items.map((item) => item.title).join(", ")}</span><b>{order.status}</b><span>{formatMoney(order.totalMinor, order.currency)}</span><time>{formatDate(order.completedAt ?? order._creationTime)}</time></article>) : <StudioEmpty compact title="No separate orders yet." copy="Subscription status and monthly Credits are shown above. Other purchases will appear here." />}
     </section>
   );
 }
@@ -228,7 +228,7 @@ function StudioEmpty({ compact = false, copy, href, link, title }: { compact?: b
 function formatDate(value: number) { return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(value); }
 function formatMoney(value: number, currency: string) { return new Intl.NumberFormat("en", { style: "currency", currency }).format(value / 100); }
 function formatLabel(value: string) { return value.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "); }
-function creditActionLabel(action: string) { return ({ "starter-grant": "Account activated", "campaign-code-redemption": "Activation code redeemed", "generation-refund": "Generation refund", "admin-adjustment": "Account adjustment" } as Record<string, string>)[action] ?? action.replaceAll("-", " "); }
+function creditActionLabel(action: string) { return ({ "starter-grant": "Account activated", "campaign-code-redemption": "Activation code redeemed", "generation-refund": "Generation refund", "credit-pack-purchase": "Credit Pack purchased", "credit-pack-refund": "Credit Pack refunded", "admin-adjustment": "Account adjustment" } as Record<string, string>)[action] ?? action.replaceAll("-", " "); }
 function creditActivityDescription(action: string, balanceAfter: number, description?: string) {
   if (action === "starter-grant") return `Starter credit balance established at ${balanceAfter}.`;
   return description ?? `Credit balance updated to ${balanceAfter}.`;

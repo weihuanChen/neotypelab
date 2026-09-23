@@ -1,5 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/src/components/app-shell/AppShell";
+import { SubscriptionPurchaseAction } from "@/src/components/pricing/SubscriptionPurchaseAction";
+import { CreditPackPurchaseAction } from "@/src/components/pricing/CreditPackPurchaseAction";
+import { PricingCheckoutNotice } from "@/src/components/pricing/PricingCheckoutNotice";
+import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import { appPaths } from "@/src/lib/appPaths";
 import {
   COMPLETE_BUILD_CREDITS,
@@ -23,6 +27,7 @@ export const Route = createFileRoute("/pricing")({
 });
 
 function PricingRoute() {
+  const { hasClerkProvider, hasConvexClient } = useStartProviderStatus();
   return (
     <AppShell {...pricingShell}>
       <main className="pricing-page">
@@ -41,6 +46,8 @@ function PricingRoute() {
             <span>Complete build</span>
           </div>
         </header>
+
+        <PricingCheckoutNotice />
 
         <section aria-labelledby="plans-heading" className="pricing-plans">
           <h2 className="sr-only" id="plans-heading">Plans</h2>
@@ -76,7 +83,11 @@ function PricingRoute() {
                   <dd>Kept for {plan.originalRetention}</dd>
                 </div>
               </dl>
-              {plan.available ? (
+              {plan.id === "pro" || plan.id === "studio" ? (
+                hasClerkProvider && hasConvexClient ? <SubscriptionPurchaseAction planType={plan.id} /> : (
+                  <button className="pricing-plan__action" disabled type="button">Checkout unavailable</button>
+                )
+              ) : plan.available ? (
                 <Link className="pricing-plan__action" to={appPaths.create}>
                   {plan.cta} <span aria-hidden="true">→</span>
                 </Link>
@@ -101,11 +112,14 @@ function PricingRoute() {
                 <span>Credits</span>
                 <small>{pack.builds} complete builds</small>
                 <b>{pack.price}</b>
+                {hasClerkProvider && hasConvexClient ? <CreditPackPurchaseAction credits={pack.credits} /> : (
+                  <button className="pricing-pack__action" disabled type="button">Checkout unavailable</button>
+                )}
               </div>
             ))}
           </div>
           <div className="pricing-section__note">
-            <p>Available to active subscribers when billing opens.</p>
+            <p>Credit Packs are available to active subscribers.</p>
             <p>Credits purchased separately do not expire.</p>
           </div>
         </section>

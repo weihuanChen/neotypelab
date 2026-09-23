@@ -122,6 +122,47 @@ documented in `docs/neotypelab_technical_architecture.md`, plus
 `v1=` followed by the lowercase HMAC-SHA256 hex digest of
 `<timestamp>.<raw-request-body>` using `BILLING_WEBHOOK_SECRET`.
 
+### Creem Test Mode setup
+
+The `@mmailaender/convex-creem` component is registered separately from the
+existing normalized subscription ledger. The Creem SDK is pinned to `1.3.6`:
+newer `1.x` releases return a different pagination shape that breaks this
+component's product sync. Set these on the **Convex development
+deployment** using values from the Creem Test Mode dashboard:
+
+```bash
+npx convex env set CREEM_API_KEY <test_api_key>
+npx convex env set CREEM_WEBHOOK_SECRET <test_webhook_signing_secret>
+npx convex env set CREEM_SERVER_URL https://test-api.creem.io
+npx convex env set CREEM_PRO_MONTHLY_PRODUCT_ID <test_pro_monthly_product_id>
+npx convex env set CREEM_STUDIO_MONTHLY_PRODUCT_ID <test_studio_monthly_product_id>
+npx convex env set CREEM_CREDIT_PACK_64_PRODUCT_ID <test_64_credit_pack_id>
+npx convex env set CREEM_CREDIT_PACK_160_PRODUCT_ID <test_160_credit_pack_id>
+npx convex env set CREEM_CREDIT_PACK_400_PRODUCT_ID <test_400_credit_pack_id>
+npx convex env set CREEM_CHECKOUT_RETURN_ORIGINS 'http://localhost:3001,http://localhost:3100,https://neotypelab.com'
+```
+
+In Creem Test Mode, register `https://<your-convex-dev-deployment>.convex.site/creem/events`
+as the webhook URL. Use the Convex **site** URL, not its `.convex.cloud` URL.
+Create Pro and Studio monthly subscriptions and the three one-time Credit Packs
+in Creem Test Mode. After deploying the backend to the development deployment,
+run `npx convex run creemBilling:syncProducts` to import those products into
+the component. The component validates Creem signatures using
+`CREEM_WEBHOOK_SECRET`; this is distinct from `BILLING_WEBHOOK_SECRET`.
+
+Creem events populate the component's billing tables. Verified events for the
+configured subscriptions map checkout, payment and lifecycle events into the
+app's subscription and Credit ledger. Signed-in users can buy Pro or Studio;
+an active Pro subscriber can upgrade to Studio. Active subscribers can purchase
+Credit Packs, which grant permanent Credits once per paid Creem order. The
+refund handler reverses available permanent Credits proportionally for partial
+or full refunds and records any amount already spent for manual review. The
+return URL only displays confirmation; verified Webhooks grant plan access and
+Credits. Direct Creem payment links do not carry the app account ID and cannot
+grant app access. Use a separate Convex development deployment for Test Mode,
+and configure production later with production Creem keys, its own five
+product IDs, production return origins and no `CREEM_SERVER_URL` override.
+
 Subscription Credits roll over up to twice the plan's monthly allowance and are
 tracked separately from permanent starter, purchased and grandfathered Credits.
 After deploying this ledger change, run

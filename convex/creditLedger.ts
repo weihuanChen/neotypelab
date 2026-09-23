@@ -169,6 +169,45 @@ export async function grantPermanentCredits(
   };
 }
 
+export async function revokeRefundedPackCredits(
+  ctx: CreditWriteCtx,
+  input: { userId: Id<"users">; orderId: Id<"orders">; amount: number }
+) {
+  requirePositiveInteger(input.amount, "Credit Pack refund");
+  const account = await ensureCreditAccount(ctx, input.userId);
+  const buckets = creditBuckets(account);
+  const revokedAmount = Math.min(input.amount, buckets.permanentBalance);
+  const permanentBalance = buckets.permanentBalance - revokedAmount;
+  const balanceAfter = permanentBalance + buckets.subscriptionBalance;
+  await ctx.db.patch(account._id, {
+    balance: balanceAfter,
+    permanentBalance,
+    subscriptionBalance: buckets.subscriptionBalance,
+    lastCreditEventAt: Date.now(),
+  });
+  const transactionId = await ctx.db.insert("creditTransactions", {
+    userId: input.userId,
+    actionType: "credit-pack-refund",
+    delta: -revokedAmount,
+    creditAmount: revokedAmount,
+    balanceAfter,
+    permanentDelta: -revokedAmount,
+    subscriptionDelta: 0,
+    permanentBalanceAfter: permanentBalance,
+    subscriptionBalanceAfter: buckets.subscriptionBalance,
+    orderId: input.orderId,
+    referenceTable: "orders",
+    referenceId: input.orderId,
+    sourceType: "refund",
+    reasonCode: "credit-pack-refunded",
+    description: "Credit Pack refund",
+    internalNote: revokedAmount < input.amount
+      ? `${input.amount - revokedAmount} purchased Credits were already spent and could not be revoked`
+      : undefined,
+  });
+  return { transactionId, revokedAmount, balanceAfter };
+}
+
 export async function grantSubscriptionPeriodCredits(
   ctx: CreditWriteCtx,
   input: {
@@ -249,6 +288,51 @@ export async function grantSubscriptionPeriodCredits(
     subscriptionBalance,
     subscriptionBalanceCap: cap,
   };
+}
+
+export async function grantSubscriptionUpgradeCredits(
+  ctx: CreditWriteCtx,
+  input: {
+    userId: Id<"users">;
+    subscriptionId: Id<"subscriptions">;
+    amount: number;
+    monthlyAllowance: number;
+    periodEnd: number;
+  }
+) {
+  requirePositiveInteger(input.amount, "Upgrade Credits");
+  const account = await ensureCreditAccount(ctx, input.userId);
+  const buckets = creditBuckets(account);
+  const subscriptionBalance = buckets.subscriptionBalance + input.amount;
+  const balanceAfter = buckets.permanentBalance + subscriptionBalance;
+  const cap = input.monthlyAllowance * SUBSCRIPTION_CREDIT_BALANCE_MULTIPLIER;
+  const now = Date.now();
+  await ctx.db.patch(account._id, {
+    balance: balanceAfter,
+    permanentBalance: buckets.permanentBalance,
+    subscriptionBalance,
+    subscriptionMonthlyAllowance: input.monthlyAllowance,
+    subscriptionBalanceCap: cap,
+    subscriptionPlanType: "studio",
+    subscriptionPeriodEnd: input.periodEnd,
+    lifetimeGranted: account.lifetimeGranted + input.amount,
+    lastCreditEventAt: now,
+  });
+  return await ctx.db.insert("creditTransactions", {
+    userId: input.userId,
+    actionType: "subscription-credit",
+    delta: input.amount,
+    creditAmount: input.amount,
+    balanceAfter,
+    permanentDelta: 0,
+    subscriptionDelta: input.amount,
+    permanentBalanceAfter: buckets.permanentBalance,
+    subscriptionBalanceAfter: subscriptionBalance,
+    referenceTable: "subscriptions",
+    referenceId: input.subscriptionId,
+    description: "Studio upgrade Credits",
+    sourceType: "subscription",
+  });
 }
 
 export async function setSubscriptionBalanceExpiration(

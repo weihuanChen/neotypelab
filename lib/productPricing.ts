@@ -4,6 +4,17 @@ export const STARTER_CREDITS = 20;
 
 export const SUBSCRIPTION_CREDIT_BALANCE_MULTIPLIER = 2;
 
+export const PRO_MONTHLY_CREDITS = 160;
+export const PRO_MONTHLY_PRICE_MINOR = 1990;
+export const STUDIO_MONTHLY_CREDITS = 320;
+export const STUDIO_MONTHLY_PRICE_MINOR = 2990;
+
+export const CREDIT_PACK_SPECS = {
+  64: { priceMinor: 900, builds: 8 },
+  160: { priceMinor: 1900, builds: 20 },
+  400: { priceMinor: 3900, builds: 50 },
+} as const;
+
 export const PRODUCT_PLAN_ENTITLEMENTS = {
   free: {
     workspaceGb: 0.5,
@@ -39,13 +50,13 @@ export const PRODUCT_PLANS = [
     name: "Pro",
     price: "$19.90",
     priceSuffix: "/ month",
-    credits: 160,
+    credits: PRO_MONTHLY_CREDITS,
     creditCadence: "every month",
     builds: 20,
     workspace: "10 GB",
     originalRetention: "30 days",
     featured: true,
-    available: false,
+    available: true,
     cta: "Go Pro",
   },
   {
@@ -53,21 +64,21 @@ export const PRODUCT_PLANS = [
     name: "Studio",
     price: "$29.90",
     priceSuffix: "/ month",
-    credits: 320,
+    credits: STUDIO_MONTHLY_CREDITS,
     creditCadence: "every month",
     builds: 40,
     workspace: "30 GB",
     originalRetention: "90 days",
     featured: false,
-    available: false,
+    available: true,
     cta: "Enter Studio",
   },
 ] as const;
 
 export const CREDIT_PACKS = [
-  { credits: 64, price: "$9", builds: 8 },
-  { credits: 160, price: "$19", builds: 20 },
-  { credits: 400, price: "$39", builds: 50 },
+  { credits: 64, price: "$9", ...CREDIT_PACK_SPECS[64] },
+  { credits: 160, price: "$19", ...CREDIT_PACK_SPECS[160] },
+  { credits: 400, price: "$39", ...CREDIT_PACK_SPECS[400] },
 ] as const;
 
 export const CREDIT_COSTS = [
