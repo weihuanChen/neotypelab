@@ -163,7 +163,7 @@ Suggested smoke checks:
 Generation runs in **Convex actions**. Configure the following secrets in the
 Convex deployment (a local `.env.local` or Cloudflare secret alone is insufficient):
 
-- `OPEMAI_IMAGE_FOR_LLM_RELAY`: LLMRelay image key. Keep this exact spelling.
+- `OPENAI_IMAGE_FOR_LLM_RELAY`: LLMRelay image key. Keep this exact spelling.
 - `GEMINI_API_KEY_OFFCIAL`: official Gemini key. Keep this exact spelling.
 
 Create/save profiles in **Admin Settings → Providers**:
@@ -175,7 +175,7 @@ Create/save profiles in **Admin Settings → Providers**:
 | Request protocol | Images API / standard text | Images API / standard text |
 | Base URL | `https://llmrelay.site/v1` | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | Model | `gpt-image-2` | `gemini-3.5-flash` (verified for this deployment) |
-| Credential reference | `OPEMAI_IMAGE_FOR_LLM_RELAY` | `GEMINI_API_KEY_OFFCIAL` |
+| Credential reference | `OPENAI_IMAGE_FOR_LLM_RELAY` | `GEMINI_API_KEY_OFFCIAL` |
 | Suggested timeout | 180 seconds | 90 seconds |
 
 The Images API adapter also accepts a full `/images/generations` URL. For

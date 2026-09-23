@@ -19,7 +19,7 @@ export const configure = internalMutation({
         baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", modelId: textModelId, keyEnvName: "GEMINI_API_KEY_OFFCIAL", timeoutMs: 120000,
         requestDefaultsJson: JSON.stringify({ temperature: 0.35, max_tokens: 7000 }) },
       { name: "LLMRelay · GPT Image 2", slug: "llmrelay-gpt-image-2", capability: "image" as const,
-        baseUrl: "https://llmrelay.site/v1", modelId: "gpt-image-2", keyEnvName: "OPEMAI_IMAGE_FOR_LLM_RELAY", timeoutMs: 180000,
+        baseUrl: "https://llmrelay.site/v1", modelId: "gpt-image-2", keyEnvName: "OPENAI_IMAGE_FOR_LLM_RELAY", timeoutMs: 180000,
         requestDefaultsJson: JSON.stringify({ size: "1024x1024", quality: "high" }) },
     ];
     const profileIds = [];

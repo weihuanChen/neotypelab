@@ -6,7 +6,7 @@ using the authenticated local creation page at http://localhost:3001/create.
 ## Configuration
 
 - Text: official Gemini OpenAI-compatible API, `gemini-3.5-flash`, credential reference `GEMINI_API_KEY_OFFCIAL`.
-- Image: LLMRelay `/v1/images/generations`, `gpt-image-2`, credential reference `OPEMAI_IMAGE_FOR_LLM_RELAY`.
+- Image: LLMRelay `/v1/images/generations`, `gpt-image-2`, credential reference `OPENAI_IMAGE_FOR_LLM_RELAY`.
 - Published text templates: Style Suggestion, Palette Plan, Repaint Specification, all `creation.v1`.
 - Existing HD Render template retained; full approved palette and specification appended as authoritative inputs.
 - Gemini's model list included `gemini-2.5-flash`, but actual inference returned HTTP 404. A minimal JSON inference succeeded with `gemini-3.5-flash`, which is now configured.

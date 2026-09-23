@@ -13,7 +13,7 @@ export const inspectModels = internalAction({
     if (!response.ok) throw new Error(`Gemini model discovery failed: HTTP ${response.status}`);
     const payload = await response.json() as { models?: Array<{ name: string; supportedGenerationMethods?: string[] }> };
     return {
-      imageKeyConfigured: Boolean(process.env.OPEMAI_IMAGE_FOR_LLM_RELAY),
+      imageKeyConfigured: Boolean(process.env.OPENAI_IMAGE_FOR_LLM_RELAY),
       textModels: (payload.models ?? []).filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
         .map((model) => model.name.replace(/^models\//, "")),
     };
