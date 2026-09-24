@@ -1,5 +1,5 @@
 import creemTest from "@mmailaender/convex-creem/test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import { api, components, internal } from "./_generated/api";
 import schema from "./schema";
@@ -9,6 +9,14 @@ import { creem } from "./creemBilling";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("Creem checkout authorization", () => {
+  beforeEach(() => {
+    vi.stubEnv("CREEM_BILLING_ENABLED", "true");
+    vi.stubEnv("CREEM_API_KEY", "creem_test_example");
+    vi.stubEnv("CREEM_WEBHOOK_SECRET", "whsec_example");
+    vi.stubEnv("CREEM_SERVER_URL", "https://test-api.creem.io");
+    vi.stubEnv("CREEM_CHECKOUT_RETURN_ORIGINS", "http://localhost:3001");
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
@@ -84,7 +92,13 @@ describe("Creem checkout authorization", () => {
     await expect(user.client.action(api.creemBilling.createSubscriptionCheckout, {
       returnOrigin: "https://not-our-site.example",
       planType: "pro",
-    })).rejects.toThrow("not allowed");
+    })).rejects.toThrow("unavailable");
+    vi.stubEnv("CREEM_BILLING_ENABLED", "false");
+    await expect(user.client.action(api.creemBilling.createSubscriptionCheckout, {
+      returnOrigin: "http://localhost:3001",
+      planType: "pro",
+    })).rejects.toThrow("unavailable");
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it("creates the configured Studio checkout for a free account", async () => {
@@ -212,12 +226,12 @@ describe("Creem checkout authorization", () => {
       {
         id: "prod_pro_monthly", name: "Pro", description: null, price: 1990,
         currency: "USD", billingType: "recurring", billingPeriod: "every-month",
-        status: "active", createdAt: new Date(now).toISOString(), modifiedAt: null,
+        status: "active", mode: "test", createdAt: new Date(now).toISOString(), modifiedAt: null,
       },
       {
         id: "prod_studio_monthly", name: "Studio", description: null, price: 2990,
         currency: "USD", billingType: "recurring", billingPeriod: "every-month",
-        status: "active", createdAt: new Date(now).toISOString(), modifiedAt: null,
+        status: "active", mode: "test", createdAt: new Date(now).toISOString(), modifiedAt: null,
       },
     ] });
     await t.mutation(components.creem.lib.insertCustomer, {

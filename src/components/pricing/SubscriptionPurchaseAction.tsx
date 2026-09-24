@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { appPaths } from "@/src/lib/appPaths";
+import { useCreemReadiness } from "./useCreemReadiness";
 
 export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "studio" }) {
   const { isLoaded, isSignedIn } = useUser();
@@ -11,6 +12,7 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
   const subscription = useQuery(api.subscriptions.viewerCurrent);
   const createCheckout = useAction(api.creemBilling.createSubscriptionCheckout);
   const upgradeToStudio = useMutation(api.creemBilling.upgradeToStudio);
+  const readiness = useCreemReadiness();
   const [busy, setBusy] = useState(false);
   const [upgradePending, setUpgradePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,11 +32,16 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
     return () => window.removeEventListener("pageshow", resetAfterHistoryReturn);
   }, []);
 
-  if (!isLoaded || viewer === undefined || subscription === undefined) {
-    return <button className="pricing-plan__action" disabled type="button">Checking account…</button>;
+  if (!isLoaded || viewer === undefined || subscription === undefined || readiness === undefined) {
+    return <button className="pricing-plan__action" disabled type="button">Checking checkout…</button>;
   }
 
+  const paymentReady = readiness.products[planType];
+
   if (!isSignedIn) {
+    if (!paymentReady) {
+      return <button className="pricing-plan__action" disabled type="button">Checkout unavailable</button>;
+    }
     return (
       <SignInButton mode="modal">
         <button className="pricing-plan__action" type="button">
@@ -51,6 +58,10 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
   const effectivePlan = viewer.entitlements.planType;
   if (effectivePlan === planType || (planType === "pro" && effectivePlan === "studio")) {
     return <Link className="pricing-plan__action" to={appPaths.studio}>View your plan <span aria-hidden="true">→</span></Link>;
+  }
+
+  if (!paymentReady) {
+    return <button className="pricing-plan__action" disabled type="button">Checkout unavailable</button>;
   }
 
   if (returnedFromCheckout && effectivePlan === "free") {

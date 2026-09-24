@@ -42,9 +42,16 @@ test("renders the public pricing plans and current Credit guide", async ({ page 
   await expect(page.getByText("400", { exact: true })).toBeVisible();
   await expect(page.getByText("Color plan 1 · Repaint specification 2 · HD render 5")).toBeVisible();
   await expect(page.getByText(/up to twice your plan's monthly allowance/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /Sign in for Pro/i })).toBeEnabled();
-  await expect(page.getByRole("button", { name: /Sign in for Studio/i })).toBeEnabled();
-  await expect(page.getByRole("button", { name: /Sign in to buy/i })).toHaveCount(3);
+  const proAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Pro" }) }).getByRole("button");
+  const studioAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Studio" }) }).getByRole("button");
+  await expect(proAction).toHaveText(/Sign in for Pro|Checkout unavailable/i);
+  await expect(studioAction).toHaveText(/Sign in for Studio|Checkout unavailable/i);
+  const packActions = page.getByRole("region", { name: "Credit Packs" }).getByRole("button");
+  await expect(packActions).toHaveCount(3);
+  for (const action of await packActions.all()) {
+    await expect(action).toHaveText(/Sign in to buy|Checkout unavailable/i);
+    if ((await action.innerText()).includes("unavailable")) await expect(action).toBeDisabled();
+  }
   expect(consoleErrors).toEqual([]);
 });
 

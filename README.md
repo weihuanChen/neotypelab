@@ -149,6 +149,13 @@ in Creem Test Mode. After deploying the backend to the development deployment,
 run `npx convex run creemBilling:syncProducts` to import those products into
 the component. The component validates Creem signatures using
 `CREEM_WEBHOOK_SECRET`; this is distinct from `BILLING_WEBHOOK_SECRET`.
+After confirming a signed test Webhook reaches the endpoint and all intended
+products are synced, explicitly open new purchases with
+`npx convex env set CREEM_BILLING_ENABLED true`. Leave it unset or set it to
+`false` to keep payment buttons disabled and reject new Checkout requests.
+The app also checks the API key and signing secret are present, the Creem API
+mode matches the synced product modes, the return origin is allowed, and each
+product's status, billing type, currency, and price match the published catalog.
 
 Creem events populate the component's billing tables. Verified events for the
 configured subscriptions map checkout, payment and lifecycle events into the
@@ -162,6 +169,8 @@ Credits. Direct Creem payment links do not carry the app account ID and cannot
 grant app access. Use a separate Convex development deployment for Test Mode,
 and configure production later with production Creem keys, its own five
 product IDs, production return origins and no `CREEM_SERVER_URL` override.
+Production purchases stay closed until its own `CREEM_BILLING_ENABLED=true`
+is set after live Webhook and product verification.
 
 Subscription Credits roll over up to twice the plan's monthly allowance and are
 tracked separately from permanent starter, purchased and grandfathered Credits.

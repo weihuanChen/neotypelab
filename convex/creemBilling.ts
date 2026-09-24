@@ -36,6 +36,9 @@ export const createSubscriptionCheckout = action({
       throw new Error("This account already has a Creem subscription");
     }
 
+    const readiness = await ctx.runQuery(api.creemReadiness.forOrigin, { returnOrigin: args.returnOrigin });
+    if (!readiness.products[args.planType]) throw new Error("Subscription checkout is unavailable");
+
     const productId = subscriptionProductId(args.planType);
     if (!productId) throw new Error(`${args.planType} checkout is not configured`);
     const product = await ctx.runQuery(components.creem.lib.getProduct, { id: productId });
@@ -78,6 +81,9 @@ export const createCreditPackCheckout = action({
     ) {
       throw new Error("Credit Packs require an active subscription");
     }
+    const readiness = await ctx.runQuery(api.creemReadiness.forOrigin, { returnOrigin: args.returnOrigin });
+    const packKey = `pack${args.credits}` as const;
+    if (!readiness.products[packKey]) throw new Error("Credit Pack checkout is unavailable");
     const productId = creditPackProductId(args.credits);
     if (!productId) throw new Error("Credit Pack checkout is not configured");
     const product = await ctx.runQuery(components.creem.lib.getProduct, { id: productId });
@@ -113,6 +119,8 @@ export const upgradeToStudio = mutation({
     ) {
       throw new Error("An active Pro subscription is required to upgrade");
     }
+    const readiness = await ctx.runQuery(api.creemReadiness.forOrigin, {});
+    if (!readiness.products.studio) throw new Error("Studio upgrade is unavailable");
     const creemSubscription = await ctx.runQuery(components.creem.lib.getCurrentSubscription, {
       entityId: viewer._id,
     });

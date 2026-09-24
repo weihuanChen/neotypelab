@@ -37,6 +37,7 @@ import type * as credits from "../credits.js";
 import type * as creemBilling from "../creemBilling.js";
 import type * as creemEvents from "../creemEvents.js";
 import type * as creemPackOrders from "../creemPackOrders.js";
+import type * as creemReadiness from "../creemReadiness.js";
 import type * as crons from "../crons.js";
 import type * as domain from "../domain.js";
 import type * as engagement from "../engagement.js";
@@ -142,6 +143,7 @@ declare const fullApi: ApiFromModules<{
   creemBilling: typeof creemBilling;
   creemEvents: typeof creemEvents;
   creemPackOrders: typeof creemPackOrders;
+  creemReadiness: typeof creemReadiness;
   crons: typeof crons;
   domain: typeof domain;
   engagement: typeof engagement;

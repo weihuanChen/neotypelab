@@ -2,15 +2,20 @@ import { SignInButton, useUser } from "@clerk/tanstack-react-start";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
+import { useCreemReadiness } from "./useCreemReadiness";
 
 export function CreditPackPurchaseAction({ credits }: { credits: 64 | 160 | 400 }) {
   const { isLoaded, isSignedIn } = useUser();
   const viewer = useQuery(api.users.viewer);
   const subscription = useQuery(api.subscriptions.viewerCurrent);
   const createCheckout = useAction(api.creemBilling.createCreditPackCheckout);
+  const readiness = useCreemReadiness();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const packKey = `pack${credits}` as const;
+  const paymentReady = readiness?.products[packKey] === true;
   const eligible = Boolean(
+    paymentReady &&
     viewer && viewer.entitlements.planType !== "free" && subscription &&
     ["active", "canceling"].includes(subscription.status) && subscription.currentPeriodEnd > Date.now()
   );
@@ -38,7 +43,11 @@ export function CreditPackPurchaseAction({ credits }: { credits: 64 | 160 | 400 
     }
   }
 
-  if (isLoaded && !isSignedIn) {
+  if (readiness && !paymentReady) {
+    return <button className="pricing-pack__action" disabled type="button">Checkout unavailable</button>;
+  }
+
+  if (isLoaded && !isSignedIn && paymentReady) {
     return (
       <SignInButton mode="modal">
         <button className="pricing-pack__action" type="button">Sign in to buy <span aria-hidden="true">→</span></button>
@@ -46,7 +55,7 @@ export function CreditPackPurchaseAction({ credits }: { credits: 64 | 160 | 400 
     );
   }
 
-  const label = !isLoaded || viewer === undefined || subscription === undefined ? "Checking…"
+  const label = !isLoaded || viewer === undefined || subscription === undefined || readiness === undefined ? "Checking…"
     : !eligible ? "Subscribers only"
     : busy ? "Opening…" : "Buy pack";
 
