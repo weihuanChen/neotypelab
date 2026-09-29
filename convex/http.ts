@@ -11,6 +11,27 @@ import {
 
 const http = httpRouter();
 
+http.route({
+  path: "/waffo/events",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const signature = request.headers.get("x-waffo-signature");
+    if (!signature) return jsonResponse({ error: "Invalid Waffo signature" }, 401);
+    const body = await request.text();
+    if (body.length > 128_000) return jsonResponse({ error: "Waffo event is too large" }, 413);
+    try {
+      const result = await ctx.runAction(internal.waffoWebhookNode.receive, { body, signature });
+      if (result.status === "not-configured") return jsonResponse({ error: "Waffo webhook is not configured" }, 503);
+      if (result.status === "invalid-signature" || result.status === "wrong-store") {
+        return jsonResponse({ error: "Invalid Waffo signature" }, 401);
+      }
+      return jsonResponse(result, 200);
+    } catch {
+      return jsonResponse({ error: "Waffo event processing failed" }, 500);
+    }
+  }),
+});
+
 creem.registerRoutes(http, {
   events: {
     "checkout.completed": handleCreemCheckoutEvent,

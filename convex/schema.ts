@@ -604,6 +604,15 @@ const schema = defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_orderId", ["orderId"]),
 
+  waffoSubscriptionOrderAliases: defineTable({
+    orderId: v.string(),
+    canonicalOrderId: v.string(),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_orderId", ["orderId"])
+    .index("by_canonicalOrderId", ["canonicalOrderId"]),
+
   creditPriceRules: defineTable({
     actionType: vCreditActionType,
     label: v.string(),
@@ -766,6 +775,22 @@ const schema = defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_provider_event", ["provider", "eventId"])
     .index("by_externalSubscriptionId", ["externalSubscriptionId"]),
+
+  waffoWebhookEvents: defineTable({
+    eventId: v.string(),
+    businessEventId: v.string(),
+    eventType: v.string(),
+    storeId: v.string(),
+    mode: v.union(v.literal("test"), v.literal("prod")),
+    orderId: v.optional(v.string()),
+    orderMerchantExternalId: v.optional(v.string()),
+    buyerUserId: v.optional(v.id("users")),
+    occurredAt: v.number(),
+    receivedAt: v.number(),
+    outcome: v.union(v.literal("verified-unmapped"), v.literal("processed"), v.literal("ignored")),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_orderId", ["orderId"]),
 
   accountStorageUsage: defineTable({
     userId: v.id("users"),

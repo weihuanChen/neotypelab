@@ -263,6 +263,13 @@
 
 .pricing-plan__purchase { align-self: end; }
 .pricing-plan__purchase .pricing-plan__action { width: 100%; }
+.pricing-plan__waffo { align-self: end; }
+.pricing-plan__waffo .pricing-plan__action { width: 100%; margin-top: 0.45rem; }
+.pricing-plan__action--secondary {
+  border-color: var(--color-rule-2);
+  background: transparent;
+  color: var(--color-ink);
+}
 
 .pricing-plan__error,
 .pricing-plan__notice {
@@ -352,6 +359,8 @@
 .pricing-pack__action span { margin-left: 0.3rem; }
 .pricing-pack__action:hover:not(:disabled) { background: var(--color-accent); color: var(--color-accent-ink); }
 .pricing-pack__action:disabled { border-color: var(--color-rule-2); background: transparent; color: var(--color-muted); cursor: not-allowed; }
+.pricing-pack__waffo { display: grid; gap: 0.35rem; }
+.pricing-pack__action--secondary { border-color: var(--color-rule-2); background: transparent; color: var(--color-ink); }
 
 .pricing-section__note {
   grid-column: 2;

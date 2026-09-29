@@ -105,6 +105,16 @@ import type * as types from "../types.js";
 import type * as userStyles from "../userStyles.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
+import type * as waffoCatalog from "../waffoCatalog.js";
+import type * as waffoCheckout from "../waffoCheckout.js";
+import type * as waffoCheckoutQueries from "../waffoCheckoutQueries.js";
+import type * as waffoConnectivity from "../waffoConnectivity.js";
+import type * as waffoPackOrders from "../waffoPackOrders.js";
+import type * as waffoReadiness from "../waffoReadiness.js";
+import type * as waffoReconcile from "../waffoReconcile.js";
+import type * as waffoSubscriptionOrders from "../waffoSubscriptionOrders.js";
+import type * as waffoWebhookEvents from "../waffoWebhookEvents.js";
+import type * as waffoWebhookNode from "../waffoWebhookNode.js";
 import type * as workflowManager from "../workflowManager.js";
 
 import type {
@@ -211,6 +221,16 @@ declare const fullApi: ApiFromModules<{
   userStyles: typeof userStyles;
   users: typeof users;
   utils: typeof utils;
+  waffoCatalog: typeof waffoCatalog;
+  waffoCheckout: typeof waffoCheckout;
+  waffoCheckoutQueries: typeof waffoCheckoutQueries;
+  waffoConnectivity: typeof waffoConnectivity;
+  waffoPackOrders: typeof waffoPackOrders;
+  waffoReadiness: typeof waffoReadiness;
+  waffoReconcile: typeof waffoReconcile;
+  waffoSubscriptionOrders: typeof waffoSubscriptionOrders;
+  waffoWebhookEvents: typeof waffoWebhookEvents;
+  waffoWebhookNode: typeof waffoWebhookNode;
   workflowManager: typeof workflowManager;
 }>;
 

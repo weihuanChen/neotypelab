@@ -21,9 +21,6 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
   useEffect(() => {
     const returned = new URLSearchParams(window.location.search).get("checkout") === "success";
     setReturnedFromCheckout(returned);
-    if (returned) {
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}?checkout=success`);
-    }
   }, []);
 
   useEffect(() => {
@@ -68,7 +65,8 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
     return <p aria-live="polite" className="pricing-plan__notice">Payment submitted. Confirming plan access…</p>;
   }
 
-  const canUpgrade = planType === "studio" && effectivePlan === "pro" && subscription?.status === "active";
+  const canUpgrade = planType === "studio" && effectivePlan === "pro" &&
+    subscription?.provider === "creem" && subscription.status === "active";
   const unavailable = effectivePlan !== "free" && !canUpgrade;
 
   async function startPurchase() {

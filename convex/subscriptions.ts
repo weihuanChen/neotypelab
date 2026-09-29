@@ -147,8 +147,14 @@ export const processWebhookEvent = internalMutation({
     });
     await ctx.db.patch(subscriptionId, { entitlementGrantId: grantId });
 
+    const waffoMidPeriodUpgrade = existing !== null && provider === "waffo" &&
+      existing.planType === "pro" && args.planType === "studio" &&
+      args.eventType === "subscription.updated" &&
+      args.periodStart > existing.currentPeriodStart && args.periodStart < existing.currentPeriodEnd &&
+      Math.abs(args.periodEnd - existing.currentPeriodEnd) < 24 * 60 * 60 * 1000;
+    const priorGrantPeriodStart = waffoMidPeriodUpgrade ? existing.currentPeriodStart : args.periodStart;
     const existingPeriodGrant = existing ? await ctx.db.query("subscriptionCreditGrants")
-      .withIndex("by_subscription_period", (q) => q.eq("subscriptionId", subscriptionId).eq("periodStart", args.periodStart))
+      .withIndex("by_subscription_period", (q) => q.eq("subscriptionId", subscriptionId).eq("periodStart", priorGrantPeriodStart))
       .unique() : null;
     let creditGrantId: Id<"subscriptionCreditGrants"> | null = null;
     if ((args.eventType === "subscription.started" || args.eventType === "subscription.renewed") && args.monthlyCredits > 0) {
@@ -165,7 +171,7 @@ export const processWebhookEvent = internalMutation({
     if (
       existing?.planType === "pro" && args.planType === "studio" &&
       (args.eventType === "subscription.updated" || args.eventType === "subscription.renewed") &&
-      args.periodStart === existing.currentPeriodStart &&
+      (args.periodStart === existing.currentPeriodStart || waffoMidPeriodUpgrade) &&
       existingPeriodGrant?.creditAmount === PRO_MONTHLY_CREDITS
     ) {
       await grantSubscriptionUpgradeCredits(ctx, {

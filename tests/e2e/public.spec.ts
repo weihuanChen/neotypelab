@@ -42,8 +42,10 @@ test("renders the public pricing plans and current Credit guide", async ({ page 
   await expect(page.getByText("400", { exact: true })).toBeVisible();
   await expect(page.getByText("Color plan 1 · Repaint specification 2 · HD render 5")).toBeVisible();
   await expect(page.getByText(/up to twice your plan's monthly allowance/i)).toBeVisible();
-  const proAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Pro" }) }).getByRole("button");
-  const studioAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Studio" }) }).getByRole("button");
+  const proAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Pro" }) })
+    .getByRole("button", { name: /Sign in for Pro|Checkout unavailable/i });
+  const studioAction = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Studio" }) })
+    .getByRole("button", { name: /Sign in for Studio|Checkout unavailable/i });
   await expect(proAction).toHaveText(/Sign in for Pro|Checkout unavailable/i);
   await expect(studioAction).toHaveText(/Sign in for Studio|Checkout unavailable/i);
   const packActions = page.getByRole("region", { name: "Credit Packs" }).getByRole("button");
