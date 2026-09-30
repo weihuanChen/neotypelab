@@ -680,7 +680,7 @@ select {
   padding: var(--space-sm) var(--space-md);
 }
 
-.app-topbar h1 {
+.app-topbar__title {
   margin: 0.15rem 0 0;
   font-family: var(--font-display);
   font-size: clamp(1.6rem, 2.4vw, 2.15rem);
@@ -1039,7 +1039,7 @@ select {
 .admin-template-workspace [data-template-pane="editor"] { order: 2; }
 
 .template-status-dot {
-  border-radius: 9999px !important;
+  border-radius: 9999px;
 }
 
 @media (max-width: 720px) {
@@ -5462,56 +5462,17 @@ button.showcase-chip:disabled {
 }
 
 /* Almanac compatibility layer
-   Cool slate paper system. Source of truth: src/styles/tokens.css */
+   Cool slate paper system. Source of truth: src/styles/tokens.css
+   (oklch tokens + --spike aliases) and src/styles/globals.css (shadcn
+   HSL variables). Do not redeclare either set here. */
 :root {
-  color-scheme: light;
-  --background: 208 18% 94%;
-  --foreground: 208 22% 14%;
-  --card: 208 16% 95%;
-  --card-foreground: 208 22% 14%;
-  --popover: 208 16% 95%;
-  --popover-foreground: 208 22% 14%;
-  --primary: 208 22% 14%;
-  --primary-foreground: 208 20% 97%;
-  --secondary: 208 12% 90%;
-  --secondary-foreground: 208 22% 14%;
-  --muted: 208 10% 90%;
-  --muted-foreground: 208 8% 38%;
-  --accent: 209 54% 37%;
-  --accent-foreground: 208 20% 97%;
-  --border: 206 10% 72%;
-  --input: 206 10% 72%;
-  --ring: 209 54% 37%;
-
-  --spike-bg: var(--color-paper);
-  --spike-surface: var(--color-paper-2);
-  --spike-panel: var(--color-paper-3);
-  --spike-line: var(--color-rule-2);
-  --spike-line-strong: var(--color-ink);
-  --spike-text: var(--color-ink);
-  --spike-muted: var(--color-muted);
-  --spike-accent: var(--color-accent);
-  --spike-blue: var(--color-info);
-  --spike-orange: var(--color-accent); /* legacy alias */
   --compat-panel-bg: var(--color-paper-3);
   --compat-surface-bg: var(--color-paper-2);
 }
 
-html,
-body {
-  min-height: 100%;
-}
-
-body {
-  min-width: 320px;
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-body);
-}
-
 .spike-header {
   border-bottom-color: var(--line-secondary);
-  background: rgba(244, 240, 230, 0.92);
+  background: color-mix(in oklch, var(--color-paper) 92%, transparent);
 }
 
 .spike-brand span,

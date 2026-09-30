@@ -22,7 +22,7 @@
     --muted: 208 10% 90%;
     --muted-foreground: 208 8% 38%;
 
-    --accent: 209 54% 37%;
+    --accent: 209 100% 27%; /* keep in sync with --color-accent in tokens.css */
     --accent-foreground: 208 20% 97%;
 
     --destructive: 4 55% 40%;
@@ -30,9 +30,9 @@
 
     --border: 206 10% 72%;
     --input: 206 10% 72%;
-    --ring: 209 54% 37%;
+    --ring: 208 100% 29%; /* keep in sync with --color-focus in tokens.css */
 
-    --radius: 0.5rem;
+    --radius: 0rem;
 
     /* Cool Almanac paper system — source of truth is src/styles/tokens.css */
     --bg-main: var(--color-paper);
@@ -65,9 +65,11 @@
 }
 
 @layer base {
+  /* Almanac is a zero-radius system. Square corners come from the tokens
+     (--radius-*: 0 in tokens.css, borderRadius: 0 in tailwind.config.js),
+     not from a blanket !important — dots, spinners, and avatars stay round. */
   * {
     @apply border-border;
-    border-radius: 0px !important;
   }
   body {
     @apply bg-background text-foreground min-h-full;

@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This is a TanStack Start project deployed on Cloudflare Workers with a Convex backend. Route files live in `src/routes/`, application components in `src/components/`, shared UI primitives in `components/ui/`, and small utilities in `lib/` via the `@/*` path alias. Backend schema, mutations, queries, and auth setup live in `convex/`; treat `convex/_generated/` and `src/routeTree.gen.ts` as generated code and do not edit them manually. Product and design notes live in `docs/`.
+This is a TanStack Start project deployed on Cloudflare Workers with a Convex backend. Route files live in `src/routes/`, application components in `src/components/`, shared UI primitives in `components/ui/`, and small utilities in `lib/` via the `@/*` path alias. Backend schema, mutations, queries, and auth setup live in `convex/`; treat `convex/_generated/` and `src/routeTree.gen.ts` as generated code and do not edit them manually. Product and design notes live in `docs/`. For any UI or visual work, `docs/ui-direction.md` (Cool Almanac) is the single authoritative direction document; earlier direction docs have been removed and must not be reintroduced.
 
 ## Build, Test, and Development Commands
 - `npm install`: install dependencies.

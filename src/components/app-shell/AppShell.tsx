@@ -26,11 +26,19 @@ type AppShellProps = {
   children: ReactNode;
   description?: string;
   title: string;
+  /** Pages that render their own <h1> (e.g. the Explore landing) pass false
+      so the topbar title demotes to a <p> and the page keeps a single h1. */
+  titleAsHeading?: boolean;
 };
 
 type AppViewer = FunctionReturnType<typeof api.users.viewer> | undefined;
 
-export function AppShell({ children, description, title }: AppShellProps) {
+export function AppShell({
+  children,
+  description,
+  title,
+  titleAsHeading = true,
+}: AppShellProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -42,6 +50,7 @@ export function AppShell({ children, description, title }: AppShellProps) {
         description={description}
         pathname={pathname}
         title={title}
+        titleAsHeading={titleAsHeading}
         viewer={undefined}
       >
         {children}
@@ -50,7 +59,12 @@ export function AppShell({ children, description, title }: AppShellProps) {
   }
 
   return (
-    <LiveAppShell description={description} pathname={pathname} title={title}>
+    <LiveAppShell
+      description={description}
+      pathname={pathname}
+      title={title}
+      titleAsHeading={titleAsHeading}
+    >
       {children}
     </LiveAppShell>
   );
@@ -61,6 +75,7 @@ function LiveAppShell({
   description,
   pathname,
   title,
+  titleAsHeading,
 }: AppShellProps & { pathname: string }) {
   const viewer = useQuery(api.users.viewer);
 
@@ -69,6 +84,7 @@ function LiveAppShell({
       description={description}
       pathname={pathname}
       title={title}
+      titleAsHeading={titleAsHeading}
       viewer={viewer}
     >
       {children}
@@ -81,6 +97,7 @@ function AppShellBody({
   description,
   pathname,
   title,
+  titleAsHeading = true,
   viewer,
 }: AppShellProps & {
   pathname: string;
@@ -269,7 +286,11 @@ function AppShellBody({
             </button>
             <div>
               <p className="app-topbar__kicker">NeotypeLab</p>
-              <h1>{title}</h1>
+              {titleAsHeading ? (
+                <h1 className="app-topbar__title">{title}</h1>
+              ) : (
+                <p className="app-topbar__title">{title}</p>
+              )}
               {description ? (
                 <p className="app-topbar__copy">{description}</p>
               ) : null}

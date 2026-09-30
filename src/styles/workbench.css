@@ -1723,8 +1723,7 @@
   display: inline-block;
   width: 0.85rem;
   height: 0.85rem;
-  border-radius: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid color-mix(in oklch, var(--color-ink) 20%, transparent);
   flex-shrink: 0;
 }
 

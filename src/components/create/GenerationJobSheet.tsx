@@ -156,11 +156,11 @@ export function GenerationJobSheet({
               ? "Repaint Ready"
               : "Generation Interrupted"}
         </p>
-        <h1 className="job-hero-title">
+        <h2 className="job-hero-title">
           {run.kit?.name ?? "Kit Model"}
           <span className="job-hero-separator"> × </span>
           <span className="job-hero-style">{run.styleName}</span>
-        </h1>
+        </h2>
         <p className="job-hero-caption">
           {[run.kit?.grade, run.kit?.scale, "Custom Repaint Prototype"]
             .filter(Boolean)

@@ -11,9 +11,11 @@
   --color-muted: oklch(46% 0.014 245);
   --color-rule: oklch(82% 0.012 240);
   --color-rule-2: oklch(68% 0.014 240);
-  --color-accent: oklch(48% 0.10 250);
+  /* One navy signal — matches the Almanac reference accent depth
+     (oklch(38% .135 250)); kept at 40% for AA contrast headroom. */
+  --color-accent: oklch(40% 0.135 250);
   --color-accent-ink: oklch(98% 0.006 245);
-  --color-focus: oklch(50% 0.12 250);
+  --color-focus: oklch(42% 0.135 250);
   --color-danger: oklch(48% 0.14 28);
   --color-success: oklch(46% 0.055 175);
   --color-info: oklch(44% 0.05 220);

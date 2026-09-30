@@ -40,15 +40,23 @@
   margin: 0 auto clamp(1.35rem, 2.4vw, 2rem);
 }
 
+/* Section-scale labels keep the Fell small-caps voice… */
 .explore-section-title p,
 .explore-trending h2,
 .explore-archive h2,
+.explore-footer {
+  font-family: var(--font-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* …while sub-0.8rem data labels use the mono voice — IM Fell's
+   irregular strokes turn to mud below ~13px. */
 .explore-feature__meta dt,
 .explore-feature__meta-row > span,
 .explore-filter__header p,
-.explore-prototype-card__body > p:first-child,
-.explore-footer {
-  font-family: var(--font-label);
+.explore-prototype-card__body > p:first-child {
+  font-family: var(--font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -65,8 +73,10 @@
   font-family: var(--font-display);
   font-size: clamp(3rem, 4.5vw, 4.25rem);
   font-weight: 400;
-  line-height: 0.87;
-  letter-spacing: -0.025em;
+  /* IM Fell's tall ascenders/descenders clip below ~0.95;
+     the antique face also reads best untracked. */
+  line-height: 0.97;
+  letter-spacing: 0;
 }
 
 .explore-feature {
@@ -176,7 +186,7 @@
   padding-bottom: 0.75rem;
   border-bottom: var(--rule-hair) solid var(--color-rule-2);
   color: var(--color-muted);
-  font-family: var(--font-label);
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -217,7 +227,7 @@
 .explore-feature__meta-group.is-compact time {
   margin-bottom: 1rem;
   color: var(--color-muted);
-  font-family: var(--font-label);
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -248,19 +258,20 @@
   text-transform: uppercase;
 }
 
+/* The one navy element at rest on this page. */
 .explore-action.is-primary {
-  background: transparent;
-  color: var(--color-ink);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  padding-inline: 1.1rem;
 }
 
 .explore-action:hover {
-  border-color: var(--color-accent);
   color: var(--color-accent);
 }
 
 .explore-action.is-primary:hover {
-  background: transparent;
-  color: var(--color-accent);
+  background: color-mix(in oklch, var(--color-accent) 82%, var(--color-ink));
+  color: var(--color-accent-ink);
 }
 
 .explore-editorial-strip {
@@ -358,8 +369,12 @@
 
 .explore-prototype-card__body > div a {
   margin-left: auto;
-  color: var(--color-accent);
+  color: var(--color-ink-2);
   white-space: nowrap;
+}
+
+.explore-prototype-card__body > div a:hover {
+  color: var(--color-accent);
 }
 
 .explore-prototype-card.is-compact .explore-prototype-card__body {
@@ -542,7 +557,7 @@
   display: grid;
   gap: 0.5rem;
   color: var(--color-ink);
-  font-family: var(--font-label);
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   letter-spacing: 0.04em;
   text-align: center;

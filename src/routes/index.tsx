@@ -38,7 +38,7 @@ function Home() {
   const structuredData = buildShowcaseStructuredData(snapshot);
 
   return (
-    <AppShell {...exploreShell}>
+    <AppShell {...exploreShell} titleAsHeading={false}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
