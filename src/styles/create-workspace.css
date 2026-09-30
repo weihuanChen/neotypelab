@@ -113,7 +113,7 @@
 
 /* Viewport & Scanner */
 .job-viewport-column { display: grid; gap: 1rem; min-width: 0; }
-.job-silhouette-viewport { position: relative; width: 100%; aspect-ratio: 4/3; background: var(--color-paper-2); border: 1px solid var(--color-rule-2); overflow: hidden; display: grid; place-items: center; }
+.job-silhouette-viewport { position: relative; width: 100%; aspect-ratio: 4/5; background: var(--color-paper-2); border: 1px solid var(--color-rule-2); overflow: hidden; display: grid; place-items: center; }
 
 .job-corner-mark { position: absolute; width: 12px; height: 12px; border-color: var(--color-rule-2); pointer-events: none; z-index: 3; }
 .job-corner-mark.top-left { top: 8px; left: 8px; border-top: 2px solid; border-left: 2px solid; }
@@ -122,6 +122,7 @@
 .job-corner-mark.bottom-right { bottom: 8px; right: 8px; border-bottom: 2px solid; border-right: 2px solid; }
 
 .job-silhouette-media { width: 100%; height: 100%; display: grid; place-items: center; transition: opacity 600ms ease; filter: contrast(1.15) brightness(.92); }
+.job-silhouette-media > img { width: 100%; height: 100%; object-fit: contain; padding: 1.5rem; }
 .job-silhouette-viewport.is-ready .job-silhouette-media { opacity: 0; }
 
 .job-scanner-beam { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, .85) 30%, #38bdf8 50%, rgba(56, 189, 248, .85) 70%, transparent 100%); box-shadow: 0 0 14px 2px rgba(56, 189, 248, .7); z-index: 2; pointer-events: none; animation: scanBeam 3s ease-in-out infinite alternate; }
@@ -132,6 +133,7 @@
 
 /* Palette Section */
 .job-palette-section { border: 1px solid var(--color-rule); padding: .9rem 1rem; background: var(--color-paper); }
+.job-palette-section .style-color-strip { height: 4rem; }
 .job-palette-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted); }
 .job-palette-status { font-weight: 600; color: var(--color-ink); }
 .job-palette-empty { font-size: .78rem; color: var(--color-muted); padding: .5rem 0; font-family: var(--font-mono); }

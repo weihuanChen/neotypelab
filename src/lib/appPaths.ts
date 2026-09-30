@@ -8,6 +8,7 @@ export const appPaths = {
   feedback: "/feedback",
   studio: "/studio",
   pricing: "/pricing",
+  checkout: "/checkout",
   contact: "/contact",
   legal: "/legal",
   legalTerms: "/legal/terms",

@@ -6,7 +6,7 @@ import {
   STUDIO_MONTHLY_PRICE_MINOR,
 } from "../lib/productPricing";
 import { api, components } from "./_generated/api";
-import { action, internalAction } from "./_generated/server";
+import { action, internalAction, type ActionCtx } from "./_generated/server";
 import { mutation } from "./functions";
 
 export const creem = new Creem(components.creem);
@@ -16,7 +16,13 @@ export const createSubscriptionCheckout = action({
     returnOrigin: v.string(),
     planType: v.union(v.literal("pro"), v.literal("studio")),
   },
-  handler: async (ctx, args): Promise<{ url: string }> => {
+  handler: (ctx, args): Promise<{ url: string }> => createCreemSubscriptionCheckout(ctx, args),
+});
+
+export async function createCreemSubscriptionCheckout(
+  ctx: ActionCtx,
+  args: { returnOrigin: string; planType: "pro" | "studio" },
+): Promise<{ url: string }> {
     const viewer = await ctx.runQuery(api.users.viewer, {});
     if (!viewer || viewer.accountStatus !== "active") {
       throw new Error("Sign in to an active account before subscribing");
@@ -61,15 +67,20 @@ export const createSubscriptionCheckout = action({
         successUrl: `${origin}/pricing?checkout=success`,
       }
     );
-  },
-});
+}
 
 export const createCreditPackCheckout = action({
   args: {
     returnOrigin: v.string(),
     credits: v.union(v.literal(64), v.literal(160), v.literal(400)),
   },
-  handler: async (ctx, args): Promise<{ url: string }> => {
+  handler: (ctx, args): Promise<{ url: string }> => createCreemCreditPackCheckout(ctx, args),
+});
+
+export async function createCreemCreditPackCheckout(
+  ctx: ActionCtx,
+  args: { returnOrigin: string; credits: 64 | 160 | 400 },
+): Promise<{ url: string }> {
     const viewer = await ctx.runQuery(api.users.viewer, {});
     if (!viewer || viewer.accountStatus !== "active") {
       throw new Error("Sign in to an active account before purchasing Credits");
@@ -104,8 +115,7 @@ export const createCreditPackCheckout = action({
         successUrl: `${origin}/pricing?checkout=success`,
       }
     );
-  },
-});
+}
 
 export const upgradeToStudio = mutation({
   args: {},

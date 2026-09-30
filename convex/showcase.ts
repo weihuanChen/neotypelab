@@ -7,9 +7,9 @@ import {
 } from "./baseModelHierarchy";
 import { Doc, Id } from "./_generated/dataModel";
 import { MoodTag } from "./domain";
-import { getConceptEngagementSnapshot } from "./engagement";
+import { getConceptEngagementCounts, getConceptEngagementSnapshot } from "./engagement";
 import { getCreatorPackEngagementSnapshot } from "./packEngagement";
-import { buildPaintPlan } from "./paintMappingEngine";
+import { buildPaintPlan, readStoredPaintPlan } from "./paintMappingEngine";
 import {
   visualPaletteFromLegacyPlan,
   visualPaletteSchema,
@@ -90,7 +90,7 @@ export const listPublicConcepts = query({
             concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
             getPublishedRenditions(ctx, concept),
             ctx.db.get(concept.userId),
-            listShareableRemixes(ctx, concept._id).then((items) => items.length),
+            countShareableRemixes(ctx, concept._id),
             getConceptEngagementSnapshot(ctx, concept._id),
           ]);
 
@@ -156,31 +156,30 @@ export const listPublicConceptsForSitemap = query({
 export const listPublicProfilesForSitemap = query({
   args: {},
   async handler(ctx) {
-    const users = await ctx.db.query("users").collect();
+    const concepts = await ctx.db
+      .query("concepts")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .collect();
+    const conceptsByUser = new Map<Id<"users">, Doc<"concepts">[]>();
+    for (const concept of concepts) {
+      if (!isPublicConcept(concept)) continue;
+      const group = conceptsByUser.get(concept.userId) ?? [];
+      group.push(concept);
+      conceptsByUser.set(concept.userId, group);
+    }
+
     const publicProfiles = await Promise.all(
-      users.map(async (user) => {
-        const publicConcepts = await ctx.db
-          .query("concepts")
-          .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
-          .collect()
-          .then((items) =>
-            items.filter(isPublicConcept)
-          );
-
-        if (publicConcepts.length === 0) {
-          return null;
-        }
-
-        const lastModified = publicConcepts.reduce(
-          (latest, concept) => Math.max(latest, concept._creationTime),
-          0
-        );
-
+      [...conceptsByUser.entries()].map(async ([userId, publicConcepts]) => {
+        const user = await ctx.db.get(userId);
+        if (user === null || publicConcepts.length === 0) return null;
         return {
           handle: user.handle,
-          lastModified,
+          lastModified: publicConcepts.reduce(
+            (latest, concept) => Math.max(latest, concept._creationTime),
+            0,
+          ),
         };
-      })
+      }),
     );
 
     return publicProfiles
@@ -192,47 +191,52 @@ export const listPublicProfilesForSitemap = query({
 export const listCreatorHubsForSitemap = query({
   args: {},
   async handler(ctx) {
-    const users = await ctx.db.query("users").collect();
+    const [concepts, creatorPacks, stylePresets] = await Promise.all([
+      ctx.db.query("concepts").withIndex("by_visibility", (q) => q.eq("visibility", "public")).collect(),
+      ctx.db.query("creatorPacks").collect(),
+      ctx.db.query("stylePresets").collect(),
+    ]);
+    const conceptsByUser = new Map<Id<"users">, Doc<"concepts">[]>();
+    for (const concept of concepts) {
+      if (!isPublicConcept(concept)) continue;
+      const group = conceptsByUser.get(concept.userId) ?? [];
+      group.push(concept);
+      conceptsByUser.set(concept.userId, group);
+    }
+    const packsByUser = new Map<Id<"users">, Doc<"creatorPacks">[]>();
+    for (const pack of creatorPacks) {
+      if (!pack.isActive) continue;
+      const group = packsByUser.get(pack.creatorUserId) ?? [];
+      group.push(pack);
+      packsByUser.set(pack.creatorUserId, group);
+    }
+    const styleCounts = new Map<Id<"users">, number>();
+    for (const preset of stylePresets) {
+      if (!preset.creatorUserId || !preset.isActive) continue;
+      styleCounts.set(preset.creatorUserId, (styleCounts.get(preset.creatorUserId) ?? 0) + 1);
+    }
+    const userIds = new Set<Id<"users">>([
+      ...conceptsByUser.keys(),
+      ...packsByUser.keys(),
+      ...styleCounts.keys(),
+    ]);
     const publicHubs = await Promise.all(
-      users.map(async (user) => {
-        const [publicConcepts, creatorPacks, creatorStyles] = await Promise.all([
-          ctx.db
-            .query("concepts")
-            .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
-            .collect()
-            .then((items) =>
-              items.filter(isPublicConcept)
-            ),
-          ctx.db
-            .query("creatorPacks")
-            .withIndex("by_creatorUserId", (q) => q.eq("creatorUserId", user._id))
-            .collect()
-            .then((items) => items.filter((pack) => pack.isActive)),
-          ctx.db
-            .query("stylePresets")
-            .collect()
-            .then((items) => items.filter((preset) => preset.creatorUserId === user._id && preset.isActive)),
-        ]);
-
-        if (
-          publicConcepts.length === 0 &&
-          creatorPacks.length === 0 &&
-          creatorStyles.length === 0
-        ) {
-          return null;
-        }
-
-        const lastModified = Math.max(
-          ...publicConcepts.map((concept) => concept._creationTime),
-          ...creatorPacks.map((pack) => pack._creationTime),
-          user._creationTime
-        );
-
+      [...userIds].map(async (userId) => {
+        const publicConcepts = conceptsByUser.get(userId) ?? [];
+        const packs = packsByUser.get(userId) ?? [];
+        const styleCount = styleCounts.get(userId) ?? 0;
+        if (publicConcepts.length === 0 && packs.length === 0 && styleCount === 0) return null;
+        const user = await ctx.db.get(userId);
+        if (user === null) return null;
         return {
           handle: user.handle,
-          lastModified,
+          lastModified: Math.max(
+            ...publicConcepts.map((concept) => concept._creationTime),
+            ...packs.map((pack) => pack._creationTime),
+            user._creationTime,
+          ),
         };
-      })
+      }),
     );
 
     return publicHubs
@@ -244,41 +248,41 @@ export const listCreatorHubsForSitemap = query({
 export const listRankedPublicCreators = query({
   args: {},
   async handler(ctx) {
-    const users = await ctx.db.query("users").collect();
+    const concepts = await ctx.db
+      .query("concepts")
+      .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
+      .collect();
+    const conceptsByUser = new Map<Id<"users">, Doc<"concepts">[]>();
+    for (const concept of concepts) {
+      if (!isPublicConcept(concept)) continue;
+      const group = conceptsByUser.get(concept.userId) ?? [];
+      group.push(concept);
+      conceptsByUser.set(concept.userId, group);
+    }
 
     const creatorRows = await Promise.all(
-      users.map(async (user) => {
-        const publicConcepts = await ctx.db
-          .query("concepts")
-          .withIndex("by_user_visibility", (q) => q.eq("userId", user._id).eq("visibility", "public"))
-          .collect()
-          .then((items) =>
-            items.filter(isPublicConcept)
-          );
+      [...conceptsByUser.entries()].map(async ([userId, publicConcepts]) => {
+        const user = await ctx.db.get(userId);
+        if (user === null) return null;
 
-        if (publicConcepts.length === 0) {
-          return null;
-        }
-
-        const conceptCards = await Promise.all(
-          publicConcepts.map((concept) => getConceptShareCard(ctx, concept._id))
-        ).then((items) => items.filter((item): item is ConceptShareCard => item !== null));
-
-        const totals = conceptCards.reduce(
-          (accumulator, concept) => {
-            accumulator.publicConcepts += 1;
-            accumulator.likes += concept.engagement.likeCount;
-            accumulator.saves += concept.engagement.saveCount;
-            accumulator.remixes += concept.remixCount;
-            return accumulator;
-          },
-          {
-            publicConcepts: 0,
-            likes: 0,
-            saves: 0,
-            remixes: 0,
-          }
-        );
+        const counted = await Promise.all(publicConcepts.map(async (concept) => {
+          const [engagement, remixCount] = await Promise.all([
+            getConceptEngagementCounts(ctx, concept._id),
+            countShareableRemixes(ctx, concept._id),
+          ]);
+          return {
+            likes: engagement.likeCount,
+            saves: engagement.saveCount,
+            remixes: remixCount,
+          };
+        }));
+        const totals = {
+          publicConcepts: publicConcepts.length,
+          likes: counted.reduce((sum, concept) => sum + concept.likes, 0),
+          saves: counted.reduce((sum, concept) => sum + concept.saves, 0),
+          remixes: counted.reduce((sum, concept) => sum + concept.remixes, 0),
+        };
+        const newest = [...publicConcepts].sort((a, b) => b._creationTime - a._creationTime)[0];
 
         const score =
           (user.isFeaturedCreator ? 120 : 0) +
@@ -298,7 +302,7 @@ export const listRankedPublicCreators = query({
           creatorTagline: user.creatorTagline,
           creatorSpecialties: user.creatorSpecialties ?? [],
           totals,
-          leadConcept: conceptCards.sort((a, b) => b._creationTime - a._creationTime)[0] ?? null,
+          leadConcept: newest ? await getConceptShareCard(ctx, newest._id) : null,
           score,
         };
       })
@@ -321,7 +325,7 @@ export const getSharedConcept = query({
       return null;
     }
 
-    const shareableRemixesPromise = listShareableRemixes(ctx, concept._id);
+    const storedPlan = readStoredPaintPlan(concept.palettePlanJson, concept._id, concept.title);
     const [
       baseModel,
       stylePreset,
@@ -340,15 +344,15 @@ export const getSharedConcept = query({
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
       getPublishedRenditions(ctx, concept),
       ctx.db.get(concept.userId),
-      ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      listResolvedPaintMappings(ctx),
+      storedPlan ? [] : ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
+      storedPlan ? [] : listResolvedPaintMappings(ctx),
       concept.sourceConceptId ? getConceptShareCard(ctx, concept.sourceConceptId) : Promise.resolve(null),
-      shareableRemixesPromise,
+      loadShareableRemixes(ctx, concept._id, 6),
       getConceptEngagementSnapshot(ctx, concept._id),
       getLineageChain(ctx, concept._id),
     ]);
 
-    const paintPlan = buildPaintPlan({
+    const paintPlan = storedPlan ?? buildPaintPlan({
       approvedPlanJson: concept.palettePlanJson,
       conceptId: concept._id,
       conceptTitle: concept.title,
@@ -412,8 +416,8 @@ export const getSharedConcept = query({
         : null,
       sourceConcept,
       lineage,
-      remixes: shareableRemixes.slice(0, 6),
-      remixCount: shareableRemixes.length,
+      remixes: shareableRemixes.remixes,
+      remixCount: shareableRemixes.count,
       engagement,
       paintPlan,
     };
@@ -489,8 +493,7 @@ export const getPublicProfile = query({
 
     const [
       publishedConcepts,
-      savedInteractions,
-      likeInteractions,
+      interactions,
       creatorStylePresets,
       creatorPacks,
       publicConceptCorpus,
@@ -508,13 +511,7 @@ export const getPublicProfile = query({
       ctx.db
         .query("conceptInteractions")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect()
-        .then((items) => items.filter((item) => item.kind === "save")),
-      ctx.db
-        .query("conceptInteractions")
-        .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect()
-        .then((items) => items.filter((item) => item.kind === "like")),
+        .collect(),
       ctx.db
         .query("stylePresets")
         .collect()
@@ -540,6 +537,8 @@ export const getPublicProfile = query({
           items.filter(isPublicConcept)
         ),
     ]);
+    const savedInteractions = interactions.filter((item) => item.kind === "save");
+    const likeInteractions = interactions.filter((item) => item.kind === "like");
 
     const savedConcepts = await Promise.all(
       savedInteractions.map(async (interaction) => {
@@ -680,17 +679,10 @@ export const getPublicProfile = query({
           getCreatorPackEngagementSnapshot(ctx, pack._id),
         ]);
 
-        const publicConcepts = await ctx.db
-          .query("concepts")
-          .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-          .collect()
-          .then((items) =>
-            items.filter(
-              (concept) =>
-                isPublicConcept(concept) &&
-                pack.stylePresetIds.includes(concept.stylePresetId as Id<"stylePresets">)
-            )
-          );
+        const publicConcepts = publicConceptCorpus.filter((concept) =>
+          concept.stylePresetId !== undefined &&
+          pack.stylePresetIds.includes(concept.stylePresetId),
+        );
 
         const previewConcept = await Promise.all(
           publicConcepts
@@ -730,12 +722,15 @@ export const getPublicProfile = query({
     );
 
     const remixHistory = await Promise.all(
-      published.map(async (concept) => ({
-        conceptId: concept._id,
-        conceptTitle: concept.title,
-        remixCount: (await listShareableRemixes(ctx, concept._id)).length,
-        remixes: (await listShareableRemixes(ctx, concept._id)).slice(0, 4),
-      }))
+      published.map(async (concept) => {
+        const remixes = await loadShareableRemixes(ctx, concept._id, 4);
+        return {
+          conceptId: concept._id,
+          conceptTitle: concept.title,
+          remixCount: remixes.count,
+          remixes: remixes.remixes,
+        };
+      })
     ).then((items) =>
       items
         .filter((item) => item.remixCount > 0)
@@ -1017,11 +1012,15 @@ export const getCreatorPackBySlug = query({
 export const listPublicCreatorPacks = query({
   args: {},
   async handler(ctx) {
-    const creatorPacks = await ctx.db.query("creatorPacks").collect();
+    const [creatorPacks, publicConcepts] = await Promise.all([
+      ctx.db.query("creatorPacks").collect(),
+      ctx.db.query("concepts").withIndex("by_visibility", (q) => q.eq("visibility", "public")).collect(),
+    ]);
     const activePacks = creatorPacks
       .filter((pack) => pack.isActive)
       .sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured) || a._creationTime - b._creationTime)
       .slice(0, 12);
+    const shareableConcepts = publicConcepts.filter(isPublicConcept);
 
     return await Promise.all(
       activePacks.map(async (pack) => {
@@ -1039,20 +1038,13 @@ export const listPublicCreatorPacks = query({
           getCreatorPackEngagementSnapshot(ctx, pack._id),
         ]);
 
-        const publicConcepts = await ctx.db
-          .query("concepts")
-          .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-          .collect()
-          .then((items) =>
-            items.filter(
-              (concept) =>
-                isPublicConcept(concept) &&
-                pack.stylePresetIds.includes(concept.stylePresetId as Id<"stylePresets">)
-            )
-          );
+        const matchingConcepts = shareableConcepts.filter((concept) =>
+          concept.stylePresetId !== undefined &&
+          pack.stylePresetIds.includes(concept.stylePresetId),
+        );
 
         const conceptCards = await Promise.all(
-          publicConcepts
+          [...matchingConcepts]
             .sort((a, b) => b._creationTime - a._creationTime)
             .slice(0, 1)
             .map((concept) => getConceptShareCard(ctx, concept._id))
@@ -1078,10 +1070,10 @@ export const listPublicCreatorPacks = query({
             styleCount: styles.length,
             baseModelCount: baseModels.length,
             materialCount: materials.length,
-            publicConceptCount: publicConcepts.length,
-            publicRemixCount: publicConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.remixCount, 0),
-            publicLikeCount: publicConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.engagement.likeCount, 0),
-            publicSaveCount: publicConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.engagement.saveCount, 0),
+            publicConceptCount: matchingConcepts.length,
+            publicRemixCount: matchingConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.remixCount, 0),
+            publicLikeCount: matchingConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.engagement.likeCount, 0),
+            publicSaveCount: matchingConcepts.length === 0 ? 0 : conceptCards.reduce((sum, concept) => sum + concept.engagement.saveCount, 0),
           },
           previewConcept: conceptCards[0] ?? null,
         };
@@ -1168,22 +1160,33 @@ export const listCreatorPacksForSitemap = query({
   },
 });
 
-async function listShareableRemixes(
-  ctx: QueryCtx,
-  sourceConceptId: Id<"concepts">
-): Promise<ConceptShareCard[]> {
+async function shareableRemixDocuments(ctx: QueryCtx, sourceConceptId: Id<"concepts">) {
   const concepts = await ctx.db
     .query("concepts")
     .withIndex("by_sourceConceptId", (q) => q.eq("sourceConceptId", sourceConceptId))
     .collect();
-
-  const shareableConcepts = concepts
+  return concepts
     .filter((concept) => isShareableConcept(concept))
     .sort((a, b) => b._creationTime - a._creationTime);
+}
 
-  return await Promise.all(
-    shareableConcepts.map(async (concept) => getConceptShareCard(ctx, concept._id))
-  ).then((items) => items.filter((item): item is ConceptShareCard => item !== null));
+async function countShareableRemixes(ctx: QueryCtx, sourceConceptId: Id<"concepts">) {
+  return (await shareableRemixDocuments(ctx, sourceConceptId)).length;
+}
+
+async function loadShareableRemixes(
+  ctx: QueryCtx,
+  sourceConceptId: Id<"concepts">,
+  limit: number,
+) {
+  const shareableConcepts = await shareableRemixDocuments(ctx, sourceConceptId);
+  const remixes = await Promise.all(
+    shareableConcepts.slice(0, limit).map((concept) => getConceptShareCard(ctx, concept._id)),
+  );
+  return {
+    count: shareableConcepts.length,
+    remixes: remixes.filter((item): item is ConceptShareCard => item !== null),
+  };
 }
 
 async function getLineageChain(
@@ -1230,7 +1233,7 @@ async function getConceptShareCard(
     getPublishedRenditions(ctx, concept),
     ctx.db.get(concept.userId),
     getConceptEngagementSnapshot(ctx, concept._id) as Promise<ConceptEngagementSnapshot>,
-    listShareableRemixes(ctx, concept._id).then((items: ConceptShareCard[]) => items.length),
+    countShareableRemixes(ctx, concept._id),
   ]);
 
   return {

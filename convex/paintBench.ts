@@ -5,28 +5,29 @@ import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 export const listCatalog = query({
   args: {},
   async handler(ctx) {
-    const paints = (await listResolvedPaintMappings(ctx)).filter(
-      (paint) => paint.isActive
-    );
-    const benchItems =
+    const [resolved, purchaseSources, benchItems] = await Promise.all([
+      listResolvedPaintMappings(ctx),
+      ctx.db.query("paintPurchaseSources").collect(),
       ctx.viewer === null
         ? []
-        : await ctx.db
+        : ctx.db
             .query("paintBenchItems")
             .withIndex("by_userId", (q) => q.eq("userId", ctx.viewerX()._id))
-            .collect();
+            .collect(),
+    ]);
+    const paints = resolved.filter((paint) => paint.isActive);
     const benchByPaint = new Map(
       benchItems.map((item) => [item.paintMappingId, item])
     );
+    const sourcesByPaint = new Map<string, typeof purchaseSources>();
+    for (const source of purchaseSources) {
+      const group = sourcesByPaint.get(source.paintMappingId) ?? [];
+      group.push(source);
+      sourcesByPaint.set(source.paintMappingId, group);
+    }
 
-    return await Promise.all(
-      paints.map(async (paint) => {
-        const sources = await ctx.db
-          .query("paintPurchaseSources")
-          .withIndex("by_paintMappingId", (q) =>
-            q.eq("paintMappingId", paint._id)
-          )
-          .collect();
+    return paints.map((paint) => {
+        const sources = sourcesByPaint.get(paint._id) ?? [];
         return {
           ...paint,
           benchItem: benchByPaint.get(paint._id) ?? null,
@@ -48,8 +49,7 @@ export const listCatalog = query({
                   ]
                 : [],
         };
-      })
-    );
+    });
   },
 });
 

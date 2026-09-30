@@ -3,7 +3,6 @@ import { AppShell } from "@/src/components/app-shell/AppShell";
 import { SubscriptionPurchaseAction } from "@/src/components/pricing/SubscriptionPurchaseAction";
 import { CreditPackPurchaseAction } from "@/src/components/pricing/CreditPackPurchaseAction";
 import { PricingCheckoutNotice } from "@/src/components/pricing/PricingCheckoutNotice";
-import { WaffoPackPurchaseAction, WaffoSubscriptionPurchaseAction } from "@/src/components/pricing/WaffoPurchaseActions";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import { appPaths } from "@/src/lib/appPaths";
 import {
@@ -85,10 +84,9 @@ function PricingRoute() {
                 </div>
               </dl>
               {plan.id === "pro" || plan.id === "studio" ? (
-                hasClerkProvider && hasConvexClient ? <>
+                hasClerkProvider && hasConvexClient ? (
                   <SubscriptionPurchaseAction planType={plan.id} />
-                  <WaffoSubscriptionPurchaseAction planType={plan.id} />
-                </> : (
+                ) : (
                   <button className="pricing-plan__action" disabled type="button">Checkout unavailable</button>
                 )
               ) : plan.available ? (
@@ -116,10 +114,9 @@ function PricingRoute() {
                 <span>Credits</span>
                 <small>{pack.builds} complete builds</small>
                 <b>{pack.price}</b>
-                {hasClerkProvider && hasConvexClient ? <>
+                {hasClerkProvider && hasConvexClient ? (
                   <CreditPackPurchaseAction credits={pack.credits} />
-                  <WaffoPackPurchaseAction credits={pack.credits} />
-                </> : (
+                ) : (
                   <button className="pricing-pack__action" disabled type="button">Checkout unavailable</button>
                 )}
               </div>

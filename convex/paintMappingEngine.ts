@@ -34,14 +34,22 @@ type PaintMappingRecord = Pick<
 
 export type PaintPlan = ReturnType<typeof buildRuleBasedPaintPlan>;
 
-export function buildPaintPlan(input: Parameters<typeof buildRuleBasedPaintPlan>[0] & { approvedPlanJson?: string }) {
-  if (input.approvedPlanJson) {
-    const approved = JSON.parse(input.approvedPlanJson) as PaintPlan;
-    if (!Array.isArray(approved.entries) || !Array.isArray(approved.sprayNotes)) {
-      throw new Error("Stored palette snapshot is invalid");
-    }
-    return { ...approved, conceptId: input.conceptId, conceptTitle: input.conceptTitle };
+export function readStoredPaintPlan(
+  approvedPlanJson: string | undefined,
+  conceptId: Id<"concepts"> | undefined,
+  conceptTitle: string,
+): PaintPlan | null {
+  if (!approvedPlanJson) return null;
+  const approved = JSON.parse(approvedPlanJson) as PaintPlan;
+  if (!Array.isArray(approved.entries) || !Array.isArray(approved.sprayNotes)) {
+    throw new Error("Stored palette snapshot is invalid");
   }
+  return { ...approved, conceptId, conceptTitle };
+}
+
+export function buildPaintPlan(input: Parameters<typeof buildRuleBasedPaintPlan>[0] & { approvedPlanJson?: string }) {
+  const stored = readStoredPaintPlan(input.approvedPlanJson, input.conceptId, input.conceptTitle);
+  if (stored) return stored;
   return buildRuleBasedPaintPlan(input);
 }
 

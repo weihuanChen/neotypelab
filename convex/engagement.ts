@@ -44,16 +44,27 @@ export const toggleConceptInteraction = mutation({
   },
 });
 
+export async function getConceptEngagementCounts(
+  ctx: QueryCtx,
+  conceptId: Id<"concepts">,
+) {
+  const [likeCount, saveCount] = await Promise.all([
+    countConceptInteractions(ctx, conceptId, "like"),
+    countConceptInteractions(ctx, conceptId, "save"),
+  ]);
+  return { likeCount, saveCount };
+}
+
 export async function getConceptEngagementSnapshot(
   ctx: QueryCtx,
   conceptId: Id<"concepts">
 ) {
-  const [likeCount, saveCount, viewerHasLiked, viewerHasSaved] = await Promise.all([
-    countConceptInteractions(ctx, conceptId, "like"),
-    countConceptInteractions(ctx, conceptId, "save"),
+  const [counts, viewerHasLiked, viewerHasSaved] = await Promise.all([
+    getConceptEngagementCounts(ctx, conceptId),
     hasViewerInteraction(ctx, conceptId, "like"),
     hasViewerInteraction(ctx, conceptId, "save"),
   ]);
+  const { likeCount, saveCount } = counts;
 
   return {
     likeCount,

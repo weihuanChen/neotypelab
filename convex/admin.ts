@@ -24,6 +24,7 @@ import {
   vFeedbackRootCause,
   vFeedbackStatus,
   vGenerationKind,
+  vGenerationStatus,
   vLlmApiFormat,
   vLlmCapability,
   vLlmProvider,
@@ -52,76 +53,111 @@ import { debitCredits, grantPermanentCredits } from "./creditLedger";
 
 const GIB = 1024 ** 3;
 
-export const overview = query({
+export const overviewPeople = query({
   args: {},
   async handler(ctx) {
     requireSuperAdmin(ctx);
-
-    const [
-      users,
-      creditAccounts,
-      baseModels,
-      stylePresets,
-      materialPresets,
-      promptTemplates,
-      feedbackReports,
-      generationJobs,
-      queueItems,
-      auditLogs,
-      orders,
-      paintMappings,
-      creatorPacks,
-    ] = await Promise.all([
+    const [users, creditAccounts, orders] = await Promise.all([
       ctx.db.query("users").collect(),
       ctx.db.query("creditAccounts").collect(),
-      ctx.db.query("baseModels").collect(),
-      ctx.db.query("stylePresets").collect(),
-      ctx.db.query("materialPresets").collect(),
-      ctx.db.query("promptTemplates").collect(),
-      ctx.db.query("feedbackReports").collect(),
-      ctx.db.query("generationJobs").collect(),
-      ctx.db.query("adminQueue").withIndex("by_priority").order("asc").take(10),
-      ctx.db.query("adminAuditLogs").collect(),
       ctx.db.query("orders").collect(),
-      ctx.db.query("paintMappings").collect(),
-      ctx.db.query("creatorPacks").collect(),
     ]);
-
-    const recentFailedJobs = generationJobs
-      .filter((job) => job.status === "failed")
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .slice(0, 6);
-    const recentAudit = auditLogs
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .slice(0, 8);
-
     return {
       userCount: users.length,
       adminCount: users.filter((user) => canManagePlatform(user)).length,
       superAdminCount: users.filter((user) => isSuperAdminEmail(user.email)).length,
       totalCreditBalance: creditAccounts.reduce((sum, account) => sum + account.balance, 0),
-      baseModelCount: baseModels.length,
+      orderCount: orders.length,
+    };
+  },
+});
+
+export const overviewModels = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const baseModels = await ctx.db.query("baseModels").collect();
+    return { baseModelCount: baseModels.length };
+  },
+});
+
+export const overviewPaints = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const paintMappings = await ctx.db.query("paintMappings").collect();
+    return { paintMappingCount: paintMappings.length };
+  },
+});
+
+export const overviewPresets = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [stylePresets, materialPresets, promptTemplates, creatorPacks] = await Promise.all([
+      ctx.db.query("stylePresets").collect(),
+      ctx.db.query("materialPresets").collect(),
+      ctx.db.query("promptTemplates").collect(),
+      ctx.db.query("creatorPacks").collect(),
+    ]);
+    return {
       stylePresetCount: stylePresets.length,
       materialPresetCount: materialPresets.length,
       promptTemplateCount: promptTemplates.length,
       activePromptTemplateCount: promptTemplates.filter((item) => item.isActive).length,
-      openFeedbackCount: feedbackReports.filter((item) => item.status === "open").length,
-      queuedGenerationCount: generationJobs.filter((item) => item.status === "queued").length,
-      failedGenerationCount: generationJobs.filter((item) => item.status === "failed").length,
-      generationJobCount: generationJobs.length,
-      orderCount: orders.length,
-      auditLogCount: auditLogs.length,
-      paintMappingCount: paintMappings.length,
       creatorPackCount: creatorPacks.length,
+    };
+  },
+});
+
+export const overviewDesk = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const [openFeedback, queueItems, auditLogs] = await Promise.all([
+      ctx.db.query("feedbackReports").withIndex("by_status", (q) => q.eq("status", "open")).collect(),
+      ctx.db.query("adminQueue").withIndex("by_priority").order("asc").take(10),
+      ctx.db.query("adminAuditLogs").collect(),
+    ]);
+    return {
+      openFeedbackCount: openFeedback.length,
       queueItems,
-      recentFailedJobs: recentFailedJobs.map((job) => ({
+      auditLogCount: auditLogs.length,
+      recentAudit: [...auditLogs].sort((a, b) => b._creationTime - a._creationTime).slice(0, 8),
+    };
+  },
+});
+
+export const overviewJobCount = query({
+  args: { status: vGenerationStatus },
+  async handler(ctx, { status }) {
+    requireSuperAdmin(ctx);
+    const jobs = await ctx.db
+      .query("generationJobs")
+      .withIndex("by_status", (q) => q.eq("status", status))
+      .collect();
+    return jobs.length;
+  },
+});
+
+export const overviewFailedJobs = query({
+  args: {},
+  async handler(ctx) {
+    requireSuperAdmin(ctx);
+    const failedJobs = await ctx.db
+      .query("generationJobs")
+      .withIndex("by_status", (q) => q.eq("status", "failed"))
+      .order("desc")
+      .collect();
+    return {
+      count: failedJobs.length,
+      recent: failedJobs.slice(0, 6).map((job) => ({
         _id: job._id,
         conceptId: job.conceptId,
         provider: job.provider,
         errorMessage: job.errorMessage,
         _creationTime: job._creationTime,
       })),
-      recentAudit,
     };
   },
 });

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
+import { useAdminOverview } from "./useAdminOverview";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { useAuth, useUser } from "@clerk/tanstack-react-start";
@@ -251,7 +252,7 @@ export function AdminWorkbench({
   const viewer = useQuery(api.users.viewer);
   const accessStatus = useQuery(api.users.adminAccessStatus);
   const canManagePlatform = Boolean(viewer?.canManagePlatform);
-  const overview = useQuery(api.admin.overview, canManagePlatform ? {} : "skip");
+  const overview = useAdminOverview(canManagePlatform);
   const auditLog = useQuery(api.admin.listAuditLog, canManagePlatform ? {} : "skip");
   const feedbackPipeline = useQuery(
     api.admin.listFeedbackPipeline,

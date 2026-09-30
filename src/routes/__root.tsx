@@ -36,6 +36,10 @@ export const Route = createRootRoute({
       { name: "keywords", content: publicSeo.home.keywords },
     ],
     links: [
+      { rel: "icon", href: "/favicon.ico?v=6", sizes: "any" },
+      { rel: "icon", type: "image/png", href: "/icon-32x32.png?v=6", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=6", sizes: "180x180" },
+      { rel: "manifest", href: "/site.webmanifest?v=6" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "preconnect",

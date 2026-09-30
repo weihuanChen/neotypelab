@@ -1,0 +1,207 @@
+.checkout-page {
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+  width: min(100%, 32rem);
+  margin: clamp(0.5rem, 4vh, 2.5rem) auto 0;
+}
+
+.checkout-back {
+  justify-self: start;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.checkout-back:hover { color: var(--color-accent); }
+
+.checkout-sheet {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-paper);
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.checkout-kicker {
+  margin: 0 0 1.35rem;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.checkout-sheet h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+
+.checkout-summary,
+.checkout-terms,
+.checkout-assurance,
+.checkout-notice,
+.checkout-error {
+  margin: 0;
+}
+
+.checkout-summary {
+  margin-top: 0.45rem;
+  color: var(--color-ink-2);
+  font-size: 0.95rem;
+}
+
+.checkout-price {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+  margin: 1.35rem 0 0.35rem;
+}
+
+.checkout-price strong {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.15rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+.checkout-price span,
+.checkout-terms {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.checkout-price span { padding-bottom: 0.35rem; }
+
+.checkout-terms { margin-bottom: 1.15rem; }
+
+.checkout-methods {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  border: 0;
+  border-top: var(--rule-hair) solid var(--color-rule);
+  padding: 1.15rem 0 0;
+}
+
+.checkout-methods legend {
+  margin-bottom: 0.85rem;
+  padding: 0;
+  font-family: var(--font-label);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.checkout-method {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+  border: var(--rule-hair) solid var(--color-rule);
+  padding: 0.85rem 0.9rem;
+  cursor: pointer;
+}
+
+.checkout-method.is-selected {
+  border-color: var(--color-ink);
+  background: color-mix(in oklch, var(--color-accent) 7%, var(--color-paper));
+}
+
+.checkout-method:has(input:disabled) {
+  cursor: not-allowed;
+  color: var(--color-muted);
+}
+
+.checkout-method input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--color-ink);
+}
+
+.checkout-method span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.checkout-method strong {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.checkout-method small {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.checkout-brands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.checkout-submit {
+  display: flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-ink);
+  padding: 0 1rem;
+  color: var(--color-paper);
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.checkout-submit:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.checkout-submit:disabled {
+  border-color: var(--color-rule-2);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+.checkout-notice,
+.checkout-error {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.checkout-notice { color: var(--color-ink-2); }
+.checkout-error { color: var(--color-danger); }
+
+.checkout-assurance {
+  margin-top: 1rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-submit { transition: none; }
+}

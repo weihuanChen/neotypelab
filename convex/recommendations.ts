@@ -1,6 +1,6 @@
 import { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { buildPaintPlan } from "./paintMappingEngine";
+import { buildPaintPlan, readStoredPaintPlan } from "./paintMappingEngine";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { query } from "./functions";
 import { buildFeasibilitySnapshotForSignals } from "./feasibility";
@@ -109,13 +109,14 @@ async function buildRecommendationSnapshot(
   ctx: QueryCtx,
   concept: Doc<"concepts">
 ): Promise<RecommendationSnapshot | null> {
+  const storedPlan = readStoredPaintPlan(concept.palettePlanJson, concept._id, concept.title);
   const [baseModel, stylePreset, materialPreset, colorRoles, paintMappings, stylePresets, materialPresets] =
     await Promise.all([
       concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
       concept.materialPresetId ? ctx.db.get(concept.materialPresetId) : null,
-      ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
-      listResolvedPaintMappings(ctx),
+      storedPlan ? [] : ctx.db.query("colorRoles").withIndex("by_sortOrder").collect(),
+      storedPlan ? [] : listResolvedPaintMappings(ctx),
       ctx.db.query("stylePresets").collect(),
       ctx.db.query("materialPresets").collect(),
     ]);
@@ -132,7 +133,7 @@ async function buildRecommendationSnapshot(
           .collect()
           .then((items) => items.filter((item) => item.conceptId === concept._id));
 
-  const paintPlan = buildPaintPlan({
+  const paintPlan = storedPlan ?? buildPaintPlan({
       approvedPlanJson: concept.palettePlanJson,
     conceptId: concept._id,
     conceptTitle: concept.title,

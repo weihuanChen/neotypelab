@@ -57,6 +57,23 @@ test("renders the public pricing plans and current Credit guide", async ({ page 
   expect(consoleErrors).toEqual([]);
 });
 
+test("renders a checkout order and returns invalid checkouts to pricing", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  await page.goto("/checkout?plan=pro");
+  await expect(page).toHaveTitle(/Checkout/);
+  await expect(page.getByRole("heading", { name: "NeotypeLab Pro" })).toBeVisible();
+  await expect(page.getByText("AI Model Painting Workspace")).toBeVisible();
+  await expect(page.getByText("$19.90")).toBeVisible();
+  await expect(page.getByText("Cancel anytime")).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Credit \/ Debit Card/i })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Other payment methods/i })).toBeVisible();
+  await expect(page.getByText("Secure payment · Taxes included")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sign in to continue|Continue to payment|Checkout unavailable|Checking checkout/i })).toBeVisible();
+  await page.goto("/checkout");
+  await expect(page).toHaveURL(/\/pricing$/);
+  expect(consoleErrors).toEqual([]);
+});
+
 test("shows the signed-out create gate", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/create");

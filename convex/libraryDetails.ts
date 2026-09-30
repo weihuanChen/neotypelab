@@ -33,6 +33,14 @@ export const get = query({
     const concept = await ctx.db.get(id);
     if (!concept || concept.userId !== ctx.viewer._id) return null;
     const ownerId = ctx.viewer._id;
+    const visualPaletteResult = concept.visualPaletteJson
+      ? visualPaletteSchema.safeParse(objectJson(concept.visualPaletteJson))
+      : null;
+    const visualPalette = visualPaletteResult?.success
+      ? visualPaletteResult.data
+      : visualPaletteFromLegacyPlan(concept.palettePlanJson);
+    const storedRecommendations = readStoredRecommendations(concept.paintRecommendationSetsJson);
+    const needsPaintCatalog = Boolean(visualPalette) && (storedRecommendations === null || storedRecommendations.coverage === 0);
     const [kit, style, material, assets, jobs, compositions, paletteComposition, legacy, entitlements, sprayPlans, paintMappings] = await Promise.all([
       concept.baseModelId ? ctx.db.get(concept.baseModelId) : null,
       concept.stylePresetId ? ctx.db.get(concept.stylePresetId) : null,
@@ -44,7 +52,7 @@ export const get = query({
       concept.previewAssetId ? ctx.db.get(concept.previewAssetId) : null,
       resolveEffectiveEntitlements(ctx, ownerId),
       ctx.db.query("sprayPlans").withIndex("by_conceptId", q => q.eq("conceptId", id)).collect(),
-      listResolvedPaintMappings(ctx),
+      needsPaintCatalog ? listResolvedPaintMappings(ctx) : [],
     ]);
     // Older records can have a media pointer without the reverse concept association.
     if (concept.mediaAssetId && !assets.some(asset => asset._id === concept.mediaAssetId)) {
@@ -86,17 +94,8 @@ export const get = query({
     const readableLegacyObject = legacyObject?.userId === ownerId && legacyObject.bucketRole === "private" && legacyObject.status === "ready"
       && (!legacyObject.retainUntil || legacyObject.retainUntil > Date.now())
       && (legacyObject.rendition !== "original" || entitlements.originalDownloadAllowed) ? legacyObject : null;
-    const visualPaletteResult = concept.visualPaletteJson
-      ? visualPaletteSchema.safeParse(objectJson(concept.visualPaletteJson))
-      : null;
-    const visualPalette = visualPaletteResult?.success
-      ? visualPaletteResult.data
-      : visualPaletteFromLegacyPlan(concept.palettePlanJson);
-    const storedRecommendations = concept.paintRecommendationSetsJson
-      ? paintRecommendationSetsSchema.safeParse(objectJson(concept.paintRecommendationSetsJson))
-      : null;
-    let paintRecommendations = storedRecommendations?.success ? storedRecommendations.data : null;
-    if (visualPalette) {
+    let paintRecommendations = storedRecommendations?.recommendations ?? null;
+    if (needsPaintCatalog && visualPalette) {
       try {
         const live = buildPaintRecommendationSets(visualPalette, paintMappings);
         const liveCoverage = Math.max(0, ...live.sets.map((set) => set.coverageCount));
@@ -104,7 +103,7 @@ export const get = query({
           paintRecommendations = live;
         }
       } catch {
-        paintRecommendations = storedRecommendations?.success ? storedRecommendations.data : null;
+        paintRecommendations = storedRecommendations?.recommendations ?? null;
       }
     }
     const rawSpec = objectJson(concept.renderSpecificationJson);
@@ -141,6 +140,16 @@ export const get = query({
     };
   },
 });
+
+function readStoredRecommendations(value?: string) {
+  if (!value) return null;
+  const parsed = paintRecommendationSetsSchema.safeParse(objectJson(value));
+  if (!parsed.success) return null;
+  return {
+    recommendations: parsed.data,
+    coverage: Math.max(0, ...parsed.data.sets.map((set) => set.coverageCount)),
+  };
+}
 
 type HistoryEntry = { id: string; createdAt: number; label: string; status: string; credits: number | null; model: string | null; templateVersion: string | null; error: string | null };
 

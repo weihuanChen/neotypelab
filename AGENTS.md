@@ -31,3 +31,17 @@ Text/image provider execution in Convex additionally uses `OPENAI_IMAGE_FOR_LLM_
 Creation setup: run `npx convex run creativeSetup:configure '{"textModelId":"gemini-3.5-flash"}' --push` for the verified text/image profiles, `creation.v2` text bindings, and `render.v2` HD guardrails. Text generation persists validated results in promptCompositions; concepts freeze visualPaletteJson, paintRecommendationSetsJson, palettePlanJson, and renderSpecificationJson. Keep visual colors separate from catalog paint products when changing downstream consumers.
 
 Library details use private signed downloads. Configure exact frontend CORS origins with `libraryDownloadsNode:configureCors` (GET/HEAD only; local development uses `http://localhost:3001`). Preserve owner-only access in `libraryDetails.get` and do not return private storage keys in detail payloads.
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->

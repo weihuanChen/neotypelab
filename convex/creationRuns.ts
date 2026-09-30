@@ -8,6 +8,7 @@ import { beginCreative } from "./creativePipeline";
 import { queueConceptRender } from "./prototypeTools";
 import { creativeInputKey } from "./creativeContracts";
 import type { Id } from "./_generated/dataModel";
+import type { QueryCtx } from "./types";
 import { portraitUrl } from "./kitPicker";
 import { creationWorkflowManager } from "./workflowManager";
 import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
@@ -16,9 +17,17 @@ const { paletteCompositionId: _palette, visibility: _visibility, requestKey: _ke
 const inputValidator = v.object(inputArgs);
 type RunInput = Infer<typeof inputValidator>;
 
+const previewPriceActions = ["generate-palette", "generate-repaint-concept", "generate-hd-render"] as const;
+
+async function activePreviewCosts(db: QueryCtx["db"]) {
+  const rows = await Promise.all(previewPriceActions.map((action) =>
+    db.query("creditPriceRules").withIndex("by_actionType", (q) => q.eq("actionType", action)).collect(),
+  ));
+  return rows.map((rules) => rules.find((rule) => rule.isActive)?.creditCost);
+}
+
 export const quote = query({ args: {}, handler: async ctx => {
-  const rules = await ctx.db.query("creditPriceRules").collect();
-  const costs = ["generate-palette", "generate-repaint-concept", "generate-hd-render"].map(action => rules.find(rule => rule.actionType === action && rule.isActive)?.creditCost);
+  const costs = await activePreviewCosts(ctx.db);
   if (costs.some(cost => cost === undefined || cost < 0)) return null;
   return { cost: costs.reduce<number>((total, cost) => total + cost!, 0) };
 } });
@@ -58,13 +67,9 @@ export const start = mutation({
     }
     const runs = await ctx.db.query("creationRuns").withIndex("by_user", q => q.eq("userId", viewer._id)).collect();
     if (runs.some(run => run.status === "queued" || run.status === "running")) throw new Error("A preview is already in progress");
-    const rules = await ctx.db.query("creditPriceRules").collect();
-    let cost = 0;
-    for (const action of ["generate-palette", "generate-repaint-concept", "generate-hd-render"]) {
-      const rule = rules.find(row => row.actionType === action && row.isActive);
-      if (!rule || rule.creditCost < 0) throw new Error("Preview pricing unavailable");
-      cost += rule.creditCost;
-    }
+    const costs = await activePreviewCosts(ctx.db);
+    if (costs.some((cost) => cost === undefined || cost < 0)) throw new Error("Preview pricing unavailable");
+    const cost = costs.reduce<number>((total, item) => total + item!, 0);
     if (cost !== args.expectedCost) throw new Error("Preview price changed. Review the updated total and try again");
     if (args.input.sourceConceptId) {
       const source = await ctx.db.get(args.input.sourceConceptId);

@@ -112,6 +112,7 @@ function AuthenticatedLibraryWorkbench() {
   const requestWeatheringSplitPreview = useMutation(api.prototypeTools.requestWeatheringSplitPreview);
   const requestMaterialFinishComparison = useMutation(api.prototypeTools.requestMaterialFinishComparison);
   const rerunJob = useAction(api.generationNode.rerunJob);
+  const retryCreationRun = useMutation(api.creationRuns.retry);
   const [rerunningJobId, setRerunningJobId] = useState<string | null>(null);
   const [renderingState, setRenderingState] = useState<{
     conceptId: string;
@@ -144,11 +145,12 @@ function AuthenticatedLibraryWorkbench() {
   const [isPublishingShowcase, setIsPublishingShowcase] = useState(false);
   const [showcasePublishError, setShowcasePublishError] = useState<string | null>(null);
 
-  async function onRetry(jobId: string) {
+  async function onRetry(jobId: string, runId?: string) {
     setRerunningJobId(jobId);
     setErrorMessage(null);
     try {
-      await rerunJob({ generationJobId: jobId as never });
+      if (runId) await retryCreationRun({ runId: runId as Id<"creationRuns"> });
+      else await rerunJob({ generationJobId: jobId as Id<"generationJobs"> });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to retry generation job");
     } finally {
@@ -484,18 +486,17 @@ function AuthenticatedLibraryWorkbench() {
                       search: { tab: "overview" },
                     });
                   }}
-                  onRetry={(jobId) => {
-                    void onRetry(jobId);
+                  onRetry={(jobId, runId) => {
+                    void onRetry(jobId, runId);
                   }}
                   rerunningJobId={rerunningJobId}
                   originalDownloadAllowed={entitlements?.originalDownloadAllowed ?? false}
-                  onRequestCleanup={(mode) => {
-                    if (!selectedConcept.assetStorage) return;
+                  onRequestCleanup={(mode, storage) => {
                     setCleanupIntent({
-                      mediaAssetId: selectedConcept.assetStorage.mediaAssetId,
+                      mediaAssetId: storage.mediaAssetId,
                       conceptTitle: selectedConcept.title,
                       mode,
-                      oldVersionCount: selectedConcept.assetStorage.oldVersionCount,
+                      oldVersionCount: storage.oldVersionCount,
                     });
                   }}
                   storageBusy={cleaningAssetId !== null}

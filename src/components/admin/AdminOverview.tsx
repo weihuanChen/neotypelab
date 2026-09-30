@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { adminNavGroups } from "./adminNavigation";
+import { useAdminOverview } from "./useAdminOverview";
 
 export function AdminOverview() {
-  const overview = useQuery(api.admin.overview);
+  const overview = useAdminOverview();
 
   if (overview === undefined) {
     return <AdminOverviewLoading />;

@@ -65,10 +65,10 @@ interface BuildBriefInspectorProps {
   allConcepts: LibraryConcept[];
   onOpenPublish: () => void;
   onOpenDetails: (conceptId: string) => void;
-  onRetry?: (jobId: string) => void | Promise<void>;
+  onRetry?: (jobId: string, runId?: string) => void | Promise<void>;
   rerunningJobId?: string | null;
   originalDownloadAllowed?: boolean;
-  onRequestCleanup?: (mode: CleanupMode) => void;
+  onRequestCleanup?: (mode: CleanupMode, storage: NonNullable<LibraryConcept["assetStorage"]>) => void;
   storageBusy?: boolean;
   renderingState?: { conceptId: string; mode: string; stage?: BuildStage } | null;
   onRequestRender?: (conceptId: string, mode: RenderMode, stage?: BuildStage) => Promise<void>;
@@ -105,7 +105,8 @@ export function BuildBriefInspector({
   );
   const previewUrl = concept.previewAsset?.publicUrl ?? privatePreviewUrl;
 
-  const assetStorage = concept.assetStorage;
+  const storageDetail = useQuery(api.concepts.libraryAssetStorage, { conceptId: concept._id });
+  const assetStorage = storageDetail === undefined ? concept.assetStorage : storageDetail ?? concept.assetStorage;
   const original = assetStorage?.currentOriginal ?? null;
 
   const pinQuote = useQuery(
@@ -506,7 +507,7 @@ export function BuildBriefInspector({
               <GhostButton
                 disabled={rerunningJobId === concept.generationJob._id}
                 onClick={() => {
-                  void onRetry(concept.generationJob!._id);
+                  void onRetry(concept.generationJob!._id, concept.generationJob!.creationRunId);
                 }}
                 className="justify-center text-xs text-danger"
               >
@@ -563,7 +564,7 @@ export function BuildBriefInspector({
                       <button
                         aria-label="Delete Original"
                         disabled={storageBusy || original.status === "deleting"}
-                        onClick={() => onRequestCleanup("delete-original")}
+                        onClick={() => assetStorage && onRequestCleanup("delete-original", assetStorage)}
                         title="Delete Original"
                         type="button"
                       >
@@ -579,7 +580,7 @@ export function BuildBriefInspector({
                   </div>
                   <button
                     disabled={storageBusy || assetStorage.oldVersionCount === 0}
-                    onClick={() => onRequestCleanup("clean-old-versions")}
+                    onClick={() => assetStorage && onRequestCleanup("clean-old-versions", assetStorage)}
                     type="button"
                   >
                     Clean
@@ -604,7 +605,7 @@ export function BuildBriefInspector({
                 <button
                   className="library-space-saver"
                   disabled={storageBusy || (!original && assetStorage.oldVersionCount === 0)}
-                  onClick={() => onRequestCleanup("space-saver")}
+                  onClick={() => assetStorage && onRequestCleanup("space-saver", assetStorage)}
                   type="button"
                 >
                   <LightningBoltIcon />

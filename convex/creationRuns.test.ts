@@ -79,6 +79,9 @@ describe("complete preview runs", () => {
     expect(concept.visibility).toBe("private");
     expect(concept.visualPaletteJson).toBeDefined();
     await f.t.mutation(internal.creationRuns.fail, { runId, attempt: 1, reason: "Image failed" });
+    const libraryConcept = (await f.client.query(api.concepts.listLibrary, {}))
+      .find((item) => item._id === concept._id);
+    expect(libraryConcept?.generationJob?.creationRunId).toBe(runId);
     await f.client.mutation(api.creationRuns.retry, { runId });
     const retried = (await f.t.run(ctx => ctx.db.get(runId)))!;
     expect(retried.stage).toBe("render");
