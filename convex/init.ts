@@ -10,6 +10,7 @@ import {
 import { internalMutation } from "./functions";
 import { DEFAULT_ENTITLEMENT_PROFILES } from "./entitlementPolicy";
 import type { MutationCtx } from "./types";
+import { additionalStylePresets, legacySeedShortDescriptions } from "./stylePresetSeeds";
 
 export const init = internalMutation({
   args: {},
@@ -94,7 +95,7 @@ export const init = internalMutation({
       });
     }
 
-    for (const preset of stylePresets) {
+    for (const preset of [...stylePresets, ...additionalStylePresets]) {
       await ctx.db.insert("stylePresets", preset);
     }
 
@@ -116,6 +117,70 @@ export const init = internalMutation({
     for (const rule of creditPriceRules) {
       await ctx.db.insert("creditPriceRules", rule);
     }
+  },
+});
+
+/**
+ * Idempotent backfill for official style presets on an existing deployment.
+ * Inserts any seed whose slug is missing; never modifies existing rows, so
+ * admin edits and presets created through the Style library are preserved.
+ *
+ *   npx convex run init:seedMissingStylePresets          # dev
+ *   npx convex run init:seedMissingStylePresets --prod   # production
+ */
+export const seedMissingStylePresets = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results: Array<{ slug: string; status: "created" | "existing" }> = [];
+    for (const preset of [...stylePresets, ...additionalStylePresets]) {
+      const existing = await ctx.db
+        .query("stylePresets")
+        .withIndex("by_slug", (q) => q.eq("slug", preset.slug))
+        .first();
+      if (existing) {
+        results.push({ slug: preset.slug, status: "existing" });
+        continue;
+      }
+      await ctx.db.insert("stylePresets", preset);
+      results.push({ slug: preset.slug, status: "created" });
+    }
+    return results;
+  },
+});
+
+/**
+ * Rewrites the descriptions of the 2026-10-07 seed presets on deployments that
+ * already ran the backfill. A row is only touched while its description still
+ * equals the original seed text, so admin edits are never overwritten.
+ *
+ *   npx convex run init:refreshSeededPresetDescriptions          # dev
+ *   npx convex run init:refreshSeededPresetDescriptions --prod   # production
+ */
+export const refreshSeededPresetDescriptions = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results: Array<{ slug: string; status: "updated" | "skipped" | "missing" }> = [];
+    for (const preset of additionalStylePresets) {
+      const row = await ctx.db
+        .query("stylePresets")
+        .withIndex("by_slug", (q) => q.eq("slug", preset.slug))
+        .first();
+      if (!row) {
+        results.push({ slug: preset.slug, status: "missing" });
+        continue;
+      }
+      const legacy = legacySeedShortDescriptions[preset.slug];
+      if (!legacy || row.shortDescription !== legacy) {
+        results.push({ slug: preset.slug, status: "skipped" });
+        continue;
+      }
+      await ctx.db.patch(row._id, {
+        shortDescription: preset.shortDescription,
+        searchText: (row.searchText ?? "").replace(legacy, preset.shortDescription),
+      });
+      results.push({ slug: preset.slug, status: "updated" });
+    }
+    return results;
   },
 });
 

@@ -18,6 +18,7 @@ import {
 } from "react";
 import { api } from "@/convex/_generated/api";
 import { useAppShellState } from "@/src/components/app-shell/AppShellState";
+import { BrandMark } from "@/src/components/app-shell/BrandMark";
 import { appNavGroups, isNavItemActive } from "@/src/components/app-shell/nav";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import { cn } from "@/lib/utils";
@@ -216,6 +217,7 @@ function AppShellBody({
           tabIndex={navigationVisible ? undefined : -1}
           to="/"
         >
+          <BrandMark className="app-nav__brand-mark" />
           <span>Vol. 02</span>
           <strong>NeotypeLab</strong>
           <em>spray-ready almanac</em>

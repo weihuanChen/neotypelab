@@ -5,6 +5,7 @@ import { absoluteUrl } from "@/lib/site";
 import { buildCreateHref } from "@/src/lib/appPaths";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import type { StyleIntent } from "@/convex/creativeContracts";
+import { paletteNames } from "@/src/components/create/StylePalette";
 import stylesCss from "@/src/styles/styles.css?url";
 
 type Gallery = FunctionReturnType<typeof api.styleEditorial.gallery>;
@@ -57,7 +58,7 @@ export function StyleGallery({ styles }: { styles: Gallery }) {
       <a className="style-study" href={`/styles/${style.slug}`} key={style.id}>
         <img src={style.imageUrl} alt={`${style.name} repaint preview`} loading="lazy" />
         <p className="style-eyebrow">{style.category} / {style.modelCount} kit{style.modelCount === 1 ? "" : "s"}</p>
-        <h2>{style.name}</h2><p>{Object.values(style.intent.palette).flat().join(" · ")}</p><p>{style.description}</p>
+        <h2>{style.name}</h2><p>{paletteNames(style.intent.palette)}</p><p>{style.description}</p>
       </a>)}</div> : <div className="style-empty"><h2>{styles.length ? "No styles in this selection yet." : "The first style studies are on their way."}</h2>
       <p>Each study brings together a repaint direction, a reviewed preview and a practical paint mapping.</p></div>}
     <aside className="style-custom"><div><p className="style-eyebrow">Your own direction</p><h2>Have a different feeling in mind?</h2>

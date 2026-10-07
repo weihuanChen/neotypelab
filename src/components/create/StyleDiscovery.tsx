@@ -2,7 +2,12 @@ import { useState } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { readStyleIntent } from "@/convex/styleRefinements";
-import { StylePalette, displayPalette } from "./StylePalette";
+import { StylePalette, displayPalette, paletteNames } from "./StylePalette";
+
+/** Card line for an official preset: its written temperament first, never raw HEX anchors. */
+function presetSummary(description: string | undefined, intent: ReturnType<typeof readStyleIntent>) {
+  return description || intent?.mood || (intent ? paletteNames(intent.palette) : "");
+}
 
 type Preset = FunctionReturnType<typeof api.catalog.listCreateOptions>["stylePresets"][number];
 type Community = FunctionReturnType<typeof api.userStyles.community>[number];
@@ -20,10 +25,12 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
   const [page, setPage] = useState(1);
   const entries = [
     ...presets.map(preset => ({ id: preset._id, name: preset.name, description: preset.shortDescription ?? "",
+      summary: presetSummary(preset.shortDescription, readStyleIntent(preset.styleIntentJson)),
       category: preset.category ?? "Other", source: "official", image: previews.find(p => p.id === preset._id)?.imageUrl,
       featured: Boolean(previews.find(p => p.id === preset._id)?.featured), colors: displayPalette(preset.slug),
       intent: readStyleIntent(preset.styleIntentJson), choose: () => onPreset(preset) })),
     ...(community ?? []).map(style => ({ id: style.id, name: style.name, description: style.intent.graphicLanguage,
+      summary: paletteNames(style.intent.palette),
       category: "Community", source: "community", image: style.preview?.imageUrl, featured: false,
       colors: [], intent: style.intent, choose: () => onCommunity(style) })),
   ];
@@ -57,7 +64,7 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
       </button>
       <StylePalette colors={entry.colors} />
       <button type="button" className="discover-style-select" disabled={busy} onClick={entry.choose} aria-pressed={selectedId === entry.id}>
-        <h3>{entry.name}</h3><p>{entry.intent ? Object.values(entry.intent.palette).flat().join(" · ") : entry.description}</p>
+        <h3>{entry.name}</h3><p>{entry.summary}</p>
       </button>
       <details><summary>Palette details</summary>
         <p>{entry.source === "official" ? "Official" : "Community"} · {entry.category}</p>

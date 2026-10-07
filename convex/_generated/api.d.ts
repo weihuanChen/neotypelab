@@ -100,6 +100,7 @@ import type * as storageLifecycle from "../storageLifecycle.js";
 import type * as storageLifecycleNode from "../storageLifecycleNode.js";
 import type * as styleEditorial from "../styleEditorial.js";
 import type * as styleInterpretations from "../styleInterpretations.js";
+import type * as stylePresetSeeds from "../stylePresetSeeds.js";
 import type * as styleRefinements from "../styleRefinements.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as textGenerationNode from "../textGenerationNode.js";
@@ -218,6 +219,7 @@ declare const fullApi: ApiFromModules<{
   storageLifecycleNode: typeof storageLifecycleNode;
   styleEditorial: typeof styleEditorial;
   styleInterpretations: typeof styleInterpretations;
+  stylePresetSeeds: typeof stylePresetSeeds;
   styleRefinements: typeof styleRefinements;
   subscriptions: typeof subscriptions;
   textGenerationNode: typeof textGenerationNode;

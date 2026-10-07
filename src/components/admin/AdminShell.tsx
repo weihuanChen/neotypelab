@@ -12,6 +12,7 @@ import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useAppShellState } from "@/src/components/app-shell/AppShellState";
 import { adminNavGroups } from "./adminNavigation";
+import { BrandMark } from "@/src/components/app-shell/BrandMark";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -78,6 +79,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       ) : null}
       <aside aria-hidden={!visible} className={cn("app-nav admin-nav", mobileNavOpen && "is-open")} id="admin-primary-navigation" ref={navRef}>
         <Link className="app-nav__brand admin-nav__brand" tabIndex={visible ? undefined : -1} to="/admin">
+          <BrandMark className="app-nav__brand-mark" />
           <span>NeotypeLab</span>
           <strong>Admin</strong>
           <em>operations console</em>

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>NeotypeLab logo concepts</title>
+<style>
+:root {
+  color-scheme: light;
+  --paper: #edf0f3; --paper-2: #e4e8ec; --paper-3: #d8dde3;
+  --ink: #12181f; --ink-2: #333c46; --muted: #56606b;
+  --rule: #c5ccd3; --rule-2: #98a1ab; --accent: #11457f;
+  --display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --label: "IM Fell English SC", "IM Fell English", "Iowan Old Style", Palatino, serif;
+  --body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 var(--body); }
+main { max-width: 980px; margin: 0 auto; padding: 40px 28px 64px; }
+h1 { font: 400 2.4rem/1 var(--display); margin: 0 0 8px; }
+.lede { color: var(--ink-2); max-width: 62ch; margin: 0 0 32px; }
+section { border-top: 1px solid var(--rule-2); padding: 24px 0 28px; }
+h2 { font: 400 1.5rem/1.1 var(--display); margin: 0 0 4px; }
+.tag { font: 0.85rem var(--label); color: var(--muted); letter-spacing: .04em; }
+.rec { color: var(--accent); }
+.why { color: var(--ink-2); max-width: 66ch; margin: 10px 0 18px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; }
+.cell { display: grid; gap: 6px; justify-items: start; }
+.cell small { color: var(--muted); font-size: .75rem; }
+.chip-bg { background: var(--paper-2); border: 1px solid var(--rule); padding: 14px; }
+.dark-bg { background: var(--ink); padding: 14px; }
+/* sidebar lockup mock — mirrors .app-nav__brand */
+.nav { width: 248px; background: var(--paper-2); border: 1px solid var(--rule-2); padding: 24px 16px 18px; }
+.brand { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center;
+  padding: 2px 6px 14px; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; }
+.brand svg { grid-row: 1 / span 3; width: 30px; height: 30px; }
+.brand span { font: .78rem var(--label); color: var(--muted); letter-spacing: .08em; }
+.brand strong { font: 400 1.55rem/1 var(--display); }
+.brand em { font: normal .75rem var(--body); color: var(--muted); }
+.navlinks { display: grid; gap: 6px; padding: 14px 6px 0; color: var(--ink-2); font-size: .9rem; }
+.old img { width: 48px; height: 48px; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; margin-top: 8px; }
+td, th { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 400 .9rem var(--label); color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>NeotypeLab 标志方案</h1>
+  <p class="lede">用在侧栏顶部，替换现在纯文字的品牌区。约束来自 docs/ui-direction.md：冷灰蓝纸面、石墨墨色、全站只用一个藏青信号色、零圆角、年鉴式排版。</p>
+
+  <section>
+    <h2>现状评估</h2>
+    <div class="row" style="margin-top:12px">
+      <div class="cell old chip-bg"><img src="data:image/png;base64,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" alt="current favicon"><small>现 favicon</small></div>
+      <div class="cell"><div class="nav"><a class="brand" style="grid-template-columns:1fr"><span>Vol. 02</span><strong>NeotypeLab</strong><em>spray-ready almanac</em></a></div><small>现侧栏品牌区（纯文字）</small></div>
+    </div>
+    <p class="why">favicon 的「N + 圆点」结构好认，值得保留。问题在用色：亮蓝和品红属于已经废弃的旧方向，放在 Almanac 页面里像另一个产品。侧栏只有文字，收起侧栏或在移动端时，品牌就没有可以单独露出的图形。</p>
+  </section>
+
+  <!-- ============ A ============ -->
+  <section>
+    <h2>A · 分件 N <span class="tag rec">推荐</span></h2>
+    <p class="why">墨色 N 的两根竖笔各刻一道横向缝，像高达零件上的刻线和分件线，暗示「一块块分色喷涂的装甲」。旧 favicon 的圆点换成落在基线上的藏青方块，读作「N.」，像年鉴里 No. / Vol. 那样的缩写句点，也可以理解成一枚色卡。它延续了「N + 点」的结构，同时遵守零圆角和全站一个藏青的规则。</p>
+    <div class="row">
+      <div class="cell chip-bg"><svg width="96" height="96" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark-a"/></svg><small>96</small></div>
+      <div class="cell chip-bg"><svg width="32" height="32" viewBox="0 0 32 32"><use href="#mark-a"/></svg><small>32</small></div>
+      <div class="cell chip-bg"><svg width="16" height="16" viewBox="0 0 32 32"><use href="#mark-a"/></svg><small>16</small></div>
+      <div class="cell dark-bg"><svg width="48" height="48" viewBox="0 0 32 32" style="color:#edf0f3;--chip:#7fa6d6"><use href="#mark-a"/></svg><small style="color:#98a1ab">反白</small></div>
+      <div class="cell"><div class="nav"><a class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#mark-a"/></svg><span>Vol. 02</span><strong>NeotypeLab</strong><em>spray-ready almanac</em></a><div class="navlinks"><span>Explore</span><span>Create</span><span>Library</span></div></div><small>侧栏实尺寸</small></div>
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section>
+    <h2>B · 套准标记</h2>
+    <p class="why">用印刷套准十字线框住衬线 N，强调「年鉴、印刷品」这一面，比较文气。缺点是圆环和零圆角体系冲突，16px 下十字线会糊成一团，而且和喷涂、模型的关系最弱。</p>
+    <div class="row">
+      <div class="cell chip-bg"><svg width="96" height="96" viewBox="0 0 32 32"><use href="#mark-b"/></svg><small>96</small></div>
+      <div class="cell chip-bg"><svg width="32" height="32" viewBox="0 0 32 32"><use href="#mark-b"/></svg><small>32</small></div>
+      <div class="cell chip-bg"><svg width="16" height="16" viewBox="0 0 32 32"><use href="#mark-b"/></svg><small>16</small></div>
+      <div class="cell"><div class="nav"><a class="brand"><svg viewBox="0 0 32 32"><use href="#mark-b"/></svg><span>Vol. 02</span><strong>NeotypeLab</strong><em>spray-ready almanac</em></a></div><small>侧栏实尺寸</small></div>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section>
+    <h2>C · 色卡条</h2>
+    <p class="why">N 由三条不同灰度的色块拼成，对应主装甲、副装甲、骨架三个配色角色，最贴「配色方案」这个业务。缺点是 16px 下三层灰度分不清，几何也偏图表，比较像数据产品的图标。</p>
+    <div class="row">
+      <div class="cell chip-bg"><svg width="96" height="96" viewBox="0 0 32 32"><use href="#mark-c"/></svg><small>96</small></div>
+      <div class="cell chip-bg"><svg width="32" height="32" viewBox="0 0 32 32"><use href="#mark-c"/></svg><small>32</small></div>
+      <div class="cell chip-bg"><svg width="16" height="16" viewBox="0 0 32 32"><use href="#mark-c"/></svg><small>16</small></div>
+      <div class="cell"><div class="nav"><a class="brand"><svg viewBox="0 0 32 32"><use href="#mark-c"/></svg><span>Vol. 02</span><strong>NeotypeLab</strong><em>spray-ready almanac</em></a></div><small>侧栏实尺寸</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>对比</h2>
+    <table>
+      <tr><th></th><th>A 分件 N</th><th>B 套准标记</th><th>C 色卡条</th></tr>
+      <tr><td>贴合业务（模型喷涂）</td><td>强：刻线、分件、色卡</td><td>弱</td><td>强：配色角色</td></tr>
+      <tr><td>符合 Almanac 规范</td><td>是：零圆角，一个藏青</td><td>圆环冲突</td><td>是</td></tr>
+      <tr><td>16px 可读性</td><td>好</td><td>差</td><td>一般</td></tr>
+      <tr><td>延续旧 favicon</td><td>保留 N + 点结构</td><td>否</td><td>只保留 N</td></tr>
+    </table>
+  </section>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- A: segmented N. Stems carry one panel-line gap each; navy chip top-right. -->
+    <g id="mark-a">
+      <path fill="currentColor" d="M3 6h5v13H3zM3 20.5h5V26H3zM8 6h4.2L19 20v6h-4.2L8 12zM19 6h5v8.5h-5zM19 16h5v10h-5z"/>
+      <rect x="25.5" y="22.5" width="3.5" height="3.5" fill="var(--chip, #11457f)"/>
+    </g>
+    <!-- B: registration ring + serif N -->
+    <g id="mark-b" fill="none" stroke="currentColor">
+      <circle cx="16" cy="16" r="11" stroke-width="1.2"/>
+      <path d="M16 1v6M16 25v6M1 16h6M25 16h6" stroke-width="1.2"/>
+      <text x="16" y="21.2" text-anchor="middle" stroke="none" fill="currentColor" font-family="IM Fell English, Iowan Old Style, Palatino, serif" font-size="15">N</text>
+    </g>
+    <!-- C: swatch-strip N -->
+    <g id="mark-c">
+      <rect x="5" y="6" width="6" height="20" fill="currentColor"/>
+      <path d="M11 6h4l6 12v8h-4L11 14z" fill="#56606b"/>
+      <rect x="21" y="6" width="6" height="20" fill="#98a1ab"/>
+      <rect x="21" y="2" width="6" height="2.5" fill="#11457f"/>
+    </g>
+  </defs>
+</svg>
+</body>
+</html>

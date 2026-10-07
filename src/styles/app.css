@@ -100,10 +100,34 @@ select {
 
 .app-nav__brand {
   display: grid;
-  gap: 0.2rem;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 0.7rem;
+  row-gap: 0.2rem;
   padding: 0.15rem 0.35rem 0.85rem;
   border-bottom: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-ink);
   text-decoration: none;
+}
+
+.app-nav__brand > :not(.app-nav__brand-mark) {
+  grid-column: 2;
+}
+
+.app-nav__brand-mark {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.brand-mark {
+  display: block;
+  flex: none;
+}
+
+.brand-mark__chip {
+  fill: var(--color-accent);
 }
 
 .app-nav__brand span {
