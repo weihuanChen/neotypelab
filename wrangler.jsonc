@@ -4,6 +4,13 @@
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "neotypelab.com",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": true
   }

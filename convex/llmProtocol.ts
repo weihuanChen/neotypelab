@@ -42,6 +42,73 @@ export function imageDefaults(modelId: string, quality: string) {
   };
 }
 
+export function providerConnectionUrl(apiFormat: LlmApiFormat, baseUrl: string) {
+  if (apiFormat === "cloudflare-ai-run") return "https://api.cloudflare.com/client/v4/user/tokens/verify";
+  const base = baseUrl.replace(/\/+$/, "").replace(/\/(?:images\/generations|chat\/completions)$/, "");
+  return `${base}/models`;
+}
+
+export function cloudflareAiRunUrl(baseUrl: string, accountId: string | undefined) {
+  const base = baseUrl.replace(/\/+$/, "");
+  if (base.endsWith("/ai/run")) return base;
+  if (!accountId?.trim()) throw new Error("CLOUDFLARE_ACCOUNT_ID is not configured");
+  if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error("CLOUDFLARE_ACCOUNT_ID is invalid");
+  const root = base.replace(/\/accounts\/[a-f0-9]{32}$/i, "");
+  return `${root}/accounts/${accountId}/ai/run`;
+}
+
+export function cloudflareImageRequest(input: { modelId: string; prompt: string; quality: string }) {
+  return {
+    model: input.modelId,
+    input: {
+      prompt: input.prompt,
+      quality: input.quality,
+      size: "1024x1024",
+      output_format: "png",
+      background: "opaque",
+    },
+  };
+}
+
+export function cloudflareAiImage(payload: unknown): { b64_json?: string; url?: string; revised_prompt?: string } {
+  const root = jsonObject(payload);
+  if (!root) throw new Error("Cloudflare AI returned no usable image payload");
+  if (root.success === false) throw new Error(cloudflareFailureMessage(root));
+  const carrier = jsonObject(root.result) ?? root;
+  const nested = jsonObject(carrier.result);
+  const state = firstString(carrier.state, root.state);
+  if (state && state !== "Completed") throw new Error(`Cloudflare AI image generation failed: ${state}`);
+  const image = firstString(nested?.image, carrier.image, root.image);
+  if (!image) throw new Error("Cloudflare AI returned no usable image payload");
+  if (/^https?:\/\//.test(image)) return { url: image };
+  const data = image.match(/^data:image\/(?:png|jpeg|webp);base64,([A-Za-z0-9+/=\r\n]+)$/);
+  if (data) return { b64_json: data[1] };
+  throw new Error("Cloudflare AI returned no usable image payload");
+}
+
+export function cloudflareFailureMessage(payload: Record<string, unknown>) {
+  const errors = Array.isArray(payload.errors) ? payload.errors : [];
+  const message = errors
+    .map((item) => jsonObject(item)?.message)
+    .find((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return message
+    ? `Cloudflare AI image generation failed: ${message.slice(0, 240)}`
+    : "Cloudflare AI image generation failed";
+}
+
+export function cloudflareImageDownloadHeaders(url: string, apiKey: string) {
+  try {
+    if (new URL(url).hostname === "api.cloudflare.com") return { Authorization: `Bearer ${apiKey}` };
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+function firstString(...values: unknown[]) {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
 export function imagesApiImage(payload: unknown) {
   const data = jsonObject(payload)?.data;
   const first = Array.isArray(data) ? jsonObject(data[0]) : null;

@@ -370,7 +370,8 @@ export type LlmCapability = Infer<typeof vLlmCapability>;
 
 export const vLlmApiFormat = v.union(
   v.literal("openai-compatible"),
-  v.literal("openai-chat-completions")
+  v.literal("openai-chat-completions"),
+  v.literal("cloudflare-ai-run")
 );
 export type LlmApiFormat = Infer<typeof vLlmApiFormat>;
 

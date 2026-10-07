@@ -14,6 +14,8 @@ export const inspectModels = internalAction({
     const payload = await response.json() as { models?: Array<{ name: string; supportedGenerationMethods?: string[] }> };
     return {
       imageKeyConfigured: Boolean(process.env.OPENAI_IMAGE_FOR_LLM_RELAY),
+      cloudflareImageKeyConfigured: Boolean(process.env.CLOUDFLARE_IMAGE2_SUNBURST_API_KEY),
+      cloudflareAccountConfigured: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID),
       textModels: (payload.models ?? []).filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
         .map((model) => model.name.replace(/^models\//, "")),
     };

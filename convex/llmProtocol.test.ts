@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  chatImage, completionText, completionUrl, imageDefaults, imageGenerationUrl,
-  imagesApiImage, requestTextCompletion, structuredCompletion,
+  chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders,
+  cloudflareImageRequest, completionText, completionUrl, imageDefaults, imageGenerationUrl,
+  imagesApiImage, providerConnectionUrl, requestTextCompletion, structuredCompletion,
 } from "./llmProtocol";
 
 const profile = {
@@ -25,6 +26,44 @@ describe("LLM protocols", () => {
     expect(imageDefaults("gpt-image-1", "medium")).toMatchObject({ output_format: "png", background: "opaque" });
     expect(imagesApiImage({ data: [{ b64_json: "aW1hZ2U=" }] }).b64_json).toBe("aW1hZ2U=");
     expect(() => imagesApiImage({ data: [] })).toThrow(/no usable image/);
+  });
+
+  it("builds the Cloudflare AI Run image request and reads its image URL", () => {
+    const accountId = "916a00000000000000000000000075f6";
+    expect(cloudflareAiRunUrl("https://api.cloudflare.com/client/v4/", accountId))
+      .toBe(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`);
+    expect(cloudflareAiRunUrl(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`, undefined))
+      .toBe(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run`);
+    expect(() => cloudflareAiRunUrl("https://api.cloudflare.com/client/v4", "")).toThrow(/CLOUDFLARE_ACCOUNT_ID is not configured/);
+    expect(() => cloudflareAiRunUrl("https://api.cloudflare.com/client/v4", "not-an-account")).toThrow(/invalid/);
+    expect(cloudflareImageRequest({
+      modelId: "openai/gpt-image-2.5-sunburst",
+      prompt: "A studio render",
+      quality: "medium",
+    })).toEqual({
+      model: "openai/gpt-image-2.5-sunburst",
+      input: {
+        prompt: "A studio render",
+        quality: "medium",
+        size: "1024x1024",
+        output_format: "png",
+        background: "opaque",
+      },
+    });
+    expect(cloudflareAiImage({
+      success: true,
+      result: { state: "Completed", result: { image: "https://cdn.example/render.png" } },
+    }).url).toBe("https://cdn.example/render.png");
+    expect(cloudflareAiImage({ state: "Completed", result: { image: "https://cdn.example/direct.png" } }).url)
+      .toBe("https://cdn.example/direct.png");
+    expect(() => cloudflareAiImage({ success: false, errors: [{ code: 9109, message: "Unauthorized to access requested resource" }] }))
+      .toThrow(/Unauthorized to access requested resource/);
+    expect(cloudflareFailureMessage({ errors: [] })).toBe("Cloudflare AI image generation failed");
+    expect(cloudflareImageDownloadHeaders("https://api.cloudflare.com/client/v4/accounts/x/ai/result", "secret"))
+      .toEqual({ Authorization: "Bearer secret" });
+    expect(cloudflareImageDownloadHeaders("https://cdn.example/render.png", "secret")).toBeUndefined();
+    expect(providerConnectionUrl("cloudflare-ai-run", "https://api.cloudflare.com/client/v4"))
+      .toBe("https://api.cloudflare.com/client/v4/user/tokens/verify");
   });
 
   it("parses image blocks and markdown but does not accept ordinary prose as an image", () => {

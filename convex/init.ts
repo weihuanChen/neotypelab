@@ -10,7 +10,11 @@ import {
 import { internalMutation } from "./functions";
 import { DEFAULT_ENTITLEMENT_PROFILES } from "./entitlementPolicy";
 import type { MutationCtx } from "./types";
-import { additionalStylePresets, legacySeedShortDescriptions } from "./stylePresetSeeds";
+import {
+  additionalStylePresets,
+  legacySeedShortDescriptions,
+  officialStyleIntentFields,
+} from "./stylePresetSeeds";
 
 export const init = internalMutation({
   args: {},
@@ -96,7 +100,7 @@ export const init = internalMutation({
     }
 
     for (const preset of [...stylePresets, ...additionalStylePresets]) {
-      await ctx.db.insert("stylePresets", preset);
+      await ctx.db.insert("stylePresets", stylePresetSeedRow(preset));
     }
 
     for (const role of colorRoles) {
@@ -117,6 +121,8 @@ export const init = internalMutation({
     for (const rule of creditPriceRules) {
       await ctx.db.insert("creditPriceRules", rule);
     }
+
+    await ensurePlatformSettings(ctx);
   },
 });
 
@@ -141,7 +147,7 @@ export const seedMissingStylePresets = internalMutation({
         results.push({ slug: preset.slug, status: "existing" });
         continue;
       }
-      await ctx.db.insert("stylePresets", preset);
+      await ctx.db.insert("stylePresets", stylePresetSeedRow(preset));
       results.push({ slug: preset.slug, status: "created" });
     }
     return results;
@@ -183,6 +189,109 @@ export const refreshSeededPresetDescriptions = internalMutation({
     return results;
   },
 });
+
+/**
+ * Fills Style Intent v1 on the original P1 presets when the row has none.
+ * Rows that already carry an intent, including admin edits, are skipped.
+ */
+export const backfillMissingStyleIntents = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results: Array<{ slug: string; status: "updated" | "existing" | "missing" }> = [];
+    for (const preset of stylePresets) {
+      const intentFields = officialStyleIntentFields(preset);
+      if (!intentFields) continue;
+      const row = await ctx.db
+        .query("stylePresets")
+        .withIndex("by_slug", (q) => q.eq("slug", preset.slug))
+        .first();
+      if (!row) {
+        results.push({ slug: preset.slug, status: "missing" });
+        continue;
+      }
+      if (row.styleIntentJson) {
+        results.push({ slug: preset.slug, status: "existing" });
+        continue;
+      }
+      await ctx.db.patch(row._id, intentFields);
+      results.push({ slug: preset.slug, status: "updated" });
+    }
+    return results;
+  },
+});
+
+const platformSettingSeeds = [
+  {
+    key: "generation",
+    value: {
+      fallbackBehavior: "secondary-provider",
+      maxRetryCount: 1,
+      timeoutSeconds: 90,
+      failureCreditPolicy: "auto-refund",
+      concurrentJobsPerUser: 2,
+    },
+  },
+  {
+    key: "defaults",
+    value: {
+      weathering: "clean",
+      visibility: "private",
+      mood: "none",
+      imageCount: 1,
+      generationQuality: "standard",
+      generationLanguage: "english",
+    },
+  },
+  {
+    key: "system",
+    value: {
+      allowRegistrations: true,
+      allowPublicPrototypes: true,
+      allowRemix: true,
+      enableFeedback: true,
+      enableCreditRedemption: true,
+      enablePurchases: false,
+      maintenanceMode: false,
+    },
+  },
+] as const;
+
+/**
+ * Inserts the code-default generation, platform and system settings once.
+ * An existing key is never overwritten.
+ */
+export const seedMissingPlatformSettings = internalMutation({
+  args: {},
+  handler: async (ctx) => ensurePlatformSettings(ctx),
+});
+
+async function ensurePlatformSettings(ctx: MutationCtx) {
+  const now = Date.now();
+  const results: Array<{ key: string; status: "created" | "existing" }> = [];
+  for (const seed of platformSettingSeeds) {
+    const existing = await ctx.db
+      .query("platformSettings")
+      .withIndex("by_key", (q) => q.eq("key", seed.key))
+      .first();
+    if (existing) {
+      results.push({ key: seed.key, status: "existing" });
+      continue;
+    }
+    await ctx.db.insert("platformSettings", {
+      key: seed.key,
+      valueJson: JSON.stringify(seed.value),
+      revision: 1,
+      updatedAt: now,
+    });
+    results.push({ key: seed.key, status: "created" });
+  }
+  return results;
+}
+
+function stylePresetSeedRow<T extends { slug: string; name: string }>(preset: T) {
+  const intentFields = officialStyleIntentFields(preset);
+  return intentFields ? { ...preset, ...intentFields } : preset;
+}
 
 export const seedEntitlementProfiles = internalMutation({
   args: {},

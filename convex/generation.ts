@@ -7,7 +7,7 @@ import {
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { vGenerationProvider, vStorageAccountingCategory } from "./domain";
-import type { GenerationProvider } from "./domain";
+import type { GenerationProvider, LlmApiFormat } from "./domain";
 import { canManagePlatform } from "./adminAccess";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
@@ -475,7 +475,7 @@ function bindingScore(binding: {
 function serializeLlmRoute(
   profile: {
     _id: Id<"llmProfiles">;
-    apiFormat: "openai-compatible" | "openai-chat-completions";
+    apiFormat: LlmApiFormat;
     baseUrl: string;
     headersJson?: string;
     keyEnvName: string;

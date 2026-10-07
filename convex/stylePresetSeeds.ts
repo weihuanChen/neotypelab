@@ -410,6 +410,128 @@ export const legacySeedShortDescriptions: Record<string, string> = {
   "naval-grey": "Warship haze grey with deck-grey blocks, anti-fouling red and shadowed hull numbers.",
 };
 
+/**
+ * Official Style Intent for the original P1 presets. Those rows were seeded
+ * before intents existed. `backfillMissingStyleIntents` fills a row only while
+ * `styleIntentJson` is absent, so a later admin intent is left alone.
+ */
+export const legacyOfficialStyleIntents: Record<
+  string,
+  Omit<StyleIntent, "version" | "source" | "styleType" | "name">
+> = {
+  "eva-inspired": {
+    palette: {
+      primary: "Cool white armor #E7E4DC",
+      secondary: "Graphite block #3A3E44",
+      accent: "Reactor amber #E39B2B",
+      neutrals: ["Gunmetal frame #4A5158", "Caution yellow #D6B23A"],
+    },
+    surfaceLogic:
+      "Semi-gloss armor with sharp block separation; the amber accent stays on small reactor and vent zones, never as a full-body glow.",
+    graphicLanguage:
+      "Technical caution decals and experimental unit marks around vents, reactor zones and panel breaks.",
+    contrast: "high",
+    markingDensity: "medium",
+    materialIntent: ["semi-gloss painted armor", "gunmetal frame"],
+    mood: "Experimental, sharp, reactor-accented",
+    weathering: "clean",
+    finish: "semi-gloss",
+    paintability: "high",
+  },
+  "military-prototype": {
+    palette: {
+      primary: "Olive drab #5E6848",
+      secondary: "Field grey #6E7370",
+      accent: "Caution yellow #C9A227",
+      neutrals: ["Gunmetal frame #3C4248", "Marking white #E4E2DC"],
+    },
+    surfaceLogic:
+      "Matte field armor over a gunmetal frame; masking edges stay practical and sprayable, with light operational wear only.",
+    graphicLanguage:
+      "Sparse prototype labels, serial marks and caution text near hatches, vents and weapon interfaces.",
+    contrast: "medium",
+    markingDensity: "low",
+    materialIntent: ["matte painted armor", "gunmetal frame"],
+    mood: "Grounded, utilitarian, field-readable",
+    weathering: "light",
+    finish: "matte",
+    paintability: "high",
+  },
+  "desert-ops": {
+    palette: {
+      primary: "Desert tan #C2A36A",
+      secondary: "Dust brown #8A6E45",
+      accent: "Faded orange #C47A3A",
+      neutrals: ["Sun-bleach #E6D7B8", "Shadow brown #5C4632"],
+    },
+    surfaceLogic:
+      "Matte warm armor with sun fade on upper surfaces and heavier dust along the feet, skirts and lower legs.",
+    graphicLanguage:
+      "Low-visibility field marks and faded caution zones; warning color is sparse and sun-bleached.",
+    contrast: "medium",
+    markingDensity: "low",
+    materialIntent: ["matte painted armor"],
+    mood: "Warm, field-worn, sun-faded",
+    weathering: "heavy",
+    finish: "matte",
+    paintability: "high",
+  },
+  "industrial-mecha": {
+    palette: {
+      primary: "Machine grey #8B9298",
+      secondary: "Graphite panel #4A5158",
+      accent: "Hazard yellow #E2B000",
+      neutrals: ["Gunmetal frame #2F353A", "Safety white #F3F1EA"],
+    },
+    surfaceLogic:
+      "Semi-gloss industrial armor separated from a darker mechanical frame; hazard color stays in small service zones.",
+    graphicLanguage:
+      "Compact hazard stripes, factory serials and maintenance labels on hatches and joints, not across whole plates.",
+    contrast: "medium",
+    markingDensity: "medium",
+    materialIntent: ["semi-gloss painted armor", "gunmetal frame"],
+    mood: "Factory-grade, hard-surface, maintained",
+    weathering: "light",
+    finish: "semi-gloss",
+    paintability: "high",
+  },
+  "stealth-black": {
+    palette: {
+      primary: "Stealth black #1B1E21",
+      secondary: "Charcoal #2C3136",
+      accent: "Dim sensor red #8A3030",
+      neutrals: ["Burnt metal #6A5E54", "Edge grey #3E444A"],
+    },
+    surfaceLogic:
+      "Matte low-signature armor with only enough value shift to keep panel edges readable; metal tint stays on vents and joints.",
+    graphicLanguage:
+      "Tiny low-visibility identifiers. Bright warning graphics are limited to functional sensor marks.",
+    contrast: "low",
+    markingDensity: "low",
+    materialIntent: ["matte painted armor", "burnt metal vents"],
+    mood: "Quiet, low-signature, restrained",
+    weathering: "clean",
+    finish: "matte",
+    paintability: "high",
+  },
+};
+
+export function officialStyleIntentFields(preset: { slug: string; name: string }) {
+  const intent = legacyOfficialStyleIntents[preset.slug];
+  if (!intent) return null;
+  const styleIntent = styleIntentSchema.parse({
+    version: "style-intent.v1",
+    source: "official",
+    styleType: "preset",
+    name: preset.name,
+    ...intent,
+  });
+  return {
+    styleIntentJson: JSON.stringify(styleIntent),
+    styleIntentVersion: styleIntent.version,
+  };
+}
+
 export const additionalStylePresets = seeds.map(({ intent, ...seed }) => {
   const styleIntent = styleIntentSchema.parse({
     version: "style-intent.v1",

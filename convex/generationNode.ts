@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalAction, type ActionCtx } from "./_generated/server";
-import type { GenerationProvider } from "./domain";
+import type { GenerationProvider, LlmApiFormat } from "./domain";
 import { getPublicR2ObjectUrl, getR2ConnectionConfig } from "./r2Config";
 import {
   checkR2StorageConnectivity,
@@ -14,7 +14,7 @@ import { createImageRenditions } from "./imageRenditions";
 import { executeTextRequest } from "./textGenerationNode";
 import { executeCompositionHandler } from "./creativeNode";
 
-import { chatImage, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, requestTextCompletion } from "./llmProtocol";
+import { chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders, cloudflareImageRequest, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, jsonObject, providerConnectionUrl, requestTextCompletion } from "./llmProtocol";
 
 // Internal building block; creative stages will persist and validate their own domain output.
 export const executeText = internalAction({
@@ -111,7 +111,7 @@ type OpenAICompatibleProvider =
 type LlmRoute = {
   profile: {
     _id: Id<"llmProfiles">;
-    apiFormat: "openai-compatible" | "openai-chat-completions";
+    apiFormat: LlmApiFormat;
     baseUrl: string;
     headersJson?: string;
     keyEnvName: string;
@@ -202,7 +202,7 @@ export const testLlmProfileConnection = action({
     const startedAt = Date.now();
     try {
       const customHeaders = parseJsonObjectOrEmpty(profile.headersJson, "Provider headers");
-      const response = await fetch(`${profile.baseUrl.replace(/\/+$/, "").replace(/\/(?:images\/generations|chat\/completions)$/, "")}/models`, {
+      const response = await fetch(providerConnectionUrl(profile.apiFormat, profile.baseUrl), {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -656,21 +656,26 @@ async function generateWithOpenAICompatibleImage({
   const timeoutMs = route.profile.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const apiFormat = route.profile.apiFormat;
   let response: Response;
   try {
-    response = await fetch(route.profile.apiFormat === "openai-chat-completions"
-      ? completionUrl(route.profile.baseUrl)
-      : imageGenerationUrl(route.profile.baseUrl), {
+    response = await fetch(imageRequestUrl(route), {
       method: "POST",
       headers: buildOpenAICompatibleHeaders(route, apiKey),
       body: JSON.stringify(
-        buildOpenAICompatibleImageBody({
-          negativePrompt,
-          prompt,
-          renderMode,
-          route,
-          simulationStage,
-        })
+        apiFormat === "cloudflare-ai-run"
+          ? cloudflareImageRequest({
+              modelId: route.profile.modelId,
+              prompt: negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt,
+              quality: getDefaultImageQuality(renderMode),
+            })
+          : buildOpenAICompatibleImageBody({
+              negativePrompt,
+              prompt,
+              renderMode,
+              route,
+              simulationStage,
+            })
       ),
       signal: controller.signal,
     });
@@ -685,6 +690,16 @@ async function generateWithOpenAICompatibleImage({
 
   if (!response.ok) {
     const body = await response.text();
+    if (apiFormat === "cloudflare-ai-run") {
+      let message = `Cloudflare AI image generation failed: HTTP ${response.status}`;
+      try {
+        const parsed = jsonObject(JSON.parse(body));
+        if (parsed) message = cloudflareFailureMessage(parsed);
+      } catch {
+        message = `Cloudflare AI image generation failed: HTTP ${response.status}`;
+      }
+      throw new Error(message);
+    }
     throw new Error(
       `${route.profile.name} image generation failed: ${response.status} ${truncateErrorBody(
         body
@@ -696,9 +711,11 @@ async function generateWithOpenAICompatibleImage({
     data?: Array<{ b64_json?: string; revised_prompt?: string; url?: string }>;
     id?: string;
   };
-  const image = route.profile.apiFormat === "openai-chat-completions"
-    ? chatImage(payload)
-    : imagesApiImage(payload);
+  const image = apiFormat === "cloudflare-ai-run"
+    ? cloudflareAiImage(payload)
+    : apiFormat === "openai-chat-completions"
+      ? chatImage(payload)
+      : imagesApiImage(payload);
 
   if (image.b64_json) {
     return {
@@ -712,7 +729,10 @@ async function generateWithOpenAICompatibleImage({
   }
 
   if (image.url) {
-    const imageResponse = await fetch(image.url);
+    const downloadHeaders = apiFormat === "cloudflare-ai-run"
+      ? cloudflareImageDownloadHeaders(image.url, apiKey)
+      : undefined;
+    const imageResponse = await fetch(image.url, downloadHeaders ? { headers: downloadHeaders } : undefined);
     if (!imageResponse.ok) {
       const body = await imageResponse.text();
       throw new Error(
@@ -775,6 +795,14 @@ function resolveImageGenerationRoutes(
     mode: "internal",
     provider: "internal",
   }];
+}
+
+function imageRequestUrl(route: ExternalImageRoute) {
+  if (route.profile.apiFormat === "cloudflare-ai-run") {
+    return cloudflareAiRunUrl(route.profile.baseUrl, process.env.CLOUDFLARE_ACCOUNT_ID);
+  }
+  if (route.profile.apiFormat === "openai-chat-completions") return completionUrl(route.profile.baseUrl);
+  return imageGenerationUrl(route.profile.baseUrl);
 }
 
 function buildOpenAICompatibleHeaders(route: ExternalImageRoute, apiKey: string) {

@@ -68,6 +68,33 @@ export const importBatch = internalMutation({
   handler: importPaintCatalogBatch,
 });
 
+/**
+ * Deletes a pre-catalog seed row when the imported catalog already has the
+ * same code. The Tamiya X-10 seed used line name "Acrylic", which does not
+ * match the catalog line "Tamiya Color Acrylic", so the importer could not
+ * claim it. Rows that already carry an externalKey are left in place.
+ */
+export const removeUnclaimedSeedDuplicates = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const mappings = await ctx.db.query("paintMappings").collect();
+    const catalogCodes = new Set(
+      mappings.flatMap((mapping) =>
+        mapping.externalKey ? [normalizePaintCodeForSearch(mapping.code)] : []
+      )
+    );
+    const removed: string[] = [];
+    for (const mapping of mappings) {
+      if (mapping.externalKey) continue;
+      const code = normalizePaintCodeForSearch(mapping.code);
+      if (!catalogCodes.has(code)) continue;
+      await ctx.db.delete(mapping._id);
+      removed.push(`${mapping.brand} ${mapping.code}`);
+    }
+    return { removed };
+  },
+});
+
 export const backfillLegacySeedPaints = internalMutation({
   args: { dryRun: v.boolean() },
   async handler(ctx, { dryRun }) {

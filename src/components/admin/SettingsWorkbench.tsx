@@ -34,6 +34,8 @@ type TemplateId = Id<"promptTemplates">;
 type TemplateVersionId = Id<"promptTemplateVersions">;
 type UserPlan = "free" | "pro" | "studio";
 
+type ProviderApiFormat = "openai-compatible" | "openai-chat-completions" | "cloudflare-ai-run";
+
 type ProviderRecord = {
   _id: ProviderId;
   name: string;
@@ -41,7 +43,7 @@ type ProviderRecord = {
   provider: ProviderDraft["provider"];
   modelId: string;
   capability: ProviderDraft["capability"];
-  apiFormat: "openai-compatible" | "openai-chat-completions";
+  apiFormat: ProviderApiFormat;
   baseUrl: string;
   keyEnvName: string;
   timeoutMs?: number;
@@ -163,7 +165,7 @@ type GenerationDraft = {
 };
 
 type ProviderDraft = {
-  apiFormat: "openai-compatible" | "openai-chat-completions";
+  apiFormat: ProviderApiFormat;
   name: string;
   slug: string;
   provider:
@@ -979,6 +981,7 @@ function ProvidersSection({
                   <select value={draft.apiFormat} onChange={(event) => setDraft({ ...draft, apiFormat: event.target.value as ProviderDraft["apiFormat"] })}>
                     <option value="openai-compatible">Images API / standard text</option>
                     <option value="openai-chat-completions">Chat Completions (text or image)</option>
+                    <option value="cloudflare-ai-run">Cloudflare AI Run</option>
                   </select>
                 </Field>
                 <Field label="Legacy priority" hint="Higher values win only when no explicit route exists."><NumberInput min={-100} max={100} value={draft.priority} onChange={(value) => setDraft({ ...draft, priority: value })} /></Field>

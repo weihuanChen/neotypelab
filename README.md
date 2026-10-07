@@ -296,20 +296,30 @@ Suggested smoke checks:
 Generation runs in **Convex actions**. Configure the following secrets in the
 Convex deployment (a local `.env.local` or Cloudflare secret alone is insufficient):
 
+- `CLOUDFLARE_IMAGE2_SUNBURST_API_KEY`: Cloudflare token for `openai/gpt-image-2.5-sunburst`. Keep this exact spelling.
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID used in the AI Run URL. Keep this exact spelling.
 - `OPENAI_IMAGE_FOR_LLM_RELAY`: LLMRelay image key. Keep this exact spelling.
 - `GEMINI_API_KEY_OFFCIAL`: official Gemini key. Keep this exact spelling.
 
 Create/save profiles in **Admin Settings → Providers**:
 
-| Setting | LLMRelay images | Gemini official text |
-| --- | --- | --- |
-| Provider | Custom OpenAI-compatible | Custom OpenAI-compatible |
-| Capability | Image generation | Text generation |
-| Request protocol | Images API / standard text | Images API / standard text |
-| Base URL | `https://llmrelay.site/v1` | `https://generativelanguage.googleapis.com/v1beta/openai` |
-| Model | `gpt-image-2` | `gemini-3.5-flash` (verified for this deployment) |
-| Credential reference | `OPENAI_IMAGE_FOR_LLM_RELAY` | `GEMINI_API_KEY_OFFCIAL` |
-| Suggested timeout | 180 seconds | 90 seconds |
+| Setting | Cloudflare HD Render | LLMRelay images | Gemini official text |
+| --- | --- | --- | --- |
+| Provider | Custom OpenAI-compatible | Custom OpenAI-compatible | Custom OpenAI-compatible |
+| Capability | Image generation | Image generation | Text generation |
+| Request protocol | Cloudflare AI Run | Images API / standard text | Images API / standard text |
+| Base URL | `https://api.cloudflare.com/client/v4` | `https://llmrelay.site/v1` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| Model | `openai/gpt-image-2.5-sunburst` | `gpt-image-2` | `gemini-3.5-flash` (verified for this deployment) |
+| Credential reference | `CLOUDFLARE_IMAGE2_SUNBURST_API_KEY` | `OPENAI_IMAGE_FOR_LLM_RELAY` | `GEMINI_API_KEY_OFFCIAL` |
+| Suggested timeout | 180 seconds | 180 seconds | 90 seconds |
+
+HD Render uses the Cloudflare profile. The executor posts to
+`/accounts/$CLOUDFLARE_ACCOUNT_ID/ai/run` with `size: "1024x1024"`, PNG output,
+and an opaque background. Ordinary renders use `quality: "medium"`; high-fidelity,
+weathering, build-stage, and material-comparison renders use `quality: "high"`.
+The returned `result.image` URL is downloaded into the existing rendition and R2
+pipeline. **Test connection** for this protocol calls Cloudflare token verification,
+not `/models`. LLMRelay remains available as a profile and is not the HD Render fallback.
 
 The Images API adapter also accepts a full `/images/generations` URL. For
 `gpt-image-2`, defaults follow the [LLMRelay guide](https://llmrelay.site/guide/gpt-image-2):
@@ -355,10 +365,11 @@ can complete a real request (being listed by `/models` alone is not sufficient):
 npx convex run creativeSetup:configure '{"textModelId":"gemini-3.5-flash"}' --push
 ```
 
-This creates the official Gemini and LLMRelay profiles, routes the first three
-creative actions to text and HD Render to image, and publishes `creation.v2` of
-the three creative templates. Existing template text is retained as version
-history. It does not replace the HD Render template.
+This creates the official Gemini, LLMRelay, and Cloudflare Sunburst profiles,
+routes the first three creative actions to text and HD Render to Cloudflare,
+and publishes `creation.v2` of the three creative templates. Existing template
+text is retained as version history. It does not replace the HD Render template.
+Running it again keeps HD Render on Cloudflare.
 
 The creation page now follows: kit → optional style recommendation → style and
 material selection → palette generation → **Use this palette** → **Create repaint

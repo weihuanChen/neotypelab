@@ -220,6 +220,38 @@ describe("paint catalog batch import", () => {
     });
     expect(superIron?.finishType).toBeUndefined();
   });
+
+  it("removes an unclaimed seed when the catalog already contains that code", async () => {
+    await t.run(async (ctx) => {
+      await ctx.db.insert("paintMappings", {
+        mappingKey: "tamiya-gun-metal-x10",
+        brand: "Tamiya",
+        line: "Acrylic",
+        code: "X-10",
+        colorName: "Gun Metal",
+        isActive: true,
+        searchText: "seed",
+      });
+      await ctx.db.insert("paintMappings", {
+        mappingKey: "tamiya-acrylic-x10",
+        externalKey: "tamiya:acrylic:x10",
+        brand: "Tamiya",
+        line: "Tamiya Color Acrylic",
+        code: "X-10",
+        colorName: "Gun Metal",
+        isActive: true,
+        searchText: "catalog",
+      });
+    });
+
+    const result = await t.mutation(internal.paintCatalogImport.removeUnclaimedSeedDuplicates, {});
+    expect(result.removed).toEqual(["Tamiya X-10"]);
+    const remaining = await t.run((ctx) => ctx.db.query("paintMappings").collect());
+    expect(remaining.map((mapping) => mapping.externalKey)).toEqual(["tamiya:acrylic:x10"]);
+
+    const again = await t.mutation(internal.paintCatalogImport.removeUnclaimedSeedDuplicates, {});
+    expect(again.removed).toEqual([]);
+  });
 });
 
 function importRecord() {
