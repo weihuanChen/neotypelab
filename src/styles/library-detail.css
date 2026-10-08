@@ -390,6 +390,13 @@
   align-items: center;
 }
 
+.work-detail-exhibition__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
 .work-detail-exhibition__case {
   display: inline-flex;
   flex-shrink: 0;
@@ -1266,4 +1273,3 @@ html.is-printing .app-shell {
   height: auto !important;
   overflow: visible !important;
 }
-

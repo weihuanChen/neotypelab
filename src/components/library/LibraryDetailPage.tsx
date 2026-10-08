@@ -64,6 +64,9 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
+  const [withdrawalNotice, setWithdrawalNotice] = useState<string | null>(null);
   const setVisibility = useAction(api.publicationNode.setConceptVisibility);
   const preview = useDetailImage(detail?.hero ?? { storageObjectId: null, publicUrl: null });
   const activeSystem = recommendations?.sets.find((set) => set.id === (selectedSystemId || defaultSystem?.id)) ?? defaultSystem;
@@ -82,6 +85,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   async function handleConfirmPublish() {
     setPublishing(true);
     setPublishError(null);
+    setWithdrawalNotice(null);
     try {
       await setVisibility({ conceptId: workId, visibility: "public" });
     } catch (error) {
@@ -90,6 +94,24 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
       throw error;
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function handleMakePrivate() {
+    if (withdrawing) return;
+    setWithdrawing(true);
+    setWithdrawalError(null);
+    setWithdrawalNotice(null);
+    try {
+      await setVisibility({ conceptId: workId, visibility: "private" });
+      setWithdrawalNotice("This work is now private. Your files and paint plan remain in Library.");
+    } catch (error) {
+      const cleanupFailed = error instanceof Error && error.message.includes("public asset cleanup");
+      setWithdrawalError(cleanupFailed
+        ? "Your work is private, but its public images could not be fully removed. Retry to finish removing them."
+        : "Could not make this work private. Please retry.");
+    } finally {
+      setWithdrawing(false);
     }
   }
 
@@ -124,7 +146,15 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
       </aside>
     </div>
 
-    <ExhibitionStrip detail={detail} onPublish={() => setPublishOpen(true)} />
+    <ExhibitionStrip
+      detail={detail}
+      onPublish={() => setPublishOpen(true)}
+      onMakePrivate={() => void handleMakePrivate()}
+      withdrawing={withdrawing}
+      publishing={publishing}
+      withdrawalError={withdrawalError}
+      withdrawalNotice={withdrawalNotice}
+    />
     <WorkbenchActionBar detail={detail} selectedSystem={activeSystem} />
 
     <Tabs value={tab} onValueChange={value => onTabChange(value as LibraryDetailTab)} className="work-detail-tabs">
@@ -198,11 +228,22 @@ function canPublishWork(status: string) {
 function ExhibitionStrip({
   detail,
   onPublish,
+  onMakePrivate,
+  withdrawing,
+  publishing,
+  withdrawalError,
+  withdrawalNotice,
 }: {
   detail: WorkDetail;
   onPublish: () => void;
+  onMakePrivate: () => void;
+  withdrawing: boolean;
+  publishing: boolean;
+  withdrawalError: string | null;
+  withdrawalNotice: string | null;
 }) {
   const isPublic = detail.visibility === "public";
+  const isShared = detail.visibility !== "private";
   const canPublish = canPublishWork(detail.status);
 
   return (
@@ -215,26 +256,39 @@ function ExhibitionStrip({
         <p>
           {isPublic
             ? "This work already has its public case on the hangar wall."
+            : isShared
+              ? "This work is accessible through its shared link."
             : canPublish
               ? "Share this prototype to Showcase so other builders can inspect the color system."
               : "Generate a render before publishing this build to Showcase."}
         </p>
+        {isShared ? <p>Make this work private to remove public access. Your Library files will be kept.</p> : null}
+        {withdrawalError ? <p role="alert">{withdrawalError}</p> : null}
+        {withdrawalNotice ? <p role="status">{withdrawalNotice}</p> : null}
       </div>
-      {isPublic ? (
-        <Link
-          className="work-detail-exhibition__case"
-          to="/prototype/$conceptId"
-          params={{ conceptId: detail.id }}
-        >
-          Go to case
-          <ArrowTopRightIcon aria-hidden="true" />
-        </Link>
-      ) : canPublish ? (
-        <Button type="button" className="work-detail-action is-primary" onClick={onPublish}>
-          <Share1Icon aria-hidden="true" />
-          Publish to Showcase
-        </Button>
-      ) : null}
+      <div className="work-detail-exhibition__actions">
+        {isShared ? (
+          <Link
+            className="work-detail-exhibition__case"
+            to="/prototype/$conceptId"
+            params={{ conceptId: detail.id }}
+          >
+            Go to case
+            <ArrowTopRightIcon aria-hidden="true" />
+          </Link>
+        ) : canPublish ? (
+          <Button type="button" className="work-detail-action is-primary" onClick={onPublish} disabled={withdrawing || publishing || Boolean(withdrawalError)}>
+            <Share1Icon aria-hidden="true" />
+            Publish to Showcase
+          </Button>
+        ) : null}
+        {isShared || withdrawing || withdrawalError ? (
+          <Button type="button" variant="outline" className="work-detail-action" onClick={onMakePrivate} disabled={withdrawing || publishing} aria-busy={withdrawing}>
+            <LockClosedIcon aria-hidden="true" />
+            {withdrawing ? "Making private…" : withdrawalError ? "Retry making private" : "Make private"}
+          </Button>
+        ) : null}
+      </div>
     </section>
   );
 }

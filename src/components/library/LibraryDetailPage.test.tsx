@@ -203,6 +203,7 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).toContain("solid target");
     expect(html).toContain("Publish to Showcase");
     expect(html).toContain("Share this prototype to Showcase");
+    expect(html).not.toContain("Make private");
     expect(html).toContain("work-detail-print-colophon");
     expect(html).toContain("neotypelab.com");
   });
@@ -215,9 +216,25 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).toContain("Go to case");
     expect(html).toContain("work-detail-exhibition__case");
     expect(html).toContain("This work already has its public case");
+    expect(html).toContain("Make private");
+    expect(html).toContain("Your Library files will be kept");
     expect(html).not.toContain("Open Showcase");
     expect(html).not.toContain("Publish to Showcase");
     mockDetail.visibility = "private";
+  });
+
+  it("also lets the owner make a link-only work private", () => {
+    mockDetail.visibility = "unlisted";
+    try {
+      const html = renderToStaticMarkup(
+        <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />
+      );
+      expect(html).toContain("Make private");
+      expect(html).toContain("accessible through its shared link");
+      expect(html).not.toContain("Publish to Showcase");
+    } finally {
+      mockDetail.visibility = "private";
+    }
   });
 
   it("marks roles without a catalog SKU as a custom mix", () => {

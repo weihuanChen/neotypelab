@@ -1,7 +1,7 @@
 import type { RankedPublicCreator } from "./types";
 
 export function CreatorRankingCard({ creator }: { creator: RankedPublicCreator }) {
-  const leadConcept = creator.leadConcept as typeof creator.leadConcept | null;
+  const leadConcept = creator.leadConcept;
 
   return (
     <article className="showcase-card showcase-card--compact">
