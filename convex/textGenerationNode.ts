@@ -4,6 +4,7 @@ import type { ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requestTextCompletion } from "./llmProtocol";
+import { screenPromptBeforeGeneration, type ContentSafetyReference } from "./contentSafetyNode";
 
 export type TextExecutionArgs = {
   templateKind: "style-suggestion" | "palette-plan" | "repaint-concept";
@@ -11,12 +12,21 @@ export type TextExecutionArgs = {
   systemPrompt: string;
   userPrompt: string;
   jsonOutput?: boolean;
+  /** Links the safety-scan audit row to the composition being executed. */
+  safetyReference?: ContentSafetyReference;
 };
 
 export async function executeTextRequest(
   ctx: ActionCtx,
   args: TextExecutionArgs
 ): Promise<Awaited<ReturnType<typeof requestTextCompletion>> & { profileId: string }> {
+  // Every Gemini call passes through here; screen the user-facing prompt before it leaves.
+  await screenPromptBeforeGeneration(ctx, {
+    prompt: args.userPrompt,
+    subject: "text",
+    stage: args.templateKind,
+    reference: args.safetyReference,
+  });
   const { route, policy } = await ctx.runQuery(internal.generation.getTextExecutionContext, {
     templateKind: args.templateKind,
     promptTemplateId: args.promptTemplateId,
@@ -32,8 +42,9 @@ export async function executeTextRequest(
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       if (Date.now() >= deadline) break;
       try {
+        const { safetyReference: _safetyReference, ...requestArgs } = args;
         const result = await requestTextCompletion({
-          ...args,
+          ...requestArgs,
           profile: {
             ...candidate.profile,
             timeoutMs: Math.min(

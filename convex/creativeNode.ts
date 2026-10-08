@@ -16,6 +16,7 @@ export async function executeCompositionHandler(
     const response = await executeTextRequest(ctx, {
       templateKind: claimed.kind, promptTemplateId: claimed.composition.promptTemplateId,
       systemPrompt: claimed.systemPrompt, userPrompt: claimed.composition.composedPrompt, jsonOutput: true,
+      safetyReference: { table: "promptCompositions", id: promptCompositionId },
     });
     await ctx.runMutation(internal.creativePipeline.complete, {
       promptCompositionId, responseJson: JSON.stringify(response.json), executionJson: JSON.stringify(response),

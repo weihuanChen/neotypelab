@@ -5,7 +5,7 @@ import { appPaths } from "@/src/lib/appPaths";
 import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const legalShell = {
-  description: "Terms and privacy for planning spray-ready Gunpla and mecha paint schemes.",
+  description: "Terms, privacy, and AI acceptable use for planning spray-ready Gunpla and mecha paint schemes.",
   title: "Legal",
 } as const;
 

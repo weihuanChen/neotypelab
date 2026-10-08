@@ -13,6 +13,7 @@ export const appPaths = {
   legal: "/legal",
   legalTerms: "/legal/terms",
   legalPrivacy: "/legal/privacy",
+  acceptableUse: "/acceptable-use",
   models: "/admin/models",
   admin: "/admin",
   specAdmin: "/admin/materials",

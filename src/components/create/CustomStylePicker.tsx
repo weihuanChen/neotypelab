@@ -7,6 +7,7 @@ import type { StyleIntent } from "@/convex/creativeContracts";
 import type { DirectionMatch, InterpretationResult } from "@/convex/styleInterpretations";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { AiDisclosureNote } from "@/src/components/legal/AiDisclosureNote";
 import { JobResult, JobWait, jobWaitProfiles, type StyleJobPhase } from "@/src/components/job-wait";
 import { resolveStyleJobPhase } from "./styleJobPhase";
 import { StylePalette } from "./StylePalette";
@@ -212,6 +213,7 @@ export function CustomStylePicker({
         {checkingHistory ? "Checking previous direction…" : "Form style →"}
       </Button>
       <p className="style-command-cost">{costCopy(creditCost, creditBalance)}</p>
+      <AiDisclosureNote kind="text" />
     </div> : null}
     {tab === "mine" ? <div className="space-y-5">
       <p>Styles are private until you publish them. Making a style private stops new saves; existing private copies remain.</p>

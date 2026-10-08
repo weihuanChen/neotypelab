@@ -62,6 +62,7 @@ export const appNavGroups: readonly AppNavGroup[] = [
         label: "Terms & Privacy",
         match: "prefix",
       },
+      { href: appPaths.acceptableUse, label: "Acceptable Use", match: "exact" },
     ],
   },
   {
@@ -96,6 +97,7 @@ const seoLandingReservedRoots = [
   "legal",
   "terms",
   "privacy",
+  "acceptable-use",
   "prototype",
   "pilot",
   "creator",

@@ -53,7 +53,7 @@ export const publicSeo = {
   legal: {
     title: "Legal | NeotypeLab",
     description:
-      "Terms of service and privacy policy for NeotypeLab, a planner for spray-ready Gunpla and mecha model paint schemes.",
+      "Terms of service, privacy policy, and AI acceptable use policy for NeotypeLab, a planner for spray-ready Gunpla and mecha model paint schemes.",
     keywords: "NeotypeLab, gunpla paint, mecha model kit",
   },
   terms: {
@@ -61,6 +61,12 @@ export const publicSeo = {
     description:
       "Terms for using NeotypeLab to plan spray-ready Gunpla and mecha model paint schemes, including credits, public repaints, and generated previews.",
     keywords: "NeotypeLab terms, gunpla paint, mecha model kit",
+  },
+  acceptableUse: {
+    title: "AI Acceptable Use Policy | NeotypeLab",
+    description:
+      "Prohibited content, the AI models NeotypeLab uses, prompt safety screening, enforcement, and how to report a violation or appeal a decision.",
+    keywords: "NeotypeLab acceptable use policy, AI content policy, gunpla paint, mecha model kit",
   },
   privacy: {
     title: "Privacy Policy | NeotypeLab",

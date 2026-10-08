@@ -14,7 +14,7 @@ import { resolveEffectiveEntitlements } from "./entitlements";
 import { settleGenerationStorageReservation } from "./storageAccounting";
 import { portraitUrl } from "./kitPicker";
 import {
-  findDebitByGenerationJob,
+  listGenerationJobDebits,
   refundCreditTransaction,
   refundUnlinkedCredits,
 } from "./creditLedger";
@@ -980,19 +980,6 @@ export const refundFailedJobCredits = internalMutation({
     }
     if (job.creationRunId) return;
 
-    const existingRefund = await ctx.db
-      .query("creditTransactions")
-      .withIndex("by_user_actionType", (q) =>
-        q.eq("userId", job.userId).eq("actionType", "generation-refund")
-      )
-      .collect()
-      .then((items) => items.find((item) => item.generationJobId === generationJobId));
-
-    if (existingRefund !== undefined) {
-      return;
-    }
-
-    const debit = await findDebitByGenerationJob(ctx, job.userId, generationJobId);
     const metadata = {
       generationJobId,
       conceptId: job.conceptId,
@@ -1000,13 +987,30 @@ export const refundFailedJobCredits = internalMutation({
       referenceId: generationJobId,
       description: `Refunded failed generation job ${generationJobId}`,
     };
-    if (debit) {
-      await refundCreditTransaction(ctx, {
-        debitTransactionId: debit._id,
-        actionType: "generation-refund",
-        metadata,
-      });
-    } else {
+    // A rerun charges the job again, so refund the newest charge that is still
+    // outstanding rather than stopping at the first refund ever issued.
+    const debits = await listGenerationJobDebits(ctx, job.userId, generationJobId);
+    if (debits.length > 0) {
+      const outstanding = debits.filter((entry) => !entry.refunded).at(-1);
+      if (outstanding) {
+        await refundCreditTransaction(ctx, {
+          debitTransactionId: outstanding.debit._id,
+          actionType: "generation-refund",
+          metadata,
+        });
+      }
+      return;
+    }
+
+    // Legacy jobs without a linked debit: refund the requested amount at most once.
+    const existingRefund = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_user_actionType", (q) =>
+        q.eq("userId", job.userId).eq("actionType", "generation-refund")
+      )
+      .collect()
+      .then((items) => items.find((item) => item.generationJobId === generationJobId));
+    if (existingRefund === undefined) {
       await refundUnlinkedCredits(ctx, {
         userId: job.userId,
         actionType: "generation-refund",

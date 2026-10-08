@@ -525,6 +525,31 @@ export async function findDebitByGenerationJob(
   ) ?? null;
 }
 
+/**
+ * Every debit charged to a generation job, oldest first, with whether each one
+ * has already been refunded. A job can carry several debits once it is rerun.
+ */
+export async function listGenerationJobDebits(
+  ctx: CreditWriteCtx,
+  userId: Id<"users">,
+  generationJobId: Id<"generationJobs">
+) {
+  const transactions = await ctx.db
+    .query("creditTransactions")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .collect();
+  const debits = transactions.filter((transaction) =>
+    transaction.generationJobId === generationJobId && transaction.delta < 0
+  );
+  return Promise.all(debits.map(async (debit) => ({
+    debit,
+    refunded: (await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_refund_of", (q) => q.eq("refundOfTransactionId", debit._id))
+      .unique()) !== null,
+  })));
+}
+
 function requirePositiveInteger(value: number, label: string) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer`);

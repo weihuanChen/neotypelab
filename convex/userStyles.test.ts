@@ -86,6 +86,7 @@ describe("Style interpretation lifecycle", () => {
   it("runs the public action through the text provider and reuses its request key", async () => {
     const f = await fixture();
     vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "off");
     const fetch = vi.fn(async () => new Response(JSON.stringify({
       id: "fixture-request", model: "gemini-2.5-flash",
       choices: [{ finish_reason: "stop", message: { role: "assistant", content: JSON.stringify(intent) } }],
@@ -103,6 +104,7 @@ describe("Style interpretation lifecycle", () => {
   it("refunds malformed provider output once and cannot save failed interpretations", async () => {
     const f = await fixture();
     vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "off");
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       choices: [{ finish_reason: "stop", message: { content: '{"wrong":"contract"}' } }],
     }), { status: 200 })));
@@ -119,12 +121,48 @@ describe("Style interpretation lifecycle", () => {
     const { colors: _colors, pattern: _pattern, ...rest } = intent;
     const legacy = { ...rest, version: "style-intent.v1" };
     vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "off");
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       choices: [{ finish_reason: "stop", message: { content: JSON.stringify(legacy) } }],
     }), { status: 200 })));
     await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description: "Jungle camo", requestKey: "legacy-output" }))
       .rejects.toThrow(/v2/);
     expect(await balance(f)).toBe(40);
+  });
+
+  it("fails closed before the text provider when prompts cannot be screened, and refunds", async () => {
+    const f = await fixture();
+    vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "enforce");
+    vi.stubEnv("WAFFO_MERCHANT_ID", "");
+    vi.stubEnv("WAFFO_PRIVATE_KEY", "");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description: "Cyan racing", requestKey: "unscreened" }))
+      .rejects.toThrow(/Content safety/);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await balance(f)).toBe(40);
+    const scans = await f.t.run(ctx => ctx.db.query("contentSafetyScans").collect());
+    expect(scans).toHaveLength(1);
+    expect(scans[0]).toMatchObject({
+      userId: f.owner.userId, subject: "text", stage: "style-suggestion", mode: "enforce",
+      blocked: true, action: "review", reasonCode: "not_configured", referenceTable: "promptCompositions",
+    });
+    expect(JSON.stringify(scans[0])).not.toContain("Cyan racing");
+  });
+
+  it("blocks blocklisted prompts before any remote scan or provider call", async () => {
+    const f = await fixture();
+    vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "enforce");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description: "Nude pilot with gold armor", requestKey: "blocklisted" }))
+      .rejects.toThrow(/Acceptable Use Policy/);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await balance(f)).toBe(40);
+    const [scan] = await f.t.run(ctx => ctx.db.query("contentSafetyScans").collect());
+    expect(scan).toMatchObject({ action: "block", reasonCode: "blocklist_match", matchedCategories: ["sexual"], blocklistTerms: ["nude"], blocked: true });
   });
 
   it("expires abandoned requests, refunds them, and rejects late completion", async () => {

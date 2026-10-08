@@ -1,7 +1,10 @@
 import type { AppPath } from "@/src/lib/appPaths";
 import { appPaths } from "@/src/lib/appPaths";
+import { aiModelDisclosure } from "@/src/lib/aiDisclosure";
 
-export type LegalDocumentId = "terms" | "privacy";
+export type LegalDocumentId = "terms" | "privacy" | "acceptable-use";
+
+const { image: imageModel, text: textModel, safety: safetyProvider } = aiModelDisclosure;
 
 export type LegalDocumentSection = {
   title: string;
@@ -20,14 +23,14 @@ export type LegalDocument = {
   sections: readonly LegalDocumentSection[];
 };
 
-/** Catalog for /legal. Add Cookie / Copyright / Acceptable Use here later. */
+/** Catalog for /legal. Add Cookie / Copyright here later. */
 export const legalDocuments: readonly LegalDocument[] = [
   {
     id: "terms",
     number: "01",
     title: "Terms of Service",
     summary: "Rules for planning spray-ready Gunpla and mecha paint schemes on NeotypeLab.",
-    updatedLabel: "Updated Sep 22, 2026",
+    updatedLabel: "Updated Oct 8, 2026",
     effectiveLabel: "Effective Sep 22, 2026",
     href: appPaths.legalTerms,
     sections: [
@@ -96,7 +99,7 @@ export const legalDocuments: readonly LegalDocument[] = [
       {
         title: "Acceptable use",
         paragraphs: [
-          "You may use the Service only for lawful purposes and in accordance with these Terms. You must not attempt, facilitate, or encourage any of the following:",
+          "You may use the Service only for lawful purposes and in accordance with these Terms and our AI Acceptable Use Policy at neotypelab.com/acceptable-use, which lists prohibited content categories, explains how requests are screened before generation, and describes enforcement, reporting, and appeals. You must not attempt, facilitate, or encourage any of the following:",
         ],
         items: [
           "Infringing intellectual-property, privacy, publicity, contractual, or other rights.",
@@ -145,7 +148,7 @@ export const legalDocuments: readonly LegalDocument[] = [
       {
         title: "Third-party services",
         paragraphs: [
-          "The Service relies on third parties for authentication, hosting, databases, storage, payment processing, email, and AI generation. Their services and terms may affect feature availability and how they process data. Links, paint listings, product references, or integrations do not constitute our endorsement of a third party, and NeotypeLab is not responsible for third-party products or sites outside our control.",
+          `The Service relies on third parties for authentication, hosting, databases, storage, payment processing, email, and AI generation. Images are generated with ${imageModel.model}, developed by ${imageModel.developer} and served through ${imageModel.servedVia}; text is generated with ${textModel.model}, developed by ${textModel.developer}; prompts are screened by ${safetyProvider.service}. Their services and terms may affect feature availability and how they process data. Links, paint listings, product references, or integrations do not constitute our endorsement of a third party, and NeotypeLab is not responsible for third-party products or sites outside our control.`,
         ],
       },
       {
@@ -200,7 +203,7 @@ export const legalDocuments: readonly LegalDocument[] = [
     number: "02",
     title: "Privacy Policy",
     summary: "How NeotypeLab handles your account and paint-plan data.",
-    updatedLabel: "Updated Sep 22, 2026",
+    updatedLabel: "Updated Oct 8, 2026",
     effectiveLabel: "Effective Sep 22, 2026",
     href: appPaths.legalPrivacy,
     sections: [
@@ -260,7 +263,7 @@ export const legalDocuments: readonly LegalDocument[] = [
         title: "AI generation and automated processing",
         paragraphs: [
           "When you request an interpretation, palette, specification, or image, the Service sends the inputs needed for that request to the configured generation provider. These inputs may include your prompt or style description, selected catalog attributes, a compiled generation instruction, and eligible reference images. The provider returns generated text or image data and technical metadata. NeotypeLab stores validated results, job records, and selected provider identifiers so the workflow can continue and failures can be investigated.",
-          "Configured providers may include Google’s Gemini services for text processing and LLMRelay or another OpenAI-compatible image service for rendering. Provider availability and routing can change. Each provider processes data under its own terms and privacy commitments, and its location may differ from yours. Do not include personal, confidential, or regulated information in creative inputs unless it is necessary and you are authorized to do so.",
+          "Current providers are Google Gemini, accessed through the Google Gemini API, for text processing, and OpenAI GPT Image, served through Cloudflare Workers AI, for image rendering. Before a request is sent to a generation provider, its prompt text is screened by Waffo’s content safety service, which returns a verdict and does not retain the prompt text. Provider availability and routing can change; our AI Acceptable Use Policy lists the current models. Each provider processes data under its own terms and privacy commitments, and its location may differ from yours. Do not include personal, confidential, or regulated information in creative inputs unless it is necessary and you are authorized to do so.",
           "Generation is automated, but NeotypeLab does not use automated processing to make decisions that produce legal or similarly significant effects about you. Safety systems may automatically reject a request, and anti-abuse signals may limit an account; you may contact us if you believe a restriction was made in error.",
         ],
       },
@@ -340,6 +343,129 @@ export const legalDocuments: readonly LegalDocument[] = [
         title: "Contact us",
         paragraphs: [
           "For privacy questions, rights requests, account closure, or security concerns, email hello@neotypelab.com. Please do not include passwords, full payment-card details, government identification, or other sensitive information unless we specifically request it through a secure method.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "acceptable-use",
+    number: "03",
+    title: "AI Acceptable Use Policy",
+    summary: "The six prohibited content categories, the AI models we use, how prompts are moderated, and how we enforce, handle reports, and review appeals.",
+    updatedLabel: "Updated Oct 8, 2026",
+    effectiveLabel: "Effective Oct 8, 2026",
+    href: appPaths.acceptableUse,
+    sections: [
+      {
+        title: "Scope",
+        paragraphs: [
+          "NeotypeLab provides AI-assisted creative tools for scale model painting concepts, color exploration, and digital design. This AI Acceptable Use Policy (“Policy”) forms part of our Terms of Service; where the two conflict on a content or conduct question, the stricter rule applies. The Policy applies to all content submitted, generated, stored, or published through the Service, including:",
+        ],
+        items: [
+          "User inputs: prompts, Custom Style descriptions, notes, and other instructions you submit.",
+          "Text: AI-generated style interpretations, color and paint plans, and repaint specifications.",
+          "Images: AI-generated previews and renders, and reference images you upload.",
+          "Published content: anything you make public or unlisted, including styles, builds, and profile details.",
+        ],
+      },
+      {
+        title: "Prohibited content categories",
+        paragraphs: [
+          "NeotypeLab prohibits generating, requesting, uploading, storing, or publishing content in any of the following six categories, whether it appears in a prompt, a style description, notes, an uploaded file, a generated output, or a published page:",
+        ],
+        items: [
+          "1. Pornography / NSFW content — pornography, sexually explicit or fetish imagery, nudity presented for sexual purposes, and non-consensual intimate content. NeotypeLab does not permit adult content in any form.",
+          "2. Violence / gore — graphic or gratuitous violence, graphic injury, blood and gore, torture, and content that glorifies, celebrates, or incites real-world violence, terrorism, or violent extremism. Fictional mecha, armor, and model-kit weaponry shown as part of a paint concept is permitted; realistic depictions of harm to people or animals are not.",
+          "3. Hate speech — content that promotes hatred, discrimination, dehumanization, harassment, or violence against people based on race, ethnicity, national origin, religion, disability, sex, gender identity, sexual orientation, or another protected characteristic, including hate symbols used to promote such views.",
+          "4. Child-unsafe content (CSAM) — any sexualization, sexual exploitation, or abuse of minors, including fictional, stylized, or AI-generated depictions, and any other content that endangers children.",
+          "5. Deepfakes / impersonation — realistic depictions of real people without their consent, manipulation of a real person’s likeness, impersonation of real individuals, brands, or organizations, and content presented as authentic or official when it is not.",
+          "6. Copyright / trademark infringement — unauthorized reproduction of copyrighted artwork, characters, packaging, decals, logos, trademarks, or another creator’s distinctive work in violation of applicable law. Referring to a model kit or brand to identify a compatible subject is permitted; copying protected designs or presenting output as an official product is not.",
+        ],
+      },
+      {
+        title: "Zero-tolerance content",
+        paragraphs: [
+          "The following are actioned immediately with a permanent ban, without prior warning, and may be reported to law enforcement or other appropriate authorities:",
+        ],
+        items: [
+          "Child sexual abuse material (CSAM) or any sexual content involving minors.",
+          "Content that promotes or facilitates terrorism, violent extremism, or mass violence.",
+          "Instructions for creating weapons capable of mass casualties, explosives, or other serious real-world harm.",
+          "Content inciting genocide or ethnic hatred.",
+          "Non-consensual sexual or intimate deepfakes of real individuals.",
+        ],
+      },
+      {
+        title: "Prohibited conduct",
+        paragraphs: ["You must also not:"],
+        items: [
+          "Use jailbreak prompts or otherwise attempt to bypass, probe, or defeat our safety screening—for example by splitting, encoding, misspelling, or translating prohibited requests, or by repeatedly resubmitting a rejected request with small changes.",
+          "Pass AI-generated output off as human-made work, a photograph of a real physical build, or an official product image where that would mislead others.",
+          "Generate or spread misinformation, or use the Service for fraud, spam, sanctions evasion, or any purpose that violates applicable law or the rights of others, including privacy and publicity rights.",
+          "Use automated or high-volume access, share accounts, or resell access to the AI tools without our written permission.",
+        ],
+      },
+      {
+        title: "AI models we use",
+        paragraphs: [
+          "NeotypeLab is an independent product and is not affiliated with or endorsed by the model providers below. We do not train our own foundation models. Generation is performed by the following third-party models, which our servers call through their provider APIs on your behalf:",
+        ],
+        items: [
+          `Image generation — ${imageModel.model}, developed by ${imageModel.developer} and served through ${imageModel.servedVia}. Used for ${imageModel.uses}.`,
+          `Text generation — ${textModel.model}, developed by ${textModel.developer} and accessed through ${textModel.servedVia}. Used for ${textModel.uses}.`,
+          `Prompt safety screening — ${safetyProvider.service} (Waffo Prompt Sift), a stateless check that does not retain prompt text after returning a verdict.`,
+          "Only the inputs needed for a request—such as your prompt or style description, selected kit and style attributes, the compiled generation instruction, and eligible reference images—are sent to these providers. Provider routing can change; this section is updated when it does. All generated images and text are AI-generated.",
+        ],
+      },
+      {
+        title: "Content moderation",
+        paragraphs: [
+          "NeotypeLab moderates content in several layers:",
+        ],
+        items: [
+          "Prompt screening before generation: every text and image generation request is checked against a keyword and phrase blocklist covering all six prohibited categories, which we maintain and update as new patterns appear, and is then screened by an automated content safety service using keyword and semantic detection before it is sent to an AI model. Flagged requests are not generated. Requests that cannot be screened—for example, because the safety service is temporarily unavailable—are also not generated.",
+          "Model-level output filtering: the image and text models we use apply their providers’ own safety systems, which can refuse unsafe requests or withhold unsafe outputs. Refused results are not delivered to you.",
+          "Review of published content: content made public or unlisted can be reviewed, hidden, or withdrawn by our team, and every report is reviewed by a person.",
+          "Moderation records: we keep records of automated screening verdicts (without storing the prompt text itself) and of human review decisions, and use them to investigate reports, handle appeals, and identify repeated violations.",
+        ],
+      },
+      {
+        title: "Enforcement actions",
+        paragraphs: [
+          "Depending on the severity, frequency, and context of a violation, we take one or more of the following actions:",
+        ],
+        items: [
+          "Request rejection: the generation request is blocked before reaching the model. Credits for a blocked request are returned where the applicable workflow refunds failed generations.",
+          "Warning: written notice for a first-time or minor violation.",
+          "Content removal: violating content is taken down, unpublished, or removed from discovery and remix features.",
+          "Feature restriction: generation, publishing, or other features are temporarily restricted for repeated or more serious violations.",
+          "Account suspension or permanent ban: accounts are suspended for serious or repeated violations and permanently banned for zero-tolerance violations or repeated serious violations. Unused Credits on a banned account may be forfeited where permitted by law.",
+          "Legal referral: zero-tolerance violations may be reported to law enforcement, and we cooperate with lawful investigations.",
+        ],
+      },
+      {
+        title: "Reporting violations",
+        paragraphs: [
+          "Anyone—users, rights holders, or members of the public—can report content or behavior that may violate this Policy, including child-safety concerns, impersonation, or infringement of your own rights, by emailing hello@neotypelab.com with the subject “AUP Report.” Please include the page URL or Build N° and a short description of the concern. For copyright complaints, also include the information listed in the Copyright section of our Terms of Service.",
+          "Reports are handled as follows: we acknowledge receipt, triage by severity, review the content, decide, apply any enforcement action, and notify the reporter. Child-safety and terrorism reports are prioritized and the content is restricted within 24 hours of receipt; other reports receive an initial response within 5 working days and a decision within 15 working days. If a case needs longer, we tell the reporter why. Reporter identities are kept confidential, and knowingly false or abusive reports may themselves lead to enforcement.",
+        ],
+      },
+      {
+        title: "Appeals",
+        paragraphs: [
+          "If you believe a generation request was rejected, or content or an account was restricted, by mistake, email hello@neotypelab.com with the subject “AUP Appeal” within 30 days. Include the reference code shown with a rejected request, if any, and explain why you believe the decision was wrong. A person will review the appeal and reply within 10 working days.",
+        ],
+      },
+      {
+        title: "Policy updates",
+        paragraphs: [
+          "We may update this Policy to address evolving safety requirements, applicable laws, provider terms, and platform capabilities. We will update the date above and, for material changes, provide reasonable notice through the Service. Continued use after an update takes effect means the updated Policy applies.",
+        ],
+      },
+      {
+        title: "Contact",
+        paragraphs: [
+          "Safety reports, appeals, and questions about this Policy: hello@neotypelab.com.",
         ],
       },
     ],

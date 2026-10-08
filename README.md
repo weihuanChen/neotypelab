@@ -300,6 +300,7 @@ Convex deployment (a local `.env.local` or Cloudflare secret alone is insufficie
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID used in the AI Run URL. Keep this exact spelling.
 - `OPENAI_IMAGE_FOR_LLM_RELAY`: LLMRelay image key. Keep this exact spelling.
 - `GEMINI_API_KEY_OFFCIAL`: official Gemini key. Keep this exact spelling.
+- `CONTENT_SAFETY_MODE`: prompt safety screening through Waffo `contentSafety.scanPrompt` before every Gemini and image call (`convex/contentSafetyNode.ts`). `enforce` (default when unset) blocks anything not `allow` and fails closed when Waffo is unreachable or `WAFFO_MERCHANT_ID` / `WAFFO_PRIVATE_KEY` are missing; `monitor` scans and logs to `contentSafetyScans` without blocking; `off` skips scanning (local only). Optional `CONTENT_SAFETY_SEMANTIC` = `off` | `shadow` | `enforce`. Before the Waffo call, prompts are matched against the maintained blocklist in `contentBlocklistTerms` (base list in `convex/contentBlocklistPolicy.ts`; seed with `npx convex run contentBlocklist:seedBaseTerms`, edit with `contentBlocklist:addTerm` / `contentBlocklist:setTermActive`, inspect with `contentBlocklist:listTerms`). Matched terms are logged in `contentSafetyScans.blocklistTerms` for false-positive review.
 
 Create/save profiles in **Admin Settings → Providers**:
 

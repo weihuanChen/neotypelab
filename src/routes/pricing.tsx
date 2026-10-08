@@ -5,6 +5,7 @@ import { CreditPackPurchaseAction } from "@/src/components/pricing/CreditPackPur
 import { PricingCheckoutNotice } from "@/src/components/pricing/PricingCheckoutNotice";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import { appPaths } from "@/src/lib/appPaths";
+import { aiModelDisclosure } from "@/src/lib/aiDisclosure";
 import {
   COMPLETE_BUILD_CREDITS,
   CREDIT_COSTS,
@@ -143,6 +144,44 @@ function PricingRoute() {
                 <b>{cost.credits}</b>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="models-heading" className="pricing-section pricing-costs">
+          <header className="pricing-section__head">
+            <p>AI models</p>
+            <h2 id="models-heading">What generates your build?</h2>
+          </header>
+          <div className="pricing-cost-list">
+            <div className="pricing-cost">
+              <span>
+                <strong>{aiModelDisclosure.image.family}</strong>
+                <small>
+                  HD previews and renders · developed by {aiModelDisclosure.image.developer}, served through{" "}
+                  {aiModelDisclosure.image.servedVia}
+                </small>
+              </span>
+              <b>Image</b>
+            </div>
+            <div className="pricing-cost">
+              <span>
+                <strong>{aiModelDisclosure.text.model}</strong>
+                <small>
+                  Custom Styles, color and paint plans, repaint specifications · developed by{" "}
+                  {aiModelDisclosure.text.developer}
+                </small>
+              </span>
+              <b>Text</b>
+            </div>
+          </div>
+          <div className="pricing-section__note">
+            <p>
+              Every prompt is screened for safety before it reaches a model. See the{" "}
+              <Link preload="intent" to={appPaths.acceptableUse}>
+                AI Acceptable Use Policy
+              </Link>{" "}
+              for prohibited content and how we moderate.
+            </p>
           </div>
         </section>
 

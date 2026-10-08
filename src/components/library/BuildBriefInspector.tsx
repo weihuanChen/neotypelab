@@ -39,6 +39,7 @@ import {
   mapStatusTone,
 } from "@/src/components/ui/workbench";
 import type { LibraryConcept } from "./types";
+import { AiDisclosureNote } from "@/src/components/legal/AiDisclosureNote";
 import {
   computeMaskingSummary,
   CUSTOM_MIX_LABEL,
@@ -648,6 +649,7 @@ export function BuildBriefInspector({
                     {renderLabel("weathering-simulation", "Weathering sim", "Queueing...")}
                   </GhostButton>
                 </div>
+                <AiDisclosureNote kind="image" />
               </div>
             ) : null}
           </div>

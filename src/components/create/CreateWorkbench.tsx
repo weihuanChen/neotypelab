@@ -18,6 +18,7 @@ import { KitPicker, KitPortrait } from "./KitPicker";
 import { GenerationJobSheet } from "./GenerationJobSheet";
 import type { CreateWorkbenchSearch } from "./createSearch";
 import { SystemState, systemStates } from "@/src/components/system-state";
+import { AiDisclosureNote } from "@/src/components/legal/AiDisclosureNote";
 import type { StyleJobPhase } from "@/src/components/job-wait";
 
 const moodOptions = ["command-presence", "stealth-tension", "industrial-hazard", "reactor-glow", "field-fatigue", "ceremonial-clean"] as const;
@@ -185,7 +186,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
       <div className="create-model-layout"><KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} />
         <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kit?.portrait} name={kit?.name ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kit?.name ?? "Select a kit"}</h3><p>{kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
           <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
-          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><Button className="create-generate-button" disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating preview…" : "Generate preview →"}</Button><button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button></section>
+          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><Button className="create-generate-button" disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating preview…" : "Generate preview →"}</Button><button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
         </aside>
       </div>
       <div className="create-mobile-generate"><div><strong>{kit?.name ?? "Choose a kit"}</strong><span>{quote?.cost ?? "—"} credits · Image + plan</span></div><Button disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating…" : "Generate →"}</Button></div>

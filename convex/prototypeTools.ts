@@ -65,12 +65,13 @@ export const interpretCustomStyle = action({
       try {
         const response = await ctx.runAction(internal.generationNode.executeText, {
           templateKind: "style-suggestion", ...claimed, jsonOutput: true,
+          safetyReference: { table: "promptCompositions", id },
         });
         await ctx.runMutation(internal.styleInterpretations.complete, {
           promptCompositionId: id, responseJson: JSON.stringify(response.json), executionJson: JSON.stringify(response),
         });
       } catch (error) {
-        const reason = error instanceof Error ? error.message.split("\n")[0].slice(0, 500) : "Style interpretation failed";
+        const reason = error instanceof Error ? error.message.split("\n")[0].replace(/^(?:Uncaught Error:\s*)+/, "").slice(0, 500) : "Style interpretation failed";
         await ctx.runMutation(internal.creativePipeline.fail, { promptCompositionId: id, reason });
         throw new ConvexError(reason);
       }

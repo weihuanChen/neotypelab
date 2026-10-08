@@ -13,6 +13,7 @@ import {
 import { createImageRenditions } from "./imageRenditions";
 import { executeTextRequest } from "./textGenerationNode";
 import { executeCompositionHandler } from "./creativeNode";
+import { screenPromptBeforeGeneration } from "./contentSafetyNode";
 
 import { loadShapeReferenceDataUri, supportsShapeReference, withShapeReferenceDirective } from "./shapeReference";
 import { chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders, cloudflareImageRequest, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, jsonObject, providerConnectionUrl, requestTextCompletion } from "./llmProtocol";
@@ -25,6 +26,10 @@ export const executeText = internalAction({
     systemPrompt: v.string(),
     userPrompt: v.string(),
     jsonOutput: v.optional(v.boolean()),
+    safetyReference: v.optional(v.object({
+      table: v.union(v.literal("promptCompositions"), v.literal("generationJobs")),
+      id: v.string(),
+    })),
   },
   handler: executeTextRequest,
 });
@@ -164,12 +169,13 @@ type RouteSummary = {
   provider: OpenAICompatibleProvider;
 };
 
+/** Owner-only retry of a failed standalone render; claimJobRerun authorizes, charges, and schedules it. */
 export const rerunJob = action({
   args: {
     generationJobId: v.id("generationJobs"),
   },
   handler: async (ctx, { generationJobId }) => {
-    await executeQueuedJobHandler(ctx, { generationJobId });
+    await ctx.runMutation(internal.generationRerun.claimJobRerun, { generationJobId });
   },
 });
 
@@ -374,6 +380,14 @@ export async function executeQueuedJobHandler(
       if (job.shapeReferenceUrl && !shapeReference) {
         console.warn(`Shape reference unavailable for generation job ${generationJobId}`);
       }
+      // Screen the composed image prompt before any provider is called; a rejection
+      // takes the normal failure path below (job failed, storage released, refund policy).
+      await screenPromptBeforeGeneration(ctx, {
+        prompt: job.prompt.composedPrompt,
+        subject: "image",
+        stage: job.renderMode ?? job.kind,
+        reference: { table: "generationJobs", id: generationJobId },
+      });
       const generated = await generateWithPolicy({
         routes,
         fallbackBehavior: job.generationPolicy.fallbackBehavior,

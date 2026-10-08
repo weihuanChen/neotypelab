@@ -57,6 +57,7 @@ export function buildRobotsTxt(request: Request) {
     "Allow: /contact",
     "Allow: /legal",
     "Allow: /legal/",
+    "Allow: /acceptable-use",
     "Allow: /prototype/",
     "Allow: /pilot/",
     "Allow: /creator/",
@@ -135,6 +136,12 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
     },
     {
       url: new URL("/legal/privacy", siteUrl).toString(),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: new URL("/acceptable-use", siteUrl).toString(),
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,

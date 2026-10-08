@@ -26,6 +26,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AcceptableUseRouteImport } from './routes/acceptable-use'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TTemplatesRouteImport } from './routes/t_.templates'
@@ -52,6 +53,7 @@ import { Route as PilotHandleRouteImport } from './routes/pilot.$handle'
 import { Route as LibraryConceptIdRouteImport } from './routes/library_.$conceptId'
 import { Route as LegalTermsRouteImport } from './routes/legal_.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal_.privacy'
+import { Route as LegalAcceptableUseRouteImport } from './routes/legal_.acceptable-use'
 import { Route as FeedbackReportsRouteImport } from './routes/feedback_.reports'
 import { Route as FeedbackFeedbackIdRouteImport } from './routes/feedback_.$feedbackId'
 import { Route as CreatorHandleRouteImport } from './routes/creator.$handle'
@@ -168,6 +170,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptableUseRoute = AcceptableUseRouteImport.update({
+  id: '/acceptable-use',
+  path: '/acceptable-use',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -298,6 +305,11 @@ const LegalTermsRoute = LegalTermsRouteImport.update({
 const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
   id: '/legal_/privacy',
   path: '/legal/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalAcceptableUseRoute = LegalAcceptableUseRouteImport.update({
+  id: '/legal_/acceptable-use',
+  path: '/legal/acceptable-use',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedbackReportsRoute = FeedbackReportsRouteImport.update({
@@ -474,6 +486,7 @@ const BaseModelSlugStylePresetSlugOpengraphImageRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acceptable-use': typeof AcceptableUseRoute
   '/admin': typeof AdminRouteWithChildren
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -513,6 +526,7 @@ export interface FileRoutesByFullPath {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/library/$conceptId': typeof LibraryConceptIdRoute
@@ -551,6 +565,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acceptable-use': typeof AcceptableUseRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
   '/create': typeof CreateRoute
@@ -589,6 +604,7 @@ export interface FileRoutesByTo {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback/reports': typeof FeedbackReportsRoute
+  '/legal/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/library/$conceptId': typeof LibraryConceptIdRoute
@@ -628,6 +644,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acceptable-use': typeof AcceptableUseRoute
   '/admin': typeof AdminRouteWithChildren
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -667,6 +684,7 @@ export interface FileRoutesById {
   '/creator/$handle': typeof CreatorHandleRoute
   '/feedback_/$feedbackId': typeof FeedbackFeedbackIdRoute
   '/feedback_/reports': typeof FeedbackReportsRoute
+  '/legal_/acceptable-use': typeof LegalAcceptableUseRoute
   '/legal_/privacy': typeof LegalPrivacyRoute
   '/legal_/terms': typeof LegalTermsRoute
   '/library_/$conceptId': typeof LibraryConceptIdRoute
@@ -707,6 +725,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acceptable-use'
     | '/admin'
     | '/checkout'
     | '/contact'
@@ -746,6 +765,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/legal/acceptable-use'
     | '/legal/privacy'
     | '/legal/terms'
     | '/library/$conceptId'
@@ -784,6 +804,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acceptable-use'
     | '/checkout'
     | '/contact'
     | '/create'
@@ -822,6 +843,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback/$feedbackId'
     | '/feedback/reports'
+    | '/legal/acceptable-use'
     | '/legal/privacy'
     | '/legal/terms'
     | '/library/$conceptId'
@@ -860,6 +882,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/acceptable-use'
     | '/admin'
     | '/checkout'
     | '/contact'
@@ -899,6 +922,7 @@ export interface FileRouteTypes {
     | '/creator/$handle'
     | '/feedback_/$feedbackId'
     | '/feedback_/reports'
+    | '/legal_/acceptable-use'
     | '/legal_/privacy'
     | '/legal_/terms'
     | '/library_/$conceptId'
@@ -938,6 +962,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcceptableUseRoute: typeof AcceptableUseRoute
   AdminRoute: typeof AdminRouteWithChildren
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
@@ -962,6 +987,7 @@ export interface RootRouteChildren {
   CreatorHandleRoute: typeof CreatorHandleRoute
   FeedbackFeedbackIdRoute: typeof FeedbackFeedbackIdRoute
   FeedbackReportsRoute: typeof FeedbackReportsRoute
+  LegalAcceptableUseRoute: typeof LegalAcceptableUseRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
   LibraryConceptIdRoute: typeof LibraryConceptIdRoute
@@ -1116,6 +1142,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acceptable-use': {
+      id: '/acceptable-use'
+      path: '/acceptable-use'
+      fullPath: '/acceptable-use'
+      preLoaderRoute: typeof AcceptableUseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -1298,6 +1331,13 @@ declare module '@tanstack/react-router' {
       path: '/legal/privacy'
       fullPath: '/legal/privacy'
       preLoaderRoute: typeof LegalPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal_/acceptable-use': {
+      id: '/legal_/acceptable-use'
+      path: '/legal/acceptable-use'
+      fullPath: '/legal/acceptable-use'
+      preLoaderRoute: typeof LegalAcceptableUseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feedback_/reports': {
@@ -1584,6 +1624,7 @@ const BaseModelSlugStylePresetSlugRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcceptableUseRoute: AcceptableUseRoute,
   AdminRoute: AdminRouteWithChildren,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
@@ -1609,6 +1650,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreatorHandleRoute: CreatorHandleRoute,
   FeedbackFeedbackIdRoute: FeedbackFeedbackIdRoute,
   FeedbackReportsRoute: FeedbackReportsRoute,
+  LegalAcceptableUseRoute: LegalAcceptableUseRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
   LibraryConceptIdRoute: LibraryConceptIdRoute,

@@ -1312,6 +1312,48 @@ const schema = defineSchema({
     .index("by_generationJobId", ["generationJobId"])
     .index("by_assetId", ["assetId"]),
 
+  // Prompt safety screening audit trail (Waffo). Prompt text is never stored, only its hash.
+  contentSafetyScans: defineTable({
+    userId: v.optional(v.id("users")),
+    subject: v.union(v.literal("text"), v.literal("image")),
+    stage: v.string(),
+    mode: v.union(v.literal("monitor"), v.literal("enforce")),
+    blocked: v.boolean(),
+    action: v.union(v.literal("allow"), v.literal("review"), v.literal("block")),
+    reasonCode: v.string(),
+    matchedCategories: v.array(v.string()),
+    requestIds: v.array(v.string()),
+    semanticStatus: v.optional(v.string()),
+    promptSha256: v.string(),
+    promptLength: v.number(),
+    chunkCount: v.number(),
+    blocklistTerms: v.optional(v.array(v.string())),
+    referenceTable: v.optional(
+      v.union(v.literal("promptCompositions"), v.literal("generationJobs"))
+    ),
+    referenceId: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_action", ["action"]),
+
+  // Maintained prompt blocklist, checked before the Waffo scan. Terms are stored normalized.
+  contentBlocklistTerms: defineTable({
+    term: v.string(),
+    category: v.union(
+      v.literal("sexual"),
+      v.literal("child-safety"),
+      v.literal("violence"),
+      v.literal("hate"),
+      v.literal("deepfake"),
+      v.literal("ip"),
+      v.literal("extremism")
+    ),
+    isActive: v.boolean(),
+    source: v.union(v.literal("base"), v.literal("admin")),
+    note: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_term", ["term"]),
+
   feedbackReports: defineTable({
     userId: v.id("users"),
     recordNumber: v.optional(v.number()),
