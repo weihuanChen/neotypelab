@@ -14,6 +14,7 @@ import { createImageRenditions } from "./imageRenditions";
 import { executeTextRequest } from "./textGenerationNode";
 import { executeCompositionHandler } from "./creativeNode";
 
+import { loadShapeReferenceDataUri, supportsShapeReference, withShapeReferenceDirective } from "./shapeReference";
 import { chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders, cloudflareImageRequest, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, jsonObject, providerConnectionUrl, requestTextCompletion } from "./llmProtocol";
 
 // Internal building block; creative stages will persist and validate their own domain output.
@@ -366,6 +367,13 @@ export async function executeQueuedJobHandler(
       await ctx.runMutation(internal.storageAccounting.reserveGenerationStorage, {
         generationJobId,
       });
+      // Missing or unreachable line art degrades to text-only rendering instead of failing the job.
+      const shapeReference = job.shapeReferenceUrl
+        ? await loadShapeReferenceDataUri(job.shapeReferenceUrl)
+        : null;
+      if (job.shapeReferenceUrl && !shapeReference) {
+        console.warn(`Shape reference unavailable for generation job ${generationJobId}`);
+      }
       const generated = await generateWithPolicy({
         routes,
         fallbackBehavior: job.generationPolicy.fallbackBehavior,
@@ -381,6 +389,7 @@ export async function executeQueuedJobHandler(
           prompt: job.prompt.composedPrompt,
           negativePrompt: job.prompt.negativePrompt,
           title: job.concept.title,
+          shapeReference,
         },
       });
       attemptedProvider = generated.provider;
@@ -522,6 +531,13 @@ export async function executeQueuedJobHandler(
           templateVersion: job.prompt.templateVersion,
           revisedPrompt: generated.revisedPrompt,
           mimeType: generated.contentType,
+          shapeReference: !job.shapeReferenceUrl
+            ? "none"
+            : !shapeReference
+              ? "unavailable"
+              : generated.shapeReferenceApplied
+                ? "applied"
+                : "unsupported-protocol",
         }),
       });
     } catch (error) {
@@ -598,6 +614,7 @@ async function generateImage({
   prompt,
   negativePrompt,
   title,
+  shapeReference,
 }: {
   kind: GenerationKind;
   renderMode?: RenderMode;
@@ -607,6 +624,7 @@ async function generateImage({
   prompt: string;
   negativePrompt?: string | null;
   title: string;
+  shapeReference?: string | null;
 }) {
   if (route.mode === "openai-compatible") {
     return await generateWithOpenAICompatibleImage({
@@ -615,6 +633,7 @@ async function generateImage({
       renderMode,
       simulationStage,
       route,
+      shapeReference,
     });
   }
 
@@ -630,6 +649,7 @@ async function generateImage({
     ...generated,
     provider: "internal" as const,
     routeSummary: undefined,
+    shapeReferenceApplied: false,
   };
 }
 
@@ -639,13 +659,20 @@ async function generateWithOpenAICompatibleImage({
   renderMode,
   simulationStage,
   route,
+  shapeReference,
 }: {
   prompt: string;
   negativePrompt?: string | null;
   renderMode?: RenderMode;
   simulationStage?: SimulationStage;
   route: ExternalImageRoute;
+  shapeReference?: string | null;
 }) {
+  // Only protocols that accept input images get the reference; the Images
+  // generations endpoint has no image input, so it stays text-only.
+  const shapeReferenceApplied = Boolean(shapeReference) && supportsShapeReference(route.profile.apiFormat);
+  const referenceImages = shapeReferenceApplied && shapeReference ? [shapeReference] : undefined;
+  if (shapeReferenceApplied) prompt = withShapeReferenceDirective(prompt);
   const apiKey = process.env[route.profile.keyEnvName];
   if (!apiKey) {
     throw new Error(
@@ -668,6 +695,7 @@ async function generateWithOpenAICompatibleImage({
               modelId: route.profile.modelId,
               prompt: negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt,
               quality: getDefaultImageQuality(renderMode),
+              images: referenceImages,
             })
           : buildOpenAICompatibleImageBody({
               negativePrompt,
@@ -675,6 +703,7 @@ async function generateWithOpenAICompatibleImage({
               renderMode,
               route,
               simulationStage,
+              referenceImages,
             })
       ),
       signal: controller.signal,
@@ -725,6 +754,7 @@ async function generateWithOpenAICompatibleImage({
       revisedPrompt: image.revised_prompt,
       contentType: "image/png",
       buffer: Buffer.from(image.b64_json, "base64"),
+      shapeReferenceApplied,
     };
   }
 
@@ -749,6 +779,7 @@ async function generateWithOpenAICompatibleImage({
       revisedPrompt: image.revised_prompt,
       contentType: imageResponse.headers.get("content-type") ?? "image/png",
       buffer: Buffer.from(await imageResponse.arrayBuffer()),
+      shapeReferenceApplied,
     };
   }
 
@@ -829,22 +860,30 @@ function buildOpenAICompatibleImageBody({
   renderMode,
   route,
   simulationStage,
+  referenceImages,
 }: {
   negativePrompt?: string | null;
   prompt: string;
   renderMode?: RenderMode;
   route: ExternalImageRoute;
   simulationStage?: SimulationStage;
+  referenceImages?: string[];
 }) {
   if (route.profile.apiFormat === "openai-chat-completions") {
     const defaults = parseJsonObjectOrEmpty(route.profile.requestDefaultsJson, "LLM profile request defaults");
     const overrides = parseJsonObjectOrEmpty(route.binding?.parameterOverridesJson, "Prompt template binding overrides");
+    const text = negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt;
     return {
       ...mergeJsonObjects(defaults, overrides),
       model: route.profile.modelId,
       messages: [{
         role: "user",
-        content: negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt,
+        content: referenceImages?.length
+          ? [
+              { type: "text", text },
+              ...referenceImages.map((url) => ({ type: "image_url", image_url: { url } })),
+            ]
+          : text,
       }],
       stream: false,
     };

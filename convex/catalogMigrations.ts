@@ -276,3 +276,22 @@ export const backfillModelCatalogStatus = internalMutation({
     };
   },
 });
+
+/**
+ * Removes the retired `fixedMarkings` field from base units. Identity emblems
+ * are now read by the image model from each kit's full-body line art.
+ *
+ *   npx convex run catalogMigrations:clearFixedMarkings
+ */
+export const clearFixedMarkings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let cleared = 0;
+    for (const unit of await ctx.db.query("baseUnits").collect()) {
+      if (unit.fixedMarkings === undefined) continue;
+      await ctx.db.patch(unit._id, { fixedMarkings: undefined });
+      cleared += 1;
+    }
+    return { cleared };
+  },
+});

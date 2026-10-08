@@ -151,11 +151,11 @@ const seeds: StylePresetSeed[] = [
     slug: "excavator-yellow",
     category: "hard-surface",
     shortDescription:
-      "Loud, heavy and unbothered by mud. Clean shoulders, filthy boots, a full shift on the worksite.",
-    promptKeywords: ["construction yellow", "heavy equipment", "hydraulic steel", "mud wear"],
+      "Loud, heavy and built for the shift. Construction yellow over black chassis blocks, with greasy joints and honest edge wear.",
+    promptKeywords: ["construction yellow", "heavy equipment", "hydraulic steel", "equipment enamel"],
     negativeKeywords: ["clean showroom gloss", "pastel", "neon city"],
     systemPromptFragment:
-      "Paint the kit like heavy construction equipment: construction-yellow armor, black chassis blocks, hydraulic steel mechanics, with dirt concentrated on lower limbs.",
+      "Paint the kit like heavy construction equipment: construction-yellow armor, black chassis blocks, hydraulic steel mechanics, with light grease at the joints.",
     styleSpec: {
       colorRelationship:
         "construction-yellow primary armor, black chassis secondary blocks, hydraulic steel frame, small warning-red lamps",
@@ -165,14 +165,14 @@ const seeds: StylePresetSeed[] = [
       tone: "heavy construction equipment",
       contrastBehavior: "high value contrast between yellow and black; steel reads as mid-tone",
       personalityTags: ["heavy-equipment", "construction", "rugged", "worksite"],
-      prohibitedEffects: ["showroom gloss", "pastel tint", "neon lighting", "added buckets or tracks"],
+      prohibitedEffects: ["showroom gloss", "pastel tint", "neon lighting", "added buckets or tracks", "mud, dirt splatter or terrain effects"],
       identityBoundary:
-        "Construction styling is paint and weathering only; never add buckets, tracks, booms or cabs.",
+        "Construction styling is paint only; never add buckets, tracks, booms, cabs, mud or worksite scenery.",
       renderBehavior:
-        "Render as worksite machinery: yellow armor with a mud gradient rising from the feet, oily joints and clean upper body.",
+        "Render as freshly serviced heavy equipment: even construction-yellow armor head to toe, black chassis blocks, light grease at the joints.",
     },
     contrastLevel: "high",
-    weatheringProfile: "heavy",
+    weatheringProfile: "light",
     recommendedMaterialSlugs: ["semi-gloss-armor", "gunmetal-frame", "titanium-finish"],
     visibilityWeight: 0.82,
     promptVersion: "p6.v1",
@@ -185,14 +185,14 @@ const seeds: StylePresetSeed[] = [
         neutrals: ["Hydraulic steel #5C6065", "Polished cylinder silver #CDD1D4"],
       },
       surfaceLogic:
-        "Semi-gloss equipment enamel; hydraulic-style joints and pistons in polished steel; mud and dust concentrated below the knees, oil around joints.",
+        "Semi-gloss equipment enamel; hydraulic-style joints and pistons in polished steel; light grease around joints only.",
       graphicLanguage:
         "Bold block model number, load-chart labels and black/yellow chevrons limited to feet, hand guards and pinch points.",
       contrast: "high",
       markingDensity: "medium",
       materialIntent: ["semi-gloss painted armor", "hydraulic steel frame", "polished metal pistons"],
-      mood: "Rugged, heavy-duty, worksite-proven",
-      weathering: "heavy",
+      mood: "Rugged, heavy-duty, freshly serviced",
+      weathering: "light",
       finish: "semi-gloss",
       paintability: "high",
     },
@@ -408,6 +408,18 @@ export const legacySeedShortDescriptions: Record<string, string> = {
   "arctic-ops": "Winter-white armor over cold grey-blue panels with polar red identification marks.",
   "racing-livery": "Endurance-racing powder blue and orange with number roundels and gloss clear.",
   "naval-grey": "Warship haze grey with deck-grey blocks, anti-fouling red and shadowed hull numbers.",
+};
+
+/**
+ * Seed presets whose definition was revised after deployment, keyed by slug and
+ * mapped to the previous `systemPromptFragment`. `refreshRevisedSeedPresets`
+ * rewrites a row only while that fragment is unchanged, so admin edits win.
+ * 2026-10-08: Excavator Yellow no longer asks for mud on the lower legs; image
+ * models rendered it as caked terrain mud rather than paint.
+ */
+export const revisedSeedPresetFragments: Record<string, string> = {
+  "excavator-yellow":
+    "Paint the kit like heavy construction equipment: construction-yellow armor, black chassis blocks, hydraulic steel mechanics, with dirt concentrated on lower limbs.",
 };
 
 /**

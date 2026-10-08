@@ -129,6 +129,9 @@ const schema = defineSchema({
     keyShapeAnchors: v.array(v.string()),
     nativeEquipment: v.optional(v.array(v.string())),
     forbiddenChanges: v.array(v.string()),
+    // Deprecated 2026-10-08: emblems are now read from the full-body line art.
+    // Kept only until `catalogMigrations:clearFixedMarkings` has run; then delete.
+    fixedMarkings: v.optional(v.array(v.string())),
     promptAnchor: v.optional(v.string()),
     searchText: v.string(),
     status: v.optional(vModelCatalogStatus),

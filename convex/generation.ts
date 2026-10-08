@@ -12,6 +12,7 @@ import { canManagePlatform } from "./adminAccess";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { settleGenerationStorageReservation } from "./storageAccounting";
+import { portraitUrl } from "./kitPicker";
 import {
   findDebitByGenerationJob,
   refundCreditTransaction,
@@ -208,6 +209,10 @@ export const getJobForExecution = internalQuery({
     }
 
     const template = prompt.promptTemplateId ? await ctx.db.get(prompt.promptTemplateId) : null;
+    // The kit's full-body line art locks silhouette and armor geometry for image renders.
+    const baseModelId = job.baseModelId ?? concept.baseModelId;
+    const baseModel = job.kind === "hd-preview" && baseModelId ? await ctx.db.get(baseModelId) : null;
+    const shapeReferenceUrl = portraitUrl(baseModel?.fullBodyAssetKey);
     const llmRoute = await selectLlmRoute(ctx, {
       generationKind: job.kind,
       promptTemplateId: prompt.promptTemplateId,
@@ -237,6 +242,7 @@ export const getJobForExecution = internalQuery({
         templateName: template?.name,
         templateVersion: safeTemplateVersion(prompt.outputSummaryJson),
       },
+      shapeReferenceUrl,
       llmRoute,
       generationPolicy,
       assetPolicy: {

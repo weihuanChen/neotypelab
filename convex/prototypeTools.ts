@@ -16,6 +16,14 @@ import { creativeArgs, type CreativeResult } from "./creativePipeline";
 import { styleIntentSchema } from "./creativeContracts";
 import type { InterpretationResult } from "./styleInterpretations";
 import { buildModelPromptContext } from "./modelPromptContext";
+import {
+  renderWeatheringLevel,
+  sceneGuardLine,
+  sceneNegativeTerms,
+  scrubWearText,
+  styleIntentForRender,
+  type WeatheringLevel,
+} from "./renderGuards";
 import { MutationCtx } from "./types";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 import { reserveGenerationStorageForJob } from "./storageAccounting";
@@ -243,10 +251,18 @@ export async function queueConceptRender(
     throw new Error("Concept is missing a usable visual palette");
   }
   const renderPalette = visualPaletteForRender(visualPalette);
+  const renderWeathering = renderWeatheringLevel(
+    concept.weatheringLevel,
+    renderMode === "weathering-simulation" ||
+      renderMode === "weathering-split-preview" ||
+      simulationStage === "weathering-pass"
+  );
+  const renderIntent = intent ? styleIntentForRender(intent, renderWeathering) : null;
   const renderSpecification = sanitizeRenderSpecification(
     concept.renderSpecificationJson,
     visualPalette,
-    paintMappings
+    paintMappings,
+    renderWeathering
   );
   const materialComparisonVariants = selectMaterialComparisonVariants(
     materialPreset,
@@ -291,7 +307,8 @@ export async function queueConceptRender(
     }
   ),
     "Output guard: render only the painted model and its native in-universe markings. Do not render paint brands, product names, catalog numbers, HEX strings, palette legends, color swatches, callout lines, specification panels, or technical annotation text.",
-    intent ? `Frozen Style Intent:\n${JSON.stringify(intent)}` : "",
+    sceneGuardLine(renderWeathering),
+    renderIntent ? `Frozen Style Intent:\n${JSON.stringify(renderIntent)}` : "",
     `Approved repaint specification (authoritative):\n${renderSpecification}`,
     `Complete visual palette (authoritative render colors; never reproduce these strings as text):\n${JSON.stringify(renderPalette)}`,
   ].filter(Boolean).join("\n\n");
@@ -306,6 +323,7 @@ export async function queueConceptRender(
     negativePrompt: [
       template.negativePromptTemplate,
       "paint brand labels, paint product codes, catalog numbers, hex text, palette legend, color chart, specification sheet, technical callouts",
+      sceneNegativeTerms(renderWeathering).join(", "),
     ].filter(Boolean).join(", "),
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
@@ -324,6 +342,7 @@ export async function queueConceptRender(
       },
       moodTags: concept.moodTags ?? [],
       weatheringLevel: concept.weatheringLevel,
+      renderWeatheringLevel: renderWeathering,
       visualPalette,
       paintPlan: plan,
       renderMode,
@@ -460,7 +479,8 @@ function formatMoodTags(moodTags: MoodTag[]) {
 function sanitizeRenderSpecification(
   value: string | undefined,
   palette: VisualPalette,
-  paintMappings: Array<{ brand: string; code: string }>
+  paintMappings: Array<{ brand: string; code: string }>,
+  weatheringLevel: WeatheringLevel
 ) {
   let parsed: Record<string, unknown> = {};
   try {
@@ -471,11 +491,22 @@ function sanitizeRenderSpecification(
   } catch {
     parsed = {};
   }
+  const weathering = parsed.weathering !== null && typeof parsed.weathering === "object"
+    ? parsed.weathering as Record<string, unknown>
+    : null;
   const serialized = JSON.stringify({
-    summary: parsed.summary,
+    summary: typeof parsed.summary === "string" ? scrubWearText(parsed.summary, weatheringLevel) : parsed.summary,
     panels: parsed.panels,
     material: parsed.material,
-    weathering: parsed.weathering,
+    weathering: weathering
+      ? {
+          ...weathering,
+          level: weatheringLevel,
+          applicationNotes: typeof weathering.applicationNotes === "string"
+            ? scrubWearText(weathering.applicationNotes, weatheringLevel) || "Keep surfaces within the selected weathering level."
+            : weathering.applicationNotes,
+        }
+      : parsed.weathering,
     decals: parsed.decals,
     colorPlan: visualPaletteForRender(palette),
   });

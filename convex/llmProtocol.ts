@@ -57,7 +57,7 @@ export function cloudflareAiRunUrl(baseUrl: string, accountId: string | undefine
   return `${root}/accounts/${accountId}/ai/run`;
 }
 
-export function cloudflareImageRequest(input: { modelId: string; prompt: string; quality: string }) {
+export function cloudflareImageRequest(input: { modelId: string; prompt: string; quality: string; images?: string[] }) {
   return {
     model: input.modelId,
     input: {
@@ -66,6 +66,8 @@ export function cloudflareImageRequest(input: { modelId: string; prompt: string;
       size: "1024x1024",
       output_format: "png",
       background: "opaque",
+      // Base64 data URIs; their presence routes Cloudflare to the image-edit endpoint.
+      ...(input.images?.length ? { images: input.images } : {}),
     },
   };
 }

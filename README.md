@@ -330,6 +330,14 @@ by the execution request. The returned `data[0].b64_json` or image URL feeds the
 existing rendition and R2 storage pipeline. The key must belong to LLMRelay's
 `gpt-image-2` token group. Image editing (`/images/edits`) is not implemented here.
 
+Shape reference: HD renders attach the kit variant's `fullBodyAssetKey` line art as a
+geometry lock (silhouette, armor shapes, and any emblems drawn in the line art; never colors or line style).
+Cloudflare AI Run sends it as `input.images` (routing to the edit endpoint); Chat
+Completions sends it as an `image_url` content part; the Images API generations
+endpoint has no image input and stays text-only. If the line art cannot be loaded the
+render continues text-only. `outputSummaryJson.shapeReference` records
+`applied` / `unavailable` / `unsupported-protocol` / `none`.
+
 The optional Chat Completions image protocol is for gateways that return images
 in message content or `message.images`; **do not select it for LLMRelay gpt-image-2**.
 It accepts image URL blocks, supported base64 image data URLs, and Markdown image

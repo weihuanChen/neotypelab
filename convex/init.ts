@@ -14,6 +14,7 @@ import {
   additionalStylePresets,
   legacySeedShortDescriptions,
   officialStyleIntentFields,
+  revisedSeedPresetFragments,
 } from "./stylePresetSeeds";
 
 export const init = internalMutation({
@@ -185,6 +186,48 @@ export const refreshSeededPresetDescriptions = internalMutation({
         searchText: (row.searchText ?? "").replace(legacy, preset.shortDescription),
       });
       results.push({ slug: preset.slug, status: "updated" });
+    }
+    return results;
+  },
+});
+
+/**
+ * Applies revised seed definitions (see `revisedSeedPresetFragments`) to rows
+ * whose prompt fragment still equals the previous seed text.
+ *
+ *   npx convex run init:refreshRevisedSeedPresets          # dev
+ *   npx convex run init:refreshRevisedSeedPresets --prod   # production
+ */
+export const refreshRevisedSeedPresets = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const results: Array<{ slug: string; status: "updated" | "skipped" | "missing" }> = [];
+    for (const [slug, previousFragment] of Object.entries(revisedSeedPresetFragments)) {
+      const preset = additionalStylePresets.find((item) => item.slug === slug);
+      const row = await ctx.db
+        .query("stylePresets")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (!preset || !row) {
+        results.push({ slug, status: "missing" });
+        continue;
+      }
+      if (row.systemPromptFragment !== previousFragment) {
+        results.push({ slug, status: "skipped" });
+        continue;
+      }
+      await ctx.db.patch(row._id, {
+        shortDescription: preset.shortDescription,
+        promptKeywords: preset.promptKeywords,
+        negativeKeywords: preset.negativeKeywords,
+        systemPromptFragment: preset.systemPromptFragment,
+        styleSpec: preset.styleSpec,
+        weatheringProfile: preset.weatheringProfile,
+        styleIntentJson: preset.styleIntentJson,
+        styleIntentVersion: preset.styleIntentVersion,
+        searchText: preset.searchText,
+      });
+      results.push({ slug, status: "updated" });
     }
     return results;
   },
