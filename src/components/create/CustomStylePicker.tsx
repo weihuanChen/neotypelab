@@ -174,6 +174,7 @@ export function CustomStylePicker({
         direction={description}
         match={match}
         onFormAgain={() => { void run(() => onInterpret(true)); }}
+        onNewStyle={newStyle}
         onRevise={reviseDirection}
         onUseExisting={useExisting}
       />
@@ -231,13 +232,14 @@ export function CustomStylePicker({
   </div>;
 }
 
-function StyleJobExisting({
+export function StyleJobExisting({
   busy,
   creditBalance,
   creditCost,
   direction,
   match,
   onFormAgain,
+  onNewStyle,
   onRevise,
   onUseExisting,
 }: {
@@ -247,6 +249,7 @@ function StyleJobExisting({
   direction: string;
   match: DirectionMatch;
   onFormAgain: () => void;
+  onNewStyle: () => void;
   onRevise: () => void;
   onUseExisting: () => void;
 }) {
@@ -304,9 +307,14 @@ function StyleJobExisting({
         </>
       }
       secondary={
-        <button className="system-state__link" disabled={busy} onClick={onRevise} type="button">
-          Revise direction
-        </button>
+        <>
+          <button className="system-state__link" disabled={busy} onClick={onRevise} type="button">
+            Revise direction
+          </button>
+          <button className="system-state__link" disabled={busy} onClick={onNewStyle} type="button">
+            New style
+          </button>
+        </>
       }
     />
   );
