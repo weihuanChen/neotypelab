@@ -325,7 +325,7 @@ export const retry = mutation({ args: { runId: v.id("creationRuns") }, handler: 
   const input = JSON.parse(run.inputJson) as RunInput;
   const palette = run.paletteId ? await ctx.db.get(run.paletteId) : null;
   const specification = run.specificationId ? await ctx.db.get(run.specificationId) : null;
-  await reserve(ctx, viewer._id, runId, run.cost);
+  const debit = await reserve(ctx, viewer._id, runId, run.cost);
   const attempt = run.attempt + 1;
   if (palette?.status !== "consumed") {
     const paletteId = await beginCreative(ctx, { ...input, kind: "palette-plan", requestKey: `run:${runId}:palette:${attempt}` }, true);
@@ -346,7 +346,7 @@ export const retry = mutation({ args: { runId: v.id("creationRuns") }, handler: 
     await ctx.db.patch(runId, { stage: "render", renderJobId: render.generationJobId });
   }
   const now = Date.now();
-  await ctx.db.patch(runId, { attempt, status: "queued", refunded: false, error: undefined,
+  await ctx.db.patch(runId, { attempt, creditTransactionId: debit.transactionId, status: "queued", refunded: false, error: undefined,
     workflowId: undefined, queuedAt: now, startedAt: undefined, completedAt: undefined, updatedAt: now });
   const workflowId = await creationWorkflowManager.start(
     ctx,
@@ -370,3 +370,72 @@ export const jobIsRunnable = internalQuery({ args: { generationJobId: v.id("gene
   const run = await ctx.db.get(job.creationRunId);
   return Boolean(run && run.status === "running" && run.attempt === job.creationAttempt);
 } });
+
+const historicalRefundArgs = {
+  userId: v.id("users"),
+  generationJobId: v.id("generationJobs"),
+  debitTransactionId: v.id("creditTransactions"),
+  expectedAmount: v.number(),
+};
+
+// Historical retries reused the first debit ID. Match the explicitly selected
+// failed render attempt to its own debit before allowing a ledger refund.
+async function historicalRefundContext(
+  ctx: Pick<QueryCtx, "db">,
+  args: { userId: Id<"users">; generationJobId: Id<"generationJobs">; debitTransactionId: Id<"creditTransactions">; expectedAmount: number },
+) {
+  const job = await ctx.db.get(args.generationJobId);
+  const debit = await ctx.db.get(args.debitTransactionId);
+  if (!job || job.userId !== args.userId || job.kind !== "hd-preview" || job.status !== "failed"
+    || !job.creationRunId || !job.creationAttempt || job.creationAttempt < 2) {
+    throw new Error("Expected a failed preview retry owned by the selected user");
+  }
+  const run = await ctx.db.get(job.creationRunId);
+  if (!run || run.userId !== args.userId || (run.status !== "failed" && run.status !== "succeeded")) {
+    throw new Error("Preview must be settled before historical repair");
+  }
+  if (!debit || debit.userId !== args.userId || debit.actionType !== "generate-repaint-concept"
+    || debit.referenceTable !== "creationRuns" || debit.referenceId !== run._id
+    || !Number.isSafeInteger(args.expectedAmount) || args.expectedAmount <= 0
+    || debit.delta !== -args.expectedAmount || args.expectedAmount !== run.cost) {
+    throw new Error("Debit does not match the preview owner, reference or expected amount");
+  }
+  const transactions = await ctx.db.query("creditTransactions")
+    .withIndex("by_reference", q => q.eq("referenceTable", "creationRuns").eq("referenceId", run._id))
+    .order("asc").take(100);
+  const debits = transactions.filter(tx => tx.delta < 0);
+  if (transactions.length === 100 || debits.length !== run.attempt
+    || debits[job.creationAttempt - 1]?._id !== debit._id) {
+    throw new Error("Cannot unambiguously match the failed attempt to this debit");
+  }
+  const refund = await ctx.db.query("creditTransactions")
+    .withIndex("by_refund_of", q => q.eq("refundOfTransactionId", debit._id)).unique();
+  return { run, debit, refund };
+}
+
+export const inspectHistoricalRefund = internalQuery({
+  args: historicalRefundArgs,
+  returns: v.object({ runId: v.id("creationRuns"), amount: v.number(), alreadyRefunded: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { run, debit, refund } = await historicalRefundContext(ctx, args);
+    return { runId: run._id, amount: -debit.delta, alreadyRefunded: refund !== null };
+  },
+});
+
+export const refundHistoricalFailedAttempt = internalMutation({
+  args: historicalRefundArgs,
+  returns: v.object({ transactionId: v.id("creditTransactions"), balanceAfter: v.number(), refunded: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { run, debit } = await historicalRefundContext(ctx, args);
+    return await refundCreditTransaction(ctx, {
+      debitTransactionId: debit._id,
+      actionType: "generation-refund",
+      metadata: {
+        referenceTable: "creationRuns", referenceId: run._id,
+        generationJobId: args.generationJobId,
+        description: "Historical failed preview retry refund",
+        reasonCode: "preview-retry-debit-link-repair",
+      },
+    });
+  },
+});

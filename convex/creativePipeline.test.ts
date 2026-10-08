@@ -22,7 +22,7 @@ async function fixture() {
     model: (await ctx.db.query("baseModels").first())!, style: (await ctx.db.query("stylePresets").first())!,
     material: (await ctx.db.query("materialPresets").first())!, roles: await ctx.db.query("colorRoles").collect(),
   }));
-  const input = { kitVariantId: catalog.model._id, stylePresetId: catalog.style._id, materialPresetId: catalog.material._id, weatheringLevel: "clean" as const, moodTags: [] };
+  const input = { kitVariantId: catalog.model._id, stylePresetId: catalog.style._id, styleRevision: catalog.style.styleIntentJson, materialPresetId: catalog.material._id, weatheringLevel: "clean" as const, moodTags: [] };
   return { t, ...user, catalog, input };
 }
 async function completePalette(f: Awaited<ReturnType<typeof fixture>>) {

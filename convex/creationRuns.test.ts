@@ -16,7 +16,7 @@ async function fixture(balance = 20) {
   await t.mutation(internal.init.init, {});
   const owner = await seedUser(t, { tokenIdentifier: "run-owner", email: "owner@example.test", balance });
   const data = await t.run(async ctx => ({ kit: (await ctx.db.query("baseModels").first())!, style: (await ctx.db.query("stylePresets").first())!, material: (await ctx.db.query("materialPresets").first())!, roles: await ctx.db.query("colorRoles").collect() }));
-  const input = { kitVariantId: data.kit._id, stylePresetId: data.style._id, materialPresetId: data.material._id, weatheringLevel: "clean" as const };
+  const input = { kitVariantId: data.kit._id, stylePresetId: data.style._id, styleRevision: data.style.styleIntentJson, materialPresetId: data.material._id, weatheringLevel: "clean" as const };
   const cost = (await owner.client.query(api.creationRuns.quote, {}))!.cost;
   return { t, ...owner, data, input, cost };
 }
@@ -28,6 +28,63 @@ async function finishPalette(f: Awaited<ReturnType<typeof fixture>>, runId: Id<"
 }
 
 describe("complete preview runs", () => {
+  it("repairs a historical failed retry by its debit once and rejects mismatched repairs", async () => {
+    const f = await fixture();
+    const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "historical", expectedCost: f.cost });
+    const firstDebit = (await f.t.run(ctx => ctx.db.get(runId)))!.creditTransactionId!;
+    await f.t.mutation(internal.creationRuns.fail, { runId, attempt: 1, reason: "First failure" });
+    await f.client.mutation(api.creationRuns.retry, { runId });
+    const retryDebit = (await f.t.run(ctx => ctx.db.get(runId)))!.creditTransactionId!;
+    const generationJobId = await f.t.run(async ctx => {
+      await ctx.db.patch(runId, { creditTransactionId: firstDebit });
+      return await ctx.db.insert("generationJobs", { userId: f.userId, kind: "hd-preview", status: "failed", requestedCredits: 0, creationRunId: runId, creationAttempt: 2 });
+    });
+    await f.t.mutation(internal.creationRuns.fail, { runId, attempt: 2, reason: "Historical retry failure" });
+    await f.client.mutation(api.creationRuns.retry, { runId });
+    const args = { userId: f.userId, generationJobId, debitTransactionId: retryDebit, expectedAmount: f.cost };
+    await expect(f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, args)).rejects.toThrow(/settled/);
+    await f.t.run(ctx => ctx.db.patch(runId, { status: "succeeded" }));
+    await expect(f.t.query(internal.creationRuns.inspectHistoricalRefund, args)).resolves.toEqual({ runId, amount: f.cost, alreadyRefunded: false });
+    await expect(f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, { ...args, debitTransactionId: firstDebit })).rejects.toThrow(/unambiguously/);
+    await expect(f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, { ...args, expectedAmount: f.cost + 1 })).rejects.toThrow(/expected amount/);
+    const other = await seedUser(f.t, { tokenIdentifier: "repair-other", email: "repair-other@example.test" });
+    await expect(f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, { ...args, userId: other.userId })).rejects.toThrow(/owned/);
+    await f.t.run(ctx => ctx.db.patch(generationJobId, { status: "succeeded" }));
+    await expect(f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, args)).rejects.toThrow(/failed preview retry/);
+    await f.t.run(ctx => ctx.db.patch(generationJobId, { status: "failed" }));
+    const first = await f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, args);
+    const second = await f.t.mutation(internal.creationRuns.refundHistoricalFailedAttempt, args);
+    expect(first).toMatchObject({ refunded: true, balanceAfter: 20 - f.cost });
+    expect(second).toMatchObject({ refunded: false, transactionId: first.transactionId });
+    const refund = await f.t.run(ctx => ctx.db.get(first.transactionId));
+    expect(refund).toMatchObject({ refundOfTransactionId: retryDebit, generationJobId, delta: f.cost });
+    expect((await f.t.run(ctx => ctx.db.get(runId)))?.status).toBe("succeeded");
+  });
+
+  it("refunds every failed attempt once and only charges the successful attempt", async () => {
+    const f = await fixture();
+    const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "repeated-failure", expectedCost: f.cost });
+    const debitIds: string[] = [];
+    for (const attempt of [1, 2]) {
+      const run = (await f.t.run(ctx => ctx.db.get(runId)))!;
+      debitIds.push(run.creditTransactionId!);
+      await f.t.mutation(internal.creationRuns.fail, { runId, attempt, reason: "Provider failed" });
+      await f.t.mutation(internal.creationRuns.expire, { runId, attempt });
+      expect((await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique()))?.balance).toBe(20);
+      await f.client.mutation(api.creationRuns.retry, { runId });
+      await f.t.mutation(internal.creationRuns.expire, { runId, attempt });
+      expect((await f.t.run(ctx => ctx.db.get(runId)))?.status).toBe("queued");
+    }
+    const finalRun = (await f.t.run(ctx => ctx.db.get(runId)))!;
+    debitIds.push(finalRun.creditTransactionId!);
+    expect(new Set(debitIds).size).toBe(3);
+    await f.t.run(ctx => ctx.db.patch(runId, { status: "succeeded" }));
+    await f.t.mutation(internal.creationRuns.expire, { runId, attempt: 3 });
+    const transactions = await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_userId", q => q.eq("userId", f.userId)).collect());
+    expect(transactions.filter(tx => tx.actionType === "generation-refund").map(tx => tx.refundOfTransactionId)).toEqual(debitIds.slice(0, 2));
+    expect((await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique()))?.balance).toBe(20 - f.cost);
+  });
+
   it("reserves the full quote once and rejects stale prices, mismatched retries and insufficient balances", async () => {
     const f = await fixture();
     await expect(f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "price", expectedCost: f.cost - 1 })).rejects.toThrow(/price changed/);
