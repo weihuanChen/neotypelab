@@ -17,7 +17,6 @@ const archiveShell = {
 export const Route = createFileRoute("/showcase_/archive")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
-  pendingMs: 0,
   pendingComponent: ShowcaseArchivePending,
   head: () => ({
     meta: documentMeta(publicSeo.archive, { ogType: "website" }),

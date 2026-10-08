@@ -19,7 +19,6 @@ const exploreShell = {
 export const Route = createFileRoute("/")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
-  pendingMs: 0,
   pendingComponent: ExplorePending,
   head: () => ({
     meta: documentMeta(publicSeo.home, { ogType: "website" }),

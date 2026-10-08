@@ -20,7 +20,6 @@ const createShell = {
 
 export const Route = createFileRoute("/create")({
   validateSearch: parseCreateSearch,
-  pendingMs: 0,
   pendingComponent: CreatePending,
   head: () => ({
     meta: documentMeta(publicSeo.create, { ogType: "website" }),

@@ -20,7 +20,6 @@ const feedbackShell = {
 
 export const Route = createFileRoute("/feedback")({
   validateSearch: parseFeedbackSearch,
-  pendingMs: 0,
   pendingComponent: FeedbackPending,
   head: () => ({
     meta: documentMeta(publicSeo.feedback, { ogType: "website" }),

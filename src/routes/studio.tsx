@@ -18,7 +18,6 @@ const studioShell = {
 } as const;
 
 export const Route = createFileRoute("/studio")({
-  pendingMs: 0,
   pendingComponent: StudioPending,
   head: () => ({
     meta: [

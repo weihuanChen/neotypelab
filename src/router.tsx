@@ -5,7 +5,9 @@ export function getRouter() {
   return createRouter({
     routeTree,
     defaultPreload: "intent",
-    defaultPendingMs: 0,
+    // Route data and chunks usually settle in under a second. A pending page
+    // shown immediately stays for the 500ms pendingMinMs, so it flashes.
+    defaultPendingMs: 1000,
     scrollRestoration: true,
   });
 }
