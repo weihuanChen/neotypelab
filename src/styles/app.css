@@ -688,6 +688,7 @@ select {
 .app-shell__main {
   display: flex;
   min-width: 0;
+  min-height: 100dvh;
   flex-direction: column;
 }
 
@@ -764,8 +765,73 @@ select {
 }
 
 .app-shell__content {
+  flex: 1 1 auto;
   min-width: 0;
-  padding: var(--space-md) clamp(1rem, 2vw, 1.75rem) var(--space-2xl);
+  padding: var(--space-md) clamp(1rem, 2vw, 1.75rem) var(--space-lg);
+}
+
+.site-footer {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) auto minmax(10rem, 1fr);
+  align-items: center;
+  gap: 0.85rem 1.5rem;
+  border-top: var(--rule-hair) solid var(--color-rule-2);
+  background: var(--color-paper);
+  padding: 1.05rem clamp(1rem, 2vw, 1.75rem) 1.2rem;
+  color: var(--color-ink-2);
+}
+
+.site-footer__mark,
+.site-footer__support span {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-footer__mark {
+  color: var(--color-muted);
+}
+
+.site-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 1.35rem;
+}
+
+.site-footer a {
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  border-bottom: var(--rule-hair) solid var(--color-rule-2);
+  padding-bottom: 0.08rem;
+}
+
+.site-footer__nav a {
+  text-transform: uppercase;
+}
+
+.site-footer__support {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0.55rem 0.75rem;
+  margin: 0;
+}
+
+.site-footer a:hover {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.site-footer a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
 }
 
 .app-shell__content .showcase-page,
@@ -840,6 +906,19 @@ select {
   .app-topbar__credits,
   .app-topbar__auth-missing {
     min-width: 4.75rem;
+  }
+}
+
+@media (max-width: 1120px) {
+  .site-footer {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 0.85rem;
+  }
+
+  .site-footer__nav,
+  .site-footer__support {
+    justify-content: flex-start;
   }
 }
 

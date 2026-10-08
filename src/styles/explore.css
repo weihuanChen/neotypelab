@@ -43,8 +43,7 @@
 /* Section-scale labels keep the Fell small-caps voice… */
 .explore-section-title p,
 .explore-trending h2,
-.explore-archive h2,
-.explore-footer {
+.explore-archive h2 {
   font-family: var(--font-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -634,15 +633,6 @@
 .explore-load-more:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
-}
-
-.explore-footer {
-  display: flex;
-  min-height: 5rem;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-ink-2);
-  font-size: 0.78rem;
 }
 
 .explore-landing a:focus-visible,

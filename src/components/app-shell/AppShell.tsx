@@ -20,6 +20,7 @@ import { api } from "@/convex/_generated/api";
 import { useAppShellState } from "@/src/components/app-shell/AppShellState";
 import { BrandMark } from "@/src/components/app-shell/BrandMark";
 import { appNavGroups, isNavItemActive } from "@/src/components/app-shell/nav";
+import { SiteFooter } from "@/src/components/app-shell/SiteFooter";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
 import { cn } from "@/lib/utils";
 
@@ -301,6 +302,7 @@ function AppShellBody({
           <AppAuthSlot viewer={viewer} />
         </header>
         <div className="app-shell__content">{children}</div>
+        <SiteFooter />
       </div>
     </div>
   );

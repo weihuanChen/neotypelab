@@ -98,7 +98,6 @@ export function ExploreLanding({
           allItems={allItems}
           search={search}
         />
-        <footer className="explore-footer">NeotypeLab / Vol.02</footer>
       </div>
     </main>
   );
