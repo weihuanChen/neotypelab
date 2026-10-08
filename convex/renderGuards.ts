@@ -61,6 +61,52 @@ export function scrubWearText(text: string, level: WeatheringLevel) {
   return stripClauses(text, level === "clean" ? WEAR_PATTERN : MUD_PATTERN);
 }
 
+/**
+ * Printed patterns an image model adds when a theme such as "jungle camo" is
+ * read literally. Only scrubbed when the intent explicitly decided "none";
+ * legacy v1 intents (including official livery presets) keep their graphics.
+ */
+const PATTERN_TERMS = /\b(camo|camouflage|camouflaged|foliage|leaf|leaves|leafy|fronds?|splinter|disruptive|tiger[- ]?stripes?|stripes?|striped|striping|pixel(?:ated)?|dazzle|motifs?|prints?|printed|patterns?|patterned)\b/i;
+
+const PATTERN_NEGATIVES = [
+  "camouflage pattern", "digital camo", "splinter camo", "foliage pattern", "leaf print", "leaves",
+  "tiger stripes", "disruptive pattern", "printed motifs", "decorative stripes", "patterned armor",
+];
+
+export function solidColorsOnly(intent: StyleIntent | null) {
+  return intent?.pattern === "none";
+}
+
+export function patternNegativeTerms(intent: StyleIntent | null) {
+  return solidColorsOnly(intent) ? PATTERN_NEGATIVES : [];
+}
+
+/** Render prompt line that keeps theme words from becoming printed patterns. */
+export function patternGuardLine(intent: StyleIntent | null) {
+  if (!solidColorsOnly(intent)) return "";
+  return "Pattern guard: every armor panel is painted in one solid color from the approved palette. Theme words such as jungle, camo, flame or ghost describe hues only; never render camouflage, leaves, foliage, stripes, pixel patterns or printed motifs on the armor.";
+}
+
+/** Drops clauses describing printed patterns when the intent asked for solid colors. */
+export function scrubPatternText(text: string) {
+  return stripClauses(text, PATTERN_TERMS);
+}
+
+function scrubPatternIntent(intent: StyleIntent): StyleIntent {
+  const words = new RegExp(PATTERN_TERMS.source, "gi");
+  const keep = (item: string) => !PATTERN_TERMS.test(item);
+  const materialIntent = intent.materialIntent.filter(keep);
+  return {
+    ...intent,
+    name: intent.name.replace(words, "").replace(/\s{2,}/g, " ").trim() || "Solid Color Scheme",
+    surfaceLogic: scrubPatternText(intent.surfaceLogic) || "Solid painted armor surfaces following the approved palette.",
+    graphicLanguage: scrubPatternText(intent.graphicLanguage) || "Small unit numbers and caution labels on existing panels.",
+    materialIntent: materialIntent.length ? materialIntent : ["painted armor"],
+    mood: intent.mood.split(/,\s*/).filter(keep).join(", ") || "Solid painted scheme",
+    ...(intent.referenceNotes ? { referenceNotes: scrubPatternText(intent.referenceNotes) || undefined } : {}),
+  };
+}
+
 /** Weathering previews must show wear, so they render at least at the heavy allowance. */
 export function renderWeatheringLevel(level: WeatheringLevel, showsWeathering: boolean): WeatheringLevel {
   return showsWeathering ? "heavy" : level;
@@ -75,7 +121,7 @@ export function styleIntentForRender(intent: StyleIntent, level: WeatheringLevel
   const pattern = level === "clean" ? WEAR_PATTERN : MUD_PATTERN;
   const surfaceLogic = scrubWearText(intent.surfaceLogic, level);
   const materialIntent = intent.materialIntent.filter((item) => !pattern.test(item));
-  return {
+  const scrubbed: StyleIntent = {
     ...intent,
     weathering: level,
     surfaceLogic: surfaceLogic || "Painted armor surfaces following the approved palette.",
@@ -85,4 +131,5 @@ export function styleIntentForRender(intent: StyleIntent, level: WeatheringLevel
       .filter((part) => !pattern.test(part))
       .join(", ") || intent.mood,
   };
+  return solidColorsOnly(intent) ? scrubPatternIntent(scrubbed) : scrubbed;
 }

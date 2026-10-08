@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { internal } from "./_generated/api";
 import { styleIntentSchema } from "./creativeContracts";
 import {
+  patternGuardLine,
+  patternNegativeTerms,
   renderWeatheringLevel,
   sceneGuardLine,
   sceneNegativeTerms,
@@ -69,6 +71,53 @@ describe("render scene guards", () => {
     expect(scrubWearText("Edge chipping on feet.", "clean")).toBe("");
     expect(renderWeatheringLevel("clean", true)).toBe("heavy");
     expect(renderWeatheringLevel("clean", false)).toBe("clean");
+  });
+});
+
+const jungleIntent = styleIntentSchema.parse({
+  version: "style-intent.v2",
+  source: "private",
+  styleType: "custom",
+  name: "Jungle Camo Ranger",
+  palette: { primary: "olive drab", secondary: "khaki", accent: "signal orange" },
+  surfaceLogic: "Olive drab main armor with khaki limbs. Leaf camouflage pattern across the shield.",
+  graphicLanguage: "Disruptive foliage stripes; small stencilled unit numbers.",
+  contrast: "medium",
+  markingDensity: "low",
+  materialIntent: ["matte painted armor", "camouflage print panels"],
+  mood: "Stealthy, jungle-ready, camouflaged",
+  weathering: "clean",
+  finish: "matte",
+  paintability: "high",
+  colors: [
+    { role: "primary", name: "olive drab", hex: "#5B6237", coverage: 45 },
+    { role: "secondary", name: "khaki", hex: "#A79B6B", coverage: 25 },
+    { role: "frame", name: "dark earth", hex: "#3B3226", coverage: 20 },
+    { role: "accent", name: "signal orange", hex: "#C8662B", coverage: 10 },
+  ],
+  pattern: "none",
+});
+
+describe("render pattern guards", () => {
+  it("turns theme words into solid colors when the intent decided no pattern", () => {
+    const render = styleIntentForRender(jungleIntent, "clean");
+    const text = JSON.stringify({ ...render, colors: undefined });
+    expect(text).not.toMatch(/camo|camouflage|leaf|foliage|stripe|print/i);
+    expect(render.name).toBe("Jungle Ranger");
+    expect(render.surfaceLogic).toContain("Olive drab main armor");
+    expect(render.graphicLanguage).toBe("small stencilled unit numbers.");
+    expect(render.materialIntent).toEqual(["matte painted armor"]);
+    expect(render.colors).toEqual(jungleIntent.colors);
+    expect(patternGuardLine(jungleIntent)).toContain("one solid color");
+    expect(patternNegativeTerms(jungleIntent)).toContain("camouflage pattern");
+  });
+
+  it("keeps requested patterns and legacy livery graphics", () => {
+    const requested = { ...jungleIntent, pattern: "camouflage" as const };
+    expect(styleIntentForRender(requested, "clean").graphicLanguage).toContain("stripes");
+    expect(patternGuardLine(requested)).toBe("");
+    expect(patternNegativeTerms(legacyExcavatorIntent)).toEqual([]);
+    expect(styleIntentForRender(legacyExcavatorIntent, "clean").graphicLanguage).toBe("Black/yellow chevrons on feet.");
   });
 });
 

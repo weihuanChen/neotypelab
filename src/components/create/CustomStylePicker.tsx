@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { JobResult, JobWait, jobWaitProfiles, type StyleJobPhase } from "@/src/components/job-wait";
 import { resolveStyleJobPhase } from "./styleJobPhase";
+import { StylePalette } from "./StylePalette";
 
 type Props = {
   userId: string;
@@ -408,10 +409,14 @@ function convexErrorText(error: unknown) {
 }
 
 export function IntentSummary({ intent }: { intent: StyleIntent }) {
-  return <dl className="grid grid-cols-2 gap-3 text-sm">
-    <div><dt>Palette</dt><dd>{Object.values(intent.palette).flat().join(" · ")}</dd></div>
-    <div><dt>Finish</dt><dd>{intent.finish}</dd></div>
-    <div><dt>Graphics</dt><dd>{intent.graphicLanguage}</dd></div>
-    <div><dt>Weathering</dt><dd>{intent.weathering}</dd></div>
-  </dl>;
+  const colors = intent.colors?.map(color => ({ role: `${color.name} (${color.role})`, hex: color.hex, weight: color.coverage })) ?? [];
+  return <>
+    <StylePalette colors={colors} />
+    <dl className="grid grid-cols-2 gap-3 text-sm">
+      <div><dt>Palette</dt><dd>{intent.colors ? intent.colors.map(color => color.name).join(" · ") : Object.values(intent.palette).flat().join(" · ")}</dd></div>
+      <div><dt>Finish</dt><dd>{intent.finish}</dd></div>
+      <div><dt>Graphics</dt><dd>{intent.graphicLanguage}</dd></div>
+      <div><dt>Weathering</dt><dd>{intent.weathering}</dd></div>
+    </dl>
+  </>;
 }

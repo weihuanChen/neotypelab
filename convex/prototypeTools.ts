@@ -17,10 +17,14 @@ import { styleIntentSchema } from "./creativeContracts";
 import type { InterpretationResult } from "./styleInterpretations";
 import { buildModelPromptContext } from "./modelPromptContext";
 import {
+  patternGuardLine,
+  patternNegativeTerms,
   renderWeatheringLevel,
   sceneGuardLine,
   sceneNegativeTerms,
+  scrubPatternText,
   scrubWearText,
+  solidColorsOnly,
   styleIntentForRender,
   type WeatheringLevel,
 } from "./renderGuards";
@@ -258,11 +262,13 @@ export async function queueConceptRender(
       simulationStage === "weathering-pass"
   );
   const renderIntent = intent ? styleIntentForRender(intent, renderWeathering) : null;
+  const renderStyleName = renderIntent?.name ?? stylePreset?.name ?? "Custom Style";
   const renderSpecification = sanitizeRenderSpecification(
     concept.renderSpecificationJson,
     visualPalette,
     paintMappings,
-    renderWeathering
+    renderWeathering,
+    solidColorsOnly(intent)
   );
   const materialComparisonVariants = selectMaterialComparisonVariants(
     materialPreset,
@@ -278,7 +284,7 @@ export async function queueConceptRender(
     materialPreset: materialPreset.name,
     mood: formatMoodTags(concept.moodTags ?? []),
     notes: concept.notes ?? "No extra notes.",
-    stylePreset: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
+    stylePreset: renderStyleName,
     colorRoles: JSON.stringify(renderPalette.entries),
     topPalette: JSON.stringify(renderPalette.entries),
     weatheringLevel: concept.weatheringLevel,
@@ -289,7 +295,7 @@ export async function queueConceptRender(
     promptPreview,
     template.userPromptTemplate,
     {
-      stylePreset: `Style DNA: ${(intent?.name ?? stylePreset?.name ?? "Custom Style")}`,
+      stylePreset: `Style DNA: ${renderStyleName}`,
       mood: `Mood Vector: ${formatMoodTags(concept.moodTags ?? [])}`,
       weatheringLevel: `Weathering: ${concept.weatheringLevel}`,
       simulationStage: simulationStage
@@ -308,6 +314,7 @@ export async function queueConceptRender(
   ),
     "Output guard: render only the painted model and its native in-universe markings. Do not render paint brands, product names, catalog numbers, HEX strings, palette legends, color swatches, callout lines, specification panels, or technical annotation text.",
     sceneGuardLine(renderWeathering),
+    patternGuardLine(intent),
     renderIntent ? `Frozen Style Intent:\n${JSON.stringify(renderIntent)}` : "",
     `Approved repaint specification (authoritative):\n${renderSpecification}`,
     `Complete visual palette (authoritative render colors; never reproduce these strings as text):\n${JSON.stringify(renderPalette)}`,
@@ -324,6 +331,7 @@ export async function queueConceptRender(
       template.negativePromptTemplate,
       "paint brand labels, paint product codes, catalog numbers, hex text, palette legend, color chart, specification sheet, technical callouts",
       sceneNegativeTerms(renderWeathering).join(", "),
+      patternNegativeTerms(intent).join(", "),
     ].filter(Boolean).join(", "),
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
@@ -480,8 +488,11 @@ function sanitizeRenderSpecification(
   value: string | undefined,
   palette: VisualPalette,
   paintMappings: Array<{ brand: string; code: string }>,
-  weatheringLevel: WeatheringLevel
+  weatheringLevel: WeatheringLevel,
+  solidColors = false
 ) {
+  const solid = (text: unknown, fallback: string) =>
+    solidColors && typeof text === "string" ? scrubPatternText(text) || fallback : text;
   let parsed: Record<string, unknown> = {};
   try {
     const candidate: unknown = JSON.parse(value ?? "{}");
@@ -494,9 +505,18 @@ function sanitizeRenderSpecification(
   const weathering = parsed.weathering !== null && typeof parsed.weathering === "object"
     ? parsed.weathering as Record<string, unknown>
     : null;
+  const decals = solidColors && parsed.decals !== null && typeof parsed.decals === "object"
+    ? parsed.decals as Record<string, unknown>
+    : null;
+  const panels = solidColors && Array.isArray(parsed.panels)
+    ? parsed.panels.map((panel: unknown) => panel !== null && typeof panel === "object"
+      ? { ...panel, maskingNotes: solid((panel as Record<string, unknown>).maskingNotes, "Mask each panel for one solid color.") }
+      : panel)
+    : parsed.panels;
   const serialized = JSON.stringify({
-    summary: typeof parsed.summary === "string" ? scrubWearText(parsed.summary, weatheringLevel) : parsed.summary,
-    panels: parsed.panels,
+    summary: solid(typeof parsed.summary === "string" ? scrubWearText(parsed.summary, weatheringLevel) : parsed.summary,
+      "Solid-color repaint following the approved palette."),
+    panels,
     material: parsed.material,
     weathering: weathering
       ? {
@@ -507,7 +527,9 @@ function sanitizeRenderSpecification(
             : weathering.applicationNotes,
         }
       : parsed.weathering,
-    decals: parsed.decals,
+    decals: decals
+      ? { ...decals, placementNotes: solid(decals.placementNotes, "Small unit numbers and caution labels on existing panels.") }
+      : parsed.decals,
     colorPlan: visualPaletteForRender(palette),
   });
   const forbiddenTerms = Array.from(new Set(paintMappings.flatMap((paint) =>

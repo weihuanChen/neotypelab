@@ -7,7 +7,7 @@ import { styleIntentSchema, styleInterpreterSystemPrompt, styleInterpreterUserPr
 import type { QueryCtx } from "./types";
 import { debitCredits } from "./creditLedger";
 
-const version = "style-interpreter.v1";
+const version = "style-interpreter.v2";
 export type InterpretationResult = {
   promptCompositionId: string;
   intent: StyleIntent;
@@ -107,6 +107,7 @@ export const complete = systemMutation({
     if (Date.now() >= row._creationTime + 15 * 60 * 1000) throw new Error("Interpretation expired");
     const intent = styleIntentSchema.parse(JSON.parse(args.responseJson));
     if (intent.source !== "private" || intent.styleType !== "custom") throw new Error("Interpreter must return a private custom style");
+    if (intent.version !== "style-intent.v2") throw new Error("Interpreter must return a Style Intent v2 with anchored colors");
     const execution = JSON.parse(args.executionJson) as { model?: string; profileId?: string };
     await ctx.db.patch(row._id, {
       status: "consumed", outputSummaryJson: JSON.stringify({ intent, model: execution.model ?? "", profileId: execution.profileId ?? "", execution }),

@@ -8,10 +8,16 @@ import { styleIntentSchema } from "./creativeContracts";
 
 const modules = import.meta.glob("./**/*.ts");
 const intent = styleIntentSchema.parse({
-  version: "style-intent.v1", source: "private", styleType: "custom", name: "Cyan Performance",
+  version: "style-intent.v2", source: "private", styleType: "custom", name: "Cyan Performance",
   palette: { primary: "cyan teal", secondary: "charcoal", accent: "magenta" },
   surfaceLogic: "smooth satin", graphicLanguage: "racing", contrast: "high", markingDensity: "medium",
   materialIntent: ["painted armor"], mood: "energetic", weathering: "clean", finish: "satin", paintability: "high",
+  colors: [
+    { role: "primary", name: "cyan teal", hex: "#1FA7A8", coverage: 50 },
+    { role: "secondary", name: "charcoal", hex: "#2B2D31", coverage: 35 },
+    { role: "accent", name: "magenta", hex: "#D6337F", coverage: 15 },
+  ],
+  pattern: "none",
 });
 async function fixture() {
   const t = convexTest(schema, modules);
@@ -106,6 +112,19 @@ describe("Style interpretation lifecycle", () => {
     await f.t.mutation(internal.styleInterpretations.complete, { promptCompositionId: row!._id, responseJson: JSON.stringify(intent), executionJson: "{}" });
     expect(await balance(f)).toBe(40);
     await expect(f.owner.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId: row!._id })).rejects.toThrow(/completed/);
+  });
+
+  it("refunds interpreter output that skips the v2 color anchors", async () => {
+    const f = await fixture();
+    const { colors: _colors, pattern: _pattern, ...rest } = intent;
+    const legacy = { ...rest, version: "style-intent.v1" };
+    vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ finish_reason: "stop", message: { content: JSON.stringify(legacy) } }],
+    }), { status: 200 })));
+    await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description: "Jungle camo", requestKey: "legacy-output" }))
+      .rejects.toThrow(/v2/);
+    expect(await balance(f)).toBe(40);
   });
 
   it("expires abandoned requests, refunds them, and rejects late completion", async () => {
