@@ -23,7 +23,9 @@ export function SubscriptionPurchaseAction({ planType }: { planType: "pro" | "st
     return <button className="pricing-plan__action" disabled type="button">Checking checkout…</button>;
   }
 
-  const paymentReady = creem.products[planType] || waffo.products[planType];
+  const legacyCreemUpgrade = planType === "studio" && viewer?.entitlements.planType === "pro" &&
+    subscription?.provider === "creem";
+  const paymentReady = legacyCreemUpgrade ? creem.products[planType] : waffo.products[planType];
 
   if (!paymentReady) {
     return <button className="pricing-plan__action" disabled type="button">Checkout unavailable</button>;

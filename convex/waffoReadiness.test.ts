@@ -8,7 +8,7 @@ const modules = import.meta.glob("./**/*.ts");
 describe("Waffo checkout readiness", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("stays closed until the test environment, catalog and origin are configured", async () => {
+  it("stays closed until a valid environment, catalog and origin are configured", async () => {
     const t = convexTest(schema, modules);
     const args = { returnOrigin: "http://localhost:3001" };
     expect((await t.query(api.waffoReadiness.forOrigin, args)).enabled).toBe(false);
@@ -27,6 +27,11 @@ describe("Waffo checkout readiness", () => {
       pro: true, studio: true, pack64: true, pack160: true, pack400: true,
     });
     expect((await t.query(api.waffoReadiness.forOrigin, { returnOrigin: "https://other.example" })).enabled).toBe(false);
+    vi.stubEnv("WAFFO_ENVIRONMENT", "prod");
+    expect((await t.query(api.waffoReadiness.forOrigin, args)).enabled).toBe(true);
+    vi.stubEnv("WAFFO_ENVIRONMENT", "live");
+    expect((await t.query(api.waffoReadiness.forOrigin, args)).enabled).toBe(false);
+    vi.stubEnv("WAFFO_ENVIRONMENT", "test");
     vi.stubEnv("WAFFO_CREDIT_PACK_400_PRODUCT_ID", "PROD_64");
     expect((await t.query(api.waffoReadiness.forOrigin, args)).enabled).toBe(false);
   });

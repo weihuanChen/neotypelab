@@ -193,33 +193,40 @@ appropriate **Convex deployment environment**:
   corresponding NeotypeLab plans and Credit Packs. Each ID must be unique.
 - `WAFFO_CHECKOUT_RETURN_ORIGINS`: exact comma-separated frontend origins
   allowed to receive a return from hosted checkout.
-- `WAFFO_PLAN_GROUP_ID`: Test Mode product group containing the Pro and Studio
+- `WAFFO_PLAN_GROUP_ID`: environment-specific product group containing the Pro and Studio
   monthly products. Buyer self-service plan changes stay disabled while the
   application supports only the authenticated Pro-to-Studio path. Create or verify it
   with `npx convex run waffoCatalog:configureTestPlanGroup`.
-- `WAFFO_CHECKOUT_ENABLED`: enables the Test Mode Waffo buttons for allowed
+- `WAFFO_CHECKOUT_ENABLED`: enables Waffo checkout for allowed
   origins. The server checks this on every checkout request. Enable it only
   after a signed sandbox payment and entitlement check succeeds.
 
-Run `npx convex run waffoCatalog:check` to compare the five configured Test
-Mode products with the published USD catalog. It checks active status, monthly
+Run `npx convex run waffoCatalog:check` to compare the five configured products in the selected environment with the published USD catalog. It checks active status, monthly
 billing on subscriptions, and exact prices ($19.90/$29.90 and $9/$19/$39).
 Product names alone are never used as identifiers. The development deployment
 has all five Test Mode IDs configured and this catalog check passes.
+
+For Live Mode, publish the validated sandbox products with the SDK's
+`subscriptionProducts.publish` and `onetimeProducts.publish`; product IDs stay
+unchanged. Publish the monthly plan group separately and use the returned **Live
+group ID**, which differs from the sandbox ID. Configure a production HTTP
+Webhook with `testMode: false`, the same sandbox event subscriptions, and the
+production Convex `/waffo/events` URL. Set the production mappings, environment
+`prod`, exact HTTPS return origins, and enable checkout only after catalog and
+connectivity checks pass. Existing Creem subscription upgrades remain on Creem;
+new purchases, including Credit Packs, use Waffo.
 
 The SDK includes Waffo's test and production Webhook verification public keys,
 so a separate Webhook signing secret is not required. If Waffo rotates those
 keys or provides custom keys, the optional overrides are
 `WAFFO_WEBHOOK_TEST_PUBLIC_KEY` and `WAFFO_WEBHOOK_PROD_PUBLIC_KEY`.
-The server-side authenticated checkout actions select Test Mode explicitly,
+The server-side authenticated checkout actions select `WAFFO_ENVIRONMENT` explicitly,
 validate the configured product against Waffo's current USD price, and pass
 the authenticated Convex user ID as Waffo `buyerIdentity` and order metadata.
 They also pass the account email to prefill checkout. Signed Webhook deliveries
 record a local user link only when buyer identity matches the metadata user ID
-and identifies an existing user. The pricing page shows a separate Waffo Test
-Mode button only when the checkout flag, catalog IDs, credentials, environment,
-and return origin are configured. A Waffo Pro subscriber sees a separate Studio
-upgrade entry when `WAFFO_PLAN_GROUP_ID` is configured. The authenticated plan
+and identifies an existing user. New card and other-method purchases use Waffo. Checkout is available only when the checkout flag, catalog IDs, credentials, environment,
+and return origin are configured. A Waffo Pro subscriber can upgrade to Studio when `WAFFO_PLAN_GROUP_ID` is configured. The authenticated plan
 change confirms ownership of the existing Waffo order and checks the target
 product and group before opening Waffo's confirmation page.
 
@@ -238,13 +245,13 @@ buyer or catalog product remain `verified-unmapped` and grant nothing.
 Waffo creates a new order ID for an immediate Pro-to-Studio change. The new ID
 is linked to the original Convex subscription so later Studio renewals keep the
 same account and old Pro cancellation events cannot cancel Studio access.
-Waffo's order GraphQL schema uses `String!` for order IDs. For a Test Mode
+Waffo's order GraphQL schema uses `String!` for order IDs. For a
 subscription whose signed payment receipt arrived but activation delivery
 failed, the internal recovery command
 `npx convex run waffoReconcile:subscription '{"orderId":"ORD_..."}'`
 re-reads the Waffo order, verifies the linked buyer, product, price and period,
 then idempotently grants that period's access and Credits.
-For a failed Test Mode Studio plan-change delivery with a signed payment
+For a failed Studio plan-change delivery with a signed payment
 receipt, use `npx convex run waffoReconcile:planChange '{"orderId":"ORD_..."}'`
 to verify the new Waffo order, link it to the original subscription and grant
 the Studio upgrade difference once.

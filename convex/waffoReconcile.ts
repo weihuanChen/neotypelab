@@ -14,6 +14,12 @@ import { dollarsToMinor, mappedWaffoProduct } from "./waffoCatalog";
 
 export const subscription = internalAction({
   args: { orderId: v.string() },
+  returns: v.object({
+    status: v.union(v.literal("processed"), v.literal("duplicate"), v.literal("ignored-stale")),
+    plan: v.union(v.literal("pro"), v.literal("studio")),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+  }),
   handler: async (ctx, args): Promise<{
     status: "processed" | "duplicate" | "ignored-stale";
     plan: "pro" | "studio";
@@ -23,8 +29,8 @@ export const subscription = internalAction({
     const merchantId = process.env.WAFFO_MERCHANT_ID?.trim();
     const privateKey = process.env.WAFFO_PRIVATE_KEY?.trim();
     const storeId = process.env.WAFFO_STORE_ID?.trim();
-    if (process.env.WAFFO_ENVIRONMENT !== "test" || !merchantId || !privateKey || !storeId) {
-      throw new Error("Waffo Test Mode is not configured");
+    if (!["test", "prod"].includes(process.env.WAFFO_ENVIRONMENT ?? "") || !merchantId || !privateKey || !storeId) {
+      throw new Error("Waffo is not configured");
     }
     const receipt = await ctx.runQuery(internal.waffoWebhookEvents.trustedBuyerForOrder, {
       orderId: args.orderId,
@@ -85,16 +91,21 @@ export const subscription = internalAction({
 
 export const planChange = internalAction({
   args: { orderId: v.string() },
+  returns: v.object({
+    status: v.union(v.literal("processed"), v.literal("duplicate"), v.literal("ignored-stale")),
+    plan: v.literal("studio"),
+    canonicalOrderId: v.string(),
+  }),
   handler: async (ctx, args): Promise<{
     status: "processed" | "duplicate" | "ignored-stale";
-    plan: "pro" | "studio";
+    plan: "studio";
     canonicalOrderId: string;
   }> => {
     const merchantId = process.env.WAFFO_MERCHANT_ID?.trim();
     const privateKey = process.env.WAFFO_PRIVATE_KEY?.trim();
     const storeId = process.env.WAFFO_STORE_ID?.trim();
-    if (process.env.WAFFO_ENVIRONMENT !== "test" || !merchantId || !privateKey || !storeId) {
-      throw new Error("Waffo Test Mode is not configured");
+    if (!["test", "prod"].includes(process.env.WAFFO_ENVIRONMENT ?? "") || !merchantId || !privateKey || !storeId) {
+      throw new Error("Waffo is not configured");
     }
     const receipt = await ctx.runQuery(internal.waffoWebhookEvents.trustedBuyerForOrder, {
       orderId: args.orderId,

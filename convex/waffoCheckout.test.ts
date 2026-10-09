@@ -4,10 +4,11 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { seedUser } from "@/tests/convexTestHelpers";
 
-const mocks = vi.hoisted(() => ({ query: vi.fn(), create: vi.fn(), planChange: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), create: vi.fn(), planChange: vi.fn(), config: vi.fn() }));
 vi.mock("@waffo/pancake-ts", async (importOriginal) => ({
   ...await importOriginal<typeof import("@waffo/pancake-ts")>(),
   WaffoPancake: class {
+    constructor(config: unknown) { mocks.config(config); }
     graphql = { query: mocks.query };
     checkout = { authenticated: { create: mocks.create, createPlanChange: mocks.planChange } };
   },
@@ -47,6 +48,16 @@ describe("Waffo authenticated checkout", () => {
       planType: "pro",
     })).rejects.toThrow("Sign in");
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("uses Live Mode for production checkout sessions", async () => {
+    vi.stubEnv("WAFFO_ENVIRONMENT", "prod");
+    const t = convexTest(schema, modules);
+    const user = await seedUser(t, { tokenIdentifier: "waffo-live", email: "live@example.test" });
+    await user.client.action(api.waffoCheckout.createSubscriptionCheckout, { returnOrigin: "http://localhost:3001", planType: "pro" });
+    expect(mocks.config).toHaveBeenCalledWith(expect.objectContaining({ environment: "prod" }));
+    vi.stubEnv("WAFFO_ENVIRONMENT", "live");
+    await expect(user.client.action(api.waffoCheckout.createSubscriptionCheckout, { returnOrigin: "http://localhost:3001", planType: "pro" })).rejects.toThrow("unavailable");
   });
 
   it("binds the authenticated account to the Waffo session and order metadata", async () => {

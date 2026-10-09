@@ -14,18 +14,26 @@ export const create = action({
     plan: v.optional(plan),
     credits: v.optional(credits),
   },
+  returns: v.union(
+    v.object({ status: v.literal("redirect"), url: v.string() }),
+    v.object({ status: v.literal("scheduled") }),
+  ),
   handler: async (ctx, args): Promise<
     { status: "redirect"; url: string } | { status: "scheduled" }
   > => {
     const target = checkoutTarget(args);
+    const viewer = target.kind === "plan" && target.plan === "studio"
+      ? await ctx.runQuery(api.users.viewer, {}) : null;
+    const subscription = viewer?.entitlements.planType === "pro"
+      ? await ctx.runQuery(api.subscriptions.viewerCurrent, {}) : null;
     const provider = selectCheckoutProvider({
       offer: target.kind === "plan" ? target.plan : "pack",
       country: CHECKOUT_COUNTRY,
       paymentMethod: args.paymentMethod,
+      subscriptionProvider: subscription?.provider,
     });
 
     if (target.kind === "plan" && target.plan === "studio") {
-      const viewer = await ctx.runQuery(api.users.viewer, {});
       if (viewer?.entitlements.planType === "pro") {
         if (provider === "creem") {
           await ctx.runMutation(api.creemBilling.upgradeToStudio, {});

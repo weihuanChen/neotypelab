@@ -13,6 +13,7 @@ export const createSubscriptionCheckout = action({
     returnOrigin: v.string(),
     planType: v.union(v.literal("pro"), v.literal("studio")),
   },
+  returns: v.object({ url: v.string() }),
   handler: async (ctx, args): Promise<{ url: string }> => {
     const viewer = await ctx.runQuery(api.users.viewer, {});
     if (!viewer || viewer.accountStatus !== "active") {
@@ -36,6 +37,7 @@ export const createCreditPackCheckout = action({
     returnOrigin: v.string(),
     credits: v.union(v.literal(64), v.literal(160), v.literal(400)),
   },
+  returns: v.object({ url: v.string() }),
   handler: async (ctx, args): Promise<{ url: string }> => {
     const viewer = await ctx.runQuery(api.users.viewer, {});
     if (!viewer || viewer.accountStatus !== "active") {
@@ -56,6 +58,7 @@ export const createCreditPackCheckout = action({
 
 export const createStudioUpgradeCheckout = action({
   args: { returnOrigin: v.string() },
+  returns: v.object({ url: v.string() }),
   handler: async (ctx, args): Promise<{ url: string }> => {
     const viewer = await ctx.runQuery(api.users.viewer, {});
     if (!viewer || viewer.accountStatus !== "active" || viewer.entitlements.planType !== "pro") {
@@ -106,17 +109,18 @@ export const createStudioUpgradeCheckout = action({
 });
 
 function configuredClient(): WaffoPancake {
+  const environment = process.env.WAFFO_ENVIRONMENT;
   const merchantId = process.env.WAFFO_MERCHANT_ID?.trim();
   const privateKey = process.env.WAFFO_PRIVATE_KEY?.trim();
   const storeId = process.env.WAFFO_STORE_ID?.trim();
   if (
     process.env.WAFFO_CHECKOUT_ENABLED !== "true" ||
-    process.env.WAFFO_ENVIRONMENT !== "test" ||
+    (environment !== "test" && environment !== "prod") ||
     !merchantId || !privateKey || !storeId
   ) {
     throw new Error("Waffo checkout is unavailable");
   }
-  return new WaffoPancake({ merchantId, privateKey, environment: "test" });
+  return new WaffoPancake({ merchantId, privateKey, environment });
 }
 
 function allowedReturnOrigin(rawOrigin: string): string {

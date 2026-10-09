@@ -1,10 +1,19 @@
-import creemTest from "@mmailaender/convex-creem/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
-import { api, components } from "./_generated/api";
+import { api } from "./_generated/api";
 import schema from "./schema";
 import { seedUser } from "@/tests/convexTestHelpers";
 import { creem } from "./creemBilling";
+
+const mocks = vi.hoisted(() => ({ query: vi.fn(), create: vi.fn(), config: vi.fn() }));
+vi.mock("@waffo/pancake-ts", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@waffo/pancake-ts")>(),
+  WaffoPancake: class {
+    constructor(config: unknown) { mocks.config(config); }
+    graphql = { query: mocks.query };
+    checkout = { authenticated: { create: mocks.create } };
+  },
+}));
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -20,49 +29,26 @@ describe("checkout creation", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     vi.unstubAllEnvs();
   });
 
-  it("creates a Creem checkout when the payment method is card", async () => {
+  it.each(["card", "other"] as const)("creates a Waffo checkout for %s", async (paymentMethod) => {
+    vi.stubEnv("WAFFO_CHECKOUT_ENABLED", "true");
+    vi.stubEnv("WAFFO_ENVIRONMENT", "prod");
+    vi.stubEnv("WAFFO_MERCHANT_ID", "MER_live");
+    vi.stubEnv("WAFFO_PRIVATE_KEY", "key");
+    vi.stubEnv("WAFFO_STORE_ID", "STO_live");
+    vi.stubEnv("WAFFO_CHECKOUT_RETURN_ORIGINS", "http://localhost:3001");
+    vi.stubEnv("WAFFO_PRO_MONTHLY_PRODUCT_ID", "PROD_pro");
     const t = convexTest(schema, modules);
-    creemTest.register(t);
-    const user = await seedUser(t, {
-      tokenIdentifier: "checkout-card",
-      email: "checkout-card@example.test",
-    });
-    await t.mutation(components.creem.lib.updateProducts, {
-      products: [{
-        id: "prod_pro_monthly",
-        name: "NeoTypeLab Pro",
-        description: null,
-        price: 1990,
-        currency: "USD",
-        billingType: "recurring",
-        billingPeriod: "every-month",
-        status: "active",
-        mode: "test",
-        createdAt: new Date().toISOString(),
-        modifiedAt: null,
-      }],
-    });
-    const create = vi.spyOn(creem.sdk.checkouts, "create").mockResolvedValue({
-      checkoutUrl: "https://www.creem.io/test/checkout/prod_pro_monthly/ch_123",
-      customer: { id: "cust_123", email: "checkout-card@example.test" },
-    } as never);
-
-    const result = await user.client.action(api.checkout.create, {
-      returnOrigin: "http://localhost:3001",
-      plan: "pro",
-      paymentMethod: "card",
-    });
-
-    expect(result).toMatchObject({
-      status: "redirect",
-      url: expect.stringContaining("https://www.creem.io/"),
-    });
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({
-      productId: "prod_pro_monthly",
-    }));
+    const user = await seedUser(t, { tokenIdentifier: "checkout-live", email: "live@example.test" });
+    mocks.query.mockResolvedValue({ data: { products: [{ id: "PROD_pro", name: "Pro", status: "active", billingPeriod: "monthly", prices: [{ currency: "USD", priceInfo: { amount: "19.90" } }] }] } });
+    mocks.create.mockResolvedValue({ checkoutUrl: "https://pancake.waffo.ai/checkout/live" });
+    const result = await user.client.action(api.checkout.create, { returnOrigin: "http://localhost:3001", plan: "pro", paymentMethod });
+    expect(result).toMatchObject({ status: "redirect", url: "https://pancake.waffo.ai/checkout/live" });
+    expect(mocks.config).toHaveBeenCalledWith(expect.objectContaining({ environment: "prod" }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ productId: "PROD_pro", buyerIdentity: user.userId }));
   });
 
   it("does not open Creem for other payment methods", async () => {

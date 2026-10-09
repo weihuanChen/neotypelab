@@ -29,7 +29,9 @@ export function CheckoutDesk({ offer }: { offer: CheckoutOffer }) {
   const productKey = offer.kind === "plan" ? offer.plan : `pack${offer.credits}` as const;
   const pending = !isLoaded || creem === undefined || waffo === undefined ||
     (isSignedIn && (viewer === undefined || subscription === undefined));
-  const cardReady = creem?.products[productKey] === true;
+  const legacyCreemUpgrade = offer.kind === "plan" && offer.plan === "studio" &&
+    viewer?.entitlements.planType === "pro" && subscription?.provider === "creem";
+  const cardReady = legacyCreemUpgrade ? creem?.products[productKey] === true : waffo?.products[productKey] === true;
   const otherReady = waffo?.products[productKey] === true;
   const paymentReady = cardReady || otherReady;
   const selected: CheckoutPaymentMethod = method ?? (cardReady || !otherReady ? "card" : "other");
@@ -47,8 +49,8 @@ export function CheckoutDesk({ offer }: { offer: CheckoutOffer }) {
   );
   const upgradeMatchesMethod = Boolean(
     activePro && (
-      (selected === "card" && subscription?.provider === "creem") ||
-      (selected === "other" && subscription?.provider === "waffo" && waffo?.planChange)
+      (selected === "card" && legacyCreemUpgrade) ||
+      (subscription?.provider === "waffo" && waffo?.planChange)
     )
   );
   const canUpgrade = offer.kind === "plan" && offer.plan === "studio" && upgradeMatchesMethod;
@@ -60,7 +62,7 @@ export function CheckoutDesk({ offer }: { offer: CheckoutOffer }) {
     ["active", "canceling"].includes(subscription.status) && subscription.currentPeriodEnd > Date.now()
   );
   const canPay = offer.kind === "pack" ? packEligible : !alreadyCovered && !blockedSubscription;
-  const notice = canUpgrade && selected === "card"
+  const notice = canUpgrade && legacyCreemUpgrade
     ? "The prorated difference is added to your next invoice."
     : blockedSubscription
       ? "Choose the payment method that matches your current subscription."

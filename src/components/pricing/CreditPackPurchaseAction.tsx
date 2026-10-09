@@ -3,24 +3,22 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { appPaths } from "@/src/lib/appPaths";
-import { useCreemReadiness } from "./useCreemReadiness";
 import { useWaffoReadiness } from "./useWaffoReadiness";
 
 export function CreditPackPurchaseAction({ credits }: { credits: 64 | 160 | 400 }) {
   const { isLoaded, isSignedIn } = useUser();
   const viewer = useQuery(api.users.viewer);
   const subscription = useQuery(api.subscriptions.viewerCurrent);
-  const creem = useCreemReadiness();
   const waffo = useWaffoReadiness();
   const packKey = `pack${credits}` as const;
-  const paymentReady = creem?.products[packKey] === true || waffo?.products[packKey] === true;
+  const paymentReady = waffo?.products[packKey] === true;
   const eligible = Boolean(
     paymentReady &&
     viewer && viewer.entitlements.planType !== "free" && subscription &&
     ["active", "canceling"].includes(subscription.status) && subscription.currentPeriodEnd > Date.now()
   );
 
-  if (creem && waffo && !paymentReady) {
+  if (waffo && !paymentReady) {
     return <button className="pricing-pack__action" disabled type="button">Checkout unavailable</button>;
   }
 
@@ -32,7 +30,7 @@ export function CreditPackPurchaseAction({ credits }: { credits: 64 | 160 | 400 
     );
   }
 
-  if (!isLoaded || viewer === undefined || subscription === undefined || creem === undefined || waffo === undefined) {
+  if (!isLoaded || viewer === undefined || subscription === undefined || waffo === undefined) {
     return <button className="pricing-pack__action" disabled type="button">Checking…</button>;
   }
 

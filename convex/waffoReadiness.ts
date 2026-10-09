@@ -11,6 +11,11 @@ type ProductAvailability = {
 
 export const forOrigin = query({
   args: { returnOrigin: v.string() },
+  returns: v.object({
+    enabled: v.boolean(),
+    planChange: v.boolean(),
+    products: v.object({ pro: v.boolean(), studio: v.boolean(), pack64: v.boolean(), pack160: v.boolean(), pack400: v.boolean() }),
+  }),
   handler: async (_ctx, args): Promise<{ enabled: boolean; planChange: boolean; products: ProductAvailability }> => {
     const ids = {
       pro: process.env.WAFFO_PRO_MONTHLY_PRODUCT_ID?.trim(),
@@ -23,7 +28,7 @@ export const forOrigin = query({
     const origins = (process.env.WAFFO_CHECKOUT_RETURN_ORIGINS ?? "")
       .split(",").map((origin) => origin.trim()).filter(Boolean);
     const enabled = process.env.WAFFO_CHECKOUT_ENABLED === "true" &&
-      process.env.WAFFO_ENVIRONMENT === "test" &&
+      ["test", "prod"].includes(process.env.WAFFO_ENVIRONMENT ?? "") &&
       Boolean(process.env.WAFFO_MERCHANT_ID?.trim()) &&
       Boolean(process.env.WAFFO_PRIVATE_KEY?.trim()) &&
       Boolean(process.env.WAFFO_STORE_ID?.trim()) &&

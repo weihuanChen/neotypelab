@@ -1,6 +1,7 @@
 "use node";
 
 import { WaffoPancake } from "@waffo/pancake-ts";
+import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import {
   CREDIT_PACK_SPECS,
@@ -52,6 +53,11 @@ export function dollarsToMinor(value: string | undefined): number | null {
 
 export const check = internalAction({
   args: {},
+  returns: v.object({
+    configured: v.boolean(),
+    products: v.record(v.string(), v.object({ id: v.union(v.string(), v.null()), valid: v.boolean() })),
+    issues: v.array(v.string()),
+  }),
   handler: async (): Promise<{
     configured: boolean;
     products: Record<CatalogKey, { id: string | null; valid: boolean }>;
@@ -63,8 +69,8 @@ export const check = internalAction({
     const merchantId = process.env.WAFFO_MERCHANT_ID?.trim();
     const privateKey = process.env.WAFFO_PRIVATE_KEY?.trim();
     const storeId = process.env.WAFFO_STORE_ID?.trim();
-    if (!merchantId || !privateKey || !storeId || process.env.WAFFO_ENVIRONMENT !== "test") {
-      return { configured: false, products, issues: ["Waffo test credentials, Store ID or environment are missing"] };
+    if (!merchantId || !privateKey || !storeId || !["test", "prod"].includes(process.env.WAFFO_ENVIRONMENT ?? "")) {
+      return { configured: false, products, issues: ["Waffo credentials, Store ID or environment are missing"] };
     }
     const allIds = Object.values(ids).filter((id): id is string => Boolean(id));
     if (new Set(allIds).size !== allIds.length) issues.push("Product IDs must be unique");
