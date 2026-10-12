@@ -111,3 +111,53 @@ change product logic, backend behavior, data contracts, route
 semantics, permissions, pricing, generation flows, engagement
 behavior, SEO data, or Convex API usage. If a business decision seems
 necessary, stop and ask.
+
+## Exception: the Create console (psycho-frame green)
+
+Approved 2026-10-12. The `/create` workspace is the one place where the
+user *builds*, so it is deliberately livelier than the rest of the
+almanac. This is a scoped exception, not a second brand color: do not
+copy it to other surfaces.
+
+**Scope.** Only selectors under `.create-workspace` (style console,
+kit step, generate panel, mobile generate bar). Explore, Library,
+Showcase, pricing, admin and the shell keep the single navy signal.
+
+**Color.** Reference: the "psycho-frame" green of the PGU RX-93 feature
+page (`#00e88e`).
+
+| Token | Value | Use | Contrast |
+| --- | --- | --- | --- |
+| `--color-psy` | `#00e88e` | Action fills, glows, ready lights, progress | 10.9:1 with ink text |
+| `--color-psy-deep` | `#00744b` | Text, outlines, ticks and focus on paper | 5.1:1 on paper |
+| `--color-psy-wash` | psy 14% | Pressed chips, focus halo | decorative |
+
+- Bright psy is a **light source, never ink**: it has ~1.4:1 on paper,
+  so it must not be used for text or hairlines. Text/outline = `psy-deep`.
+- Text on a psy fill is always `--color-ink`.
+- Paper, headings, cards and rules stay Almanac. Green appears only on:
+  primary actions (Form style, Generate), the step sequence bar, the
+  selected-kit notch, ready lights, chip pressed state, and the console
+  focus scan line. Navy does not appear inside the console.
+
+**Actions are never disabled for missing input.** Form style and
+Generate stay clickable; on click they check what is missing and
+nudge: a small shake of the button and the missing area (amplitude
+≤ 3px, ≤ 2 swings, ~600 ms, decaying), a short-lived soft danger
+outline, focus/scroll to the area, and one plain sentence in a
+`role="status"` hint. Problems a shake cannot solve (insufficient
+credits, locked creator pack, pricing unavailable) show a message and
+a way forward instead of shaking. The only blocked state is an
+in-flight request (`aria-busy`, no duplicate submit / charge).
+
+**Motion.** One signature moment: when the build becomes ready, the
+Generate fill "ignites" once (extends from the left edge with a short
+brightness flicker, after the PGU page's `flicker` keyframe), then
+holds a soft glow. The console scan line runs only while the textarea
+is focused. All of it is disabled under `prefers-reduced-motion`
+(nudges fall back to a static outline + text).
+
+**Presets.** Custom description is the primary path. Official,
+community and saved styles appear as an inspiration strip below the
+console; "Use as is" stays free, "Load into console" copies the
+direction into the textarea for rewriting.

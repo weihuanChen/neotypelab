@@ -19,6 +19,12 @@
   --color-danger: oklch(48% 0.14 28);
   --color-success: oklch(46% 0.055 175);
   --color-info: oklch(44% 0.05 220);
+  /* Create console exception (docs/ui-direction.md): psycho-frame green.
+     Bright psy is a light source only — never text or hairlines on paper. */
+  --color-psy: #00e88e;
+  --color-psy-deep: #00744b;
+  --color-psy-wash: color-mix(in oklch, var(--color-psy) 14%, transparent);
+  --shadow-psy-glow: 0 0 .35em color-mix(in oklch, var(--color-psy) 65%, transparent), 0 0 1.3em color-mix(in oklch, var(--color-psy) 30%, transparent);
 
   --font-display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
   --font-label: "IM Fell English SC", "IM Fell English", serif;

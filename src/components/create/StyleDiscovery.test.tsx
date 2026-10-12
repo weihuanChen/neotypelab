@@ -48,10 +48,19 @@ describe("style workspace", () => {
     expect(html).not.toContain("My Styles");
     expect(html).not.toContain('aria-label="Custom style sources"');
   });
-  it("blocks interpretation when the viewer cannot pay the tariff", () => {
+  it("keeps Form style clickable and states the tariff when the viewer cannot pay", () => {
     const html = renderToStaticMarkup(<CustomStylePicker userId="test" creditCost={1} creditBalance={0} selectedId={null} view="describe" onUse={() => {}} onClear={() => {}} onApply={() => {}} />);
     expect(html).toContain("Needs 1 credit · 0 available");
-    expect(html).toMatch(/disabled=""[^>]*>Form style/);
+    expect(html).toMatch(/class="psy-btn"[^>]*>Form style/);
+    expect(html).not.toMatch(/disabled=""[^>]*>Form style/);
+    expect(html).toContain('role="status"');
+  });
+  it("offers free use and a rewritable load on inspiration cards", () => {
+    const presets = [{ _id: "style-1", name: "Arctic Ops", slug: "arctic-ops" }] as ComponentProps<typeof StyleDiscovery>["presets"];
+    const html = renderToStaticMarkup(<StyleDiscovery presets={presets} previews={[]} community={[]} busy={false} onPreset={() => {}} onCommunity={() => {}} onLoad={() => {}} />);
+    expect(html).toContain("Or start from a direction");
+    expect(html).toContain("Use as is");
+    expect(html).toContain("Load into console");
   });
 
   it("keeps Custom Style review and stored able to return to input", () => {

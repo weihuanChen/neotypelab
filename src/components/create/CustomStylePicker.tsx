@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -11,6 +11,7 @@ import { AiDisclosureNote } from "@/src/components/legal/AiDisclosureNote";
 import { JobResult, JobWait, jobWaitProfiles, type StyleJobPhase } from "@/src/components/job-wait";
 import { resolveStyleJobPhase } from "./styleJobPhase";
 import { StylePalette } from "./StylePalette";
+import { useNudge } from "./useNudge";
 
 type Props = {
   userId: string;
@@ -22,7 +23,27 @@ type Props = {
   view: "describe" | "mine";
   onApply: () => void;
   onPhaseChange?: (phase: StyleJobPhase) => void;
+  /** A direction loaded from the inspiration strip; a new nonce replaces the draft. */
+  seed?: { text: string; nonce: number };
 };
+
+const ingredients = [
+  { label: "Two-tone armor", text: "white and deep navy armor" },
+  { label: "Gold trim", text: "gold trim on the V-fin and chest vents" },
+  { label: "Satin finish", text: "satin finish" },
+  { label: "Dense markings", text: "dense caution markings" },
+  { label: "An era", text: "cold-war naval aviation feel" },
+  { label: "Light wear", text: "light edge wear" },
+] as const;
+
+/** Guidance only: which aspects the description already pins down. Never used for validation. */
+const coverage = [
+  { key: "color", label: "Main colors", pattern: /(red|blue|white|black|gold|silver|teal|yellow|green|grey|gray|navy|crimson|orange|purple|violet|pink|cyan|magenta|olive|khaki|bronze|红|蓝|白|黑|金|银|黄|绿|灰|橙|紫|粉|青)/i },
+  { key: "part", label: "Where colors go", pattern: /(shoulder|chest|v-?fin|leg|shin|frame|arm|head|vent|armor|armour|panel|backpack|shield|skirt|knee|torso|肩|胸|腿|骨架|手臂|头|装甲|背包|盾)/i },
+  { key: "finish", label: "Finish", pattern: /(matte|matt|gloss|satin|metallic|pearl|candy|chrome|finish|哑光|亮光|半光|金属|珠光|电镀)/i },
+  { key: "markings", label: "Markings", pattern: /(marking|decal|stripe|number|caution|emblem|logo|insignia|livery|标记|水贴|条纹|编号|徽)/i },
+  { key: "mood", label: "Mood or era", pattern: /(era|war|naval|ceremonial|racing|arctic|desert|jungle|feel|inspired|mood|retro|stealth|idol|年代|风格|氛围|仪仗|赛车|海军|沙漠|雪地)/i },
+] as const;
 
 export function CustomStylePicker({
   userId,
@@ -34,7 +55,13 @@ export function CustomStylePicker({
   view: tab,
   onApply,
   onPhaseChange,
+  seed,
 }: Props) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const deskRef = useRef<HTMLDivElement>(null);
+  const formButtonRef = useRef<HTMLButtonElement>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
+  const { hint, nudge, tell, clear: clearHint } = useNudge();
   const [description, setDescription] = useState("");
   const [queryDescription, setQueryDescription] = useState("");
   const [requestKey, setRequestKey] = useState<string | null>(null);
@@ -81,6 +108,15 @@ export function CustomStylePicker({
   useEffect(() => {
     onPhaseChange?.(phase);
   }, [onPhaseChange, phase]);
+  useEffect(() => {
+    if (!seed) return;
+    persistDraft(seed.text, null, true);
+    setAdjusting(false);
+    clearHint();
+    textareaRef.current?.focus({ preventScroll: true });
+    deskRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new seed nonce replaces the draft
+  }, [seed?.nonce]);
 
   const interpretationUnavailable = creditCost === undefined;
   const insufficientCredits = creditCost !== undefined && creditBalance !== undefined && creditBalance < creditCost;
@@ -153,6 +189,39 @@ export function CustomStylePicker({
     void run(() => onInterpret(false));
   }
 
+  /** Form style is never disabled: check on click, then nudge or explain. */
+  function requestForm() {
+    if (busy) return;
+    if (!description.trim()) {
+      nudge({ button: formButtonRef.current, target: deskRef.current, focus: textareaRef.current, text: "Describe the repaint first, or load a direction below." });
+      return;
+    }
+    if (checkingHistory) { setPendingSubmit(true); return; }
+    if (!recovered && interpretationUnavailable) { tell({ tone: "info", text: "Style forming is unavailable right now. You can still use a direction below as it is." }); return; }
+    if (!recovered && insufficientCredits) {
+      tell({ tone: "info", text: costCopy(creditCost, creditBalance) + ".", action: { label: "Get credits", href: "/pricing" } });
+      return;
+    }
+    clearHint();
+    submitDirection();
+  }
+
+  useEffect(() => {
+    if (!pendingSubmit || checkingHistory) return;
+    setPendingSubmit(false);
+    requestForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resumes a click made during the history check
+  }, [pendingSubmit, checkingHistory]);
+
+  function addIngredient(text: string) {
+    const current = description.trim().replace(/[.,;]$/, "");
+    const next = current ? `${current}, ${text}` : text.charAt(0).toUpperCase() + text.slice(1);
+    persistDraft(next.slice(0, 2000), null);
+    setAdjusting(false);
+    clearHint();
+    textareaRef.current?.focus();
+  }
+
   return <div className="custom-style-picker mt-6 space-y-6">
     {error && phase === "input" ? <p role="alert" className="workbench-notice">{error}</p> : null}
     {tab === "describe" && phase === "forming" ? (
@@ -199,21 +268,35 @@ export function CustomStylePicker({
       />
     ) : null}
     {tab === "describe" && phase === "input" ? <div className="style-command">
-      <p className="style-command-kicker">Create a style</p>
-      <h2>What should this kit become?</h2>
-      <Textarea aria-label="Describe your repaint idea" value={description} maxLength={2000} disabled={busy}
-        placeholder="Describe a color scheme, character, era, design language, or mood…"
-        onChange={event => {
-          persistDraft(event.target.value, null);
-          setAdjusting(false);
-        }} />
-      <div className="style-command-examples">{["Crimson armor with restrained gold accents", "Cyan idol colors with racing graphics", "Cold-war naval aviation"].map(example =>
-        <button type="button" key={example} disabled={busy} onClick={() => { persistDraft(example, null, true); setAdjusting(false); }}>“{example}”</button>)}</div>
-      <Button disabled={busy || checkingHistory || !description.trim() || (!recovered && (interpretationUnavailable || insufficientCredits))} onClick={submitDirection}>
-        {checkingHistory ? "Checking previous direction…" : "Form style →"}
-      </Button>
-      <p className="style-command-cost">{costCopy(creditCost, creditBalance)}</p>
-      <AiDisclosureNote kind="text" />
+      <div className="style-command-main">
+        <h2>What should this kit become?</h2>
+        <div className="style-command-desk" ref={deskRef}>
+          <Textarea ref={textareaRef} aria-label="Describe your repaint idea" aria-describedby="style-command-hint" value={description} maxLength={2000} disabled={busy}
+            placeholder="Crimson armor with restrained gold trim, like a ceremonial guard unit…"
+            onChange={event => {
+              persistDraft(event.target.value, null);
+              setAdjusting(false);
+              if (hint) clearHint();
+            }}
+            onKeyDown={event => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); requestForm(); } }} />
+          <div className="style-command-desk-foot" aria-hidden="true"><span><kbd>⌘</kbd> <kbd>Enter</kbd> to form</span><span>{description.length} / 2000</span></div>
+        </div>
+        <div className="style-command-ingredients" aria-label="Add to your description"><span>Add</span>{ingredients.map(item =>
+          <button type="button" key={item.label} disabled={busy} aria-pressed={description.toLowerCase().includes(item.text)} onClick={() => addIngredient(item.text)}>{item.label}</button>)}</div>
+        <div className="style-command-submit">
+          <button ref={formButtonRef} type="button" className="psy-btn" aria-busy={busy || pendingSubmit || undefined} onClick={requestForm}>
+            {pendingSubmit ? "Checking…" : busy ? "Forming…" : "Form style"}
+          </button>
+          <p className="style-command-cost">{costCopy(creditCost, creditBalance)}</p>
+        </div>
+        <p id="style-command-hint" className={`create-hint${hint ? ` is-${hint.tone}` : ""}`} role="status">{hint?.text}{hint?.action ? <> <a href={hint.action.href}>{hint.action.label}</a></> : null}</p>
+        <AiDisclosureNote kind="text" />
+      </div>
+      <aside className="style-command-coverage" aria-label="What your description locks in">
+        <h3>What your words lock in</h3>
+        <p>Anything you leave open, the style decides.</p>
+        <ul>{coverage.map(item => { const on = item.pattern.test(description); return <li key={item.key} className={on ? "is-on" : undefined}>{item.label}<span className="sr-only">{on ? " · covered" : " · open"}</span></li>; })}</ul>
+      </aside>
     </div> : null}
     {tab === "mine" ? <div className="space-y-5">
       <p>Styles are private until you publish them. Making a style private stops new saves; existing private copies remain.</p>

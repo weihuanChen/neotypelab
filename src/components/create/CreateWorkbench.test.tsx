@@ -29,22 +29,24 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 describe("Create step navigation", () => {
-  it("opens with styles and gates model selection behind a selected style", () => {
+  it("opens on the custom console and keeps the kit step reachable but marked", () => {
     mockLatestRun = null;
     const html = renderToStaticMarkup(<CreateWorkbench />);
     expect(html).toContain('aria-label="Creation steps"');
     expect(html).toContain('aria-current="step"');
-    expect(html).toContain("Choose a color direction.");
+    expect(html).toContain("What should this kit become?");
+    expect(html).toContain("Or start from a direction");
     expect(html).toContain("Crimson Command");
-    expect(html).toMatch(/disabled=""[^>]*>02/);
-    expect(html).toContain('hidden=""');
+    expect(html).toMatch(/aria-disabled="true"[^>]*>.*02 · Kit/);
+    expect(html).not.toMatch(/disabled=""[^>]*>[^<]*02/);
+    expect(html.indexOf("What should this kit become?")).toBeLessThan(html.indexOf("Or start from a direction"));
     expect(html).not.toContain('aria-label="Search kits"');
     expect(html).not.toContain("Create repaint specification");
     expect(html).not.toContain("palette 1 + specification");
     expect(html).not.toContain('step="03"');
     if (process.env.CREATE_VISUAL_QA) {
-      const css = ["tokens.css", "workbench.css"].map(file => readFileSync("src/styles/" + file, "utf8")).join("\n");
-      writeFileSync("/tmp/neotypelab-create-step1.html", `<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:24px;background:var(--color-paper);font-family:var(--font-body)}button{font:inherit;color:inherit;background:transparent} ${css}</style>${html}</html>`);
+      const css = ["tokens.css", "workbench.css", "create-workspace.css"].map(file => readFileSync("src/styles/" + file, "utf8")).join("\n");
+      writeFileSync("/tmp/neotypelab-create-step1.html", `<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;padding:24px;background:var(--color-paper);font-family:var(--font-body)}button{font:inherit;color:inherit;background:transparent} ${css}</style>${html}</html>`);
     }
   });
 
@@ -90,6 +92,6 @@ describe("Create step navigation", () => {
     expect(html).toContain("PAINT PLAN");
     expect(html).toContain("job-scanner-beam");
     expect(html).toContain("This build will continue in the background if you leave this page.");
-    expect(html).not.toContain("Choose a color direction.");
+    expect(html).not.toContain("What should this kit become?");
   });
 });

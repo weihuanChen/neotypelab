@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { readStyleIntent } from "@/convex/styleRefinements";
@@ -9,12 +9,21 @@ function presetSummary(description: string | undefined, intent: ReturnType<typeo
   return description || intent?.mood || (intent ? paletteNames(intent.palette) : "");
 }
 
+/** Rewritable console text for a direction: colour names and design language, never HEX anchors. */
+export function directionText(name: string, intent: ReturnType<typeof readStyleIntent>, fallback: string) {
+  if (!intent) return [name, fallback].filter(Boolean).join(": ");
+  const colors = paletteNames(intent.palette, intent.colors).replace(/ · /g, ", ");
+  return [`${name}: ${colors}`, intent.graphicLanguage, `${intent.finish} finish`].filter(Boolean).join(". ").slice(0, 2000);
+}
+
 type Preset = FunctionReturnType<typeof api.catalog.listCreateOptions>["stylePresets"][number];
 type Community = FunctionReturnType<typeof api.userStyles.community>[number];
 type Preview = FunctionReturnType<typeof api.styleEditorial.gallery>[number];
-export function StyleDiscovery({ presets, community, previews, selectedId, onPreset, onCommunity, busy, initialCommunity }: {
+export function StyleDiscovery({ presets, community, previews, selectedId, onPreset, onCommunity, onLoad, headingAction, busy, initialCommunity }: {
   presets: Preset[]; community: Community[] | undefined; previews: Preview[];
   selectedId?: string; onPreset: (preset: Preset) => void; onCommunity: (style: Community) => void;
+  /** Copies a direction into the custom console so it can be rewritten. */
+  onLoad?: (text: string) => void; headingAction?: ReactNode;
   busy: boolean; initialCommunity?: string;
 }) {
   const [browse, setBrowse] = useState(Boolean(initialCommunity));
@@ -42,8 +51,10 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
   const current = Math.min(page, pages);
   const visible = browse ? filtered.slice((current - 1) * 8, current * 8) : filtered.slice(0, 4);
   return <div className="style-discovery">
-    <div className="style-discovery-heading"><h3>{browse ? "Discover styles" : "Selected directions"}</h3>
-      {!browse ? <button type="button" onClick={() => setBrowse(true)}>Browse all {entries.length} →</button> : <button type="button" onClick={() => setBrowse(false)}>Back to selections</button>}</div>
+    <div className="style-discovery-heading"><div><h3>{browse ? "Discover styles" : "Or start from a direction"}</h3>
+      <p>{onLoad ? "Use one as it is, or load it into the console and rewrite it." : "Official and community directions."}</p></div>
+      <div className="style-discovery-actions">{headingAction}
+      {!browse ? <button type="button" onClick={() => setBrowse(true)}>Browse all {entries.length}</button> : <button type="button" onClick={() => setBrowse(false)}>Back to selections</button>}</div></div>
     {browse ? <div className="style-discovery-filters">
       <input aria-label="Search styles" placeholder="Search styles…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
       <select aria-label="Style source" value={source} onChange={e => { setSource(e.target.value); setPage(1); }}>
@@ -66,6 +77,10 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
       <button type="button" className="discover-style-select" disabled={busy} onClick={entry.choose} aria-pressed={selectedId === entry.id}>
         <h3>{entry.name}</h3><p>{entry.summary}</p>
       </button>
+      <div className="discover-style-actions">
+        <button type="button" disabled={busy} onClick={entry.choose} aria-pressed={selectedId === entry.id}>{selectedId === entry.id ? "In use" : "Use as is"}</button>
+        {onLoad ? <button type="button" disabled={busy} onClick={() => onLoad(directionText(entry.name, entry.intent, entry.summary))}>Load into console</button> : null}
+      </div>
       <details><summary>Palette details</summary>
         <p>{entry.source === "official" ? "Official" : "Community"} · {entry.category}</p>
         <p>{entry.description}</p>

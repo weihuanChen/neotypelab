@@ -126,6 +126,7 @@ describe("subscription billing", () => {
       periodStart,
       periodEnd,
       monthlyCredits: 160,
+      occurredAt: periodStart,
     }));
     const upgrade = event({
       eventId: "evt-studio-upgrade",

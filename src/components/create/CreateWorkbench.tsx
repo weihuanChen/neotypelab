@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import { api } from "@/convex/_generated/api";
@@ -16,6 +16,7 @@ import { CustomStylePicker } from "./CustomStylePicker";
 import { StylePalette, displayPalette } from "./StylePalette";
 import { KitPicker, KitPortrait } from "./KitPicker";
 import { GenerationJobSheet } from "./GenerationJobSheet";
+import { useNudge } from "./useNudge";
 import type { CreateWorkbenchSearch } from "./createSearch";
 import { SystemState, systemStates } from "@/src/components/system-state";
 import { AiDisclosureNote } from "@/src/components/legal/AiDisclosureNote";
@@ -37,7 +38,15 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const remix = useQuery(api.showcase.getRemixSeed, search.remix ? { conceptId: search.remix as Id<"concepts"> } : "skip");
   const pack = useQuery(api.showcase.getCreatorPackBySlug, search.creatorPack ? { slug: search.creatorPack } : "skip");
   const [step, setStep] = useState<1 | 2>(1);
-  const [tab, setTab] = useState<"discover" | "create" | "saved">("discover");
+  const [inspireView, setInspireView] = useState<"strip" | "mine">("strip");
+  const [seed, setSeed] = useState<{ text: string; nonce: number }>();
+  const [refineOpen, setRefineOpen] = useState(Boolean(search.remix));
+  const [igniting, setIgniting] = useState(false);
+  const wasReady = useRef(false);
+  const styleAreaRef = useRef<HTMLElement>(null);
+  const styleStripRef = useRef<HTMLElement>(null);
+  const kitAreaRef = useRef<HTMLDivElement>(null);
+  const { hint, nudge, tell, clear: clearHint } = useNudge();
   const [styleMode, setStyleMode] = useState<"preset" | "custom">(search.communityStyle ? "custom" : "preset");
   const [presetId, setPresetId] = useState<Id<"stylePresets"> | null>(null);
   const [custom, setCustom] = useState<StyleIntent | null>(null);
@@ -58,9 +67,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const [stylePhase, setStylePhase] = useState<StyleJobPhase>("input");
   const handleStylePhase = useCallback((phase: StyleJobPhase) => {
     setStylePhase(phase);
-    if (phase === "existing" || phase === "forming" || phase === "review" || phase === "stored" || phase === "interrupted") {
-      setTab("create");
-    }
+    if (phase !== "input") setInspireView("strip");
   }, []);
   const appliedSearch = useRef(false);
   const requestRef = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -78,7 +85,20 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const actualKitId = kit?._id;
   const resolvedMaterial = materialId ?? defaults.material?._id;
   const resolvedWeathering = weathering ?? defaults.weathering;
+  const creditBalance = viewer?.credits?.balance;
+  const creditsOk = !quote || creditBalance === undefined || creditBalance >= quote.cost;
+  const ready = hasStyle && Boolean(actualKitId && resolvedMaterial && quote) && creditsOk && !locked;
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [step]);
+  useEffect(() => { clearHint(); }, [step, clearHint]);
+  useEffect(() => {
+    if (ready && !wasReady.current) {
+      setIgniting(true);
+      const timer = window.setTimeout(() => setIgniting(false), 1000);
+      wasReady.current = true;
+      return () => window.clearTimeout(timer);
+    }
+    wasReady.current = ready;
+  }, [ready]);
 
   useEffect(() => {
     if (latestRun && (latestRun.status === "queued" || latestRun.status === "running")) {
@@ -175,37 +195,74 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
     );
   }
 
-  const canGenerate = hasStyle && Boolean(actualKitId && resolvedMaterial && quote) && !busy && !isRunning && !locked;
+  /** Generate is never disabled for missing input: check on click, then nudge or explain. */
+  function requestGenerate(button: HTMLElement | null) {
+    if (busy || isRunning) return;
+    if (!hasStyle) { nudge({ button, target: styleStripRef.current, text: "Pick a style first." }); return; }
+    if (!actualKitId) { nudge({ button, target: kitAreaRef.current, focus: kitAreaRef.current?.querySelector<HTMLInputElement>('input[type="search"]'), text: "Pick a kit from the grid." }); return; }
+    if (locked) { tell({ tone: "info", text: pack ? access.message : "Loading creator pack access…" }); return; }
+    if (!quote) { tell({ tone: "info", text: "Pricing is unavailable right now. Try again in a moment." }); return; }
+    if (!resolvedMaterial) { tell({ tone: "info", text: "Choose a finish in Advanced options to continue." }); setAdvanced(true); return; }
+    if (!creditsOk) { tell({ tone: "info", text: `Needs ${quote.cost} credits · ${creditBalance} available.`, action: { label: "Get credits", href: "/pricing" } }); return; }
+    clearHint();
+    void generate();
+  }
+
+  function goToKitStep() {
+    if (hasStyle) { setStep(2); return; }
+    nudge({ target: styleAreaRef.current, text: "Form a style or use a direction first." });
+  }
+
+  const working = busy || Boolean(isRunning);
   const styleTakeover = stylePhase === "forming" || stylePhase === "interrupted";
+  const generateClass = `psy-btn${ready ? " is-ready" : ""}${igniting ? " is-igniting" : ""}`;
+  const hintLine = <p className={`create-hint${hint ? ` is-${hint.tone}` : ""}`} role="status">{hint?.text}{hint?.action ? <> <a href={hint.action.href}>{hint.action.label}</a></> : null}</p>;
+  const lights = [
+    { key: "style", label: "Style", ok: hasStyle, value: hasStyle ? "Ready" : "Missing" },
+    { key: "kit", label: "Kit", ok: Boolean(actualKitId), value: actualKitId ? "Ready" : "Pick one" },
+    { key: "credits", label: "Credits", ok: Boolean(quote) && creditsOk, value: creditBalance === undefined ? "—" : `${creditBalance} available` },
+  ];
   return <div className={`create-workspace ${styleTakeover ? "is-job-wait" : step === 1 ? "is-style" : "is-model"}`}>
-    {styleTakeover ? null : <nav className="create-step-nav" aria-label="Creation steps"><button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>01 · Style</button><button type="button" disabled={!hasStyle} aria-current={step === 2 ? "step" : undefined} onClick={() => setStep(2)}>02 · Model</button></nav>}
-    {step === 1 ? <section className="create-style-workspace">
-      {styleTakeover ? null : <><p className="workbench-kicker">01 · Style</p><h2>Choose a color direction.</h2>
-      <div className="style-main-tabs" aria-label="Style workspace">{(["discover", "create", "saved"] as const).map(value => <button key={value} type="button" aria-pressed={tab === value} onClick={() => setTab(value)}>{value === "discover" ? "Discover" : value === "create" ? "Create" : "Saved"}</button>)}</div></>}
-      <div hidden={styleTakeover || tab !== "discover"}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={busy || Boolean(isRunning)} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
-        onPreset={row => { setStyleMode("preset"); setPresetId(row._id); setMaterialId(null); setWeathering(null); setMood([]); }}
-        onCommunity={row => { setBusy(true); setError(null); void saveCommunity({ styleId: row.id }).then(saved => { setStyleMode("custom"); setCustom(saved.intent); setSavedId(saved.styleId); setCommunityId(row.id); setMaterialId(null); setWeathering(null); setMood([]); }).catch(failure => setError(errorText(failure))).finally(() => setBusy(false)); }} /></div>
-      <div hidden={!styleTakeover && tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={viewer?.credits?.balance ?? 0} selectedId={savedId} view={styleTakeover || tab !== "saved" ? "describe" : "mine"}
+    {styleTakeover ? null : <nav className="create-sequence" aria-label="Creation steps">
+      <button type="button" aria-current={step === 1 ? "step" : undefined} onClick={() => setStep(1)}>
+        <span className="create-sequence-bar" style={{ "--fill": hasStyle ? 1 : .15 } as CSSProperties} /><span className="create-sequence-label">01 · Style{styleName ? <em>{styleName}</em> : null}</span>
+      </button>
+      <button type="button" aria-current={step === 2 ? "step" : undefined} aria-disabled={!hasStyle || undefined} onClick={goToKitStep}>
+        <span className="create-sequence-bar" style={{ "--fill": step === 2 ? (actualKitId ? 1 : .15) : 0 } as CSSProperties} /><span className="create-sequence-label">02 · Kit{step === 2 && kit?.name ? <em>{kit.name}</em> : null}</span>
+      </button>
+    </nav>}
+    {step === 1 ? <section className="create-style-workspace" ref={styleAreaRef}>
+      {!styleTakeover && inspireView === "mine" ? <div className="create-mine-heading"><h2>Your styles</h2><button type="button" onClick={() => setInspireView("strip")}>Back to the console</button></div> : null}
+      <CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={creditBalance ?? 0} selectedId={savedId} view={!styleTakeover && inspireView === "mine" ? "mine" : "describe"} seed={seed}
         onPhaseChange={handleStylePhase}
-        onUse={(value, id, description) => { setStyleMode("custom"); setCustom(value); setCustomDescription(description); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setCustomDescription(undefined); setSavedId(null); }} onApply={() => setStep(2)} /></div>
-      {styleTakeover || tab === "create" ? null : <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a kit →</Button>}
+        onUse={(value, id, description) => { setStyleMode("custom"); setCustom(value); setCustomDescription(description); setSavedId(id); setCommunityId(undefined); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { if (styleMode === "custom") { setCustom(null); setCustomDescription(undefined); setSavedId(null); setCommunityId(undefined); } }} onApply={() => setStep(2)} />
+      {!styleTakeover && stylePhase === "input" && hasStyle ? <section className="create-style-chosen" aria-label="Style in use"><StylePalette colors={colors} /><div><small>Style in use</small><strong>{styleName}</strong></div><button type="button" className="psy-btn" disabled={busy} onClick={() => setStep(2)}>Apply to a kit</button></section> : null}
+      {!styleTakeover && stylePhase === "input" && inspireView === "strip" ? <section className="create-inspiration" ref={styleStripRef}><StyleDiscovery presets={catalog.stylePresets} community={community} previews={previews ?? []} busy={working} initialCommunity={search.communityStyle} selectedId={styleMode === "preset" ? presetId ?? undefined : communityId ?? savedId ?? undefined}
+        onLoad={text => setSeed({ text, nonce: Date.now() })}
+        headingAction={<button type="button" onClick={() => setInspireView("mine")}>Your styles</button>}
+        onPreset={row => { setStyleMode("preset"); setPresetId(row._id); setMaterialId(null); setWeathering(null); setMood([]); }}
+        onCommunity={row => { setBusy(true); setError(null); void saveCommunity({ styleId: row.id }).then(saved => { setStyleMode("custom"); setCustom(saved.intent); setSavedId(saved.styleId); setCommunityId(row.id); setMaterialId(null); setWeathering(null); setMood([]); }).catch(failure => setError(errorText(failure))).finally(() => setBusy(false)); }} /></section> : null}
+      {styleTakeover ? null : hintLine}
     </section> : <>
-      <section className="selected-style-strip" aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change →</button></section>
+      <section className="selected-style-strip" ref={styleStripRef} aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change style</button></section>
       <div className="create-model-layout"><div className="create-kit-inputs">
-      <section className="create-style-refinements" aria-labelledby="style-refinements-title">
+      <section className={`create-style-refinements${refineOpen || notes ? " is-open" : ""}`} aria-labelledby="style-refinements-title">
+        {refineOpen || notes ? <>
         <label htmlFor="style-refinements"><span id="style-refinements-title">Refine this style</span><small>Optional · {notes.length}/{maxCreativeNotesLength}</small></label>
-        <Textarea id="style-refinements" value={notes} disabled={busy || Boolean(isRunning)} maxLength={maxCreativeNotesLength} rows={2}
+        <Textarea id="style-refinements" value={notes} disabled={working} maxLength={maxCreativeNotesLength} rows={2}
           onChange={event => setNotes(event.target.value)} aria-describedby="style-refinements-help"
           placeholder="Use blue and white armor, or specify colors for particular parts…" />
         <p id="style-refinements-help">Your color requests override the style’s default colors. Proportions stay open unless you specify them.</p>
+        </> : <button type="button" className="create-refine-toggle" aria-expanded="false" onClick={() => setRefineOpen(true)}><span id="style-refinements-title">+ Refine colors for this build</span><small>Optional</small></button>}
       </section>
-      <KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} /></div>
+      <div ref={kitAreaRef} className="create-kit-area"><KitPicker selectedId={actualKitId ?? null} onSelect={id => { setKitId(id); clearHint(); }} disabled={working} /></div></div>
         <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kit?.portrait} name={kit?.name ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kit?.name ?? "Select a kit"}</h3><p>{kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
           <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
-          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><Button className="create-generate-button" disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating preview…" : "Generate preview →"}</Button><button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
+          <section className="create-panel-ready" aria-label="Build readiness"><ul>{lights.map(light => <li key={light.key} className={light.ok ? "is-ok" : undefined}><i aria-hidden="true" />{light.label}<span>{light.value}</span></li>)}</ul></section>
+          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><button type="button" className={`${generateClass} create-generate-button`} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating preview…" : "Generate preview"}</button>{hintLine}<button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
         </aside>
       </div>
-      <div className="create-mobile-generate"><div><strong>{kit?.name ?? "Choose a kit"}</strong><span>{quote?.cost ?? "—"} credits · Image + plan</span></div><Button disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating…" : "Generate →"}</Button></div>
+      <div className="create-mobile-generate"><div><strong>{kit?.name ?? "Choose a kit"}</strong><span>{hint?.text ?? `${quote?.cost ?? "—"} credits · Image + plan`}</span></div><button type="button" className={generateClass} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating…" : "Generate"}</button></div>
     </>}
     {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
     {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
