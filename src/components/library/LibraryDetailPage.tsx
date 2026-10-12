@@ -105,7 +105,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
     setWithdrawalNotice(null);
     try {
       await setVisibility({ conceptId: workId, visibility: "private" });
-      setWithdrawalNotice("This work is now private. Your files and paint plan remain in Library.");
+      setWithdrawalNotice("This work is now private and its public link is unavailable. Your files and paint plan remain in Library. Search engines may take time to update old results.");
     } catch (error) {
       const cleanupFailed = error instanceof Error && error.message.includes("public asset cleanup");
       setWithdrawalError(cleanupFailed
@@ -286,7 +286,7 @@ function ExhibitionStrip({
         {isShared || withdrawing || withdrawalError ? (
           <Button type="button" variant="outline" className="work-detail-action" onClick={onMakePrivate} disabled={withdrawing || publishing} aria-busy={withdrawing}>
             <LockClosedIcon aria-hidden="true" />
-            {withdrawing ? "Making private…" : withdrawalError ? "Retry making private" : "Make private"}
+            {withdrawing ? "Removing…" : withdrawalError ? "Retry removal" : "Remove from Showcase"}
           </Button>
         ) : null}
       </div>

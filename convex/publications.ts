@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
-import { internalMutation } from "./functions";
+import { internal } from "./_generated/api";
+import { internalMutation, internalQuery } from "./functions";
+import type { MutationCtx } from "./_generated/server";
+import { startShowcaseIndexWait } from "./showcaseIndexing";
 import type { QueryCtx } from "./types";
 
 const vPublicationVisibility = v.union(v.literal("public"), v.literal("unlisted"));
@@ -9,6 +12,10 @@ const vWebRendition = v.union(
   v.literal("preview"),
   v.literal("thumbnail")
 );
+
+const vPublicationObjects = v.array(v.object({
+  storageObjectId: v.id("storageObjects"), key: v.string(), publicUrl: v.optional(v.string()),
+}));
 
 type WebRendition = "master" | "preview" | "thumbnail";
 const WEB_RENDITIONS: WebRendition[] = ["master", "preview", "thumbnail"];
@@ -19,11 +26,11 @@ export async function getPublishedRenditions(
 ) {
   if (!concept.activePublicationId) return null;
   const publication = await ctx.db.get(concept.activePublicationId);
-  if (!publication || publication.status !== "published") return null;
+  if (!publication || publication.status !== "published" || publication.conceptId !== concept._id || publication.userId !== concept.userId) return null;
   const objects = await ctx.db
     .query("storageObjects")
     .withIndex("by_publicationId", (q) => q.eq("publicationId", publication._id))
-    .collect();
+    .take(20);
   const readyObjects = objects.filter(
     (object) => object.bucketRole === "public" && object.status === "ready"
   );
@@ -45,6 +52,12 @@ export const beginConceptPublication = internalMutation({
     visibility: vPublicationVisibility,
     publicBucket: v.string(),
   },
+  returns: v.object({
+    mode: v.union(v.literal("ready"), v.literal("copy")), publicationId: v.id("assetPublications"),
+    sourceObjects: v.array(v.object({ rendition: vWebRendition, key: v.string(), contentType: v.string() })),
+    destinationObjects: v.array(v.object({ storageObjectId: v.id("storageObjects"), rendition: vWebRendition, key: v.string() })),
+    previousPublicationId: v.union(v.id("assetPublications"), v.null()), previousObjects: vPublicationObjects,
+  }),
   async handler(ctx, { conceptId, tokenIdentifier, visibility, publicBucket }) {
     const viewer = await ctx.db
       .query("users")
@@ -66,7 +79,7 @@ export const beginConceptPublication = internalMutation({
       .withIndex("by_assetVersionId", (q) =>
         q.eq("assetVersionId", concept.currentAssetVersionId!)
       )
-      .collect()
+      .take(20)
       .then((objects) =>
         objects.filter(
           (object) =>
@@ -77,6 +90,9 @@ export const beginConceptPublication = internalMutation({
       );
     assertCompleteSourceRenditions(sourceObjects);
 
+    if (concept.showcaseReviewStatus === "hidden") throw new Error("Hidden works cannot be published");
+    if (concept.pendingPublicationId) await queuePublicationWithdrawal(ctx, concept.pendingPublicationId, 15 * 60 * 1000);
+
     const activePublication = concept.activePublicationId
       ? await ctx.db.get(concept.activePublicationId)
       : null;
@@ -86,7 +102,7 @@ export const beginConceptPublication = internalMutation({
           .withIndex("by_publicationId", (q) =>
             q.eq("publicationId", activePublication._id)
           )
-          .collect()
+          .take(20)
       : [];
     if (
       activePublication?.status === "published" &&
@@ -95,8 +111,14 @@ export const beginConceptPublication = internalMutation({
     ) {
       await Promise.all([
         ctx.db.patch(activePublication._id, { visibility, updatedAt: Date.now() }),
-        ctx.db.patch(concept._id, { visibility }),
+        ctx.db.patch(concept._id, {
+          visibility, pendingPublicationId: undefined,
+          ...(visibility === "unlisted" ? { publicSince: undefined, indexEligible: false } : {}),
+        }),
       ]);
+      if (visibility === "public" && (concept.visibility !== "public" || concept.publicSince === undefined)) {
+        await startShowcaseIndexWait(ctx, concept._id, activePublication._id, Date.now());
+      }
       return {
         mode: "ready" as const,
         publicationId: activePublication._id,
@@ -107,52 +129,26 @@ export const beginConceptPublication = internalMutation({
       };
     }
 
-    const existingPublishing = await ctx.db
-      .query("assetPublications")
-      .withIndex("by_concept_status", (q) =>
-        q.eq("conceptId", conceptId).eq("status", "publishing")
-      )
-      .collect()
-      .then((items) =>
-        items.find((item) => item.assetVersionId === concept.currentAssetVersionId)
-      );
-    const existingFailed = existingPublishing
-      ? null
-      : await ctx.db
-          .query("assetPublications")
-          .withIndex("by_concept_status", (q) =>
-            q.eq("conceptId", conceptId).eq("status", "failed")
-          )
-          .collect()
-          .then((items) =>
-            items.find((item) => item.assetVersionId === concept.currentAssetVersionId)
-          );
-    const reusablePublication = existingPublishing ?? existingFailed;
     const now = Date.now();
-    const publicPrefix = `showcase/${conceptId}/versions/${concept.currentAssetVersionId}`;
-    const publicationId = reusablePublication
-      ? reusablePublication._id
-      : await ctx.db.insert("assetPublications", {
-          mediaAssetId: concept.mediaAssetId,
-          assetVersionId: concept.currentAssetVersionId,
-          userId: viewer._id,
-          conceptId,
-          kind: "showcase",
-          visibility,
-          status: "publishing",
-          publicPrefix,
-          createdAt: now,
-          updatedAt: now,
-        });
-    if (reusablePublication) {
-      await ctx.db.patch(reusablePublication._id, {
-        visibility,
-        status: "publishing",
-        errorMessage: undefined,
-        updatedAt: now,
-      });
-    }
+    const publicationId = await ctx.db.insert("assetPublications", {
+      mediaAssetId: concept.mediaAssetId,
+      assetVersionId: concept.currentAssetVersionId,
+      userId: viewer._id,
+      conceptId,
+      kind: "showcase",
+      visibility,
+      status: "publishing",
+      publicPrefix: "",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const publicPrefix = `showcase/${conceptId}/publications/${publicationId}`;
+    await ctx.db.patch(publicationId, { publicPrefix });
+    await ctx.db.patch(conceptId, {
+      pendingPublicationId: publicationId, indexEligible: false, publicSince: undefined,
+    });
 
+    await ctx.scheduler.runAfter(15 * 60 * 1000, internal.publications.expirePendingPublication, { publicationId });
     const destinationObjects = [];
     for (const source of sourceObjects) {
       const rendition = source.rendition as WebRendition;
@@ -160,7 +156,7 @@ export const beginConceptPublication = internalMutation({
       const existing = await ctx.db
         .query("storageObjects")
         .withIndex("by_publicationId", (q) => q.eq("publicationId", publicationId))
-        .collect()
+        .take(20)
         .then((objects) => objects.find((object) => object.rendition === rendition));
       const storageObjectId = existing
         ? existing._id
@@ -207,7 +203,7 @@ export const beginConceptPublication = internalMutation({
           .withIndex("by_publicationId", (q) =>
             q.eq("publicationId", activePublication._id)
           )
-          .collect()
+          .take(20)
       : [];
     return {
       mode: "copy" as const,
@@ -238,21 +234,24 @@ export const finalizeConceptPublication = internalMutation({
       publicUrl: v.string(),
     })),
   },
+  returns: v.object({ cancelled: v.boolean(), previousPublicationId: v.union(v.id("assetPublications"), v.null()), previousObjects: vPublicationObjects }),
   async handler(ctx, { publicationId, objects }) {
     const publication = await ctx.db.get(publicationId);
-    if (publication?.status === "published") {
-      return { previousPublicationId: null, previousObjects: [] };
+    if (!publication || !publication.conceptId) throw new Error("Publication not found");
+    const concept = await ctx.db.get(publication.conceptId);
+    if (publication.status === "published" && concept?.activePublicationId === publicationId) {
+      return { cancelled: false, previousPublicationId: null, previousObjects: [] };
     }
-    if (!publication || publication.status !== "publishing" || !publication.conceptId) {
-      throw new Error("Publication is not ready to finalize");
+    if (!concept || publication.status !== "publishing" || concept.pendingPublicationId !== publicationId ||
+      concept.currentAssetVersionId !== publication.assetVersionId || concept.showcaseReviewStatus === "hidden") {
+      await queuePublicationWithdrawal(ctx, publicationId);
+      return { cancelled: true, previousPublicationId: null, previousObjects: [] };
     }
     assertCompletePublishedObjects(objects);
-    const concept = await ctx.db.get(publication.conceptId);
-    if (!concept) throw new Error("Published concept no longer exists");
     const publicationObjects = await ctx.db
       .query("storageObjects")
       .withIndex("by_publicationId", (q) => q.eq("publicationId", publicationId))
-      .collect();
+      .take(20);
     for (const object of objects) {
       const stored = publicationObjects.find((candidate) => candidate._id === object.storageObjectId);
       if (!stored || stored.rendition !== object.rendition) {
@@ -269,7 +268,7 @@ export const finalizeConceptPublication = internalMutation({
           .withIndex("by_publicationId", (q) =>
             q.eq("publicationId", previousPublication._id)
           )
-          .collect()
+          .take(20)
       : [];
     const preview = objects.find((object) => object.rendition === "preview")!;
 
@@ -292,6 +291,10 @@ export const finalizeConceptPublication = internalMutation({
       ctx.db.patch(concept._id, {
         visibility: publication.visibility,
         activePublicationId: publicationId,
+        pendingPublicationId: undefined,
+        publicSince: undefined,
+        indexEligible: false,
+        publicContentUpdatedAt: now,
       }),
       concept.previewAssetId
         ? ctx.db.patch(concept.previewAssetId, { publicUrl: preview.publicUrl })
@@ -306,7 +309,10 @@ export const finalizeConceptPublication = internalMutation({
         ctx.db.patch(object._id, { status: "deleting", updatedAt: now })
       ),
     ]);
+    if (publication.visibility === "public") await startShowcaseIndexWait(ctx, concept._id, publicationId, now);
+    if (previousPublication && previousPublication._id !== publicationId) await queuePublicationWithdrawal(ctx, previousPublication._id);
     return {
+      cancelled: false,
       previousPublicationId:
         previousPublication && previousPublication._id !== publicationId
           ? previousPublication._id
@@ -325,20 +331,15 @@ export const failConceptPublication = internalMutation({
     publicationId: v.id("assetPublications"),
     errorMessage: v.string(),
   },
+  returns: v.null(),
   async handler(ctx, { publicationId, errorMessage }) {
     const publication = await ctx.db.get(publicationId);
-    if (!publication || publication.status === "published") return;
-    const objects = await ctx.db
-      .query("storageObjects")
-      .withIndex("by_publicationId", (q) => q.eq("publicationId", publicationId))
-      .collect();
-    const now = Date.now();
-    await Promise.all([
-      ctx.db.patch(publicationId, { status: "failed", errorMessage, updatedAt: now }),
-      ...objects.map((object) =>
-        ctx.db.patch(object._id, { status: "failed", updatedAt: now })
-      ),
-    ]);
+    if (!publication || publication.status === "published") return null;
+    const concept = publication.conceptId ? await ctx.db.get(publication.conceptId) : null;
+    if (concept?.pendingPublicationId === publicationId) await ctx.db.patch(concept._id, { pendingPublicationId: undefined });
+    await ctx.db.patch(publicationId, { errorMessage });
+    await queuePublicationWithdrawal(ctx, publicationId);
+    return null;
   },
 });
 
@@ -347,6 +348,7 @@ export const beginConceptWithdrawal = internalMutation({
     conceptId: v.id("concepts"),
     tokenIdentifier: v.string(),
   },
+  returns: v.union(v.null(), v.object({ publicationId: v.id("assetPublications"), objects: vPublicationObjects })),
   async handler(ctx, { conceptId, tokenIdentifier }) {
     const viewer = await ctx.db
       .query("users")
@@ -356,27 +358,22 @@ export const beginConceptWithdrawal = internalMutation({
     if (!viewer || !concept || concept.userId !== viewer._id) {
       throw new Error("Concept not found or withdrawal access denied");
     }
-    let publication = concept.activePublicationId
+    if (concept.pendingPublicationId) await queuePublicationWithdrawal(ctx, concept.pendingPublicationId, 15 * 60 * 1000);
+    await ctx.db.patch(conceptId, {
+      visibility: "private", activePublicationId: undefined, pendingPublicationId: undefined,
+      publicSince: undefined, indexEligible: false,
+    });
+    const publication = concept.activePublicationId
       ? await ctx.db.get(concept.activePublicationId)
-      : null;
-    if (!publication) {
-      publication = await ctx.db
-        .query("assetPublications")
-        .withIndex("by_concept_status", (q) =>
-          q.eq("conceptId", conceptId).eq("status", "withdrawing")
-        )
-        .first();
-    }
-    if (!publication) {
-      if (concept.visibility !== "private") {
-        await ctx.db.patch(conceptId, { visibility: "private", activePublicationId: undefined });
-      }
-      return null;
-    }
+      : await ctx.db.query("assetPublications")
+          .withIndex("by_concept_status", q => q.eq("conceptId", conceptId).eq("status", "withdrawing"))
+          .first();
+    if (!publication || (publication.cleanupNotBefore ?? 0) > Date.now()) return null;
+    await queuePublicationWithdrawal(ctx, publication._id, publication.status === "publishing" ? 15 * 60 * 1000 : 0);
     const objects = await ctx.db
       .query("storageObjects")
       .withIndex("by_publicationId", (q) => q.eq("publicationId", publication._id))
-      .collect();
+      .take(20);
     const now = Date.now();
     await Promise.all([
       ctx.db.patch(conceptId, { visibility: "private", activePublicationId: undefined }),
@@ -403,13 +400,14 @@ export const completePublicationWithdrawal = internalMutation({
   args: {
     publicationId: v.id("assetPublications"),
   },
+  returns: v.null(),
   async handler(ctx, { publicationId }) {
     const publication = await ctx.db.get(publicationId);
-    if (!publication) return;
+    if (!publication || publication.status !== "withdrawing") return null;
     const objects = await ctx.db
       .query("storageObjects")
       .withIndex("by_publicationId", (q) => q.eq("publicationId", publicationId))
-      .collect();
+      .take(20);
     const now = Date.now();
     await Promise.all([
       ctx.db.patch(publicationId, {
@@ -425,6 +423,7 @@ export const completePublicationWithdrawal = internalMutation({
         })
       ),
     ]);
+    return null;
   },
 });
 
@@ -458,3 +457,60 @@ function assertCompletePublishedObjects(
     throw new Error("Published Master, preview, and thumbnail are required");
   }
 }
+
+async function queuePublicationWithdrawal(ctx: MutationCtx, publicationId: Doc<"assetPublications">["_id"], delayMs = 0): Promise<void> {
+  const publication = await ctx.db.get(publicationId);
+  if (!publication || publication.status === "withdrawn") return;
+  const now = Date.now();
+  const objects = await ctx.db.query("storageObjects")
+    .withIndex("by_publicationId", q => q.eq("publicationId", publicationId)).take(10);
+  await ctx.db.patch(publicationId, { status: "withdrawing", cleanupNotBefore: now + delayMs, updatedAt: now });
+  for (const object of objects) await ctx.db.patch(object._id, { status: "deleting", updatedAt: now });
+}
+
+export const listPendingWithdrawals = internalQuery({
+  args: { now: v.number() },
+  returns: v.array(v.id("assetPublications")),
+  handler: async (ctx, { now }) => {
+    const publications = await ctx.db.query("assetPublications")
+      .withIndex("by_status_cleanupNotBefore", q => q.eq("status", "withdrawing").lte("cleanupNotBefore", now)).take(20);
+    return publications.map(publication => publication._id);
+  },
+});
+
+export const getWithdrawal = internalQuery({
+  args: { publicationId: v.id("assetPublications"), now: v.number() },
+  returns: v.union(v.null(), v.object({
+    objects: v.array(v.object({ key: v.string(), publicUrl: v.optional(v.string()) })),
+  })),
+  handler: async (ctx, { publicationId, now }) => {
+    const publication = await ctx.db.get(publicationId);
+    if (!publication || publication.status !== "withdrawing" || (publication.cleanupNotBefore ?? 0) > now) return null;
+    const objects = await ctx.db.query("storageObjects")
+      .withIndex("by_publicationId", q => q.eq("publicationId", publicationId)).take(10);
+    return { objects: objects.map(object => ({ key: object.key, publicUrl: object.publicUrl })) };
+  },
+});
+
+export const deferWithdrawal = internalMutation({
+  args: { publicationId: v.id("assetPublications") },
+  returns: v.null(),
+  handler: async (ctx, { publicationId }) => {
+    const publication = await ctx.db.get(publicationId);
+    if (publication?.status === "withdrawing") await ctx.db.patch(publicationId, { cleanupNotBefore: Date.now() + 15 * 60 * 1000 });
+    return null;
+  },
+});
+
+export const expirePendingPublication = internalMutation({
+  args: { publicationId: v.id("assetPublications") },
+  returns: v.null(),
+  handler: async (ctx, { publicationId }) => {
+    const publication = await ctx.db.get(publicationId);
+    if (publication?.status !== "publishing") return null;
+    const concept = publication.conceptId ? await ctx.db.get(publication.conceptId) : null;
+    if (concept?.pendingPublicationId === publicationId) await ctx.db.patch(concept._id, { pendingPublicationId: undefined });
+    await queuePublicationWithdrawal(ctx, publicationId);
+    return null;
+  },
+});

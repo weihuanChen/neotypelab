@@ -1,8 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
+import { setResponseHeader, setResponseStatus } from "@tanstack/react-start/server";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { PrototypePublicView } from "@/src/components/prototype/PrototypePublicView";
 import type {
@@ -12,16 +11,19 @@ import type {
 } from "@/src/components/prototype/types";
 import { absoluteUrl } from "@/lib/site";
 import { buildPrototypeStructuredData } from "@/lib/structuredData";
-import { createConvexHttpClient } from "@/src/lib/convexServer";
+import { getPublicConcept } from "@/src/lib/publicConceptServer";
 import { documentMeta, prototypeSeo } from "@/src/lib/publicSeo";
 
 const getPrototypeSnapshot = createServerFn({ method: "GET" })
   .validator(z.object({ conceptId: z.string() }))
   .handler(async ({ data }): Promise<PrototypeSnapshot> => {
     const meta = buildFallbackPrototypeMeta(data.conceptId);
-    const convex = createConvexHttpClient();
+    setResponseHeader("Cache-Control", "no-store");
+    const result = await getPublicConcept(data.conceptId);
 
-    if (!convex) {
+    if (result.status === "unavailable") {
+      setResponseStatus(503);
+      setResponseHeader("Retry-After", "60");
       return {
         status: "missing-env",
         concept: null,
@@ -33,9 +35,7 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
     }
 
     try {
-      const concept = await convex.query(api.showcase.getSharedConcept, {
-        conceptId: data.conceptId as Id<"concepts">,
-      });
+      const concept = result.concept;
 
       if (concept === null) {
         return {
@@ -56,6 +56,8 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
         structuredData: buildPrototypeJsonLd(data.conceptId, concept),
       };
     } catch {
+      setResponseStatus(503);
+      setResponseHeader("Retry-After", "60");
       return {
         status: "error",
         concept: null,
@@ -68,8 +70,12 @@ const getPrototypeSnapshot = createServerFn({ method: "GET" })
   });
 
 export const Route = createFileRoute("/prototype/$conceptId")({
-  loader: ({ params }) =>
-    getPrototypeSnapshot({ data: { conceptId: params.conceptId } }),
+  loader: async ({ params }) => {
+    const snapshot = await getPrototypeSnapshot({ data: { conceptId: params.conceptId } });
+    if (snapshot.status === "not-found") throw notFound();
+    return snapshot;
+  },
+  headers: () => ({ "Cache-Control": "no-store" }),
   head: ({ loaderData, params }) => {
     const meta = loaderData?.meta ?? buildFallbackPrototypeMeta(params.conceptId);
 

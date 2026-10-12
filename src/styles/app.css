@@ -794,6 +794,26 @@ select {
   color: var(--color-muted);
 }
 
+.site-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.site-footer a.site-footer__taaft,
+.site-footer a.site-footer__taaft:hover {
+  border-bottom: 0;
+  padding-bottom: 0;
+  line-height: 0;
+}
+
+.site-footer__taaft img {
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+
 .site-footer__nav {
   display: flex;
   flex-wrap: wrap;

@@ -508,6 +508,7 @@ export const update = mutation({
       status: args.status,
       visibility: args.visibility,
       previewAssetId: args.previewAssetId,
+      publicContentUpdatedAt: Date.now(),
       searchText: [nextTitle, nextNotes ?? "", nextMoodTags.join(" ")].join(" ").trim(),
     });
   },

@@ -251,7 +251,7 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).toContain("solid target");
     expect(html).toContain("Publish to Showcase");
     expect(html).toContain("Share this prototype to Showcase");
-    expect(html).not.toContain("Make private");
+    expect(html).not.toContain("Remove from Showcase");
     expect(html).toContain("work-detail-print-colophon");
     expect(html).toContain("neotypelab.com");
   });
@@ -264,7 +264,7 @@ describe("LibraryDetailPage overview language", () => {
     expect(html).toContain("Go to case");
     expect(html).toContain("work-detail-exhibition__case");
     expect(html).toContain("This work already has its public case");
-    expect(html).toContain("Make private");
+    expect(html).toContain("Remove from Showcase");
     expect(html).toContain("Your Library files will be kept");
     expect(html).not.toContain("Open Showcase");
     expect(html).not.toContain("Publish to Showcase");
@@ -277,7 +277,7 @@ describe("LibraryDetailPage overview language", () => {
       const html = renderToStaticMarkup(
         <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />
       );
-      expect(html).toContain("Make private");
+      expect(html).toContain("Remove from Showcase");
       expect(html).toContain("accessible through its shared link");
       expect(html).not.toContain("Publish to Showcase");
     } finally {

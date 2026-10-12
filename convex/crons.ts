@@ -3,6 +3,10 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
+crons.interval("retry withdrawn showcase assets", { minutes: 5 }, internal.publicationNode.retryWithdrawals, {});
+
+crons.interval("reconcile showcase indexing", { minutes: 15 }, internal.showcaseIndexing.reconcile, {});
+
 crons.interval(
   "expire retained storage objects",
   { minutes: 15 },

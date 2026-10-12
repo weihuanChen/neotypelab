@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { hasIndexableStyle } from "./creativeContracts";
 import { styleDisplayName, summarizeConceptStyle } from "./styleRefinements";
 import {
@@ -18,6 +19,7 @@ import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import { query } from "./functions";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { QueryCtx } from "./types";
+import { isSharedShowcaseConcept, isShowcaseIndexEligible } from "./showcasePolicy";
 import { getPublishedRenditions } from "./publications";
 
 type ShareableConcept = Doc<"concepts"> & {
@@ -135,21 +137,24 @@ export const listPublicConcepts = query({
 });
 
 export const listPublicConceptsForSitemap = query({
-  args: {},
-  async handler(ctx) {
-    const concepts = await ctx.db
+  args: { paginationOpts: v.optional(paginationOptsValidator) },
+  returns: paginationResultValidator(v.object({ _id: v.id("concepts"), _creationTime: v.number(), lastModified: v.number() })),
+  async handler(ctx, { paginationOpts }) {
+    const result = await ctx.db
       .query("concepts")
       .withIndex("by_visibility", (q) => q.eq("visibility", "public"))
-      .collect();
+      .paginate(paginationOpts ?? { cursor: null, numItems: 100 });
 
-    return concepts
-      .filter(isPublicConcept)
-      .filter(hasIndexableStyle)
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .map((concept) => ({
+    const candidates = result.page.filter(isPublicConcept);
+    const eligible = await Promise.all(candidates.map(async concept =>
+      await isShowcaseIndexEligible(ctx, concept) ? {
         _id: concept._id,
         _creationTime: concept._creationTime,
-      }));
+        lastModified: concept.publicContentUpdatedAt ?? concept.publicSince ?? concept._creationTime,
+      } : null
+    ));
+    return { ...result, page: eligible.filter((entry): entry is NonNullable<typeof entry> => entry !== null) };
+
   },
 });
 
@@ -325,7 +330,8 @@ export const getSharedConcept = query({
       return null;
     }
 
-    const storedPlan = readStoredPaintPlan(concept.palettePlanJson, concept._id, concept.title);
+    let storedPlan: ReturnType<typeof readStoredPaintPlan> = null;
+    try { storedPlan = readStoredPaintPlan(concept.palettePlanJson, concept._id, concept.title); } catch { /* Invalid snapshots fail the shared indexing gate. */ }
     const [
       baseModel,
       stylePreset,
@@ -352,8 +358,9 @@ export const getSharedConcept = query({
       getLineageChain(ctx, concept._id),
     ]);
 
+    if (!publishedAssets) return null;
     const paintPlan = storedPlan ?? buildPaintPlan({
-      approvedPlanJson: concept.palettePlanJson,
+      approvedPlanJson: undefined,
       conceptId: concept._id,
       conceptTitle: concept.title,
       baseModelName: baseModel?.name,
@@ -368,7 +375,7 @@ export const getSharedConcept = query({
     });
 
     return {
-      indexable: concept.visibility === "public" && hasIndexableStyle(concept) && Boolean(publishedAssets?.preview?.publicUrl) && Boolean(stylePreset?.isActive),
+      indexable: await isShowcaseIndexEligible(ctx, concept),
       visualPalette: publicVisualPalette(concept),
       _id: concept._id,
       _creationTime: concept._creationTime,
@@ -1276,23 +1283,13 @@ async function getConceptShareCard(
 function isShareableConcept(
   concept: Doc<"concepts"> | null
 ): concept is ShareableConcept {
-  return (
-    concept !== null &&
-    concept.activePublicationId !== undefined &&
-    (concept.visibility === "public" || concept.visibility === "unlisted") &&
-    (concept.status === "generated" || concept.status === "archived")
-  );
+  return isSharedShowcaseConcept(concept);
 }
 
 function isPublicConcept(
   concept: Doc<"concepts"> | null
 ): concept is ShareableConcept & { visibility: "public" } {
-  return (
-    concept !== null &&
-    concept.activePublicationId !== undefined &&
-    concept.visibility === "public" &&
-    (concept.status === "generated" || concept.status === "archived")
-  );
+  return isSharedShowcaseConcept(concept) && concept?.visibility === "public";
 }
 
 function dedupeShareCards<

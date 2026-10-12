@@ -12,7 +12,22 @@ const policyLinks = [
 export function SiteFooter() {
   return (
     <footer className="site-footer">
-      <p className="site-footer__mark">NeotypeLab / Vol.02</p>
+      <div className="site-footer__brand">
+        <p className="site-footer__mark">NeotypeLab / Vol.02</p>
+        <a
+          className="site-footer__taaft"
+          href="https://theresanaiforthat.com/ai/neotypelab/?ref=social-icon&v=7394648"
+          rel="nofollow noopener noreferrer"
+          target="_blank"
+        >
+          <img
+            alt="Featured on TAAFT"
+            height={32}
+            src="https://media.theresanaiforthat.com/social/icon_full.svg"
+            width={32}
+          />
+        </a>
+      </div>
       <nav aria-label="Legal" className="site-footer__nav">
         {policyLinks.map((item) => (
           <Link key={item.href} preload="intent" to={item.href}>

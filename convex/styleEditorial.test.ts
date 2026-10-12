@@ -107,7 +107,7 @@ describe("official style editorial publication", () => {
   it.each([true, false])("excludes public custom prototypes (legacy preset link: %s) while preserving sharing", async legacy => {
     const f = await fixture();
     await f.t.run(ctx => ctx.db.patch(f.conceptId, { stylePresetId: legacy ? f.style._id : undefined, styleIntentJson: JSON.stringify({ ...intent, source: "private", styleType: "custom" }) }));
-    expect(await f.t.query(api.showcase.listPublicConceptsForSitemap, {})).toEqual([]);
+    expect((await f.t.query(api.showcase.listPublicConceptsForSitemap, {})).page).toEqual([]);
     const shared = await f.t.query(api.showcase.getSharedConcept, { conceptId: f.conceptId });
     expect(shared).not.toBeNull();
     expect(shared?.indexable).toBe(false);

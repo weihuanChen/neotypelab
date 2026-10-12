@@ -92,7 +92,7 @@ export function ShowcasePublishDialog({
               Your build is now on the hangar wall.
             </h2>
             <p className="mt-2 text-sm text-ink-secondary leading-relaxed">
-              Fellow modelers and builders can now explore your color system, inspect the paint match, and find inspiration for their workbench.
+              Fellow modelers and builders can now explore your color system and paint plan. Eligible works may appear in search engines after at least 72 hours of continuous public sharing.
             </p>
 
             <div className="showcase-publish-dialog__preview mt-4">

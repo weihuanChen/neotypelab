@@ -18,6 +18,7 @@ const showcaseShell = {
 export const Route = createFileRoute("/showcase")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
+  headers: () => ({ "Cache-Control": "no-store" }),
   pendingComponent: ShowcasePending,
   head: () => ({
     meta: documentMeta(publicSeo.showcase, {

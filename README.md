@@ -117,6 +117,11 @@ from the Environment section in Admin Settings. The test objects use the
 Showcase withdrawal can purge custom-domain cache entries immediately when
 `CLOUDFLARE_CACHE_PURGE_ZONE_ID` and `CLOUDFLARE_CACHE_PURGE_TOKEN` are set in
 the Convex environment. Use a dedicated token with only cache purge access.
+Missing purge configuration keeps public-image cleanup pending for automatic
+retries; the work becomes private immediately. Public works are only eligible
+for search indexing after quality checks and 72 continuous public hours. See
+[Showcase indexing and withdrawal](docs/showcase-indexing.md) for rollout and
+cache requirements.
 
 Private asset retention is enforced by the Convex lifecycle cron. R2 provides
 a delayed fallback only for the `temporary-originals/` prefix; never apply an

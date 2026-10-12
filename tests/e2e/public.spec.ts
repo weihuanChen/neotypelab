@@ -7,7 +7,7 @@ test("renders the public discovery page", async ({ page }) => {
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: "Today's prototypes" })
+      .getByRole("heading", { name: "Today's paint plans" })
       .or(page.getByRole("heading", { name: /Opening the public archive/i }))
       .or(page.getByRole("heading", { name: /Nothing published yet/i }))
       .or(page.getByRole("heading", { name: /No matching records/i }))
@@ -18,7 +18,7 @@ test("renders the public discovery page", async ({ page }) => {
 test("renders the public showcase page", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/showcase");
-  await expect(page).toHaveTitle(/Showcase/);
+  await expect(page).toHaveTitle(/Color Schemes and Mecha Repaint Gallery/);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(
     page
@@ -78,7 +78,7 @@ test("shows the signed-out create gate", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/create");
   await expect(
-    page.getByRole("heading", { name: /Start a prototype record/i })
+    page.getByRole("heading", { name: /Plan a paint scheme/i })
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in/i }).first()).toBeVisible();
   expect(consoleErrors).toEqual([]);
@@ -98,6 +98,27 @@ test("renders the application not-found boundary", async ({ page }) => {
   await page.goto("/integration-test-missing-route");
   await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
   await expect(page.getByText("Route / Missing")).toBeVisible();
+});
+
+test("returns real uncached 404s for unavailable public work and its share images", async ({ page, request }) => {
+  const response = await page.goto("/prototype/integration-missing-work");
+  expect(response?.status()).toBe(404);
+  expect(response?.headers()["cache-control"]).toBe("no-store");
+  await expect(page.getByRole("heading", { name: /Route not found/i })).toBeVisible();
+  for (const rendition of ["opengraph-image", "instagram-image", "pinterest-image", "reddit-image", "watermarked-image"]) {
+    const image = await request.get(`/prototype/integration-missing-work/${rendition}`);
+    expect(image.status()).toBe(404);
+    expect(image.headers()["cache-control"]).toBe("no-store");
+  }
+});
+
+test("serves a fresh sitemap and keeps public prototype URLs crawlable", async ({ request }) => {
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  expect(sitemap.headers()["cache-control"]).toBe("no-store");
+  const robots = await request.get("/robots.txt");
+  expect(await robots.text()).toContain("Allow: /prototype/");
+  expect(await robots.text()).not.toContain("Disallow: /prototype/");
 });
 
 function collectConsoleErrors(page: Page) {
@@ -158,6 +179,6 @@ test("does not index unavailable custom style links", async ({ page }) => {
 test("preserves the community style when opening the create sign-in gate", async ({ page }) => {
   await page.goto("/create?communityStyle=integration-shared-style");
   await expect(page).toHaveURL(/communityStyle=integration-shared-style/);
-  await expect(page.getByRole("heading", { name: /Start a prototype record/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Plan a paint scheme/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in/i }).last()).toBeVisible();
 });

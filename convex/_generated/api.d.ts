@@ -105,6 +105,8 @@ import type * as renderSpecification from "../renderSpecification.js";
 import type * as shapeReference from "../shapeReference.js";
 import type * as shopping from "../shopping.js";
 import type * as showcase from "../showcase.js";
+import type * as showcaseIndexing from "../showcaseIndexing.js";
+import type * as showcasePolicy from "../showcasePolicy.js";
 import type * as specAdmin from "../specAdmin.js";
 import type * as sprayPlans from "../sprayPlans.js";
 import type * as storageAccounting from "../storageAccounting.js";
@@ -236,6 +238,8 @@ declare const fullApi: ApiFromModules<{
   shapeReference: typeof shapeReference;
   shopping: typeof shopping;
   showcase: typeof showcase;
+  showcaseIndexing: typeof showcaseIndexing;
+  showcasePolicy: typeof showcasePolicy;
   specAdmin: typeof specAdmin;
   sprayPlans: typeof sprayPlans;
   storageAccounting: typeof storageAccounting;

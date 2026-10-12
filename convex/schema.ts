@@ -978,6 +978,7 @@ const schema = defineSchema({
     publicPrefix: v.string(),
     publishedAt: v.optional(v.number()),
     withdrawnAt: v.optional(v.number()),
+    cleanupNotBefore: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -986,7 +987,8 @@ const schema = defineSchema({
     .index("by_assetVersionId", ["assetVersionId"])
     .index("by_conceptId", ["conceptId"])
     .index("by_concept_status", ["conceptId", "status"])
-    .index("by_kind_status", ["kind", "status"]),
+    .index("by_kind_status", ["kind", "status"])
+    .index("by_status_cleanupNotBefore", ["status", "cleanupNotBefore"]),
 
   archiveCounters: defineTable({
     key: v.string(),
@@ -1020,6 +1022,14 @@ const schema = defineSchema({
     mediaAssetId: v.optional(v.id("mediaAssets")),
     currentAssetVersionId: v.optional(v.id("assetVersions")),
     activePublicationId: v.optional(v.id("assetPublications")),
+    pendingPublicationId: v.optional(v.id("assetPublications")),
+    publicSince: v.optional(v.number()),
+    publicContentUpdatedAt: v.optional(v.number()),
+    indexEligible: v.optional(v.boolean()),
+    showcaseReviewStatus: v.optional(v.union(
+      v.literal("clear"), v.literal("pending-review"), v.literal("hidden"),
+      v.literal("duplicate"), v.literal("low-quality")
+    )),
     sourceConceptId: v.optional(v.id("concepts")),
     generationJobId: v.optional(v.id("generationJobs")),
     searchText: v.string(),

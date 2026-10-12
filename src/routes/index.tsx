@@ -19,6 +19,7 @@ const exploreShell = {
 export const Route = createFileRoute("/")({
   validateSearch: parseShowcaseSearch,
   loader: () => getShowcaseSnapshot(),
+  headers: () => ({ "Cache-Control": "no-store" }),
   pendingComponent: ExplorePending,
   head: () => ({
     meta: documentMeta(publicSeo.home, { ogType: "website" }),

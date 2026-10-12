@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { getPublicR2ObjectUrl, getR2ConnectionConfig } from "./r2Config";
@@ -12,7 +12,7 @@ import {
   purgePublicR2Urls,
 } from "./r2Storage";
 
-const SHOWCASE_CACHE_CONTROL = "public, max-age=3600";
+const SHOWCASE_CACHE_CONTROL = "no-store";
 const vConceptVisibility = v.union(
   v.literal("private"),
   v.literal("unlisted"),
@@ -55,6 +55,7 @@ export const setConceptVisibility = action({
     conceptId: v.id("concepts"),
     visibility: vConceptVisibility,
   },
+  returns: v.object({ visibility: vConceptVisibility, status: v.union(v.literal("published"), v.literal("withdrawn")), cleanupPending: v.boolean() }),
   async handler(ctx, { conceptId, visibility }): Promise<{
     visibility: "private" | "unlisted" | "public";
     status: "published" | "withdrawn";
@@ -149,6 +150,13 @@ export const setConceptVisibility = action({
       publicationId: publication.publicationId,
       objects: publishedObjects,
     });
+    if (finalized.cancelled) {
+      await cleanupPublication(ctx, publication.publicationId, publishedObjects.map(object => ({
+        key: publication.destinationObjects.find(destination => destination.storageObjectId === object.storageObjectId)!.key,
+        publicUrl: object.publicUrl,
+      })));
+      throw new Error("Publication was cancelled by a newer visibility change");
+    }
     const cleanupPending = finalized.previousPublicationId
       ? !(await cleanupPublication(
           ctx,
@@ -168,12 +176,22 @@ async function cleanupPublication(
   const deletions = await Promise.allSettled(
     objects.map((object) => deleteR2Object("public", object.key))
   );
-  if (deletions.some((result) => result.status === "rejected")) return false;
+  if (deletions.some((result) => result.status === "rejected")) {
+    await ctx.runMutation(internal.publications.deferWithdrawal, { publicationId });
+    return false;
+  }
   try {
-    await purgePublicR2Urls(
-      objects.flatMap((object) => object.publicUrl ? [object.publicUrl] : [])
-    );
+    const urls = objects.flatMap(object => {
+      const url = object.publicUrl ?? getPublicR2ObjectUrl(object.key);
+      return url ? [url] : [];
+    });
+    const purge = await purgePublicR2Urls(urls);
+    if (urls.length > 0 && purge.status === "skipped") {
+      await ctx.runMutation(internal.publications.deferWithdrawal, { publicationId });
+      return false;
+    }
   } catch {
+    await ctx.runMutation(internal.publications.deferWithdrawal, { publicationId });
     return false;
   }
   await ctx.runMutation(internal.publications.completePublicationWithdrawal, {
@@ -181,3 +199,18 @@ async function cleanupPublication(
   });
   return true;
 }
+
+
+export const retryWithdrawals = internalAction({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const ids: Id<"assetPublications">[] = await ctx.runQuery(internal.publications.listPendingWithdrawals, { now: Date.now() });
+    for (const publicationId of ids) {
+      const manifest: { objects: Array<{ key: string; publicUrl?: string }> } | null =
+        await ctx.runQuery(internal.publications.getWithdrawal, { publicationId, now: Date.now() });
+      if (manifest) await cleanupPublication(ctx, publicationId, manifest.objects);
+    }
+    return null;
+  },
+});

@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import { getSiteUrl } from "@/lib/site";
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 import { publicStylesEnabled } from "@/src/lib/appPaths";
@@ -20,7 +21,7 @@ type SitemapEntry = {
 };
 
 const sitemapCacheControl =
-  "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+  "no-store";
 
 export const sitemapHeaders = {
   "Cache-Control": sitemapCacheControl,
@@ -149,9 +150,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
   ];
   const convex = createConvexHttpClient();
 
-  if (!convex) {
-    return staticRoutes;
-  }
+  if (!convex) throw new Error("Sitemap backend is unavailable");
 
   try {
     const [
@@ -161,7 +160,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       creatorPacks,
       creatorHubs,
     ] = await Promise.all([
-      convex.query(api.showcase.listPublicConceptsForSitemap, {}),
+      loadIndexEligibleConcepts(convex),
       convex.query(api.showcase.listPublicProfilesForSitemap, {}),
       convex.query(api.styleEditorial.sitemap, {}),
       convex.query(api.showcase.listCreatorPacksForSitemap, {}),
@@ -172,7 +171,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       ...staticRoutes,
       ...publicConcepts.map((concept) => ({
         url: new URL(`/prototype/${concept._id}`, siteUrl).toString(),
-        lastModified: new Date(concept._creationTime),
+        lastModified: new Date(concept.lastModified),
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })),
@@ -214,7 +213,7 @@ async function buildSitemapEntries(request: Request): Promise<SitemapEntry[]> {
       })),
     ];
   } catch {
-    return staticRoutes;
+    throw new Error("Sitemap backend is temporarily unavailable");
   }
 }
 
@@ -246,4 +245,20 @@ function escapeXml(value: string) {
         return character;
     }
   });
+}
+
+async function loadIndexEligibleConcepts(convex: NonNullable<ReturnType<typeof createConvexHttpClient>>) {
+  type SitemapConceptsPage = FunctionReturnType<typeof api.showcase.listPublicConceptsForSitemap>;
+  const concepts: SitemapConceptsPage["page"] = [];
+  let cursor: string | null = null;
+  let isDone = false;
+  while (!isDone) {
+    const result: SitemapConceptsPage = await convex.query(api.showcase.listPublicConceptsForSitemap, {
+      paginationOpts: { cursor, numItems: 100 },
+    });
+    concepts.push(...result.page);
+    isDone = result.isDone;
+    cursor = result.continueCursor;
+  }
+  return concepts;
 }
