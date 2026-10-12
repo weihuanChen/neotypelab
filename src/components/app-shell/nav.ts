@@ -27,7 +27,7 @@ export const appNavGroups: readonly AppNavGroup[] = [
     id: "discover",
     label: "Discover",
     items: [
-      { href: appPaths.explore, label: "Explore", match: "exact" },
+      { href: appPaths.explore, label: "Home", match: "exact" },
       ...(publicStylesEnabled
         ? [{ href: appPaths.styles, label: "Styles", match: "prefix" as const }]
         : []),

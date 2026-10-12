@@ -15,6 +15,7 @@ import { StyleDiscovery } from "./StyleDiscovery";
 import { CustomStylePicker } from "./CustomStylePicker";
 import { StylePalette, displayPalette } from "./StylePalette";
 import { KitPicker, KitPortrait } from "./KitPicker";
+import { CustomKitPicker, type CustomKitSelection } from "./CustomKitPicker";
 import { GenerationJobSheet } from "./GenerationJobSheet";
 import { useNudge } from "./useNudge";
 import type { CreateWorkbenchSearch } from "./createSearch";
@@ -54,6 +55,10 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const [savedId, setSavedId] = useState<Id<"userStyles"> | null>(null);
   const [communityId, setCommunityId] = useState<string>();
   const [kitId, setKitId] = useState<Id<"baseModels"> | null>(null);
+  const customKitAvailability = useQuery(api.customKits.availability);
+  const [kitModeChoice, setKitMode] = useState<"catalog" | "custom" | null>(null);
+  const kitMode = kitModeChoice ?? (search.remix || search.recommendedBaseModel || customKitAvailability?.enabled === false ? "catalog" : "custom");
+  const [customKit, setCustomKit] = useState<CustomKitSelection | null>(null);
   const kit = useQuery(api.kitPicker.selected, { kitId: kitId ?? undefined, slug: kitId ? undefined : search.recommendedBaseModel });
   const [materialId, setMaterialId] = useState<Id<"materialPresets"> | null>(null);
   const [weathering, setWeathering] = useState<"clean" | "light" | "heavy" | null>(null);
@@ -82,12 +87,15 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const isRunning = latestRun?.status === "queued" || latestRun?.status === "running";
   const access = getCreatorPackAccessCopy({ creatorHandle: pack?.creator.handle, packType: pack?.packType ?? "free", viewer });
   const locked = Boolean(search.creatorPack && (!pack || (pack.packType === "premium" && !access.allowed)));
-  const actualKitId = kit?._id;
+  const actualKitId = kitMode === "catalog" ? kit?._id : undefined;
+  const hasKit = kitMode === "custom" ? Boolean(customKit?.versionId) : Boolean(actualKitId);
+  const kitName = kitMode === "custom" ? customKit?.name : kit?.name;
+  const kitPortrait = kitMode === "custom" ? customKit?.portrait : kit?.portrait;
   const resolvedMaterial = materialId ?? defaults.material?._id;
   const resolvedWeathering = weathering ?? defaults.weathering;
   const creditBalance = viewer?.credits?.balance;
   const creditsOk = !quote || creditBalance === undefined || creditBalance >= quote.cost;
-  const ready = hasStyle && Boolean(actualKitId && resolvedMaterial && quote) && creditsOk && !locked;
+  const ready = hasStyle && hasKit && Boolean(resolvedMaterial && quote) && creditsOk && !locked;
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [step]);
   useEffect(() => { clearHint(); }, [step, clearHint]);
   useEffect(() => {
@@ -127,9 +135,12 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   }, [catalog, remix, search]);
 
   async function generate() {
-    if (!hasStyle || !actualKitId || !resolvedMaterial || !quote || isRunning || busy || locked) return;
+    if (!hasStyle || !hasKit || !resolvedMaterial || !quote || isRunning || busy || locked) return;
     const input = {
-      kitVariantId: actualKitId, stylePresetId: styleMode === "preset" ? presetId ?? undefined : undefined,
+      kitVariantId: actualKitId,
+      customKitId: kitMode === "custom" ? customKit?.id : undefined,
+      customKitVersionId: kitMode === "custom" ? customKit?.versionId ?? undefined : undefined,
+      stylePresetId: styleMode === "preset" ? presetId ?? undefined : undefined,
       userStyleId: styleMode === "custom" ? savedId ?? undefined : undefined,
       styleIntentJson: styleMode === "custom" && custom ? JSON.stringify(custom) : undefined,
       styleDescription: styleMode === "custom" ? customDescription : undefined,
@@ -199,7 +210,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   function requestGenerate(button: HTMLElement | null) {
     if (busy || isRunning) return;
     if (!hasStyle) { nudge({ button, target: styleStripRef.current, text: "Pick a style first." }); return; }
-    if (!actualKitId) { nudge({ button, target: kitAreaRef.current, focus: kitAreaRef.current?.querySelector<HTMLInputElement>('input[type="search"]'), text: "Pick a kit from the grid." }); return; }
+    if (!hasKit) { nudge({ button, target: kitAreaRef.current, focus: kitAreaRef.current?.querySelector<HTMLInputElement>(kitMode === "custom" ? 'input[type="file"]' : 'input[type="search"]'), text: kitMode === "custom" ? "Upload, scan and confirm your Custom Kit first." : "Pick a kit from the grid." }); return; }
     if (locked) { tell({ tone: "info", text: pack ? access.message : "Loading creator pack access…" }); return; }
     if (!quote) { tell({ tone: "info", text: "Pricing is unavailable right now. Try again in a moment." }); return; }
     if (!resolvedMaterial) { tell({ tone: "info", text: "Choose a finish in Advanced options to continue." }); setAdvanced(true); return; }
@@ -219,7 +230,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const hintLine = <p className={`create-hint${hint ? ` is-${hint.tone}` : ""}`} role="status">{hint?.text}{hint?.action ? <> <a href={hint.action.href}>{hint.action.label}</a></> : null}</p>;
   const lights = [
     { key: "style", label: "Style", ok: hasStyle, value: hasStyle ? "Ready" : "Missing" },
-    { key: "kit", label: "Kit", ok: Boolean(actualKitId), value: actualKitId ? "Ready" : "Pick one" },
+    { key: "kit", label: kitMode === "custom" ? "Custom Kit" : "Kit", ok: hasKit, value: hasKit ? "Ready" : kitMode === "custom" ? "Confirm structure" : "Pick one" },
     { key: "credits", label: "Credits", ok: Boolean(quote) && creditsOk, value: creditBalance === undefined ? "—" : `${creditBalance} available` },
   ];
   return <div className={`create-workspace ${styleTakeover ? "is-job-wait" : step === 1 ? "is-style" : "is-model"}`}>
@@ -228,7 +239,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
         <span className="create-sequence-bar" style={{ "--fill": hasStyle ? 1 : .15 } as CSSProperties} /><span className="create-sequence-label">01 · Style{styleName ? <em>{styleName}</em> : null}</span>
       </button>
       <button type="button" aria-current={step === 2 ? "step" : undefined} aria-disabled={!hasStyle || undefined} onClick={goToKitStep}>
-        <span className="create-sequence-bar" style={{ "--fill": step === 2 ? (actualKitId ? 1 : .15) : 0 } as CSSProperties} /><span className="create-sequence-label">02 · Kit{step === 2 && kit?.name ? <em>{kit.name}</em> : null}</span>
+        <span className="create-sequence-bar" style={{ "--fill": step === 2 ? (hasKit ? 1 : .15) : 0 } as CSSProperties} /><span className="create-sequence-label">02 · Kit{step === 2 && kitName ? <em>{kitName}</em> : null}</span>
       </button>
     </nav>}
     {step === 1 ? <section className="create-style-workspace" ref={styleAreaRef}>
@@ -255,14 +266,15 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
         <p id="style-refinements-help">Your color requests override the style’s default colors. Proportions stay open unless you specify them.</p>
         </> : <button type="button" className="create-refine-toggle" aria-expanded="false" onClick={() => setRefineOpen(true)}><span id="style-refinements-title">+ Refine colors for this build</span><small>Optional</small></button>}
       </section>
-      <div ref={kitAreaRef} className="create-kit-area"><KitPicker selectedId={actualKitId ?? null} onSelect={id => { setKitId(id); clearHint(); }} disabled={working} /></div></div>
-        <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kit?.portrait} name={kit?.name ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kit?.name ?? "Select a kit"}</h3><p>{kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
+      <div ref={kitAreaRef} className="create-kit-area"><div className="create-kit-source" role="group" aria-label="Kit source"><button type="button" className="is-custom" disabled={working} aria-pressed={kitMode === "custom"} onClick={() => setKitMode("custom")}>Custom Kit</button><button type="button" disabled={working} aria-pressed={kitMode === "catalog"} onClick={() => setKitMode("catalog")}>Official Kit</button></div>
+        {kitMode === "custom" ? <CustomKitPicker selectedId={customKit?.id ?? null} disabled={working} onChange={setCustomKit} /> : <KitPicker selectedId={actualKitId ?? null} onSelect={id => { setKitId(id); clearHint(); }} disabled={working} />}</div></div>
+        <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kitPortrait} name={kitName ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kitName ?? "Select a kit"}</h3><p>{kitMode === "custom" ? "Custom Kit · Private reference" : kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
           <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
           <section className="create-panel-ready" aria-label="Build readiness"><ul>{lights.map(light => <li key={light.key} className={light.ok ? "is-ok" : undefined}><i aria-hidden="true" />{light.label}<span>{light.value}</span></li>)}</ul></section>
           <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><button type="button" className={`${generateClass} create-generate-button`} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating preview…" : "Generate preview"}</button>{hintLine}<button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
         </aside>
       </div>
-      <div className="create-mobile-generate"><div><strong>{kit?.name ?? "Choose a kit"}</strong><span>{hint?.text ?? `${quote?.cost ?? "—"} credits · Image + plan`}</span></div><button type="button" className={generateClass} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating…" : "Generate"}</button></div>
+      <div className="create-mobile-generate"><div><strong>{kitName ?? "Choose a kit"}</strong><span>{hint?.text ?? `${quote?.cost ?? "—"} credits · Image + plan`}</span></div><button type="button" className={generateClass} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating…" : "Generate"}</button></div>
     </>}
     {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
     {error ? <p className="create-flow-error" role="alert">{error}</p> : null}

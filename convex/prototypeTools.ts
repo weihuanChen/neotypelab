@@ -36,6 +36,8 @@ import { reserveGenerationStorageForJob } from "./storageAccounting";
 import { debitCredits } from "./creditLedger";
 import { compileRenderIntentPrompt } from "./renderIntentCompiler";
 import { assertImagePromptCapacity, finalImagePrompt } from "./imagePromptBudget";
+import { assertKitReference } from "./customKits";
+import { customKitPlanningRules, customKitPromptContext, type CustomKitSnapshot } from "./customKitContracts";
 
 type RenderMode =
   | "hd-render"
@@ -185,6 +187,11 @@ export async function queueConceptRender(
   if (concept === null || concept.userId !== viewer._id) {
     throw new Error("Concept not found");
   }
+  const customKit = concept.customKitSnapshotJson ? JSON.parse(concept.customKitSnapshotJson) as CustomKitSnapshot : null;
+  if (customKit) {
+    if (renderMode !== "hd-render") throw new Error("Custom Kit currently supports the reference-view HD render only");
+    await assertKitReference(ctx, viewer._id, customKit.storageObjectId as Id<"storageObjects">, customKit.referenceVersionId as Id<"assetVersions">, customKit.checksum);
+  }
   if (concept.status !== "generated" && concept.status !== "archived" && !concept.renderSpecificationJson) {
     throw new Error("Create a repaint specification before requesting the first render");
   }
@@ -221,7 +228,7 @@ export async function queueConceptRender(
 
   const intent = concept.styleIntentJson ? styleIntentSchema.parse(JSON.parse(concept.styleIntentJson)) : null;
   const resolvedIntent = concept.resolvedIntentJson ? resolvedCreativeIntentSchema.parse(JSON.parse(concept.resolvedIntentJson)) : null;
-  if (baseModel === null || (!stylePreset && !intent) || materialPreset === null) {
+  if ((!baseModel && !customKit) || (!stylePreset && !intent) || materialPreset === null) {
     throw new Error("Concept is missing its base model, Style DNA, or material profile");
   }
   if (account === null) {
@@ -244,7 +251,7 @@ export async function queueConceptRender(
       approvedPlanJson: concept.palettePlanJson,
     conceptId: concept._id,
     conceptTitle: concept.title,
-    baseModelName: baseModel.name,
+      baseModelName: baseModel?.name ?? customKit?.name,
     stylePresetName: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
     styleSlug: stylePreset?.slug,
     materialPresetName: materialPreset.name,
@@ -286,7 +293,7 @@ export async function queueConceptRender(
     stylePreset?.recommendedMaterialSlugs ?? []
   );
   const materialComparisonSummary = formatMaterialComparisonVariants(materialComparisonVariants);
-  const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
+  const modelPromptContext = customKit ? customKitPromptContext(customKit) : await buildModelPromptContext(ctx, baseModel!);
   const approvedComposition = resolvedIntent && concept.paletteCompositionId ? await ctx.db.get(concept.paletteCompositionId) : null;
   const approvedInput = approvedComposition ? JSON.parse(approvedComposition.inputSnapshotJson) as CreativeSnapshot : null;
   const effectiveMaterial = resolvedIntent && concept.materialSnapshotJson
@@ -348,11 +355,11 @@ export async function queueConceptRender(
     patternNegativeTerms(effectiveGuardIntent).join(", "),
   ].filter(Boolean).join(", ");
   const compactRender = resolvedIntent && renderIntent ? compileRenderIntentPrompt({
-    systemPrompt: template.systemPrompt, userPromptTemplate: template.userPromptTemplate,
+    systemPrompt: template.systemPrompt + (customKit ? `\n${customKitPlanningRules}` : ""), userPromptTemplate: template.userPromptTemplate,
     geometry: normalizeModelGeometryText(approvedInput?.promptValues?.baseModel ?? modelPromptContext.promptText),
     palette: visualPalette, specificationJson: renderSpecification, intent: resolvedIntent, guardedStyle: renderIntent,
     materialType: "materialType" in effectiveMaterial ? effectiveMaterial.materialType : undefined,
-    view: { mode: getRenderLabel(renderMode), directive: getRenderDirective(renderMode, simulationStage), layout: getRenderLayoutSpec(renderMode),
+    view: { mode: getRenderLabel(renderMode), directive: customKit ? "Preserve the reference camera view and pose. Apply only approved local edits." : getRenderDirective(renderMode, simulationStage), layout: getRenderLayoutSpec(renderMode),
       ...(simulationStage ? { stage: getBuildStageLabel(simulationStage) } : {}),
       ...(renderMode === "material-finish-comparison" ? { materialComparison: materialComparisonSummary } : {}) },
     guards: [
@@ -362,7 +369,7 @@ export async function queueConceptRender(
   }) : null;
   const promptPreviewWithFallback = compactRender?.prompt ?? legacyPromptWithFallback;
   // Reserve the full reference directive even if loading later fails; final provider input is never larger.
-  assertImagePromptCapacity(finalImagePrompt(promptPreviewWithFallback, negativePrompt, true));
+  assertImagePromptCapacity(finalImagePrompt(promptPreviewWithFallback, negativePrompt, true, !!customKit));
 
   const promptCompositionId = await ctx.db.insert("promptCompositions", {
     userId: viewer._id,
@@ -411,7 +418,7 @@ export async function queueConceptRender(
     userId: viewer._id,
     kind: "hd-preview",
     status: "queued",
-    baseModelId: baseModel._id,
+    baseModelId: baseModel?._id,
     stylePresetId: stylePreset?._id,
     materialPresetId: materialPreset._id,
     conceptId: concept._id,

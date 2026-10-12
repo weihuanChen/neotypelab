@@ -13,6 +13,8 @@ import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { settleGenerationStorageReservation } from "./storageAccounting";
 import { portraitUrl } from "./kitPicker";
+import { assertKitReference } from "./customKits";
+import type { CustomKitSnapshot } from "./customKitContracts";
 import {
   listGenerationJobDebits,
   refundCreditTransaction,
@@ -213,6 +215,13 @@ export const getJobForExecution = internalQuery({
     const baseModelId = job.baseModelId ?? concept.baseModelId;
     const baseModel = job.kind === "hd-preview" && baseModelId ? await ctx.db.get(baseModelId) : null;
     const shapeReferenceUrl = portraitUrl(baseModel?.fullBodyAssetKey);
+    const customKit = concept.customKitSnapshotJson ? JSON.parse(concept.customKitSnapshotJson) as CustomKitSnapshot : null;
+    let customReference = null;
+    if (customKit) {
+      try { customReference = await assertKitReference(ctx, job.userId, customKit.storageObjectId as Id<"storageObjects">,
+        customKit.referenceVersionId as Id<"assetVersions">, customKit.checksum); }
+      catch { /* The Node executor fails this required reference through its normal refund path. */ }
+    }
     const llmRoute = await selectLlmRoute(ctx, {
       generationKind: job.kind,
       promptTemplateId: prompt.promptTemplateId,
@@ -243,6 +252,7 @@ export const getJobForExecution = internalQuery({
         templateVersion: safeTemplateVersion(prompt.outputSummaryJson),
       },
       shapeReferenceUrl,
+      customReference: customKit ? { key: customReference?.key ?? null, checksum: customKit.checksum } : null,
       llmRoute,
       generationPolicy,
       assetPolicy: {

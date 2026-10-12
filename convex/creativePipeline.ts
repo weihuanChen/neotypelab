@@ -24,8 +24,11 @@ import { assertExecutableIntent, effectiveStyleForExecution, requiredPaletteRole
 import type { Id } from "./_generated/dataModel";
 import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
 import { creativeValidationMessage, validateCreativeValue } from "./creativeValidation";
+import { customKitModelContext } from "./customKits";
+import { customKitPlanningRules, type CustomKitSnapshot } from "./customKitContracts";
 
 export const creativeArgs = {
+  customKitId: v.optional(v.id("customKits")), customKitVersionId: v.optional(v.id("customKitVersions")),
   userStyleId: v.optional(v.id("userStyles")),
   baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
   stylePresetId: v.optional(v.id("stylePresets")), materialPresetId: v.optional(v.id("materialPresets")),
@@ -48,6 +51,7 @@ export type CreativeResult = {
 };
 
 export type CreativeSnapshot = {
+  customKit?: CustomKitSnapshot;
   contractVersion?: "creation.v3";
   resolvedIntent?: ResolvedCreativeIntent;
   normalizedNotes?: NormalizedUserIntent;
@@ -72,7 +76,7 @@ export type CreativeSnapshot = {
   systemPrompt: string;
   templateName: string;
   templateVersion: string;
-  baseModel: { id: Id<"baseModels">; name: string };
+  baseModel: { id?: Id<"baseModels">; name: string; customKitId?: string; version?: number };
   stylePreset?: { id: Id<"stylePresets">; name: string; slug: string };
   materialPreset?: { id: Id<"materialPresets">; name: string; slug: string };
   weatheringLevel: "clean" | "light" | "heavy";
@@ -109,7 +113,7 @@ export function effectiveMaterialForExecution(material: CreativeSnapshot["materi
 
 function resolveSnapshotIntent(snapshot: Snapshot, normalizedNotes?: NormalizedUserIntent) {
   if (!snapshot.styleIntent) throw new Error("Style Intent is required to resolve creative intent");
-  return resolveCreativeIntent({
+  const resolved = resolveCreativeIntent({
     styleIntent: snapshot.styleIntent, normalizedNotes, notes: snapshot.rawNotes,
     styleDescription: snapshot.styleDescription,
     useNormalizedDescription: snapshot.useNormalizedDescription,
@@ -119,8 +123,16 @@ function resolveSnapshotIntent(snapshot: Snapshot, normalizedNotes?: NormalizedU
     } : undefined,
     selectionSources: snapshot.selectionSources,
     weatheringLevel: snapshot.weatheringLevel, moodTags: snapshot.moodTags,
-    kit: { source: "catalog", id: snapshot.baseModel.id, version: JSON.stringify(snapshot.baseModel) },
+    kit: snapshot.customKit ? { source: "custom", id: snapshot.customKit.id, version: String(snapshot.customKit.version) }
+      : { source: "catalog", id: snapshot.baseModel.id!, version: JSON.stringify(snapshot.baseModel) },
+    customKitParts: snapshot.customKit?.effectiveParts.flatMap(part => [part.id, part.name, part.category]),
   });
+  for (const [index, edit] of (snapshot.customKit?.requestedEdits ?? []).entries()) {
+    resolved.constraints.push({ id: `kit-edit:${index}`, property: "geometry", scope: { kind: "part", part: edit.partId },
+      strength: "hard", status: "active", value: `${edit.action}: ${edit.description}`,
+      evidence: { source: "user-explicit", inputRef: "kit.requestedEdits", quote: edit.description } });
+  }
+  return resolved;
 }
 
 function resolvedPalettePrompt(snapshot: Snapshot, intent: ResolvedCreativeIntent) {
@@ -160,8 +172,9 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
     const pending = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", viewer._id)).collect();
     if (pending.filter(p => p.status === "ready" && p.reservedCredits !== undefined).length >= 2) throw new Error("Two text generations are already active");
     const modelId = args.kitVariantId ?? args.baseModelId;
+    const customKitContext = await customKitModelContext(ctx, viewer._id, args);
     const model = modelId ? await ctx.db.get(modelId) : null;
-    if (!model || !isPublicModelCatalogRecord(model)) throw new Error("Selected kit variant is unavailable");
+    if (!customKitContext && (!model || !isPublicModelCatalogRecord(model))) throw new Error("Selected kit variant is unavailable");
     const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
     const material = args.materialPresetId ? await ctx.db.get(args.materialPresetId) : null;
     if (args.stylePresetId && args.styleIntentJson) throw new Error("Choose either a preset or custom style");
@@ -179,7 +192,7 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
     const priceRule = configuredPrice ? { ...configuredPrice, creditCost: prepaid ? 0 : configuredPrice.creditCost } : null;
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
     if (!priceRule || !account || account.balance < priceRule.creditCost) throw new Error("Insufficient credits or missing active price rule");
-    const modelContext = await buildModelPromptContext(ctx, model);
+    const modelContext = customKitContext ?? await buildModelPromptContext(ctx, model!);
     const sourceInterpretation = savedStyle?.promptCompositionId ? await ctx.db.get(savedStyle.promptCompositionId) : null;
     if (sourceInterpretation && (sourceInterpretation.userId !== viewer._id || sourceInterpretation.status !== "consumed" || JSON.parse(sourceInterpretation.inputSnapshotJson).kind !== "style-interpreter")) {
       throw new Error("Saved style source is unavailable");
@@ -196,6 +209,7 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
     if (args.kind === "palette-plan" && !mappings.length) throw new Error("Paint catalog has no active color samples");
     const snapshot: Snapshot = {
       contractVersion: "creation.v3",
+      customKit: customKitContext?.kitSnapshot,
       rawNotes: args.notes?.trim() || undefined, styleDescription: sourceDescription,
       normalizationProtocolVersion: sourceNormalizationProtocolVersion,
       needsSourceNormalization: !!sourceDescription && customIntent?.styleType === "custom" && sourceReceipt !== sourceNormalizationProtocolVersion,
@@ -204,7 +218,7 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
         reflectivityLevel: material.reflectivityLevel, paintFinish: material.paintFinish, sheenLevel: material.sheenLevel, materialSpec: material.materialSpec } : undefined,
       userStyleId: savedStyle?._id, styleRootId: savedStyle ? savedStyle.rootStyleId ?? savedStyle._id : undefined,
       kind: args.kind, inputKey, styleIntent: customIntent ?? undefined,
-      systemPrompt: (args.kind === "palette-plan" ? creativeTemplateSeeds.find(item => item.kind === "palette-plan")!.systemPrompt : template.systemPrompt) + "\n" + stylePlanningRules,
+      systemPrompt: (args.kind === "palette-plan" ? creativeTemplateSeeds.find(item => item.kind === "palette-plan")!.systemPrompt : template.systemPrompt) + "\n" + stylePlanningRules + (customKitContext ? `\n${customKitPlanningRules}` : ""),
       templateName: template.name, templateVersion: template.version, baseModel: modelContext.snapshot,
       ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}),
       ...(material ? { materialPreset: { id: material._id, name: material.name, slug: material.slug } } : {}),
@@ -269,6 +283,7 @@ export const claim = systemMutation({
     return { composition, kind: snapshot.kind, systemPrompt: snapshot.systemPrompt,
       normalization: snapshot.contractVersion && snapshot.kind === "palette-plan" && !snapshot.resolvedIntent
         ? { notes: snapshot.rawNotes ?? "", styleDescription: snapshot.needsSourceNormalization || !snapshot.styleIntent?.explicitRequirements ? snapshot.styleDescription ?? "" : "",
+            kit: snapshot.customKit ? { source: "custom", parts: snapshot.customKit.effectiveParts.map(part => ({ id: part.id, name: part.name, category: part.category })) } : { source: "catalog" },
             style: normalizationStyle, material: snapshot.materialSnapshot ?? null,
             weatheringLevel: snapshot.weatheringLevel, selectionSources: snapshot.selectionSources ?? { material: "system-default", weathering: "system-default" } }
         : null };
@@ -391,11 +406,23 @@ export const complete = systemMutation({
         if (!snapshot.resolvedIntent) throw new Error("Missing frozen creative intent");
         validateCreativeValue("Specification", () => validateResolvedSpecification(result, approvedVisualPalette, snapshot.resolvedIntent!));
       } else assertExactRoles(result.panels.map(p => p.roleSlug), approvedVisualPalette.entries.map(e => e.roleSlug));
+      if (snapshot.customKit) {
+        const partIds = new Set(snapshot.customKit.effectiveParts.filter(part => part.visibility !== "not-visible" || part.source === "user-request").map(part => part.id));
+        if (result.panels.some(panel => panel.areas.some(area => !partIds.has(area)))) throw new Error("Custom Kit assignments must reference approved visible or proposed part IDs");
+      }
       if (result.weathering.level !== (snapshot.resolvedIntent?.effectiveStyle.weathering ?? snapshot.weatheringLevel)) throw new Error("Specification changed the approved weathering level");
       specification = { ...result, baseModel: snapshot.baseModel, colorPlan: approvedVisualPalette,
         ...(snapshot.resolvedIntent ? { resolvedIntent: resolvedIntentForExecution(snapshot.resolvedIntent), materialPreset: effectiveMaterialForExecution(snapshot.materialSnapshot, snapshot.resolvedIntent) }
           : { styleIntent: snapshot.styleIntent, stylePreset: snapshot.stylePreset, materialPreset: snapshot.materialPreset }) };
-      await ctx.db.patch(composition.conceptId, { renderSpecificationJson: JSON.stringify(specification) });
+      let customPlan: PaintPlan | undefined;
+      if (snapshot.customKit && snapshot.palettePlan) {
+        const parts = snapshot.customKit.effectiveParts;
+        customPlan = { ...snapshot.palettePlan, entries: snapshot.palettePlan.entries.map(entry => ({ ...entry,
+          recommendedArea: Array.from(new Set(result.panels.filter(panel => "colorId" in panel && panel.colorId === entry.colorId).flatMap(panel => panel.areas))).map(id => parts.find(part => part.id === id)?.name ?? id).join(", "),
+        })) };
+      }
+      await ctx.db.patch(composition.conceptId, { renderSpecificationJson: JSON.stringify(specification),
+        ...(customPlan ? { palettePlanJson: JSON.stringify(customPlan) } : {}) });
       await ctx.db.patch(composition.generationJobId, { status: "succeeded", outputSummaryJson: JSON.stringify({ phase: "specification-ready", label: "REPAINT SPECIFICATION READY", specification }) });
     }
     await ctx.db.patch(composition._id, { status: "consumed", outputSummaryJson: JSON.stringify({

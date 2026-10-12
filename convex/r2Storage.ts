@@ -82,6 +82,27 @@ export async function headR2Object(role: R2BucketRole, key: string) {
   };
 }
 
+export async function createPrivateR2UploadUrl(key: string, contentType: string, byteSize: number) {
+  const config = getR2ConnectionConfig();
+  return await getSignedUrl(createR2Client(config), new PutObjectCommand({
+    Bucket: config.buckets.private, Key: key, ContentType: contentType, ContentLength: byteSize,
+  }), { expiresIn: 300 });
+}
+
+export async function readPrivateR2Object(key: string, maxBytes: number): Promise<Buffer> {
+  const config = getR2ConnectionConfig();
+  const result = await createR2Client(config).send(new GetObjectCommand({ Bucket: config.buckets.private, Key: key }));
+  if (!result.Body || (result.ContentLength ?? 0) > maxBytes) throw new Error("Reference file is unavailable or too large");
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+    size += chunk.byteLength;
+    if (size > maxBytes) { (result.Body as { destroy?: () => void }).destroy?.(); throw new Error("Reference file is too large"); }
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function listR2Objects({
   role,
   prefix,

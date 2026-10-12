@@ -180,7 +180,7 @@ function PrototypePublicViewBody({
             <dl className="case-identity">
               <div>
                 <dt>Kit</dt>
-                <dd>{kitLabel(concept.baseModel)}</dd>
+                <dd>{concept.customKit ? `Custom Kit · ${concept.customKit.name}` : kitLabel(concept.baseModel)}</dd>
               </div>
               <div>
                 <dt>Style</dt>
@@ -239,7 +239,7 @@ function PrototypePublicViewBody({
                 <a href={`/prototype/${concept._id}/instagram-image`} rel="noreferrer" target="_blank">Instagram</a>
               </nav>
             </details>
-            <a className="case-text-link" href={`/create?remix=${concept._id}`}>
+            <a className="case-text-link" href={concept.customKit ? "/create" : `/create?remix=${concept._id}`}>
               Remix
             </a>
             <a
@@ -711,7 +711,7 @@ function CreateYoursSection({
           <span>stay stock.</span>
         </h2>
         <p>Upload a kit. Choose a direction. Build the paint plan.</p>
-        <a className="case-create__cta" href={`/create?remix=${concept._id}`}>
+        <a className="case-create__cta" href={concept.customKit ? "/create" : `/create?remix=${concept._id}`}>
           <span>Create your case</span>
           <ArrowTopRightIcon aria-hidden="true" />
         </a>

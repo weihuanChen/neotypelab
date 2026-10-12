@@ -1,3 +1,4 @@
+import { customKitDisplay } from "./customKitContracts";
 import { v } from "convex/values";
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { Id } from "./_generated/dataModel";
@@ -177,6 +178,7 @@ export const listLibrary = query({
                   : null,
               }
             : null,
+          ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
           kitVariant: kitVariantSummary,
           baseModel: kitVariantSummary,
           stylePreset: attachOwnedStylePreset(stylePreset, concept.styleIntentJson),
@@ -331,7 +333,8 @@ export const listSavedPublicConcepts = query({
                 fullName: owner.fullName,
               }
             : null,
-          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+          ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
           stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
           materialPreset: materialPreset
             ? {
@@ -534,7 +537,8 @@ async function getConceptSourceSummary(
     title: concept.title,
     visibility: concept.visibility,
     status: concept.status,
-    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
+    ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel),
     stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
     owner: owner
       ? {

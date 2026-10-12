@@ -1,6 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
+import { createHash } from "node:crypto";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { action, internalAction, type ActionCtx } from "./_generated/server";
@@ -9,6 +10,7 @@ import { getPublicR2ObjectUrl, getR2ConnectionConfig } from "./r2Config";
 import {
   checkR2StorageConnectivity,
   uploadR2Object,
+  readPrivateR2Object,
 } from "./r2Storage";
 import { createImageRenditions } from "./imageRenditions";
 import { executeTextRequest } from "./textGenerationNode";
@@ -375,9 +377,15 @@ export async function executeQueuedJobHandler(
         generationJobId,
       });
       // Missing or unreachable line art degrades to text-only rendering instead of failing the job.
-      const shapeReference = job.shapeReferenceUrl
+      let shapeReference = job.shapeReferenceUrl
         ? await loadShapeReferenceDataUri(job.shapeReferenceUrl)
         : null;
+      if (job.customReference) {
+        if (!job.customReference.key) throw new Error("The required Custom Kit reference is unavailable");
+        const image = await readPrivateR2Object(job.customReference.key, 8 * 1024 * 1024);
+        if (createHash("sha256").update(image).digest("hex") !== job.customReference.checksum) throw new Error("The required Custom Kit reference changed");
+        shapeReference = `data:image/webp;base64,${image.toString("base64")}`;
+      }
       if (job.shapeReferenceUrl && !shapeReference) {
         console.warn(`Shape reference unavailable for generation job ${generationJobId}`);
       }
@@ -405,6 +413,7 @@ export async function executeQueuedJobHandler(
           negativePrompt: job.prompt.negativePrompt,
           title: job.concept.title,
           shapeReference,
+          customKit: Boolean(job.customReference),
         },
       });
       attemptedProvider = generated.provider;
@@ -546,7 +555,7 @@ export async function executeQueuedJobHandler(
           templateVersion: job.prompt.templateVersion,
           revisedPrompt: generated.revisedPrompt,
           mimeType: generated.contentType,
-          shapeReference: !job.shapeReferenceUrl
+          shapeReference: !job.shapeReferenceUrl && !job.customReference
             ? "none"
             : !shapeReference
               ? "unavailable"
@@ -630,6 +639,7 @@ async function generateImage({
   negativePrompt,
   title,
   shapeReference,
+  customKit = false,
 }: {
   kind: GenerationKind;
   renderMode?: RenderMode;
@@ -640,6 +650,7 @@ async function generateImage({
   negativePrompt?: string | null;
   title: string;
   shapeReference?: string | null;
+  customKit?: boolean;
 }) {
   if (route.mode === "openai-compatible") {
     return await generateWithOpenAICompatibleImage({
@@ -649,9 +660,11 @@ async function generateImage({
       simulationStage,
       route,
       shapeReference,
+      customKit,
     });
   }
 
+  if (customKit) throw new Error("Custom Kit requires a compatible image-input provider");
   const generated = generateInternalPreview({
     kind,
     renderMode,
@@ -675,6 +688,7 @@ async function generateWithOpenAICompatibleImage({
   simulationStage,
   route,
   shapeReference,
+  customKit = false,
 }: {
   prompt: string;
   negativePrompt?: string | null;
@@ -682,12 +696,14 @@ async function generateWithOpenAICompatibleImage({
   simulationStage?: SimulationStage;
   route: ExternalImageRoute;
   shapeReference?: string | null;
+  customKit?: boolean;
 }) {
   // Only protocols that accept input images get the reference; the Images
   // generations endpoint has no image input, so it stays text-only.
   const shapeReferenceApplied = Boolean(shapeReference) && supportsShapeReference(route.profile.apiFormat);
+  if (customKit && (!shapeReferenceApplied || route.profile.apiFormat !== "cloudflare-ai-run")) throw new Error("Custom Kit requires its reference on the verified Cloudflare image route");
   const referenceImages = shapeReferenceApplied && shapeReference ? [shapeReference] : undefined;
-  if (shapeReferenceApplied) prompt = withShapeReferenceDirective(prompt);
+  if (shapeReferenceApplied) prompt = withShapeReferenceDirective(prompt, customKit);
   const apiKey = process.env[route.profile.keyEnvName];
   if (!apiKey) {
     throw new Error(

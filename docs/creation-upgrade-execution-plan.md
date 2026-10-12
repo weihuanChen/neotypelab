@@ -1,7 +1,7 @@
 # 创作空间升级执行计划：Style 优化与 Custom Kit
 
 日期：2026-10-11
-状态（更新于 2026-10-12）：P0–P3 的 Style 核心改造已完成开发验收；开发后端为 `dev:hallowed-raven-873`。图像细节仍有已记录的偏差，P4–P6 尚未实施，生产环境尚未发布。具体改动和验证见 [Style 升级实施记录](./style-upgrade-implementation.md)。
+状态（更新于 2026-10-12）：P0–P3 的 Style 核心改造与 P4–P6 的 Custom Kit 首版均已完成开发验收；开发后端为 `dev:hallowed-raven-873`。Custom Kit 的 8 次真实扫描与 4 个生成案例通过，开发功能已开放；未配置开关的部署默认关闭，生产环境尚未发布。具体改动和验证见 [Style 升级实施记录](./style-upgrade-implementation.md) 和 [Custom Kit 实施记录](./custom-kit-implementation.md)。
 
 依据：
 

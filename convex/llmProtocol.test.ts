@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders,
   cloudflareImageRequest, completionText, completionUrl, imageDefaults, imageGenerationUrl,
-  imagesApiImage, providerConnectionUrl, requestTextCompletion, structuredCompletion,
+  imagesApiImage, ProviderSafetyBlockError, providerConnectionUrl, requestTextCompletion, structuredCompletion,
 } from "./llmProtocol";
 
 const profile = {
@@ -18,6 +18,22 @@ const completion = (content: unknown, finish_reason = "stop") => ({
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("LLM protocols", () => {
+  it("sends Vision image content and a locked JSON Schema on the existing Gemini endpoint", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(completion('{"version":"kit-scan.v1"}'))));
+    vi.stubGlobal("fetch", mockFetch);
+    const schema = { type: "object", properties: { version: { type: "string" } }, required: ["version"] };
+    const result = await requestTextCompletion({ profile, systemPrompt: "Observe structure", userPrompt: "Scan one mecha", imageDataUris: ["data:image/webp;base64,aW1hZ2U="], jsonSchema: schema,
+      parameterOverridesJson: '{"response_format":{"type":"text"}}' }, { GEMINI_API_KEY_OFFCIAL: "test" });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.messages[1].content).toEqual([{ type: "text", text: "Scan one mecha" }, { type: "image_url", image_url: { url: "data:image/webp;base64,aW1hZ2U=" } }]);
+    expect(body.response_format).toEqual({ type: "json_schema", json_schema: { name: "kit_scan", strict: true, schema } });
+    expect(result.json).toEqual({ version: "kit-scan.v1" });
+  });
+  it("separates provider safety blocks from refundable technical failures", () => {
+    expect(() => completionText(completion(null, "content_filter"))).toThrow(ProviderSafetyBlockError);
+    expect(() => completionText({ choices: [{ message: { refusal: "declined" }, finish_reason: "stop" }] })).toThrow(ProviderSafetyBlockError);
+    expect(() => completionText(completion("partial", "length"))).not.toThrow(ProviderSafetyBlockError);
+  });
   it("uses LLMRelay's documented image endpoint and parameter subset", () => {
     const endpoint = "https://llmrelay.site/v1/images/generations";
     expect(imageGenerationUrl("https://llmrelay.site/v1/")).toBe(endpoint);

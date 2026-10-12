@@ -21,8 +21,11 @@ import {
   visualPaletteSchema,
 } from "./paintRecommendationEngine";
 import { debitCredits } from "./creditLedger";
+import { customKitModelContext } from "./customKits";
+import { customKitPlanningRules } from "./customKitContracts";
 
 export const prototypeArgs = {
+    customKitId: v.optional(v.id("customKits")), customKitVersionId: v.optional(v.id("customKitVersions")),
     userStyleId: v.optional(v.id("userStyles")),
     sourceConceptId: v.optional(v.id("concepts")),
     baseModelId: v.optional(v.id("baseModels")), kitVariantId: v.optional(v.id("baseModels")),
@@ -81,10 +84,11 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
       ? paintRecommendationSetsSchema.parse(paletteOutput.paintRecommendations)
       : buildPaintRecommendationSets(visualPalette, await listResolvedPaintMappings(ctx));
     const modelId = args.kitVariantId ?? args.baseModelId;
+    const customKitContext = await customKitModelContext(ctx, viewer._id, args);
     const model = modelId ? await ctx.db.get(modelId) : null;
     const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
     const currentMaterial = await ctx.db.get(args.materialPresetId);
-    if (!model || !isPublicModelCatalogRecord(model) || (!style?.isActive && !args.styleIntentJson) || !currentMaterial?.isActive) throw new Error("Selected kit, style or material is unavailable");
+    if ((!customKitContext && (!model || !isPublicModelCatalogRecord(model))) || (!style?.isActive && !args.styleIntentJson) || !currentMaterial?.isActive) throw new Error("Selected kit, style or material is unavailable");
     // Approved palette inputs remain frozen even if the catalog is edited between stages.
     const material = paletteInput.materialSnapshot ?? { id: currentMaterial._id, name: currentMaterial.name, slug: currentMaterial.slug,
       finishType: currentMaterial.finishType, promptKeywords: currentMaterial.promptKeywords, paintFinish: currentMaterial.paintFinish,
@@ -96,17 +100,18 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
     const price = configuredPrice ? { ...configuredPrice, creditCost: prepaid ? 0 : configuredPrice.creditCost } : null;
     if (!template || !price) throw new Error("Repaint specification template or price rule is missing");
     if (account.balance < price.creditCost) throw new Error("Insufficient credits");
-    const modelContext = await buildModelPromptContext(ctx, model);
+    const modelContext = customKitContext ?? await buildModelPromptContext(ctx, model!);
     const executionTemplate = resolvedIntent ? creativeTemplateSeeds.find(item => item.kind === "repaint-concept")! : legacyRepaintTemplate;
     const legacyVersion = !resolvedIntent ? (await ctx.db.query("promptTemplateVersions")
       .withIndex("by_template", q => q.eq("promptTemplateId", template._id)).take(100)).find(version => version.version === "creation.v2") : null;
     const executionTemplateVersionId = resolvedIntent ? template.promptTemplateVersionId : legacyVersion?._id;
-    const title = `${model.name} / ${intent?.name ?? style?.name ?? "Custom Style"}${source ? " Remix" : ""}`;
+    const title = `${modelContext.snapshot.name} / ${intent?.name ?? style?.name ?? "Custom Style"}${source ? " Remix" : ""}`;
     const priceRule = { actionType: price.actionType, label: price.label, creditCost: price.creditCost };
     const inputSnapshot = {
       contractVersion: paletteInput.contractVersion, resolvedIntent, materialSnapshot: material,
+      customKit: paletteInput.customKit,
       kind: "repaint-concept", textStage: "repaint-concept", inputKey: paletteInput.contractVersion ? inputKey : legacyCreativeInputKey(args),
-      systemPrompt: executionTemplate.systemPrompt + "\n" + (resolvedIntent ? stylePlanningRules : legacyStylePlanningRules), templateName: template.name, templateVersion: resolvedIntent ? template.version : "creation.v2",
+      systemPrompt: executionTemplate.systemPrompt + "\n" + (resolvedIntent ? stylePlanningRules : legacyStylePlanningRules) + (customKitContext ? `\n${customKitPlanningRules}` : ""), templateName: template.name, templateVersion: resolvedIntent ? template.version : "creation.v2",
       baseModel: paletteInput.contractVersion ? paletteInput.baseModel : modelContext.snapshot, ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}), styleIntent: intent,
       materialPreset: { id: material.id, name: material.name, slug: material.slug },
       weatheringLevel: resolvedIntent?.effectiveStyle.weathering ?? args.weatheringLevel, moodTags: Array.from(new Set(args.moodTags ?? [])),
@@ -125,7 +130,7 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
     const conceptId = await ctx.db.insert("concepts", {
       userStyleId: savedStyle?._id, styleRootId: savedStyle ? savedStyle.rootStyleId ?? savedStyle._id : undefined,
       userId: viewer._id, recordNumber: await nextArchiveNumber(ctx, "prototype"), title, notes,
-      baseModelId: model._id, stylePresetId: style?._id, materialPresetId: material.id,
+      baseModelId: model?._id, customKitSnapshotJson: paletteInput.customKit ? JSON.stringify(paletteInput.customKit) : undefined, stylePresetId: style?._id, materialPresetId: material.id,
       moodTags: inputSnapshot.moodTags, weatheringLevel: inputSnapshot.weatheringLevel, status: "draft",
       visibility: args.visibility ?? "private", sourceConceptId: source?._id,
       paletteCompositionId: palette._id,
@@ -146,7 +151,7 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
     });
     const generationJobId = await ctx.db.insert("generationJobs", {
       userId: viewer._id, kind: "palette-plan", status: "queued", requestedCredits: price.creditCost,
-      baseModelId: model._id, stylePresetId: style?._id, materialPresetId: material.id, conceptId, promptCompositionId,
+      baseModelId: model?._id, stylePresetId: style?._id, materialPresetId: material.id, conceptId, promptCompositionId,
       inputSnapshotJson: JSON.stringify(inputSnapshot), outputSummaryJson: JSON.stringify({ phase: "queued", label: "PREPARING REPAINT SPECIFICATION" }),
     });
     await ctx.db.patch(conceptId, { generationJobId });

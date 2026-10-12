@@ -25,6 +25,11 @@
   --color-psy-deep: #00744b;
   --color-psy-wash: color-mix(in oklch, var(--color-psy) 14%, transparent);
   --shadow-psy-glow: 0 0 .35em color-mix(in oklch, var(--color-psy) 65%, transparent), 0 0 1.3em color-mix(in oklch, var(--color-psy) 30%, transparent);
+  /* Create console only: decal magenta marks the user's own reference (Custom Kit upload).
+     Bright decal is a fill (ink text on it, 5.6:1); text/outlines on paper use --color-decal-deep (6.2:1). */
+  --color-decal: #ff3d9a;
+  --color-decal-deep: #b0005c;
+  --color-decal-wash: color-mix(in oklch, var(--color-decal) 12%, transparent);
 
   --font-display: "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
   --font-label: "IM Fell English SC", "IM Fell English", serif;

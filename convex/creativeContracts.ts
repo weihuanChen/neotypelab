@@ -186,6 +186,8 @@ export function assertExactRoles(actual: string[], expected: string[]) {
 }
 
 export type CreativeInput = {
+  customKitId?: string;
+  customKitVersionId?: string;
   baseModelId?: string;
   kitVariantId?: string;
   stylePresetId?: string;
@@ -204,6 +206,7 @@ export function creativeInputKey(input: CreativeInput, options?: { legacy?: bool
   return JSON.stringify({
     ...(options?.legacy ? {} : { contractVersion: creativeContractVersion, resolverVersion: creativeResolverVersion, sourceNormalizationProtocolVersion, selectionSources: input.selectionSources ?? { material: "system-default", weathering: "system-default" }, styleDescription: input.styleDescription?.trim() || undefined }),
     userStyleId: input.userStyleId,
+    ...(input.customKitId || input.customKitVersionId ? { customKitId: input.customKitId, customKitVersionId: input.customKitVersionId } : {}),
     kitVariantId: input.kitVariantId ?? input.baseModelId,
     stylePresetId: input.stylePresetId,
     materialPresetId: input.materialPresetId,

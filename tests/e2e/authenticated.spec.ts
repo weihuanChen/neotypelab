@@ -4,6 +4,194 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { prepareCustomKitLiveFixtures } from "./customKitLiveFixtures";
+import type { CustomKitSnapshot } from "../../convex/customKitContracts";
+
+test("live Custom Kit single-reference scans and shared generation", async ({ page }) => {
+  test.skip(process.env.CUSTOM_KIT_LIVE_QA !== "1", "Real providers require the approved dedicated development test budget.");
+  test.setTimeout(30 * 60 * 1000);
+  expect(process.env.CONVEX_DEPLOYMENT).toBe("dev:hallowed-raven-873");
+  expect(new URL(process.env.VITE_CONVEX_URL!).hostname).toBe("hallowed-raven-873.convex.cloud");
+  const fixtures = await prepareCustomKitLiveFixtures();
+  const client = new ConvexHttpClient(process.env.VITE_CONVEX_URL!);
+  async function refreshAuth() {
+    const token = await page.evaluate(async () => {
+      const auth = (window as Window & { Clerk?: { session?: { getToken: (options: { template: string }) => Promise<string | null> } } }).Clerk;
+      if (!auth?.session) throw new Error("Dedicated test session unavailable");
+      return auth.session.getToken({ template: "convex" });
+    });
+    expect(token).toBeTruthy();
+    client.setAuth(token!);
+  }
+  await page.goto("/create");
+  await expect(page.getByRole("button", { name: "Use as is", exact: true }).first()).toBeVisible();
+  await refreshAuth();
+  const viewer = await client.query(api.users.viewer, {});
+  expect(viewer?.email.toLowerCase()).toBe(process.env.E2E_USER_EMAIL?.toLowerCase());
+  const availability = await client.query(api.customKits.availability, {});
+  const quote = await client.query(api.creationRuns.quote, {});
+  expect(availability.enabled && availability.scanCost != null && quote != null).toBe(true);
+  type ScanRow = { kitId?: Id<"customKits">; scanId?: Id<"customKitScans">; eligibility?: string; cost?: number; error?: string };
+  type RunRow = { runId?: Id<"creationRuns">; conceptId?: Id<"concepts">; status?: string; screenshot?: string; error?: string; recoveryAttempts?: number };
+  const reportPath = "/tmp/neotypelab-custom-kit-live/report.json";
+  const report: { initialBalance: number; scanCalls: number; previewCalls: number; scans: Record<string, ScanRow>; runs: Record<string, RunRow> }
+    = existsSync(reportPath) ? JSON.parse(readFileSync(reportPath, "utf8")) : { initialBalance: viewer!.credits.balance, scanCalls: 0, previewCalls: 0, scans: {}, runs: {} };
+  const save = () => writeFileSync(reportPath, JSON.stringify(report, null, 2) + "\n");
+  save();
+  async function remainingBudget() {
+    await refreshAuth();
+    const current = await client.query(api.users.viewer, {});
+    const spent = Math.max(0, report.initialBalance - current!.credits.balance);
+    expect(spent).toBeLessThanOrEqual(40);
+    return 40 - spent;
+  }
+  await page.getByRole("button", { name: "Use as is", exact: true }).first().click();
+  await page.getByRole("button", { name: "Apply to a kit", exact: true }).click();
+  await page.getByRole("group", { name: "Kit source" }).getByRole("button", { name: "Custom Kit", exact: true }).click();
+  for (const fixture of fixtures) {
+    const row = report.scans[fixture.key] ?? (report.scans[fixture.key] = {});
+    if (!row.kitId) {
+      const name = `Custom QA 20261012 ${fixture.key}`;
+      const prior = (await client.query(api.customKits.mine, {})).find(item => item.name === name);
+      if (prior) row.kitId = prior.id;
+      else {
+        await page.getByRole("textbox", { name: "New Kit name", exact: true }).fill(name);
+        await page.locator('#custom-kit-file').setInputFiles(fixture.path);
+        await expect.poll(async () => {
+          await refreshAuth();
+          const mine = await client.query(api.customKits.mine, {});
+          return mine.find(item => item.name === name)?.id;
+        }, { timeout: 45_000, intervals: [1000] }).toBeTruthy();
+        row.kitId = (await client.query(api.customKits.mine, {})).find(item => item.name === name)!.id;
+      }
+      save();
+    }
+    if (!row.eligibility) {
+      expect(report.scanCalls).toBeLessThan(8);
+      expect(await remainingBudget()).toBeGreaterThanOrEqual(availability.scanCost!);
+      report.scanCalls += 1; save();
+      try {
+        row.scanId = await client.action(api.customKitsNode.scan, { kitId: row.kitId, expectedCost: availability.scanCost! });
+        const record = await client.query(api.customKits.get, { kitId: row.kitId });
+        expect(record!.scanStatus).toBe("succeeded");
+        const result = JSON.parse(record!.scanResultJson!);
+        row.eligibility = result.eligibility; row.cost = availability.scanCost!; save();
+      } catch (failure) {
+        row.error = failure instanceof Error ? failure.message.split("\n")[0] : "Scan failed"; save();
+        throw failure;
+      }
+    }
+    console.log(`${fixture.key}: ${row.eligibility}`);
+    expect(row.eligibility, `${fixture.key} reference suitability`).toBe(fixture.expected);
+    if (fixture.expected !== "supported") {
+      expect((await client.query(api.customKits.get, { kitId: row.kitId! }))!.versionId).toBeNull();
+    }
+  }
+  // All succeeding scans are free to reuse; Style changes do not consume new scans.
+  const repeatBefore = await client.query(api.users.viewer, {});
+  const repeat = await client.action(api.customKitsNode.scan, { kitId: report.scans.photo.kitId!, expectedCost: availability.scanCost! });
+  expect(repeat).toBe(report.scans.photo.scanId);
+  expect((await client.query(api.users.viewer, {}))!.credits.balance).toBe(repeatBefore!.credits.balance);
+
+  const catalog = await client.query(api.catalog.listCreateOptions, {});
+  const preset = catalog.stylePresets.find(item => item.slug === "arctic-ops")!;
+  const material = catalog.materialPresets.find(item => item.slug === "matte-armor") ?? catalog.materialPresets[0];
+  const savedStyle = (await client.query(api.userStyles.mine, {})).find(item => item.status === "active" && (item.intent?.colors?.length ?? 0) >= 7);
+  expect(savedStyle, "Reuse the dedicated account's existing seven-color Style without a new interpretation fee").toBeTruthy();
+  for (const scenario of [
+    { key: "repaint", reference: "photo", modification: "none" },
+    { key: "shoulders", reference: "photo", modification: "shoulders" },
+    { key: "backpack", reference: "backpack", modification: "backpack" },
+    { key: "custom-style", reference: "original", modification: "none" },
+  ]) {
+    await refreshAuth();
+    const row = report.runs[scenario.key] ?? (report.runs[scenario.key] = {});
+    if (!row.runId) {
+      const kitId = report.scans[scenario.reference].kitId!;
+      const record = (await client.query(api.customKits.get, { kitId }))!;
+      const snapshot = JSON.parse(record.snapshotJson!) as CustomKitSnapshot;
+      const candidates = snapshot.observations.parts.filter(part => part.visibility !== "not-visible");
+      const target = scenario.modification === "shoulders" ? candidates.find(part => /shoulder/i.test(`${part.id} ${part.name} ${part.category}`))
+        : scenario.modification === "backpack" ? candidates.find(part => /funnel|backpack|wing/i.test(`${part.id} ${part.name} ${part.category}`)) : undefined;
+      if (scenario.modification !== "none") expect(target, "The edited structure must be visible in the reference").toBeTruthy();
+      const requestedEdits = target ? [{ partId: target.id, action: scenario.modification === "backpack" ? "expand" as const : "adjust" as const,
+        description: scenario.modification === "backpack" ? "Spread the existing backpack fin-funnel plates outward into a wider fan. Keep the head, chest, arms and legs unchanged." : "Slightly thicken this shoulder armor while preserving its existing panel layout. Keep the head, chest, arms and legs unchanged." }] : [];
+      const versionId = await client.mutation(api.customKits.confirm, { kitId, expectedVersionId: record.versionId!, changesJson: JSON.stringify({ corrections: [], requestedEdits }) });
+      expect(report.previewCalls).toBeLessThan(4);
+      expect(await remainingBudget()).toBeGreaterThanOrEqual(quote!.cost);
+      report.previewCalls += 1; save();
+      row.runId = await client.mutation(api.creationRuns.start, { requestKey: `custom-live-${scenario.key}-${randomUUID()}`, expectedCost: quote!.cost,
+        input: { customKitId: kitId, customKitVersionId: versionId, materialPresetId: material._id, weatheringLevel: "clean",
+          selectionSources: { material: "system-default", weathering: "user-selection" },
+          ...(scenario.key === "custom-style" ? { userStyleId: savedStyle!.id, styleIntentJson: JSON.stringify(savedStyle!.intent) }
+            : { stylePresetId: preset._id, styleRevision: preset.styleIntentJson, notes: "Use blue and white armor. Keep the reference structure outside explicitly requested local edits." }) },
+      });
+      save();
+    }
+    if (row.status !== "succeeded") {
+      if (row.status === "failed") {
+        expect(row.recoveryAttempts ?? 0, "Only one repair retry is authorized for this allocated case").toBe(0);
+        const failed = await client.query(api.creationRuns.latest, {});
+        expect(failed!.id).toBe(row.runId);
+        expect(failed!.refunded).toBe(true);
+        expect(await remainingBudget()).toBeGreaterThanOrEqual(quote!.cost);
+        // Restore the same allocated Preview case after a refunded pre-render failure.
+        row.recoveryAttempts = 1; save();
+        await client.mutation(api.creationRuns.retry, { runId: row.runId! });
+        row.status = undefined; row.error = undefined; save();
+      }
+      let last = "";
+      await expect.poll(async () => {
+        await refreshAuth();
+        const run = await client.query(api.creationRuns.latest, {});
+        expect(run!.id).toBe(row.runId);
+        const status = `${run!.stage}:${run!.status}`;
+        if (status !== last) { console.log(`${scenario.key}: ${status}`); last = status; }
+        return run!.status;
+      }, { timeout: 9 * 60_000, intervals: [3000] }).toMatch(/^(succeeded|failed)$/);
+      const run = (await client.query(api.creationRuns.latest, {}))!;
+      row.status = run.status; row.conceptId = run.conceptId; row.error = run.error; save();
+      expect(run.error, `${scenario.key} generation result`).toBeFalsy();
+      expect(run.status).toBe("succeeded");
+      const detail = (await client.query(api.libraryDetails.get, { conceptId: run.conceptId! }))!;
+      expect(detail.kit!.grade).toBe("Custom Kit");
+      expect(detail.palette!.version).toBe("visual-palette.v3");
+      expect(detail.specification!.panels.every(panel => "colorId" in panel && detail.palette!.entries.some(color => color.colorId === panel.colorId))).toBe(true);
+      expect(detail.customKit?.requestedEdits.length).toBe(scenario.modification === "none" ? 0 : 1);
+      await page.goto(`/library/${run.conceptId}?tab=overview`);
+      const image = page.locator(".work-detail-preview img");
+      await expect(image).toBeVisible({ timeout: 30_000 });
+      await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0)).toBe(true);
+      row.screenshot = `/tmp/neotypelab-custom-kit-live/${scenario.key}-render.png`;
+      await image.screenshot({ path: row.screenshot }); save();
+    }
+    await remainingBudget();
+  }
+  console.log(`Custom Kit QA: ${report.scanCalls} scan requests, ${report.previewCalls} previews; ${40 - await remainingBudget()} net Credits`);
+});
+
+test("switches between Official Kit and Custom Kit without starting paid work", async ({ page }) => {
+  await page.goto("/create");
+  await expect(page.getByRole("button", { name: "Use as is", exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Use as is", exact: true }).first().click();
+  await page.getByRole("button", { name: "Apply to a kit", exact: true }).click();
+  const source = page.getByRole("group", { name: "Kit source" });
+  await expect(source.getByRole("button").first()).toHaveText("Custom Kit");
+  await source.getByRole("button", { name: "Custom Kit", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Bring your own kit." })).toBeVisible();
+  await expect(page.getByText("Drop your mecha here", { exact: false })).toBeVisible();
+  await expect(page.getByText("Its reference stays private when you publish your build.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Generate preview", exact: true }).click();
+  await expect(page.getByRole("complementary", { name: "Your preview" }).getByText("Upload, scan and confirm your Custom Kit first.", { exact: true })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: "/tmp/neotypelab-custom-kit-desktop.png", animations: "disabled" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".create-mobile-generate").getByRole("button", { name: "Generate", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: "/tmp/neotypelab-custom-kit-mobile.png", animations: "disabled" });
+  await source.getByRole("button", { name: "Official Kit", exact: true }).click();
+  await expect(page.getByRole("searchbox", { name: "Search kits" })).toBeVisible();
+});
 
 test("opens the authenticated studio", async ({ page }) => {
   await page.goto("/studio");

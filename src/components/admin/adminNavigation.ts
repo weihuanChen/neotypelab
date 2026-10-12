@@ -14,6 +14,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     id: "content",
     label: "Content",
     items: [
+      { href: "/admin/home", label: "Home page" },
       { href: "/admin/models", label: "Models" },
       { href: "/admin/styles", label: "Style DNA" },
       { href: "/admin/materials", label: "Materials" },

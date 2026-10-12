@@ -135,6 +135,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
         <p className="work-detail-eyebrow">The build</p>
         <dl>
           <Fact label="Kit" value={detail.kit ? [detail.kit.grade, detail.kit.name].filter(Boolean).join(" · ") : "Not selected"} />
+          {detail.customKit ? <Fact label="Kit version" value={String(detail.customKit.version)} /> : null}
           {detail.kit?.scale ? <Fact label="Scale" value={detail.kit.scale} /> : null}
           <Fact label="Style DNA" value={detail.style ?? "Not selected"} />
           <Fact label="Material" value={detail.material ?? "Not selected"} />

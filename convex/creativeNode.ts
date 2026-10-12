@@ -19,9 +19,9 @@ export async function executeCompositionHandler(
     if (claimed.normalization) {
       const normalization = await executeTextRequest(ctx, {
         templateKind: "palette-plan", promptTemplateId: claimed.composition.promptTemplateId,
-        systemPrompt: normalizedUserIntentSystemPrompt,
+        systemPrompt: normalizedUserIntentSystemPrompt + "\nWhen context.kit.source is custom, resolve named parts to the supplied stable part IDs in color and geometry scopes. Preserve geometry edit requirements as local part-scoped constraints. Unknown targets or whole-subject redesigns remain unresolved; the subject must remain a robot/mecha. Catalog kit geometry rules remain unchanged. Finish, material, weathering, pattern and mood use whole-kit scope unless the user explicitly restricts that property to a named part or surface group. Do not infer a local finish scope merely because the description mentions armor colors. For example, 'A clean matte finish.' means whole-kit finish=matte and whole-kit weathering=clean, even in a description listing armor colors. Original Style and Kit context are not evidence for a narrower user scope.",
         userPrompt: JSON.stringify({ notes: claimed.normalization.notes, styleDescription: claimed.normalization.styleDescription,
-          context: { style: claimed.normalization.style, material: claimed.normalization.material,
+          context: { style: claimed.normalization.style, material: claimed.normalization.material, kit: claimed.normalization.kit,
             weatheringLevel: claimed.normalization.weatheringLevel, selectionSources: claimed.normalization.selectionSources } }),
         jsonOutput: true, safetyReference: { table: "promptCompositions", id: promptCompositionId },
       });

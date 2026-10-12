@@ -3,8 +3,8 @@ import { withShapeReferenceDirective } from "./shapeReference";
 export const CLOUDFLARE_IMAGE_PROMPT_LIMIT = 32000;
 
 /** Match the exact text sent by the image adapter, including its reference and negative suffix. */
-export function finalImagePrompt(prompt: string, negativePrompt?: string | null, shapeReferenceApplied = false) {
-  const referencePrompt = shapeReferenceApplied ? withShapeReferenceDirective(prompt) : prompt;
+export function finalImagePrompt(prompt: string, negativePrompt?: string | null, shapeReferenceApplied = false, customKit = false) {
+  const referencePrompt = shapeReferenceApplied ? withShapeReferenceDirective(prompt, customKit) : prompt;
   return negativePrompt ? `${referencePrompt}\n\nAvoid: ${negativePrompt}` : referencePrompt;
 }
 

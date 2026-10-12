@@ -1,7 +1,7 @@
 # Creative Intent Resolver 与配色契约升级方案
 
 日期：2026-10-11
-状态（更新于 2026-10-12）：Style 核心部分已完成开发验收，已知渲染细节偏差记录在 [Style 升级实施记录](./style-upgrade-implementation.md)；Custom Kit 尚未实施。本文保留设计语义，字段示例用于设计讨论，不代表生产接口已发布。
+状态（更新于 2026-10-12）：Style 核心部分与 Custom Kit 首版均已完成开发验收，真实模型结果见 [Custom Kit 实施记录](./custom-kit-implementation.md)。本文保留设计语义，字段示例用于设计讨论，不代表生产接口已发布。
 关联方案：[Custom Kit 与参考图创作](./custom-kit-reference-architecture.md)。
 统一执行顺序：[Style 与 Custom Kit 升级执行计划](./creation-upgrade-execution-plan.md)。
 

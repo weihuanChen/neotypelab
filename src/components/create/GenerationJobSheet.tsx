@@ -19,7 +19,7 @@ export type CreationRunRecord = {
   conceptId?: Id<"concepts">;
   title: string;
   kit?: {
-    id: Id<"baseModels">;
+    id: Id<"baseModels"> | Id<"customKits">;
     name: string;
     grade?: string;
     scale?: string;

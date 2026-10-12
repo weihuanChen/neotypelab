@@ -146,6 +146,35 @@ const schema = defineSchema({
   kitFavorites: defineTable({ userId: v.id("users"), kitId: v.id("baseModels"), createdAt: v.number() })
     .index("by_user", ["userId"]).index("by_user_kit", ["userId", "kitId"]),
 
+  customKitUploads: defineTable({
+    userId: v.id("users"), name: v.string(), key: v.string(), contentType: v.string(), byteSize: v.number(),
+    status: v.union(v.literal("pending"), v.literal("processing"), v.literal("complete"), v.literal("failed")),
+    customKitId: v.optional(v.id("customKits")), expiresAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  customKits: defineTable({
+    userId: v.id("users"), name: v.string(), storageObjectId: v.id("storageObjects"),
+    referenceVersionId: v.id("assetVersions"), checksum: v.string(),
+    currentVersionId: v.optional(v.id("customKitVersions")),
+    status: v.union(v.literal("active"), v.literal("deleted"), v.literal("blocked")), updatedAt: v.number(),
+  }).index("by_user_status", ["userId", "status"]),
+
+  customKitScans: defineTable({
+    userId: v.id("users"), customKitId: v.id("customKits"), referenceVersionId: v.id("assetVersions"),
+    cacheKey: v.string(), modelId: v.string(), profileId: v.id("llmProfiles"), scanVersion: v.string(),
+    status: v.union(v.literal("running"), v.literal("succeeded"), v.literal("failed")),
+    resultJson: v.optional(v.string()), error: v.optional(v.string()), cost: v.number(), refunded: v.boolean(),
+    executionJson: v.optional(v.string()), completedAt: v.optional(v.number()),
+    creditTransactionId: v.optional(v.id("creditTransactions")), expiresAt: v.number(),
+    safetyBlocked: v.optional(v.boolean()),
+  }).index("by_kit_cache", ["customKitId", "cacheKey"]).index("by_kit", ["customKitId"])
+    .index("by_userId_and_safetyBlocked", ["userId", "safetyBlocked"]),
+
+  customKitVersions: defineTable({
+    userId: v.id("users"), customKitId: v.id("customKits"), version: v.number(), scanId: v.id("customKitScans"),
+    referenceVersionId: v.id("assetVersions"), snapshotJson: v.string(), confirmed: v.boolean(),
+  }).index("by_kit_version", ["customKitId", "version"]),
+
   creationRuns: defineTable({
     userId: v.id("users"), requestKey: v.string(), inputJson: v.string(), inputKey: v.string(),
     status: v.union(v.literal("queued"), v.literal("running"), v.literal("succeeded"), v.literal("failed")),
@@ -251,6 +280,23 @@ const schema = defineSchema({
     .index("by_style_model", ["stylePresetId", "baseModelId"])
     .index("by_style", ["stylePresetId"])
     .index("by_published", ["isPublished"]),
+
+  // Singleton (key "home"): the admin-curated build that explains the product on
+  // the home page, plus the ordered builds shown in the home carousel.
+  homeCuration: defineTable({
+    key: v.literal("home"),
+    heroConceptId: v.optional(v.id("concepts")),
+    heroShowLineArt: v.boolean(),
+    // Paint-key markers placed on the hero render; x/y are 0–1 within the 4:3 plate.
+    heroCallouts: v.array(v.object({
+      paintIndex: v.number(),
+      x: v.number(),
+      y: v.number(),
+    })),
+    carouselConceptIds: v.array(v.id("concepts")),
+    updatedAt: v.number(),
+    updatedByUserId: v.id("users"),
+  }).index("by_key", ["key"]),
 
   creatorPacks: defineTable({
     name: v.string(),
@@ -996,6 +1042,7 @@ const schema = defineSchema({
   }).index("by_key", ["key"]),
 
   concepts: defineTable({
+    customKitSnapshotJson: v.optional(v.string()),
     userStyleId: v.optional(v.id("userStyles")),
     styleRootId: v.optional(v.id("userStyles")),
     paletteCompositionId: v.optional(v.id("promptCompositions")),

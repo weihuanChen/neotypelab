@@ -15,7 +15,7 @@ import tokensCss from "@/src/styles/tokens.css?url";
 import appCss from "@/src/styles/app.css?url";
 import globalsCss from "@/src/styles/globals.css?url";
 import workbenchCss from "@/src/styles/workbench.css?url";
-import exploreCss from "@/src/styles/explore.css?url";
+import homeCss from "@/src/styles/home.css?url";
 import exhibitionCss from "@/src/styles/showcase-exhibition.css?url";
 
 const RouterDevtools = import.meta.env.DEV
@@ -57,7 +57,7 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: globalsCss },
       { rel: "stylesheet", href: appCss },
       { rel: "stylesheet", href: workbenchCss },
-      { rel: "stylesheet", href: exploreCss },
+      { rel: "stylesheet", href: homeCss },
       { rel: "stylesheet", href: exhibitionCss },
     ],
   }),

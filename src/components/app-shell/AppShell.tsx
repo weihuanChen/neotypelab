@@ -111,6 +111,21 @@ function AppShellBody({
   const [isMobile, setIsMobile] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const topbarRef = useRef<HTMLElement>(null);
+
+  // Publish the sticky topbar's live height so in-page sticky elements
+  // (e.g. the home FAQ heading) can sit below it instead of under it.
+  useEffect(() => {
+    const main = mainRef.current;
+    const topbar = topbarRef.current;
+    if (!main || !topbar || typeof ResizeObserver === "undefined") return;
+    const sync = () => main.style.setProperty("--app-topbar-height", `${topbar.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(topbar);
+    return () => observer.disconnect();
+  }, []);
   const groups = useMemo(
     () =>
       appNavGroups.filter(
@@ -266,8 +281,8 @@ function AppShellBody({
           <strong>{viewer?.fullName ?? "Guest"}</strong>
         </div>
       </aside>
-      <div className="app-shell__main">
-        <header className="app-topbar">
+      <div className="app-shell__main" ref={mainRef}>
+        <header className="app-topbar" ref={topbarRef}>
           <div className="app-topbar__lead">
             <button
               aria-controls="app-primary-navigation"

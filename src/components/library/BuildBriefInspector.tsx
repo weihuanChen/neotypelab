@@ -256,7 +256,7 @@ export function BuildBriefInspector({
               N°.{recordNumber}
             </span>
             <h2 className="text-sm font-bold uppercase tracking-tight truncate m-0 font-body">
-              {concept.baseModel?.name ?? concept.title}
+              {(concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) ?? concept.title}
               {concept.stylePreset ? ` / ${concept.stylePreset.name}` : ""}
             </h2>
           </div>
@@ -277,7 +277,7 @@ export function BuildBriefInspector({
             <span className="font-mono text-[10px] text-ink-muted">Aesthetic Logic</span>
           </div>
           <div className="brief-meta-grid">
-            <MetaRow label="Kit" value={concept.baseModel?.name ?? "Custom base"} />
+            <MetaRow label="Kit" value={(concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) ?? "Custom base"} />
             <MetaRow label="Style DNA" value={concept.stylePreset?.name ?? "Custom style"} />
             <MetaRow label="Material" value={concept.materialPreset?.name ?? "Matte finish"} />
             <MetaRow label="Weathering" value={concept.weatheringLevel} />
@@ -619,7 +619,7 @@ export function BuildBriefInspector({
             {/* Advanced Render Tools */}
             {onRequestRender ? (
               <div className="brief-render-tools pt-2 border-t border-line-secondary space-y-1.5">
-                <Kicker>Alternative Render Angles</Kicker>
+                <Kicker>{concept.customKit ? "Reference-view render" : "Alternative Render Angles"}</Kicker>
                 <div className="grid grid-cols-2 gap-1.5">
                   <GhostButton
                     disabled={busy}
@@ -628,6 +628,7 @@ export function BuildBriefInspector({
                   >
                     {renderLabel("hd-render", "HD render", "Queueing...")}
                   </GhostButton>
+                  {concept.customKit ? null : <>
                   <GhostButton
                     disabled={busy}
                     onClick={() => void onRequestRender(concept._id, "multi-angle-preview")}
@@ -648,7 +649,7 @@ export function BuildBriefInspector({
                     className="text-[11px] justify-center"
                   >
                     {renderLabel("weathering-simulation", "Weathering sim", "Queueing...")}
-                  </GhostButton>
+                  </GhostButton></>}
                 </div>
                 <AiDisclosureNote kind="image" />
               </div>

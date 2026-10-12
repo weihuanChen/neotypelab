@@ -501,3 +501,8 @@ Finish, Weathering and Mood default to Auto in optional refinements; resolved
 catalog material and wear values remain visible and feed the existing frozen
 palette/specification flow. See [two-step Create](docs/create-two-step.md)
 for fallback behavior and the retained per-stage approval and billing controls.
+# Custom Kit
+
+Custom Kit accepts one private mecha/robot reference image and text modifications, with server-side suitability scanning and versioned structure confirmation. It uses the shared Style / Palette / Specification / HD Render pipeline. Full setup, scan fee rules and acceptance status are recorded in [docs/custom-kit-implementation.md](docs/custom-kit-implementation.md).
+
+Custom Kit needs `CUSTOM_KIT_ENABLED=true` in the intended Convex deployment. Keep it unset or `false` until real Vision and reference-view HD acceptance passes. Upload screening additionally requires `GOOGLE_CLOUD_VISION_API_KEY` (a Google Cloud API key restricted to the Cloud Vision API, sent as the `x-goog-api-key` header); without it Custom Kit reports itself unavailable and scans fail closed. Optional `CUSTOM_KIT_SAFESEARCH_MODE` is `enforce` (default) or `monitor` (record SafeSearch verdicts without blocking, for threshold calibration; the Gemini safety verdict still applies). Configure `custom-kit-vision` with `customKits:configure` using the existing official Gemini profile (`GEMINI_API_KEY_OFFCIAL`), and add exact frontend upload origins with `customKitsNode:configureUploadCors` (separate PUT rule; existing Library GET/HEAD rules remain). Existing private R2 credentials and quotas apply. Private references never become public when a generated work is published.

@@ -46,7 +46,8 @@ theme of usehallmark.com): a printed spray-planning almanac.
 | shadcn HSL variables | `src/styles/globals.css` | Keep `--accent`/`--ring` in sync with `--color-accent`/`--color-focus` (comments mark the pairs). |
 | Compat layer | end of `src/styles/app.css` | Only `--compat-*` aliases and selector-level overrides. Never redeclare token values here. |
 
-Page styles are split per surface: `explore.css` (landing),
+Page styles are split per surface: `home.css` (home page `/` and its
+admin curation screen),
 `create-workspace.css` (create flow + generation job sheet),
 `app.css` (shell + admin), plus the other per-page files imported at the
 top of `app.css`.
@@ -62,7 +63,7 @@ top of `app.css`.
   Almanac reference (38%) with AA contrast headroom. Its foreground is
   `--color-accent-ink`.
 - Accent appears at rest on **one** element per screen (e.g. the
-  landing hero "View plan" button). Secondary actions are ink and may
+  home hero "Plan a paint scheme" button). Secondary actions are ink and may
   turn accent on hover.
 - The old warm paper (`rgba(244, 240, 230, …)` / oat cream) must not
   reappear; translucent surfaces use
@@ -94,7 +95,7 @@ top of `app.css`.
 ## Structure & semantics
 
 - **One `<h1>` per page.** The AppShell topbar title is the page h1 by
-  default; pages that render their own h1 (e.g. the Explore landing)
+  default; pages that render their own h1 (e.g. the home page)
   pass `titleAsHeading={false}` to `AppShell`. In-page section titles
   are `<h2>` and below (the generation job sheet hero is an h2).
 - Motion is sparse and purposeful: the generation scanner beam (navy)
@@ -111,6 +112,29 @@ change product logic, backend behavior, data contracts, route
 semantics, permissions, pricing, generation flows, engagement
 behavior, SEO data, or Convex API usage. If a business decision seems
 necessary, stop and ask.
+
+## Home page (`/`)
+
+Rebuilt 2026-10-12. The home page explains the product; browsing and
+filtering belong to `/showcase` (old `/?style=…` links 301 to
+`/showcase/archive`). Order: hero (positioning + curated build plate) →
+what a plan gives you → three steps → build carousel → FAQ → closing CTA.
+
+- The hero build, its A–H paint markers, the optional kit line-art
+  comparison and the carousel order are curated at `/admin/home`
+  (`convex/homeFeature.ts`). Without curation the page falls back to the
+  newest public builds.
+- Navy appears on the hero CTA and the closing CTA only; they are never
+  on screen together. No psy green here.
+- One motion moment: the build sweeps in over the line art once on load.
+  The carousel advances slowly (6.5 s), pauses on hover/focus/off-screen,
+  and never auto-plays under `prefers-reduced-motion`.
+- FAQ copy lives in `src/components/home/homeContent.ts` and also feeds
+  the `FAQPage` JSON-LD; edit it there, never in two places.
+- When Custom Kit is enabled, the hero, step two and the kits FAQ lead
+  with uploading your own model; catalog kits stay available. The same
+  flag drives the visible copy and the JSON-LD. Deployments without the
+  flag keep the catalog wording.
 
 ## Exception: the Create console (psycho-frame green)
 
@@ -156,6 +180,32 @@ brightness flicker, after the PGU page's `flicker` keyframe), then
 holds a soft glow. The console scan line runs only while the textarea
 is focused. All of it is disabled under `prefers-reduced-motion`
 (nudges fall back to a static outline + text).
+
+**Custom Kit upload (decal magenta).** Approved 2026-10-12, alongside the
+custom-first direction: Custom Kit is the first and default Kit source
+(Remix links, recommended official kits and deployments without Custom
+Kit fall back to the catalog). The upload zone carries a second scoped
+signal so "bring your own" stands apart from the green "go" signal.
+
+| Token | Value | Use | Contrast |
+| --- | --- | --- | --- |
+| `--color-decal` | `#ff3d9a` | Drop-zone offset shadow, tag, `+` glyph, Custom tab dot, done ticks | 5.6:1 with ink text |
+| `--color-decal-deep` | `#b0005c` | Crop marks, pressed Custom tab text/underline, focus on the drop zone | 6.2:1 on paper |
+| `--color-decal-wash` | decal 12% | Drag-over fill, pressed Custom tab | decorative |
+
+- Same rule as psy: bright decal is a fill, never text or hairlines on
+  paper; text on a decal fill is ink.
+- Decal means "your reference" and appears only on the Custom Kit source
+  tab, its Upload → Scan → Confirm track, and the drop zone. Actions
+  (Scan reference and Confirm structure use `.psy-btn`, like Generate)
+  and readiness stay psy green. Once a reference exists, the drop zone
+  shrinks to a quiet dashed "Replace" row below the scan results. The two never
+  glow together: Generate cannot be ready while the drop zone is empty.
+- Playfulness is in shape, not motion: a hard offset "sticker" shadow,
+  print crop marks, a tilted "Your kit" tag. Hover lifts the sheet and
+  turns the `+`; drag-over dashes the border and wiggles the tag. All
+  motion is disabled under `prefers-reduced-motion`.
+- Do not use decal outside `.create-workspace`.
 
 **Presets.** Custom description is the primary path. Official,
 community and saved styles appear as an inspiration strip below the

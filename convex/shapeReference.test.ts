@@ -8,6 +8,13 @@ import {
 } from "./shapeReference";
 
 describe("shape reference", () => {
+  it("uses Custom Kit local edit and color precedence without the catalog silhouette lock", () => {
+    const prompt = withShapeReferenceDirective("Thicken shoulders.", true);
+    expect(prompt).toContain("explicitly authorized local edits");
+    expect(prompt).toContain("Do not inherit its colors");
+    expect(prompt).not.toContain("official full-body line art");
+    expect(prompt).not.toContain("reference wins");
+  });
   it("only attaches to protocols that accept input images", () => {
     expect(supportsShapeReference("cloudflare-ai-run")).toBe(true);
     expect(supportsShapeReference("openai-chat-completions")).toBe(true);

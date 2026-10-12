@@ -130,14 +130,17 @@ export function completionUrl(baseUrl: string) {
   return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
 }
 
+/** The provider's own safety system declined the input; callers must not treat it as a refundable outage. */
+export class ProviderSafetyBlockError extends Error {}
+
 export function completionText(payload: unknown) {
   const root = jsonObject(payload);
   const choices = root?.choices;
   const choice = Array.isArray(choices) ? jsonObject(choices[0]) : null;
   const message = jsonObject(choice?.message);
-  if (message?.refusal) throw new Error("Model refused the generation request");
+  if (message?.refusal) throw new ProviderSafetyBlockError("Model refused the generation request");
   if (choice?.finish_reason === "length") throw new Error("Model output was truncated");
-  if (choice?.finish_reason === "content_filter") throw new Error("Model output was filtered");
+  if (choice?.finish_reason === "content_filter") throw new ProviderSafetyBlockError("Model output was filtered");
   const content = message?.content;
   const text = typeof content === "string" ? content : Array.isArray(content)
     ? content.map((part) => {
@@ -190,6 +193,8 @@ export async function requestTextCompletion(input: {
   profile: LlmRequestProfile;
   systemPrompt: string;
   userPrompt: string;
+  imageDataUris?: string[];
+  jsonSchema?: Record<string, unknown>;
   jsonOutput?: boolean;
   parameterOverridesJson?: string;
 }, env: Record<string, string | undefined> = process.env) {
@@ -209,10 +214,14 @@ export async function requestTextCompletion(input: {
     model: profile.modelId,
     messages: [
       { role: "system", content: input.systemPrompt },
-      { role: "user", content: input.userPrompt },
+      { role: "user", content: input.imageDataUris?.length ? [
+        { type: "text", text: input.userPrompt },
+        ...input.imageDataUris.map(url => ({ type: "image_url", image_url: { url } })),
+      ] : input.userPrompt },
     ],
     stream: false,
-    ...(input.jsonOutput ? { response_format: { type: "json_object" } } : {}),
+    ...(input.jsonSchema ? { response_format: { type: "json_schema", json_schema: { name: "kit_scan", strict: true, schema: input.jsonSchema } } }
+      : input.jsonOutput ? { response_format: { type: "json_object" } } : {}),
   };
   const controller = new AbortController();
   const timeoutMs = profile.timeoutMs ?? 90000;
@@ -227,7 +236,7 @@ export async function requestTextCompletion(input: {
     const root = jsonObject(payload);
     return {
       text,
-      json: input.jsonOutput ? structuredCompletion(text) : null,
+      json: input.jsonOutput || input.jsonSchema ? structuredCompletion(text) : null,
       model: typeof root?.model === "string" ? root.model : profile.modelId,
       providerRequestId: typeof root?.id === "string" ? root.id : null,
       usage: jsonObject(root?.usage),

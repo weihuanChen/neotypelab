@@ -1,26 +1,31 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { AppShell } from "@/src/components/app-shell/AppShell";
-import { ExploreLanding } from "@/src/components/showcase/ExploreLanding";
+import { HomeLanding } from "@/src/components/home/HomeLanding";
+import { buildHomeStructuredData } from "@/src/components/home/homeContent";
 import { RoutePending } from "@/src/components/system-state/RoutePending";
 import { systemStates } from "@/src/components/system-state";
+import { getHomeSnapshot, legacyArchiveRedirect } from "@/src/lib/homeRouteData";
 import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
-import {
-  buildShowcaseStructuredData,
-  getShowcaseSnapshot,
-  parseShowcaseSearch,
-} from "@/src/lib/showcaseRouteData";
+import { parseShowcaseSearch } from "@/src/lib/showcaseRouteData";
+import { useStartProviderStatus } from "@/src/providers/StartProviders";
 
-const exploreShell = {
+const homeShell = {
   description:
-    "Browse spray-ready Gunpla and mecha paint plans, then open a scheme or remix it before you spray.",
-  title: "Explore",
+    "Spray-ready paint plans for Gunpla and mecha kits.",
+  title: "Home",
 } as const;
 
 export const Route = createFileRoute("/")({
   validateSearch: parseShowcaseSearch,
-  loader: () => getShowcaseSnapshot(),
+  beforeLoad: ({ search }) => {
+    const href = legacyArchiveRedirect(search);
+    if (href) throw redirect({ href, statusCode: 301 });
+  },
+  loader: () => getHomeSnapshot(),
   headers: () => ({ "Cache-Control": "no-store" }),
-  pendingComponent: ExplorePending,
+  pendingComponent: HomePending,
   head: () => ({
     meta: documentMeta(publicSeo.home, { ogType: "website" }),
     links: [{ rel: "canonical", href: "/" }],
@@ -28,24 +33,25 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-function ExplorePending() {
-  return <RoutePending {...exploreShell} state={systemStates.exploreLoading} />;
+function HomePending() {
+  return <RoutePending {...homeShell} state={systemStates.exploreLoading} />;
 }
 
 function Home() {
   const snapshot = Route.useLoaderData();
-  const search = Route.useSearch();
-  const structuredData = buildShowcaseStructuredData(snapshot);
+  const providerStatus = useStartProviderStatus();
+  const live = useQuery(api.homeFeature.getHome, providerStatus.hasConvexClient ? {} : "skip");
+  const data = live ?? snapshot.data;
+  const availability = useQuery(api.customKits.availability, providerStatus.hasConvexClient ? {} : "skip");
+  const customKit = availability?.enabled ?? (snapshot.status === "ok" && snapshot.customKit);
 
   return (
-    <AppShell {...exploreShell} titleAsHeading={false}>
+    <AppShell {...homeShell} titleAsHeading={false}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildHomeStructuredData(customKit)) }}
       />
-      <ExploreLanding search={search} snapshot={snapshot} />
+      <HomeLanding customKit={customKit} data={data} />
     </AppShell>
   );
 }

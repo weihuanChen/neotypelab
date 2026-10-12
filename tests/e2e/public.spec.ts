@@ -1,18 +1,25 @@
 import { expect, test, type Page } from "@playwright/test";
 
-test("renders the public discovery page", async ({ page }) => {
+test("renders the home page", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/");
   await expect(page).toHaveTitle(/NeotypeLab/);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(
-    page
-      .getByRole("heading", { name: "Today's paint plans" })
-      .or(page.getByRole("heading", { name: /Opening the public archive/i }))
-      .or(page.getByRole("heading", { name: /Nothing published yet/i }))
-      .or(page.getByRole("heading", { name: /No matching records/i }))
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Plan your Gunpla paint scheme/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Plan a paint scheme" }).first()).toHaveAttribute("href", "/create");
+  await expect(page.getByRole("heading", { name: "Questions before you start" })).toBeVisible();
+  await expect(page.locator('nav[aria-label="Primary"] a[href="/"]')).toHaveText(/Home/);
   expect(consoleErrors).toEqual([]);
+});
+
+test("sends old Explore filter links to the Showcase archive", async ({ page }) => {
+  await page.goto("/?style=integration-style&sort=recent");
+  await expect(page).toHaveURL(/\/showcase\/archive\?.*style=integration-style/);
+});
+
+test("gates the home page curation workspace", async ({ page }) => {
+  await page.goto("/admin/home");
+  await expect(page.getByRole("heading", { name: /Restricted record/i })).toBeVisible();
 });
 
 test("renders the public showcase page", async ({ page }) => {

@@ -285,7 +285,7 @@ function AuthenticatedLibraryWorkbench() {
     { all: 0, draft: 0, rendering: 0, ready: 0, failed: 0 }
   );
 
-  const kitOptions = uniqueValues(concepts.map((concept) => concept.baseModel?.name));
+  const kitOptions = uniqueValues(concepts.map((concept) => (concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name)));
   const styleOptions = uniqueValues(concepts.map((concept) => concept.stylePreset?.name));
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredConcepts = concepts
@@ -300,7 +300,7 @@ function AuthenticatedLibraryWorkbench() {
         normalizedSearch.length === 0 ||
         [
           concept.title,
-          concept.baseModel?.name,
+          (concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name),
           concept.stylePreset?.name,
           concept.materialPreset?.name,
         ]
@@ -311,7 +311,7 @@ function AuthenticatedLibraryWorkbench() {
       return (
         statusMatches &&
         searchMatches &&
-        (kitFilter === "all" || concept.baseModel?.name === kitFilter) &&
+        (kitFilter === "all" || (concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) === kitFilter) &&
         (styleFilter === "all" || concept.stylePreset?.name === styleFilter)
       );
     })
@@ -446,7 +446,7 @@ function AuthenticatedLibraryWorkbench() {
                       <div className={`library-asset-row library-asset-row--detail${selectedConcept?._id === concept._id ? " is-active" : ""}`} key={concept._id}>
                         <button className="library-asset-row__identity library-asset-select" onClick={() => setSelectedConceptId(concept._id)} type="button" aria-label={`Inspect ${concept.title}`}>
                           <div className="library-asset-row__thumb"><LibraryThumbnail asset={concept.previewAsset} fallback={formatRecordNumber(concepts, concept._id)} /></div>
-                          <div><span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unassigned Style DNA"}</small></div>
+                          <div><span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{(concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unassigned Style DNA"}</small></div>
                         </button>
                         <LifecycleLabel status={status} />
                         <span className="library-asset-row__meta">{concept.visibility}</span>
@@ -462,7 +462,7 @@ function AuthenticatedLibraryWorkbench() {
                     return (
                       <article className="library-grid-entry" key={concept._id}><button className={selectedConcept?._id === concept._id ? "library-grid-card is-active" : "library-grid-card"} onClick={() => setSelectedConceptId(concept._id)} type="button">
                         <div className="library-grid-card__image"><LibraryThumbnail asset={concept.previewAsset} fallback={`N°.${formatRecordNumber(concepts, concept._id)}`} /></div>
-                        <span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"}</small><LifecycleLabel status={status} />
+                        <span className="library-record-number">N°.{formatRecordNumber(concepts, concept._id)}</span><strong>{concept.title}</strong><small>{(concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) ?? "Unknown kit"}</small><LifecycleLabel status={status} />
                       </button><LibraryDetailLink conceptId={concept._id} title={concept.title} /></article>
                     );
                   })}
@@ -524,7 +524,7 @@ function AuthenticatedLibraryWorkbench() {
               <div className="library-asset-list">
                 {savedConcepts.map((concept) => (
                   <button className={selectedSaved?._id === concept._id ? "library-asset-row is-active" : "library-asset-row"} key={concept._id} onClick={() => setSelectedSavedId(concept._id)} type="button">
-                    <div className="library-asset-row__identity"><div className="library-asset-row__thumb">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : null}</div><div><span className="library-record-number">Saved work</span><strong>{concept.title}</strong><small>{concept.baseModel?.name ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unknown Style DNA"}</small></div></div>
+                    <div className="library-asset-row__identity"><div className="library-asset-row__thumb">{concept.previewAsset?.publicUrl ? <img alt="" src={concept.previewAsset.publicUrl} /> : null}</div><div><span className="library-record-number">Saved work</span><strong>{concept.title}</strong><small>{(concept.customKit ? `Custom Kit · ${concept.customKit.name}` : concept.baseModel?.name) ?? "Unknown kit"} · {concept.stylePreset?.name ?? "Unknown Style DNA"}</small></div></div>
                     <StatusPill label={concept.status} tone={mapStatusTone(concept.status)} />
                   </button>
                 ))}
@@ -536,7 +536,7 @@ function AuthenticatedLibraryWorkbench() {
                 <Kicker>Saved build</Kicker>
                 <div className="library-saved-inspector__preview">{selectedSaved.previewAsset?.publicUrl ? <img alt={selectedSaved.title} src={selectedSaved.previewAsset.publicUrl} /> : null}</div>
                 <h2>{selectedSaved.title}</h2>
-                <MetaRow label="Kit" value={selectedSaved.baseModel?.name ?? "Unknown"} />
+                <MetaRow label="Kit" value={(selectedSaved.customKit ? `Custom Kit · ${selectedSaved.customKit.name}` : selectedSaved.baseModel?.name) ?? "Unknown"} />
                 <MetaRow label="Style DNA" value={selectedSaved.stylePreset?.name ?? "Unknown"} />
                 <GhostButton href={`/prototype/${selectedSaved._id}`}>Go to case</GhostButton>
                 <GhostButton href={`/create?remix=${selectedSaved._id}`}>Remix in create</GhostButton>

@@ -16,8 +16,10 @@ export function supportsShapeReference(apiFormat: LlmApiFormat | undefined) {
   return apiFormat === "cloudflare-ai-run" || apiFormat === "openai-chat-completions";
 }
 
-export function withShapeReferenceDirective(prompt: string) {
-  return `${SHAPE_REFERENCE_DIRECTIVE}\n\n${prompt}`;
+export const CUSTOM_KIT_REFERENCE_DIRECTIVE = "CUSTOM KIT REFERENCE (required attached image): this is the user's own mecha reference, which may be a photograph, concept drawing or line art. Preserve its visible geometry outside the explicitly authorized local edits in the frozen contract. Apply those edits within their named parts and necessary attachment regions, allowing local silhouette changes. Preserve the reference view and pose. Do not inherit its colors, finish, weathering or drawing style: render a painted physical model using the complete approved palette. Unseen structures are unknown; any necessary completion is a generated assumption, never recovered fact. User-requested added parts are concepts, not observed parts. Color and local edit instructions override the corresponding reference features.";
+
+export function withShapeReferenceDirective(prompt: string, customKit = false) {
+  return `${customKit ? CUSTOM_KIT_REFERENCE_DIRECTIVE : SHAPE_REFERENCE_DIRECTIVE}\n\n${prompt}`;
 }
 
 const MAX_REFERENCE_BYTES = 8 * 1024 * 1024;

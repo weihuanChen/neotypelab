@@ -13,6 +13,7 @@ import type { QueryCtx } from "./types";
 import { portraitUrl } from "./kitPicker";
 import { creationWorkflowManager } from "./workflowManager";
 import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
+import { customKitDisplay } from "./customKitContracts";
 
 const { paletteCompositionId: _palette, visibility: _visibility, requestKey: _key, ...inputArgs } = prototypeArgs;
 const inputValidator = v.object(inputArgs);
@@ -118,6 +119,9 @@ export const latest = query({ args: {}, handler: async ctx => {
   const rawKitId = input?.kitVariantId ?? input?.baseModelId;
   const kitId = typeof rawKitId === "string" ? ctx.db.normalizeId("baseModels", rawKitId) : null;
   const kit = kitId ? await ctx.db.get(kitId) : null;
+  const customId = typeof input?.customKitId === "string" ? ctx.db.normalizeId("customKits", input.customKitId) : null;
+  const custom = customId ? await ctx.db.get(customId) : null;
+  const customName = customKitDisplay(concept?.customKitSnapshotJson)?.name ?? (custom?.userId === run.userId ? custom.name : undefined);
   const stylePresetId = typeof input?.stylePresetId === "string" ? ctx.db.normalizeId("stylePresets", input.stylePresetId) : null;
   const stylePreset = stylePresetId ? await ctx.db.get(stylePresetId) : null;
   const userStyleId = typeof input?.userStyleId === "string" ? ctx.db.normalizeId("userStyles", input.userStyleId) : null;
@@ -169,7 +173,7 @@ export const latest = query({ args: {}, handler: async ctx => {
     refunded: run.refunded,
     error: run.error,
     conceptId: run.conceptId,
-    title: concept?.title ?? (kit ? `${kit.name} × ${styleName}` : "Repaint Preview"),
+    title: concept?.title ?? (kit || customName ? `${kit?.name ?? customName} × ${styleName}` : "Repaint Preview"),
     kit: kit ? {
       id: kit._id,
       name: kit.name,
@@ -177,7 +181,7 @@ export const latest = query({ args: {}, handler: async ctx => {
       scale: kit.scale ?? "",
       portrait: portraitUrl(kit.thumbnailAssetKey),
       fullBody: portraitUrl(kit.fullBodyAssetKey) ?? portraitUrl(kit.thumbnailAssetKey),
-    } : null,
+    } : customName ? { id: customId!, name: customName, grade: "Custom Kit", scale: "", portrait: null, fullBody: null } : null,
     styleName,
     styleSlug,
     visualPalette,

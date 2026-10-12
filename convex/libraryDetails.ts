@@ -12,6 +12,7 @@ import {
   visualPaletteSchema,
 } from "./paintRecommendationEngine";
 import { styleDisplayName } from "./styleRefinements";
+import { customKitDisplay, type CustomKitSnapshot } from "./customKitContracts";
 
 function objectJson(value?: string): Record<string, unknown> {
   try {
@@ -45,6 +46,8 @@ export const get = query({
     const concept = await ctx.db.get(id);
     if (!concept || concept.userId !== ctx.viewer._id) return null;
     const ownerId = ctx.viewer._id;
+    const customLabel = customKitDisplay(concept.customKitSnapshotJson);
+    const customSnapshot = customLabel ? JSON.parse(concept.customKitSnapshotJson!) as CustomKitSnapshot : null;
     const visualPaletteResult = concept.visualPaletteJson
       ? visualPaletteSchema.safeParse(objectJson(concept.visualPaletteJson))
       : null;
@@ -141,7 +144,10 @@ export const get = query({
       id: concept._id, title: concept.title, recordNumber: concept.recordNumber ?? null, createdAt: concept._creationTime,
       status: concept.status, visibility: concept.visibility, notes: concept.notes ?? null,
       mood: concept.moodTags ?? [], weathering: concept.weatheringLevel,
-      kit: kit ? { name: kit.name, grade: kit.grade ?? null, scale: kit.scale ?? null, manufacturer: kit.manufacturer ?? null } : null,
+      kit: kit ? { name: kit.name, grade: kit.grade ?? null, scale: kit.scale ?? null, manufacturer: kit.manufacturer ?? null }
+        : customLabel ? { name: customLabel.name, grade: "Custom Kit", scale: null, manufacturer: null } : null,
+      ...(customSnapshot ? { customKit: { ...customLabel!, storageObjectId: customSnapshot.storageObjectId as Doc<"storageObjects">["_id"],
+        parts: customSnapshot.effectiveParts, requestedEdits: customSnapshot.requestedEdits, uncertainFeatures: customSnapshot.observations.uncertainFeatures } } : {}),
       style: styleDisplayName(style, concept.styleIntentJson), material: materialDisplayName(concept, material?.name),
       hero: { storageObjectId: preview?.id ?? readableLegacyObject?._id ?? null,
         publicUrl: preview || readableLegacyObject ? null : httpUrl(safeLegacy?.publicUrl),

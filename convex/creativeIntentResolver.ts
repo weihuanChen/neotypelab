@@ -69,6 +69,7 @@ export type ResolveCreativeIntentInput = {
   moodTags?: string[];
   selectionSources?: { material?: "user-selection" | "system-default"; weathering?: "user-selection" | "system-default" };
   kit?: ResolvedCreativeIntent["kit"];
+  customKitParts?: string[];
 };
 
 export const resolvedCreativeIntentSchema = z.object({
@@ -298,6 +299,10 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
           continue;
         }
         if (requirement.property === "geometry" && requirement.operation !== "preserve") {
+          if (input.kit?.source === "custom" && requirement.scope.kind === "part" && input.customKitParts?.some(part => part.toLowerCase() === requirement.scope.part?.toLowerCase())) {
+            addConstraint({ id: requirementId, property: "geometry", scope: requirement.scope, strength: "hard", value: requirement.value!, evidence });
+            continue;
+          }
           result.conflicts.push({ property: "geometry", message: "Catalog Style creation supports repainting existing geometry; structural modifications require Custom Kit", constraintIds: ["system:geometry", requirementId] });
           continue;
         }

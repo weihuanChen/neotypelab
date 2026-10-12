@@ -354,3 +354,90 @@
   .create-workspace *, .create-workspace *::before, .create-workspace *::after { transition: none !important; animation: none !important; }
   .create-workspace .is-flagged { outline-color: color-mix(in oklch, var(--color-danger) 70%, transparent); }
 }
+/* Custom Kit uses the console's paper, hairlines and scoped signal tokens. */
+.create-workspace .create-kit-area { scroll-margin-top: 8rem; }
+.create-workspace .create-kit-source { display: flex; border-block: 1px solid var(--color-rule); margin-bottom: 1.5rem; }
+.create-workspace .create-kit-source button { flex: 1; padding: .9rem; font-family: var(--font-mono); font-size: .75rem; border-inline-end: 1px solid var(--color-rule); }
+.create-workspace .create-kit-source button[aria-pressed="true"] { color: var(--color-psy-deep); background: var(--color-psy-wash); box-shadow: inset 0 -2px var(--color-psy-deep); }
+.create-workspace .create-kit-source button.is-custom::before { content: ""; display: inline-block; width: .5rem; height: .5rem; margin-right: .5rem; background: var(--color-decal); border: 1px solid var(--color-decal-deep); vertical-align: .05em; }
+.create-workspace .create-kit-source button.is-custom[aria-pressed="true"] { color: var(--color-decal-deep); background: var(--color-decal-wash); box-shadow: inset 0 -2px var(--color-decal-deep); }
+.create-workspace .custom-kit-picker { min-width: 0; }
+.create-workspace .custom-kit-picker h2 { font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 400; margin-block: .5rem .8rem; }
+.create-workspace .custom-kit-picker p { color: var(--color-muted); font-size: .85rem; line-height: 1.6; overflow-wrap: anywhere; }
+.create-workspace .custom-kit-field, .create-workspace .custom-kit-edit label { display: grid; gap: .5rem; font-size: .8rem; margin-block: 1rem; }
+.create-workspace .custom-kit-picker select { width: 100%; min-height: 2.5rem; padding: .5rem; background: var(--color-paper); border: 1px solid var(--color-rule); color: var(--color-ink); }
+.create-workspace .custom-kit-header h2 { margin-bottom: .5rem; }
+
+/* Custom Kit upload — decal magenta marks "your reference"; psy green stays the go/ready signal.
+   The two never glow together: Generate cannot be ready while the drop zone is still empty. */
+.create-workspace .custom-kit-track { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; margin: 1.2rem 0 1.6rem; padding: 0; list-style: none; font-family: var(--font-mono); font-size: .72rem; color: var(--color-muted); }
+.create-workspace .custom-kit-track li { display: flex; align-items: center; gap: .5rem; }
+.create-workspace .custom-kit-track i { width: .55rem; height: .55rem; border: 1px solid var(--color-rule-2); transition: background var(--dur-base), border-color var(--dur-base); }
+.create-workspace .custom-kit-track li.is-current { color: var(--color-ink); font-weight: 600; }
+.create-workspace .custom-kit-track li.is-current i { border-color: var(--color-decal-deep); box-shadow: inset 0 0 0 2px var(--color-paper), inset 0 0 0 4px var(--color-decal); }
+.create-workspace .custom-kit-track li.is-done { color: var(--color-ink-2); }
+.create-workspace .custom-kit-track li.is-done i { background: var(--color-decal); border-color: var(--color-decal-deep); }
+
+.create-workspace .custom-kit-drop {
+  --mark: var(--color-decal-deep);
+  position: relative; display: grid; place-items: center; align-content: center; gap: .6rem; min-height: 15rem; padding: 2.4rem 1.5rem 1.6rem; margin: .9rem .45rem 0 0;
+  border: 1.5px solid var(--color-ink); text-align: center; cursor: pointer;
+  background: radial-gradient(color-mix(in oklch, var(--color-decal) 26%, transparent) 1px, transparent 1.5px) 0 0 / 11px 11px, color-mix(in oklch, var(--color-paper) 45%, white);
+  box-shadow: 6px 6px 0 var(--color-decal), 6px 6px 0 1.5px var(--color-ink);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-base);
+}
+.create-workspace .custom-kit-drop:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--color-decal), 8px 8px 0 1.5px var(--color-ink); }
+.create-workspace .custom-kit-drop:active { transform: translate(3px, 3px); box-shadow: 3px 3px 0 var(--color-decal), 3px 3px 0 1.5px var(--color-ink); }
+.create-workspace .custom-kit-drop:focus-within { outline: 2px solid var(--color-decal-deep); outline-offset: 5px; }
+.create-workspace .custom-kit-drop.is-dragging { border-style: dashed; background-color: var(--color-decal-wash); transform: translate(-2px, -2px) rotate(-.4deg); box-shadow: 10px 10px 0 var(--color-decal), 10px 10px 0 1.5px var(--color-ink); }
+.create-workspace .custom-kit-drop:has(input:disabled) { cursor: progress; }
+.create-workspace .custom-kit-drop.is-uploading { cursor: progress; transform: none; }
+.create-workspace .custom-kit-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+.create-workspace .custom-kit-drop-marks { position: absolute; inset: .55rem; pointer-events: none; transition: inset var(--dur-base) var(--ease-out);
+  background:
+    linear-gradient(var(--mark), var(--mark)) top left / .9rem 1.5px no-repeat, linear-gradient(var(--mark), var(--mark)) top left / 1.5px .9rem no-repeat,
+    linear-gradient(var(--mark), var(--mark)) top right / .9rem 1.5px no-repeat, linear-gradient(var(--mark), var(--mark)) top right / 1.5px .9rem no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom left / .9rem 1.5px no-repeat, linear-gradient(var(--mark), var(--mark)) bottom left / 1.5px .9rem no-repeat,
+    linear-gradient(var(--mark), var(--mark)) bottom right / .9rem 1.5px no-repeat, linear-gradient(var(--mark), var(--mark)) bottom right / 1.5px .9rem no-repeat; }
+.create-workspace .custom-kit-drop:hover .custom-kit-drop-marks, .create-workspace .custom-kit-drop.is-dragging .custom-kit-drop-marks { inset: .3rem; }
+.create-workspace .custom-kit-drop-tag { position: absolute; top: -.85rem; right: 1.4rem; padding: .28rem .6rem; border: 1px solid var(--color-ink); background: var(--color-decal); color: var(--color-ink); font-family: var(--font-mono); font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; transform: rotate(-4deg); transition: transform 320ms cubic-bezier(.34, 1.56, .64, 1); }
+.create-workspace .custom-kit-drop:hover .custom-kit-drop-tag { transform: rotate(3deg) translateY(-2px); }
+.create-workspace .custom-kit-drop.is-dragging .custom-kit-drop-tag { animation: decalWiggle 700ms ease-in-out infinite; }
+@keyframes decalWiggle { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg) translateY(-2px); } }
+.create-workspace .custom-kit-drop-title { display: grid; justify-items: center; gap: .35rem; font: 400 clamp(1.6rem, 3vw, 2.3rem)/1 var(--font-display); color: var(--color-ink); }
+.create-workspace .custom-kit-drop-title::before { content: "+"; display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin-bottom: .7rem; border: 1.5px solid var(--color-ink); background: var(--color-decal); color: var(--color-ink); font: 500 1.9rem/1 var(--font-mono); transition: transform 320ms cubic-bezier(.34, 1.56, .64, 1); }
+.create-workspace .custom-kit-drop:hover .custom-kit-drop-title::before { transform: rotate(90deg); }
+.create-workspace .custom-kit-drop-title small { font-family: var(--font-body); font-size: .85rem; color: var(--color-ink-2); }
+.create-workspace .custom-kit-drop-spec { font-family: var(--font-mono); font-size: .7rem; color: var(--color-muted); }
+.create-workspace .custom-kit-drop-preview { width: auto; max-width: 70%; max-height: 9rem; object-fit: contain; }
+.create-workspace .custom-kit-drop.is-uploading .custom-kit-drop-title::before { display: none; }
+.create-workspace .custom-kit-drop.is-uploading::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 35%; background: var(--color-decal); animation: decalSweep 1.1s ease-in-out infinite alternate; }
+@keyframes decalSweep { from { left: 0; } to { left: 65%; } }
+.create-workspace .custom-kit-picker .custom-kit-blocked { margin: 0 0 1.2rem; padding: .8rem 1rem; border-left: 3px solid var(--color-danger); background: color-mix(in oklch, var(--color-danger) 7%, transparent); color: var(--color-ink); }
+.create-workspace .custom-kit-replace { margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-drop.is-compact { min-height: 0; margin: 0; grid-auto-flow: column; justify-content: start; gap: 1rem; padding: .9rem 1.2rem; text-align: left; border: 1px dashed var(--color-rule-2); background: transparent; box-shadow: none; }
+.create-workspace .custom-kit-drop.is-compact:is(:hover, :active, .is-dragging) { transform: none; border-color: var(--color-decal-deep); background: var(--color-decal-wash); box-shadow: none; }
+.create-workspace .custom-kit-drop.is-compact .custom-kit-drop-marks { display: none; }
+.create-workspace .custom-kit-drop.is-compact .custom-kit-drop-title { font-size: 1.15rem; justify-items: start; grid-auto-flow: column; align-items: center; gap: .7rem; }
+.create-workspace .custom-kit-drop.is-compact .custom-kit-drop-title::before { width: 1.9rem; height: 1.9rem; margin: 0; font-size: 1.2rem; }
+.create-workspace .custom-kit-drop.is-compact .custom-kit-drop-preview { max-height: 3rem; }
+.create-workspace .custom-kit-upload-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 1.2rem; margin-top: 1.4rem; }
+.create-workspace .custom-kit-picker .custom-kit-hint { margin-top: 0; font-size: .78rem; }
+@media (max-width: 560px) {
+  .create-workspace .custom-kit-drop { min-height: 12rem; padding: 2.2rem 1rem 1.3rem; box-shadow: 4px 4px 0 var(--color-decal), 4px 4px 0 1.5px var(--color-ink); }
+  .create-workspace .custom-kit-drop.is-compact { grid-auto-flow: row; justify-content: stretch; }
+}
+.create-workspace .custom-kit-reference-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-block: 1.5rem; }
+.create-workspace .custom-kit-reference-heading img { width: 6rem; height: 6rem; object-fit: contain; }
+.create-workspace .custom-kit-observations { border-top: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-observations details { border-block-start: 1px solid var(--color-rule); padding-block: 1rem; }
+.create-workspace .custom-kit-observations summary { cursor: pointer; font-family: var(--font-mono); font-size: .8rem; }
+.create-workspace .custom-kit-part { border-block-start: 1px solid var(--color-rule); padding-block: 1rem; }
+.create-workspace .custom-kit-part small { display: block; font-family: var(--font-mono); color: var(--color-muted); font-size: .7rem; margin-top: .3rem; }
+.create-workspace .custom-kit-part label { display: grid; gap: .4rem; font-size: .75rem; }
+.create-workspace .custom-kit-unknown { background: var(--color-paper); padding: 1rem 0; font-size: .8rem; }
+.create-workspace .custom-kit-unknown ul { padding-left: 1.2rem; line-height: 1.6; }
+.create-workspace .custom-kit-edit { padding: 1rem 0; border: 0; border-block-start: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-edit legend { font-family: var(--font-mono); font-size: .7rem; padding-right: .5rem; }
+.create-workspace .custom-kit-edit button { font-size: .75rem; text-decoration: underline; text-underline-offset: .2rem; }
+.create-workspace .custom-kit-picker :focus-visible { outline: 2px solid var(--color-psy-deep); outline-offset: 3px; }

@@ -1,7 +1,7 @@
 # Custom Kit：参考图扫描与开放机体创作评估
 
 日期：2026-10-11
-状态：架构评估与建议，尚未实现；没有执行付费模型调用或部署。
+状态：本文保留首版架构方案与实施前能力评估。P4–P6 首版已完成开发验收，本地及真实模型验证见 [Custom Kit 实施记录](./custom-kit-implementation.md)。
 关联方案：[Creative Intent Resolver 与配色契约升级](./creative-intent-resolver-upgrade.md)。
 统一执行顺序：[Style 与 Custom Kit 升级执行计划](./creation-upgrade-execution-plan.md)。
 

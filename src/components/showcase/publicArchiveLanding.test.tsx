@@ -2,7 +2,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
-import { ExploreLanding } from "./ExploreLanding";
 import { ShowcaseLanding } from "./ShowcaseLanding";
 import type { ShowcaseConcept, ShowcaseSnapshot } from "./types";
 
@@ -67,37 +66,6 @@ const concept = {
     viewerHasSaved: false,
   },
 } as unknown as ShowcaseConcept;
-
-describe("ExploreLanding", () => {
-  it("shows SystemState while the public archive is still opening", () => {
-    useQueryMock.mockReturnValue(undefined);
-    const html = renderToStaticMarkup(<ExploreLanding search={{}} snapshot={emptySnapshot} />);
-
-    expect(html).toContain("Explore / Indexing");
-    expect(html).toContain("the public archive.");
-    expect(html).not.toContain("Today");
-    expect(html).not.toContain("/assets/explore/");
-  });
-
-  it("shows the empty archive instead of editorial placeholders", () => {
-    useQueryMock.mockReturnValue([]);
-    const html = renderToStaticMarkup(<ExploreLanding search={{}} snapshot={emptySnapshot} />);
-
-    expect(html).toContain("No paint plans");
-    expect(html).toContain("Plan a paint scheme");
-    expect(html).not.toContain("Gundam MK");
-    expect(html).not.toContain("/assets/explore/");
-  });
-
-  it("renders live concepts once the archive resolves", () => {
-    useQueryMock.mockReturnValue([concept]);
-    const html = renderToStaticMarkup(<ExploreLanding search={{}} snapshot={emptySnapshot} />);
-
-    expect(html).toContain("Field Hazard");
-    expect(html).toContain("https://cdn.test/preview.webp");
-    expect(html).not.toContain("/assets/explore/");
-  });
-});
 
 describe("ShowcaseLanding", () => {
   it("shows SystemState while the public archive is still opening", () => {

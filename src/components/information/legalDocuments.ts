@@ -4,7 +4,7 @@ import { aiModelDisclosure } from "@/src/lib/aiDisclosure";
 
 export type LegalDocumentId = "terms" | "privacy" | "acceptable-use";
 
-const { image: imageModel, text: textModel, safety: safetyProvider } = aiModelDisclosure;
+const { image: imageModel, text: textModel, safety: safetyProvider, imageScreening } = aiModelDisclosure;
 
 export type LegalDocumentSection = {
   title: string;
@@ -203,7 +203,7 @@ export const legalDocuments: readonly LegalDocument[] = [
     number: "02",
     title: "Privacy Policy",
     summary: "How NeotypeLab handles your account and paint-plan data.",
-    updatedLabel: "Updated Oct 8, 2026",
+    updatedLabel: "Updated Oct 12, 2026",
     effectiveLabel: "Effective Sep 22, 2026",
     href: appPaths.legalPrivacy,
     sections: [
@@ -263,7 +263,8 @@ export const legalDocuments: readonly LegalDocument[] = [
         title: "AI generation and automated processing",
         paragraphs: [
           "When you request an interpretation, palette, specification, or image, the Service sends the inputs needed for that request to the configured generation provider. These inputs may include your prompt or style description, selected catalog attributes, a compiled generation instruction, and eligible reference images. The provider returns generated text or image data and technical metadata. NeotypeLab stores validated results, job records, and selected provider identifiers so the workflow can continue and failures can be investigated.",
-          "Current providers are Google Gemini, accessed through the Google Gemini API, for text processing, and OpenAI GPT Image, served through Cloudflare Workers AI, for image rendering. Before a request is sent to a generation provider, its prompt text is screened by Waffo’s content safety service, which returns a verdict and does not retain the prompt text. Provider availability and routing can change; our AI Acceptable Use Policy lists the current models. Each provider processes data under its own terms and privacy commitments, and its location may differ from yours. Do not include personal, confidential, or regulated information in creative inputs unless it is necessary and you are authorized to do so.",
+          "Current providers are Google Gemini, accessed through the Google Gemini API, for text processing and Custom Kit reference-image analysis, and OpenAI GPT Image, served through Cloudflare Workers AI, for image rendering. Custom Kit scanning first sends a reduced copy of your private reference image to Google Cloud Vision SafeSearch for explicit-content screening (processed in memory and not used for training), then sends the reference to Gemini to assess safety, suitability and visible structure; rendering sends that reference to the image provider with your approved creative instructions. Before a request is sent to a generation provider, its prompt text is screened by Waffo’s content safety service, which returns a verdict and does not retain the prompt text. Provider availability and routing can change; our AI Acceptable Use Policy lists the current models. Each provider processes data under its own terms and privacy commitments, and its location may differ from yours. Do not include personal, confidential, or regulated information in creative inputs unless it is necessary and you are authorized to do so.",
+          "Publishing a generated Custom Kit build does not publish its original private reference image, raw scan, corrections, or private structure-edit record. You may remove a saved Custom Kit reference through its controls; completed builds and paint plans remain available, but further renders requiring the removed reference cannot run.",
           "Generation is automated, but NeotypeLab does not use automated processing to make decisions that produce legal or similarly significant effects about you. Safety systems may automatically reject a request, and anti-abuse signals may limit an account; you may contact us if you believe a restriction was made in error.",
         ],
       },
@@ -352,7 +353,7 @@ export const legalDocuments: readonly LegalDocument[] = [
     number: "03",
     title: "AI Acceptable Use Policy",
     summary: "The six prohibited content categories, the AI models we use, how prompts are moderated, and how we enforce, handle reports, and review appeals.",
-    updatedLabel: "Updated Oct 8, 2026",
+    updatedLabel: "Updated Oct 12, 2026",
     effectiveLabel: "Effective Oct 8, 2026",
     href: appPaths.acceptableUse,
     sections: [
@@ -374,7 +375,7 @@ export const legalDocuments: readonly LegalDocument[] = [
           "NeotypeLab prohibits generating, requesting, uploading, storing, or publishing content in any of the following six categories, whether it appears in a prompt, a style description, notes, an uploaded file, a generated output, or a published page:",
         ],
         items: [
-          "1. Pornography / NSFW content — pornography, sexually explicit or fetish imagery, nudity presented for sexual purposes, and non-consensual intimate content. NeotypeLab does not permit adult content in any form.",
+          "1. Pornography / NSFW content — pornography, sexually explicit or fetish imagery, nudity presented for sexual purposes, and non-consensual intimate content. NeotypeLab does not permit adult content in any form. Adult-proportioned character and mecha-girl figures in revealing but non-explicit outfits, as sold as commercial model kits, may be used as references; generation will not make them more revealing or suggestive.",
           "2. Violence / gore — graphic or gratuitous violence, graphic injury, blood and gore, torture, and content that glorifies, celebrates, or incites real-world violence, terrorism, or violent extremism. Fictional mecha, armor, and model-kit weaponry shown as part of a paint concept is permitted; realistic depictions of harm to people or animals are not.",
           "3. Hate speech — content that promotes hatred, discrimination, dehumanization, harassment, or violence against people based on race, ethnicity, national origin, religion, disability, sex, gender identity, sexual orientation, or another protected characteristic, including hate symbols used to promote such views.",
           "4. Child-unsafe content (CSAM) — any sexualization, sexual exploitation, or abuse of minors, including fictional, stylized, or AI-generated depictions, and any other content that endangers children.",
@@ -414,6 +415,7 @@ export const legalDocuments: readonly LegalDocument[] = [
           `Image generation — ${imageModel.model}, developed by ${imageModel.developer} and served through ${imageModel.servedVia}. Used for ${imageModel.uses}.`,
           `Text generation — ${textModel.model}, developed by ${textModel.developer} and accessed through ${textModel.servedVia}. Used for ${textModel.uses}.`,
           `Prompt safety screening — ${safetyProvider.service} (Waffo Prompt Sift), a stateless check that does not retain prompt text after returning a verdict.`,
+          `Uploaded reference screening — ${imageScreening.service}, which checks each Custom Kit reference image for explicit content before any model analyzes it. Google processes these requests in memory and does not use them to train its models.`,
           "Only the inputs needed for a request—such as your prompt or style description, selected kit and style attributes, the compiled generation instruction, and eligible reference images—are sent to these providers. Provider routing can change; this section is updated when it does. All generated images and text are AI-generated.",
         ],
       },
@@ -424,6 +426,7 @@ export const legalDocuments: readonly LegalDocument[] = [
         ],
         items: [
           "Prompt screening before generation: every text and image generation request is checked against a keyword and phrase blocklist covering all six prohibited categories, which we maintain and update as new patterns appear, and is then screened by an automated content safety service using keyword and semantic detection before it is sent to an AI model. Flagged requests are not generated. Requests that cannot be screened—for example, because the safety service is temporarily unavailable—are also not generated.",
+          `Uploaded image screening: each Custom Kit reference is checked by ${imageScreening.service} and then by the scanning model’s own safety review before it can be used. Rejected references are deleted, cannot be used for generation, and repeated rejections pause uploads for the account. References that cannot be screened are not used.`,
           "Model-level output filtering: the image and text models we use apply their providers’ own safety systems, which can refuse unsafe requests or withhold unsafe outputs. Refused results are not delivered to you.",
           "Review of published content: content made public or unlisted can be reviewed, hidden, or withdrawn by our team, and every report is reviewed by a person.",
           "Moderation records: we keep records of automated screening verdicts (without storing the prompt text itself) and of human review decisions, and use them to investigate reports, handle appeals, and identify repeated violations.",

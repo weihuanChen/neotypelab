@@ -1,3 +1,4 @@
+import { customKitDisplay } from "./customKitContracts";
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { hasIndexableStyle } from "./creativeContracts";
@@ -48,6 +49,7 @@ type ConceptShareCard = {
     fullName: string;
   } | null;
   baseModel: BaseModelWithHierarchy | null;
+  customKit?: { name: string; version: number } | null;
   stylePreset: {
     name: string;
     slug: string;
@@ -110,7 +112,8 @@ export const listPublicConcepts = query({
                 fullName: owner.fullName,
               }
             : null,
-          baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
+          ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
           stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
           materialPreset: materialPreset
             ? {
@@ -392,6 +395,7 @@ export const getSharedConcept = query({
             fullName: owner.fullName,
           }
         : null,
+      ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
       baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
       stylePreset: summarizeConceptStyle(
         stylePreset
@@ -464,6 +468,7 @@ export const getRemixSeed = query({
       stylePresetId: stylePreset._id,
       materialPresetId: materialPreset._id,
       kitVariant: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
+      ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
       baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
       stylePreset: {
         name: stylePreset.name,
@@ -1257,7 +1262,8 @@ async function getConceptShareCard(
           fullName: owner.fullName,
         }
       : null,
-    baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
+    ...(concept.customKitSnapshotJson ? { customKit: customKitDisplay(concept.customKitSnapshotJson) } : {}),
+      baseModel: await summarizeBaseModelWithHierarchy(ctx, baseModel, { publicOnly: true }),
     stylePreset: summarizeConceptStyle(stylePreset, concept.styleIntentJson),
     materialPreset: materialPreset
       ? {
@@ -1307,7 +1313,7 @@ function dedupeShareCards<
   });
 }
 
-function publicVisualPalette(concept: Doc<"concepts">) {
+export function publicVisualPalette(concept: Doc<"concepts">) {
   const parsed = parseStoredVisualPalette(concept.visualPaletteJson)
     ?? visualPaletteFromLegacyPlan(concept.palettePlanJson);
   if (parsed === null) {

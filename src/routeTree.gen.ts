@@ -70,6 +70,7 @@ import { Route as AdminPaintsRouteImport } from './routes/admin.paints'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminModelsRouteImport } from './routes/admin.models'
 import { Route as AdminMaterialsRouteImport } from './routes/admin.materials'
+import { Route as AdminHomeRouteImport } from './routes/admin.home'
 import { Route as AdminGenerationsRouteImport } from './routes/admin.generations'
 import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as AdminCreditsRouteImport } from './routes/admin.credits'
@@ -392,6 +393,11 @@ const AdminMaterialsRoute = AdminMaterialsRouteImport.update({
   path: '/materials',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminHomeRoute = AdminHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminGenerationsRoute = AdminGenerationsRouteImport.update({
   id: '/generations',
   path: '/generations',
@@ -510,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/materials': typeof AdminMaterialsRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -588,6 +595,7 @@ export interface FileRoutesByTo {
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/materials': typeof AdminMaterialsRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -668,6 +676,7 @@ export interface FileRoutesById {
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/generations': typeof AdminGenerationsRoute
+  '/admin/home': typeof AdminHomeRoute
   '/admin/materials': typeof AdminMaterialsRoute
   '/admin/models': typeof AdminModelsRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -749,6 +758,7 @@ export interface FileRouteTypes {
     | '/admin/credits'
     | '/admin/feedback'
     | '/admin/generations'
+    | '/admin/home'
     | '/admin/materials'
     | '/admin/models'
     | '/admin/orders'
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/admin/credits'
     | '/admin/feedback'
     | '/admin/generations'
+    | '/admin/home'
     | '/admin/materials'
     | '/admin/models'
     | '/admin/orders'
@@ -906,6 +917,7 @@ export interface FileRouteTypes {
     | '/admin/credits'
     | '/admin/feedback'
     | '/admin/generations'
+    | '/admin/home'
     | '/admin/materials'
     | '/admin/models'
     | '/admin/orders'
@@ -1452,6 +1464,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMaterialsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/home': {
+      id: '/admin/home'
+      path: '/home'
+      fullPath: '/admin/home'
+      preLoaderRoute: typeof AdminHomeRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/generations': {
       id: '/admin/generations'
       path: '/generations'
@@ -1573,6 +1592,7 @@ interface AdminRouteChildren {
   AdminCreditsRoute: typeof AdminCreditsRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminGenerationsRoute: typeof AdminGenerationsRoute
+  AdminHomeRoute: typeof AdminHomeRoute
   AdminMaterialsRoute: typeof AdminMaterialsRoute
   AdminModelsRoute: typeof AdminModelsRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -1592,6 +1612,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCreditsRoute: AdminCreditsRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminGenerationsRoute: AdminGenerationsRoute,
+  AdminHomeRoute: AdminHomeRoute,
   AdminMaterialsRoute: AdminMaterialsRoute,
   AdminModelsRoute: AdminModelsRoute,
   AdminOrdersRoute: AdminOrdersRoute,
