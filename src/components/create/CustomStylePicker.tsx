@@ -17,7 +17,7 @@ type Props = {
   creditCost?: number;
   creditBalance?: number;
   selectedId: Id<"userStyles"> | null;
-  onUse: (intent: StyleIntent, styleId: Id<"userStyles">) => void;
+  onUse: (intent: StyleIntent, styleId: Id<"userStyles">, sourceDescription?: string) => void;
   onClear: () => void;
   view: "describe" | "mine";
   onApply: () => void;
@@ -140,7 +140,7 @@ export function CustomStylePicker({
     setAdjusting(false);
     setError("");
     if (match?.style) {
-      onUse(recovered.intent, match.style.id as Id<"userStyles">);
+      onUse(recovered.intent, match.style.id as Id<"userStyles">, recovered.sourceDescription);
       setSavedResult(recovered.promptCompositionId);
     }
   }
@@ -188,11 +188,11 @@ export function CustomStylePicker({
         phase={phase}
         onApply={() => { void run(async () => {
           const saved = await save({ promptCompositionId: interpretation.promptCompositionId as Id<"promptCompositions"> });
-          onUse(saved.intent, saved.styleId); setSavedResult(interpretation.promptCompositionId); onApply();
+          onUse(saved.intent, saved.styleId, interpretation.sourceDescription); setSavedResult(interpretation.promptCompositionId); onApply();
         }); }}
         onSave={() => { void run(async () => {
           const saved = await save({ promptCompositionId: interpretation.promptCompositionId as Id<"promptCompositions"> });
-          onUse(saved.intent, saved.styleId); setSavedResult(interpretation.promptCompositionId);
+          onUse(saved.intent, saved.styleId, interpretation.sourceDescription); setSavedResult(interpretation.promptCompositionId);
         }); }}
         onNewStyle={newStyle}
         onRevise={reviseDirection}
@@ -419,7 +419,7 @@ function convexErrorText(error: unknown) {
 }
 
 export function IntentSummary({ intent }: { intent: StyleIntent }) {
-  const colors = intent.colors?.map(color => ({ role: `${color.name} (${color.role})`, hex: color.hex, weight: color.coverage })) ?? [];
+  const colors = intent.colors?.map((color, index) => ({ id: `style-color-${index}`, role: `${color.name} (${color.role})`, hex: color.hex, weight: color.coverage })) ?? [];
   return <>
     <StylePalette colors={colors} />
     <dl className="grid grid-cols-2 gap-3 text-sm">

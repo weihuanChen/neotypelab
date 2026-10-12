@@ -171,7 +171,7 @@ export const baseUnitSeeds: BaseUnitSeed[] = [
     unitCode: "EVA-01",
     aliases: ["Evangelion Unit-01", "Test Type-01"],
     silhouetteType: "agile-experimental",
-    keyShapeAnchors: ["single horn", "shoulder pylons", "narrow waist", "green chest accents", "elongated head"],
+    keyShapeAnchors: ["single horn", "shoulder pylons", "narrow waist", "chest accent panel geometry", "elongated head"],
     nativeEquipment: ["progressive knife", "pallet rifle"],
     forbiddenChanges: ["no Gundam V-fin", "no blocky mobile suit torso", "no classic military mono-eye"],
     promptAnchor: "Keep EVA Unit-01 recognizable as the lanky experimental Evangelion test type.",

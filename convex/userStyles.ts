@@ -6,6 +6,13 @@ import { styleIntentSchema } from "./creativeContracts";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
 import { getPublishedRenditions } from "./publications";
 
+function shareableStyleIntent(intentJson: string) {
+  const intent = styleIntentSchema.parse(JSON.parse(intentJson));
+  return intent.version === "style-intent.v3"
+    ? { ...intent, explicitRequirements: { version: "normalized-user-intent.v1" as const, requirements: [], unresolved: [] } }
+    : intent;
+}
+
 function activeViewer(ctx: MutationCtx) {
   const viewer = ctx.viewerX();
   if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
@@ -14,7 +21,7 @@ function activeViewer(ctx: MutationCtx) {
 export async function ownedStyle(ctx: QueryCtx | MutationCtx, styleId: Id<"userStyles">, intentJson?: string) {
   const style = await ctx.db.get(styleId);
   if (!style || style.userId !== ctx.viewerX()._id || style.status !== "active") throw new Error("Saved style is unavailable");
-  if (intentJson === undefined || JSON.stringify(styleIntentSchema.parse(JSON.parse(intentJson))) !== style.intentJson) {
+  if (intentJson === undefined || JSON.stringify(styleIntentSchema.parse(JSON.parse(intentJson))) !== JSON.stringify(styleIntentSchema.parse(JSON.parse(style.intentJson)))) {
     throw new Error("Saved style does not match the selected intent");
   }
   return style;
@@ -80,9 +87,9 @@ async function communityCard(ctx: QueryCtx, style: Doc<"userStyles">) {
       ? { conceptId: concept._id, imageUrl: assets.preview.publicUrl } : null;
   }));
   const published = previews.filter((item): item is NonNullable<typeof item> => item !== null);
-  const intent = styleIntentSchema.parse(JSON.parse(style.intentJson));
+  const publicIntent = shareableStyleIntent(style.intentJson);
   return {
-    id: style._id, name: style.name, intent: { ...intent, source: "community" as const },
+    id: style._id, name: style.name, intent: { ...publicIntent, source: "community" as const },
     creator: { handle: creator.handle, name: creator.fullName },
     saveCount: style.saveCount, publicPrototypeCount: published.length, preview: published.at(0) ?? null,
     promoted: Boolean(style.promotedPresetId), createdAt: style.createdAt,
@@ -122,13 +129,14 @@ export const saveCommunityStyle = mutation({
       if (previous.status !== "active") throw new Error("Saved style is unavailable");
       return { styleId: previous._id, intent: styleIntentSchema.parse(JSON.parse(previous.intentJson)) };
     }
+    const sharedIntent = shareableStyleIntent(source.intentJson);
     const id = await ctx.db.insert("userStyles", {
-      userId: viewer._id, name: source.name, intentJson: source.intentJson,
+      userId: viewer._id, name: source.name, intentJson: JSON.stringify(sharedIntent),
       sourceStyleId: source._id, rootStyleId: source._id, visibility: "private", status: "active",
       saveCount: 0, createdAt: Date.now(), updatedAt: Date.now(),
     });
     await ctx.db.patch(source._id, { saveCount: source.saveCount + 1 });
-    return { styleId: id, intent: styleIntentSchema.parse(JSON.parse(source.intentJson)) };
+    return { styleId: id, intent: sharedIntent };
   },
 });
 
@@ -168,7 +176,9 @@ export const promote = mutation({
       throw new Error("Supply a visual-language name, lowercase hyphenated slug and a short description");
     }
     if (await ctx.db.query("stylePresets").withIndex("by_slug", q => q.eq("slug", slug)).unique()) throw new Error("Style slug already exists");
-    const intent = styleIntentSchema.parse({ ...JSON.parse(source.intentJson), name, source: "official", styleType: "preset" });
+    const original = styleIntentSchema.parse(JSON.parse(source.intentJson));
+    const intent = styleIntentSchema.parse({ ...original, name, source: "official", styleType: "preset",
+      ...(original.version === "style-intent.v3" ? { explicitRequirements: { version: "normalized-user-intent.v1", requirements: [], unresolved: [] } } : {}) });
     const id = await ctx.db.insert("stylePresets", {
       name, slug, shortDescription: description, category: "Community curated", promptKeywords: [],
       negativeKeywords: [], recommendedMaterialSlugs: [], seoKeywords: [], creatorUserId: source.userId,

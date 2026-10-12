@@ -4,11 +4,11 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { seedUser } from "@/tests/convexTestHelpers";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
-import { styleIntentSchema } from "./creativeContracts";
+import { styleIntentSchema, sourceNormalizationProtocolVersion } from "./creativeContracts";
 
 const modules = import.meta.glob("./**/*.ts");
 const intent = styleIntentSchema.parse({
-  version: "style-intent.v2", source: "private", styleType: "custom", name: "Cyan Performance",
+  version: "style-intent.v3", source: "private", styleType: "custom", name: "Cyan Performance",
   palette: { primary: "cyan teal", secondary: "charcoal", accent: "magenta" },
   surfaceLogic: "smooth satin", graphicLanguage: "racing", contrast: "high", markingDensity: "medium",
   materialIntent: ["painted armor"], mood: "energetic", weathering: "clean", finish: "satin", paintability: "high",
@@ -18,6 +18,7 @@ const intent = styleIntentSchema.parse({
     { role: "accent", name: "magenta", hex: "#D6337F", coverage: 15 },
   ],
   pattern: "none",
+  explicitRequirements: { version: "normalized-user-intent.v1", requirements: [], unresolved: [] },
 });
 async function fixture() {
   const t = convexTest(schema, modules);
@@ -51,6 +52,7 @@ describe("Style interpretation lifecycle", () => {
   it("reserves once, claims once, restores successful output and protects ownership", async () => {
     const f = await fixture();
     const id = await interpreted(f);
+    expect(JSON.parse((await f.t.run(ctx => ctx.db.get(id)))!.outputSummaryJson!).sourceNormalizationProtocolVersion).toBe(sourceNormalizationProtocolVersion);
     expect(await f.owner.client.mutation(internal.styleInterpretations.begin, { description: "Private reference phrase", requestKey: "interpret-1" })).toBe(id);
     expect(await f.owner.client.mutation(internal.styleInterpretations.claim, { promptCompositionId: id })).toBeNull();
     expect(await balance(f)).toBe(40 - f.cost);
@@ -116,7 +118,7 @@ describe("Style interpretation lifecycle", () => {
     await expect(f.owner.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId: row!._id })).rejects.toThrow(/completed/);
   });
 
-  it("refunds interpreter output that skips the v2 color anchors", async () => {
+  it("refunds interpreter output that skips v3 explicit provenance", async () => {
     const f = await fixture();
     const { colors: _colors, pattern: _pattern, ...rest } = intent;
     const legacy = { ...rest, version: "style-intent.v1" };
@@ -126,8 +128,47 @@ describe("Style interpretation lifecycle", () => {
       choices: [{ finish_reason: "stop", message: { content: JSON.stringify(legacy) } }],
     }), { status: 200 })));
     await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description: "Jungle camo", requestKey: "legacy-output" }))
-      .rejects.toThrow(/v2/);
+      .rejects.toThrow(/v3/);
     expect(await balance(f)).toBe(40);
+  });
+
+  it("refuses a current source receipt when the provider omits explicit color importance", async () => {
+    const f = await fixture();
+    const description = "Use blue as a large armor color";
+    const incomplete = { ...intent, explicitRequirements: { version: "normalized-user-intent.v1", requirements: [{
+      id: "large-blue", property: "colors", operation: "replace", scope: { kind: "exterior-armor" }, colors: [{ name: "Blue", family: "blue" }],
+      evidence: { inputRef: "style-description", quote: description },
+    }], unresolved: [] } };
+    vi.stubEnv("GEMINI_API_KEY_OFFCIAL", "test-only");
+    vi.stubEnv("CONTENT_SAFETY_MODE", "off");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ choices: [{ finish_reason: "stop", message: { content: JSON.stringify(incomplete) } }] }), { status: 200 })));
+    await expect(f.owner.client.action(api.prototypeTools.interpretCustomStyle, { description, requestKey: "missing-importance" })).rejects.toThrow(/visualRole/);
+    const composition = await f.t.run(ctx => ctx.db.query("promptCompositions").withIndex("by_user_request", q => q.eq("userId", f.owner.userId).eq("requestKey", "missing-importance")).unique());
+    expect(composition!.status).toBe("failed");
+    expect(composition!.outputSummaryJson).toBeUndefined();
+    expect(await balance(f)).toBe(40);
+  });
+
+  it("completes a historical in-flight v3 interpretation without falsely issuing the new receipt", async () => {
+    const f = await fixture();
+    const description = "Use blue as a large armor color";
+    const incomplete = { ...intent, explicitRequirements: { version: "normalized-user-intent.v1", requirements: [{
+      id: "large-blue", property: "colors", operation: "replace", scope: { kind: "exterior-armor" }, colors: [{ name: "Blue", family: "blue" }],
+      evidence: { inputRef: "style-description", quote: description },
+    }], unresolved: [] } };
+    const id = await f.owner.client.mutation(internal.styleInterpretations.begin, { description, requestKey: "historical-source" });
+    await f.t.run(async ctx => {
+      const row = (await ctx.db.get(id))!;
+      const snapshot = JSON.parse(row.inputSnapshotJson);
+      delete snapshot.sourceNormalizationProtocolVersion;
+      snapshot.inputKey = JSON.stringify({ version: "style-interpreter.v3", description });
+      await ctx.db.patch(id, { inputSnapshotJson: JSON.stringify(snapshot) });
+    });
+    await f.owner.client.mutation(internal.styleInterpretations.claim, { promptCompositionId: id });
+    await f.t.mutation(internal.styleInterpretations.complete, { promptCompositionId: id, responseJson: JSON.stringify(incomplete), executionJson: "{}" });
+    const output = JSON.parse((await f.t.run(ctx => ctx.db.get(id)))!.outputSummaryJson!);
+    expect(output.intent).toEqual(incomplete);
+    expect(output.sourceNormalizationProtocolVersion).toBeUndefined();
   });
 
   it("fails closed before the text provider when prompts cannot be screened, and refunds", async () => {
@@ -205,6 +246,23 @@ describe("Style interpretation lifecycle", () => {
 });
 
 describe("Private and community styles", () => {
+  it("keeps creator evidence private when a different user saves a shared style", async () => {
+    const f = await fixture();
+    const privatePhrase = "Private reference phrase";
+    const styleIntent = { ...intent, explicitRequirements: { version: "normalized-user-intent.v1", requirements: [{
+      id: "private-color", property: "colors", operation: "add", scope: { kind: "exterior-armor" },
+      colors: [{ name: "Blue", family: "blue" }], evidence: { inputRef: "style-description", quote: privatePhrase },
+    }], unresolved: [] } };
+    const styleId = await f.t.run(ctx => ctx.db.insert("userStyles", { userId: f.owner.userId, name: intent.name, intentJson: JSON.stringify(styleIntent), visibility: "community", status: "active", saveCount: 0, createdAt: 1, updatedAt: 1 }));
+    const card = await f.other.client.query(api.userStyles.getCommunityStyle, { styleId });
+    const saved = await f.other.client.mutation(api.userStyles.saveCommunityStyle, { styleId });
+    const mine = await f.other.client.query(api.userStyles.mine, {});
+    expect(JSON.stringify(card)).not.toContain(privatePhrase);
+    expect(JSON.stringify(saved)).not.toContain(privatePhrase);
+    expect(JSON.stringify(mine)).not.toContain(privatePhrase);
+    expect(JSON.parse((await f.t.run(ctx => ctx.db.get(styleId)))!.intentJson)).toEqual(styleIntent);
+  });
+
   it("saves privately once and never exposes source descriptions through community payloads", async () => {
     const f = await fixture();
     const style = await saved(f);
@@ -244,7 +302,8 @@ describe("Private and community styles", () => {
     await expect(f.owner.client.mutation(internal.creativePipeline.begin, { ...args, styleIntentJson: JSON.stringify({ ...intent, name: "Forgery" }), kind: "palette-plan", requestKey: "tampered" })).rejects.toThrow(/does not match/);
     const paletteId = await f.owner.client.mutation(internal.creativePipeline.begin, { ...args, kind: "palette-plan", requestKey: "saved-palette" });
     await f.t.mutation(internal.creativePipeline.complete, { promptCompositionId: paletteId, responseJson: JSON.stringify({
-      entries: catalog.roles.map(role => ({ roleSlug: role.slug, targetHex: "#00AABB", paintEffect: "solid", rationale: "Cyan armor" })), sprayNotes: ["Thin coats"],
+      version: "visual-palette.v3", entries: intent.colors!.map((color, index) => ({ colorId: `style-color-${index + 1}`, colorName: color.name,
+        roleSlug: color.role === "secondary" ? "secondary-armor" : "primary-armor", targetHex: color.hex, paintEffect: "solid", rationale: "Cyan armor" })), sprayNotes: ["Thin coats"],
     }), executionJson: "{}" });
     const concept = await f.owner.client.mutation(api.prototypes.initializePrototype, { ...args, paletteCompositionId: paletteId });
     const stored = await f.t.run(ctx => ctx.db.get(concept.conceptId));

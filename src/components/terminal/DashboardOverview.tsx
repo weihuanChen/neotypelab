@@ -155,7 +155,7 @@ export function DashboardOverview() {
                 <article key={plan._id}>
                   <header><span>N°.{String(plan.conceptRecordNumber ?? 0).padStart(3, "0")}</span><small>Version {plan.currentVersion} / {plan.status}</small></header>
                   <h3>{plan.title}</h3><p>{plan.snapshot?.baseModelName ?? "Prototype source"} · {plan.snapshot?.stylePresetName ?? "Style DNA pending"}</p>
-                  <ol>{(plan.snapshot?.entries ?? []).slice(0, 4).map((entry: PlanEntry, index: number) => <li key={entry.roleSlug}><span>{String(index + 1).padStart(2, "0")}</span><strong>{entry.roleName}</strong><b>{entry.suggestedPaint ? `${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}` : "Custom mix required"}</b></li>)}</ol>
+                  <ol>{(plan.snapshot?.entries ?? []).slice(0, 4).map((entry: PlanEntry, index: number) => <li key={entry.colorId ?? `${entry.roleSlug}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{entry.colorName ?? entry.roleName}</strong><b>{entry.suggestedPaint ? `${entry.suggestedPaint.code} ${entry.suggestedPaint.colorName}` : "Custom mix required"}</b></li>)}</ol>
                 </article>
               ))}
             </div>
@@ -182,7 +182,7 @@ export function DashboardOverview() {
   );
 }
 
-type PlanEntry = { roleSlug: string; roleName: string; suggestedPaint?: { code: string; colorName: string } | null };
+type PlanEntry = { colorId?: string; colorName?: string; roleSlug: string; roleName: string; suggestedPaint?: { code: string; colorName: string } | null };
 
 function SubscriptionPanel({ effectivePlan, subscription }: {
   effectivePlan: string;

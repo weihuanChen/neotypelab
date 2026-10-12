@@ -131,9 +131,9 @@ export function SeoLandingView({ landing }: { landing: SeoLandingData }) {
             <section className="public-panel">
               <p className="showcase-kicker is-teal">Paint Mapping Cues</p>
               <div className="public-mini-list">
-                {landing.paintPlan.entries.slice(0, 5).map((entry) => (
-                  <div className="public-mini-row" key={entry.roleSlug}>
-                    <strong>{entry.roleName}</strong>
+                {landing.paintPlan.entries.slice(0, 5).map((entry, index) => (
+                  <div className="public-mini-row" key={entry.colorId ?? `${entry.roleSlug}-${index}`}>
+                    <strong>{entry.colorName ?? entry.roleName}</strong>
                     <span>
                       {entry.suggestedPaint
                         ? `${entry.suggestedPaint.brand} ${entry.suggestedPaint.colorName}`

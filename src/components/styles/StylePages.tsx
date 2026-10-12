@@ -31,6 +31,8 @@ function JsonLd({ name, path, description, image }: { name: string; path: string
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
 }
 function Palette({ intent }: { intent: StyleIntent }) {
+  if (intent.colors?.length) return <dl className="style-palette">{intent.colors.map((color, index) =>
+    <div key={`${color.name}-${index}`}><dt>{color.role}</dt><dd>{color.name}</dd></div>)}</dl>;
   return <dl className="style-palette">{Object.entries(intent.palette).map(([role, color]) =>
     <div key={role}><dt>{role}</dt><dd>{Array.isArray(color) ? color.join(" · ") : color}</dd></div>)}</dl>;
 }
@@ -58,7 +60,7 @@ export function StyleGallery({ styles }: { styles: Gallery }) {
       <a className="style-study" href={`/styles/${style.slug}`} key={style.id}>
         <img src={style.imageUrl} alt={`${style.name} repaint preview`} loading="lazy" />
         <p className="style-eyebrow">{style.category} / {style.modelCount} kit{style.modelCount === 1 ? "" : "s"}</p>
-        <h2>{style.name}</h2><p>{paletteNames(style.intent.palette)}</p><p>{style.description}</p>
+        <h2>{style.name}</h2><p>{paletteNames(style.intent.palette, style.intent.colors)}</p><p>{style.description}</p>
       </a>)}</div> : <div className="style-empty"><h2>{styles.length ? "No styles in this selection yet." : "The first style studies are on their way."}</h2>
       <p>Each study brings together a repaint direction, a reviewed preview and a practical paint mapping.</p></div>}
     <aside className="style-custom"><div><p className="style-eyebrow">Your own direction</p><h2>Have a different feeling in mind?</h2>
@@ -97,10 +99,10 @@ export function StyleModelDetail({ pair }: { pair: Pair }) {
     </div><img src={pair.imageUrl} alt={`${model.name} painted in ${style.name}`} /></section>
     <div className="style-section-heading"><p className="style-eyebrow">03 / From preview to paint</p><h2>The paint mapping</h2>
       <p>Reviewed catalog matches for this study. Screen previews and physical paint can differ.</p></div>
-    <div className="style-paints">{pair.palette.entries.map(entry => <article key={entry.roleSlug}>
-      <span className="style-paint-chip" style={{ backgroundColor: entry.suggestedPaint.hexPreview ?? "transparent" }} aria-hidden="true" />
-      <div><p className="style-eyebrow">{entry.roleName}</p><h3>{entry.suggestedPaint.colorName}</h3>
-        <p>{entry.suggestedPaint.brand} · {entry.suggestedPaint.code}</p><p>{entry.rationale}</p></div>
+    <div className="style-paints">{pair.palette.entries.map((entry, index) => <article key={entry.colorId ?? `${entry.roleSlug}-${index}`}>
+      <span className="style-paint-chip" style={{ backgroundColor: entry.targetHex ?? entry.suggestedPaint?.hexPreview ?? "transparent" }} aria-hidden="true" />
+      <div><p className="style-eyebrow">{entry.roleName}</p><h3>{entry.colorName ?? entry.suggestedPaint?.colorName ?? "Custom mix"}</h3>
+        <p>{entry.suggestedPaint ? `${entry.suggestedPaint.brand} · ${entry.suggestedPaint.code}` : "No direct catalog SKU · Custom mix"}</p><p>{entry.rationale}</p></div>
     </article>)}</div>
     <a className="showcase-button" href={`/prototype/${pair.conceptId}`}>Open the original prototype →</a>
   </main></AppShell>;

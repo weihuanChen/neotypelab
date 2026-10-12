@@ -110,6 +110,22 @@ const snapshot: PrototypeSnapshot = {
 };
 
 describe("PrototypePublicView", () => {
+  it("keeps seven armor colors and joins each public paint match by ID", () => {
+    const colors = ["Red", "Blue", "Green", "Orange", "Purple", "Yellow", "Pink"];
+    const entries = colors.map((colorName, index) => ({
+      colorId: `spectrum-${index}`, colorName, roleSlug: "primary-armor", roleName: "Primary armor", targetHex: "#1565C0",
+    }));
+    const paintEntries = entries.slice(0, 6).map((entry, index) => ({
+      ...entry, suggestedPaint: { brand: "Catalog", code: `CODE-${index}`, colorName: `Catalog ${entry.colorName}`, hexPreview: entry.targetHex },
+    }));
+    const shared = { ...concept, visualPalette: { entries }, paintPlan: { ...concept.paintPlan, entries: paintEntries } } as unknown as SharedPrototype;
+    const html = renderToStaticMarkup(<PrototypePublicView conceptId="concept-1" snapshot={{ ...snapshot, concept: shared }} />);
+    expect(html).toContain("7 colors");
+    for (let index = 0; index < 6; index++) expect(html).toContain(`CODE-${index} Catalog ${colors[index]}`);
+    expect(html).toContain("Pink");
+    expect(html).toContain("#1565C0 · No catalog SKU · custom mix");
+  });
+
   it("stages the public case as artwork, color DNA, and a single create peak", () => {
     const html = renderToStaticMarkup(
       <PrototypePublicView conceptId="concept-1" snapshot={snapshot} />

@@ -3,7 +3,7 @@ import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { creativeTemplateSeeds } from "./creativeContracts";
 
-const CREATIVE_TEMPLATE_VERSION = "creation.v2";
+const CREATIVE_TEMPLATE_VERSION = "creation.v3";
 
 export const HD_RENDER_SYSTEM_PATCH =
   "Render the selected visual color targets only. Never render paint brands, product codes, HEX strings, catalog numbers, palette legends, color charts, callout lines, specification sheets, or technical annotation text. Preserve native in-universe markings only.";
@@ -71,7 +71,7 @@ export const configure = internalMutation({
       for (const version of versions.filter(ver => ver.status === "published" && ver.version !== CREATIVE_TEMPLATE_VERSION)) await ctx.db.patch(version._id, { status: "archived", updatedAt: now });
       let versionId = versions.find(ver => ver.version === CREATIVE_TEMPLATE_VERSION)?._id;
       const content = { systemPrompt: seed.systemPrompt, userPromptTemplate: seed.userPromptTemplate,
-        notePolicy: "Structured kit selections and approved palette override operator notes.", status: "published" as const, publishedAt: now, updatedAt: now };
+        notePolicy: "Resolved creative intent applies explicit user requirements over Style defaults; approved colors and panel assignments stay frozen.", status: "published" as const, publishedAt: now, updatedAt: now };
       if (versionId) await ctx.db.patch(versionId, content);
       else versionId = await ctx.db.insert("promptTemplateVersions", { ...content, promptTemplateId: template._id, version: CREATIVE_TEMPLATE_VERSION, createdAt: now });
       await ctx.db.patch(template._id, { name: seed.name, version: CREATIVE_TEMPLATE_VERSION, publishedVersionId: versionId, systemPrompt: seed.systemPrompt,

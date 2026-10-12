@@ -7,6 +7,14 @@ on the server, survives page closure and refunds the full price on final failure
 See [Kit picker and preview runs](docs/kit-picker-and-preview-runs.md) for resource
 guidelines, retry semantics and catalog-size bounds.
 
+Style generation resolves custom descriptions and preset refinements into a
+frozen creative intent before planning colors. Explicit color requests override
+Style defaults; a color combination does not imply a fixed coverage ratio.
+New palettes and repaint specifications use v3 color and assignment IDs, so
+multiple colors can share an armor role. Historical v2 records remain readable.
+See [the upgrade execution plan](docs/creation-upgrade-execution-plan.md) and
+[the creative intent contract](docs/creative-intent-resolver-upgrade.md).
+
 NeotypeLab is a TanStack Start frontend deployed on Cloudflare Workers with
 Convex as the canonical backend. The app exposes public prototype discovery
 routes, OG/social cards, sitemap/robots output, and an authenticated terminal for

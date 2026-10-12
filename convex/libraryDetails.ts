@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query } from "./functions";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import { repaintSchema } from "./creativeContracts";
+import { resolvedCreativeIntentSchema } from "./creativeIntentResolver";
 import type { Doc } from "./_generated/dataModel";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
 import {
@@ -21,6 +22,17 @@ function objectJson(value?: string): Record<string, unknown> {
 }
 function text(value: unknown) { return typeof value === "string" ? value : null; }
 function httpUrl(value?: string) { return value && /^https?:\/\//.test(value) ? value : null; }
+
+function materialDisplayName(concept: Pick<Doc<"concepts">, "resolvedIntentJson" | "materialSnapshotJson">, liveName?: string) {
+  if (concept.resolvedIntentJson) {
+    const resolved = resolvedCreativeIntentSchema.safeParse(objectJson(concept.resolvedIntentJson));
+    if (resolved.success && !resolved.data.conflicts.length && !resolved.data.unresolved.length) {
+      return resolved.data.effectiveStyle.materialIntent.join(" · ");
+    }
+  }
+  const frozenName = text(objectJson(concept.materialSnapshotJson).name)?.trim();
+  return frozenName || liveName || null;
+}
 
 /** Owner-only read model. Resource collections follow media assets and their versions,
  * so future reference images, masks and exports do not require new page-level queries. */
@@ -107,7 +119,10 @@ export const get = query({
       }
     }
     const rawSpec = objectJson(concept.renderSpecificationJson);
-    const specResult = repaintSchema.safeParse({ summary: rawSpec.summary, panels: rawSpec.panels, material: rawSpec.material, weathering: rawSpec.weathering, decals: rawSpec.decals });
+    const specResult = repaintSchema.safeParse({
+      ...(rawSpec.version === "repaint-specification.v3" ? { version: rawSpec.version } : {}),
+      summary: rawSpec.summary, panels: rawSpec.panels, material: rawSpec.material, weathering: rawSpec.weathering, decals: rawSpec.decals,
+    });
     const compositionById = new Map(compositions.filter(c => c.userId === ownerId).map(c => [c._id, c]));
     const history = jobs.filter(job => job.userId === ownerId).map(job => {
       const composition = job.promptCompositionId ? compositionById.get(job.promptCompositionId) : undefined;
@@ -127,12 +142,13 @@ export const get = query({
       status: concept.status, visibility: concept.visibility, notes: concept.notes ?? null,
       mood: concept.moodTags ?? [], weathering: concept.weatheringLevel,
       kit: kit ? { name: kit.name, grade: kit.grade ?? null, scale: kit.scale ?? null, manufacturer: kit.manufacturer ?? null } : null,
-      style: styleDisplayName(style, concept.styleIntentJson), material: material?.name ?? null,
+      style: styleDisplayName(style, concept.styleIntentJson), material: materialDisplayName(concept, material?.name),
       hero: { storageObjectId: preview?.id ?? readableLegacyObject?._id ?? null,
         publicUrl: preview || readableLegacyObject ? null : httpUrl(safeLegacy?.publicUrl),
         width: preview?.width ?? readableLegacyObject?.width ?? null, height: preview?.height ?? readableLegacyObject?.height ?? null,
         version: current?.version ?? null },
       palette: visualPalette,
+      resolvedIntentJson: concept.resolvedIntentJson ?? null,
       paintRecommendations,
       specification: specResult.success ? specResult.data : null,
       collections, history,

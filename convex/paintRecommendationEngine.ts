@@ -4,21 +4,70 @@ import { deltaE2000, hexToLabD65, hexToRgb } from "./paintColor";
 
 export const visualPaintEffectSchema = z.enum(["solid", "metallic", "transparent"]);
 
-export const visualPaletteSchema = z.object({
+export const visualColorCoverageSchema = z.object({
+  scope: z.enum(["exterior-armor", "inner-frame", "sensors", "markings", "whole-kit", "part"]),
+  part: z.string().min(1).optional(),
+  percent: z.number().min(0.1).max(100),
+  source: z.enum(["ai-allocation", "resolved-constraint"]),
+}).strict().superRefine((coverage, ctx) => {
+  if (coverage.scope === "part" && !coverage.part) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["part"], message: "Part coverage needs a named part" });
+  }
+});
+
+const visualPaletteEntrySchema = z.object({
+  // Optional only for frozen v2 records. New colors have independent identities.
+  colorId: z.string().min(1).optional(),
+  colorName: z.string().min(1).optional(),
+  roleSlug: z.string().min(1),
+  roleName: z.string().min(1),
+  recommendedArea: z.string().optional(),
+  targetHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  paintEffect: visualPaintEffectSchema,
+  rationale: z.string().min(1),
+  coverage: visualColorCoverageSchema.optional(),
+}).strict();
+
+const visualPaletteV2Schema = z.object({
   version: z.literal("visual-palette.v2"),
-  entries: z.array(z.object({
-    roleSlug: z.string().min(1),
-    roleName: z.string().min(1),
-    recommendedArea: z.string().optional(),
-    targetHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-    paintEffect: visualPaintEffectSchema,
-    rationale: z.string().min(1),
-  }).strict()).min(1),
+  entries: z.array(visualPaletteEntrySchema).min(1),
   sprayNotes: z.array(z.string()).default([]),
 }).strict();
 
+const visualPaletteV3Schema = visualPaletteV2Schema.extend({
+  version: z.literal("visual-palette.v3"),
+  entries: z.array(visualPaletteEntrySchema.extend({
+    colorId: z.string().trim().min(1).max(100),
+    colorName: z.string().trim().min(1).max(80),
+  })).min(1).max(32),
+}).superRefine((palette, ctx) => {
+  const seen = new Set<string>();
+  palette.entries.forEach((entry, index) => {
+    if (seen.has(entry.colorId)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["entries", index, "colorId"], message: "Color IDs must be unique" });
+    }
+    seen.add(entry.colorId);
+  });
+});
+
+export const visualPaletteSchema = z.union([visualPaletteV2Schema, visualPaletteV3Schema]);
+
 export type VisualPalette = z.infer<typeof visualPaletteSchema>;
 export type VisualPaletteEntry = VisualPalette["entries"][number];
+
+/** Role slugs are a legacy identity only; repeated v3 roles never identify colors. */
+export function paletteColorId(entry: { colorId?: string; roleSlug: string }) {
+  return entry.colorId ?? entry.roleSlug;
+}
+
+export function samePaletteColor(left: { colorId?: string; roleSlug: string }, right: { colorId?: string; roleSlug: string }) {
+  if (left.colorId || right.colorId) return Boolean(left.colorId && right.colorId && left.colorId === right.colorId);
+  return left.roleSlug === right.roleSlug;
+}
+
+function colorMetadata(entry: Pick<VisualPaletteEntry, "colorId" | "colorName">) {
+  return entry.colorId ? { colorId: entry.colorId, colorName: entry.colorName } : {};
+}
 
 const recommendationPaintSchema = z.object({
   _id: z.string(),
@@ -33,7 +82,7 @@ const recommendationPaintSchema = z.object({
 }).passthrough();
 
 export const paintRecommendationSetsSchema = z.object({
-  version: z.union([z.literal("paint-recommendations.v1"), z.literal("paint-recommendations.v2")]),
+  version: z.enum(["paint-recommendations.v1", "paint-recommendations.v2", "paint-recommendations.v3"]),
   generatedAt: z.number(),
   sets: z.array(z.object({
     id: z.string(),
@@ -43,16 +92,22 @@ export const paintRecommendationSetsSchema = z.object({
     recommended: z.boolean(),
     coverageCount: z.number().int().nonnegative(),
     roleCount: z.number().int().positive(),
+    colorCount: z.number().int().positive().optional(),
     averageDeltaE: z.number().nullable(),
     maxDeltaE: z.number().nullable(),
     missingRoleSlugs: z.array(z.string()),
+    missingColorIds: z.array(z.string()).optional(),
     uncoveredRoles: z.array(z.object({
+      colorId: z.string().optional(),
+      colorName: z.string().optional(),
       roleSlug: z.string(),
       targetHex: z.string(),
       paintEffect: visualPaintEffectSchema,
     }).strict()).optional(),
     warnings: z.array(z.string()),
     entries: z.array(z.object({
+      colorId: z.string().optional(),
+      colorName: z.string().optional(),
       roleSlug: z.string(),
       targetHex: z.string(),
       paintEffect: visualPaintEffectSchema,
@@ -62,7 +117,27 @@ export const paintRecommendationSetsSchema = z.object({
       paint: recommendationPaintSchema,
     }).strict()),
   }).strict()),
-}).strict();
+}).strict().superRefine((recommendations, ctx) => {
+  if (recommendations.version !== "paint-recommendations.v3") return;
+  recommendations.sets.forEach((set, index) => {
+    if (set.colorCount === undefined || !set.missingColorIds || !set.uncoveredRoles) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sets", index], message: "V3 recommendations need color coverage metadata" });
+    }
+    for (const entry of [...set.entries, ...(set.uncoveredRoles ?? [])]) {
+      if (!entry.colorId || !entry.colorName) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sets", index], message: "V3 recommendation colors need IDs and names" });
+      }
+    }
+    const colorIds = [...set.entries, ...(set.uncoveredRoles ?? [])].map((entry) => entry.colorId);
+    const missingIds = set.uncoveredRoles?.map((entry) => entry.colorId) ?? [];
+    if (set.coverageCount !== set.entries.length || set.colorCount !== colorIds.length ||
+      new Set(colorIds).size !== colorIds.length ||
+      set.missingColorIds?.length !== missingIds.length ||
+      missingIds.some((id) => !id || !set.missingColorIds?.includes(id))) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sets", index], message: "Color coverage must preserve every matched and unmatched target exactly once" });
+    }
+  });
+});
 
 export type PaintRecommendationSets = z.infer<typeof paintRecommendationSetsSchema>;
 
@@ -77,27 +152,33 @@ type PaintSystem = {
 const MAX_RECOMMENDATION_DELTA_E = 10;
 
 export function buildVisualPalette(input: {
+  version?: "visual-palette.v2" | "visual-palette.v3";
   entries: Array<{
+    colorId?: string;
+    colorName?: string;
     roleSlug: string;
     targetHex: string;
     paintEffect: "solid" | "metallic" | "transparent";
     rationale: string;
+    coverage?: z.infer<typeof visualColorCoverageSchema>;
   }>;
   roles: Array<{ slug: string; name: string; recommendedArea?: string }>;
   sprayNotes: string[];
 }): VisualPalette {
   return visualPaletteSchema.parse({
-    version: "visual-palette.v2",
+    version: input.version ?? (input.entries.some((entry) => entry.colorId) ? "visual-palette.v3" : "visual-palette.v2"),
     entries: input.entries.map((entry) => {
       const role = input.roles.find((candidate) => candidate.slug === entry.roleSlug);
       if (!role) throw new Error(`Unknown color role: ${entry.roleSlug}`);
       return {
+        ...colorMetadata(entry),
         roleSlug: entry.roleSlug,
         roleName: role.name,
         recommendedArea: role.recommendedArea,
         targetHex: entry.targetHex.toUpperCase(),
         paintEffect: entry.paintEffect,
         rationale: entry.rationale,
+        ...(entry.coverage ? { coverage: entry.coverage } : {}),
       };
     }),
     sprayNotes: input.sprayNotes,
@@ -126,7 +207,7 @@ export function buildPaintRecommendationSets(
       recommended: preferred ? set.id === preferred.id : index === 0,
     }));
   return paintRecommendationSetsSchema.parse({
-    version: "paint-recommendations.v2",
+    version: palette.version === "visual-palette.v3" ? "paint-recommendations.v3" : "paint-recommendations.v2",
     generatedAt,
     sets: ranked,
   });
@@ -171,7 +252,7 @@ export function summarizePaintCatalogForPrompt(mappings: ResolvedPaintMapping[])
 
   return {
     preferredSystem: systems.find((system) => system.preferred)?.label ?? "Mr. Color C Series",
-    matchRule: "Prefer Mr. Color. Stay inside a system's listed hues and effects when possible. A catalog SKU requires the same effect and ΔE≤10. Out-of-gamut roles are kept and marked as custom mix; do not invent paint codes.",
+    matchRule: "Keep approved visual colors independent of catalog availability. Prefer Mr. Color for matching. A catalog SKU requires the same effect and ΔE≤10. Unmatched colors are kept and marked as custom mix; do not invent paint codes or change a visual target to fit a SKU.",
     systems,
     activeColorSamples: usable.length,
     availableEffects: Array.from(new Set(systems.flatMap((system) =>
@@ -204,14 +285,16 @@ export function materializePrimaryPaintPlan(input: {
     moodTags: input.moodTags,
     sprayNotes: input.palette.sprayNotes,
     entries: input.palette.entries.map((entry) => {
-      const match = primary.entries.find((candidate) => candidate.roleSlug === entry.roleSlug);
+      const match = primary.entries.find((candidate) => samePaletteColor(candidate, entry));
       return {
+        ...colorMetadata(entry),
         roleSlug: entry.roleSlug,
         roleName: entry.roleName,
         recommendedArea: entry.recommendedArea,
         targetHex: entry.targetHex,
         paintEffect: entry.paintEffect,
         rationale: entry.rationale,
+        ...(entry.coverage ? { coverage: entry.coverage } : {}),
         suggestedPaint: match?.paint ?? null,
         alternatePaint: null,
         match: match ? {
@@ -229,11 +312,13 @@ export function visualPaletteForRender(palette: VisualPalette) {
   return {
     version: palette.version,
     entries: palette.entries.map((entry) => ({
+      ...colorMetadata(entry),
       roleSlug: entry.roleSlug,
       roleName: entry.roleName,
       recommendedArea: entry.recommendedArea,
       targetHex: entry.targetHex,
       paintEffect: entry.paintEffect,
+      ...(entry.coverage ? { coverage: entry.coverage } : {}),
     })),
   };
 }
@@ -243,12 +328,15 @@ export function visualPaletteFromLegacyPlan(value?: string): VisualPalette | nul
   try {
     const parsed = JSON.parse(value) as {
       entries?: Array<{
+        colorId?: string;
+        colorName?: string;
         roleSlug?: string;
         roleName?: string;
         recommendedArea?: string;
         targetHex?: string;
         paintEffect?: "solid" | "metallic" | "transparent";
         rationale?: string;
+        coverage?: z.infer<typeof visualColorCoverageSchema>;
         suggestedPaint?: {
           hexPreview?: string;
           opacity?: string;
@@ -259,7 +347,7 @@ export function visualPaletteFromLegacyPlan(value?: string): VisualPalette | nul
     };
     if (!Array.isArray(parsed.entries) || parsed.entries.length === 0) return null;
     return visualPaletteSchema.parse({
-      version: "visual-palette.v2",
+      version: parsed.entries.some((entry) => entry.colorId) ? "visual-palette.v3" : "visual-palette.v2",
       entries: parsed.entries.map((entry) => {
         const rationale = entry.rationale?.trim() || "Recovered from the approved legacy palette.";
         const targetHex = entry.targetHex
@@ -269,6 +357,7 @@ export function visualPaletteFromLegacyPlan(value?: string): VisualPalette | nul
           throw new Error("Legacy palette is missing a recoverable visual color");
         }
         return {
+          ...colorMetadata(entry),
           roleSlug: entry.roleSlug,
           roleName: entry.roleName,
           recommendedArea: entry.recommendedArea,
@@ -276,6 +365,7 @@ export function visualPaletteFromLegacyPlan(value?: string): VisualPalette | nul
           paintEffect: entry.paintEffect ?? legacyEffect(entry.suggestedPaint),
           rationale: rationale.replace(/\s*Target\s+#[0-9a-f]{6};?\s*closest catalog sample\s+ΔE00\s+[0-9]+(?:\.[0-9]+)?\.?/i, "").trim()
             || "Recovered from the approved legacy palette.",
+          ...(entry.coverage ? { coverage: entry.coverage } : {}),
         };
       }),
       sprayNotes: parsed.sprayNotes ?? [],
@@ -304,6 +394,7 @@ function pickPreferredSystem<T extends { id: string; brand: string; line: string
 
 function uncoveredMrColorSet(palette: VisualPalette) {
   const uncoveredRoles = palette.entries.map((entry) => ({
+    ...colorMetadata(entry),
     roleSlug: entry.roleSlug,
     targetHex: entry.targetHex,
     paintEffect: entry.paintEffect,
@@ -316,11 +407,12 @@ function uncoveredMrColorSet(palette: VisualPalette) {
     recommended: false,
     coverageCount: 0,
     roleCount: palette.entries.length,
+    ...(palette.version === "visual-palette.v3" ? { colorCount: palette.entries.length, missingColorIds: palette.entries.map(paletteColorId) } : {}),
     averageDeltaE: null,
     maxDeltaE: null,
     missingRoleSlugs: uncoveredRoles.map((entry) => entry.roleSlug),
     uncoveredRoles,
-    warnings: [customMixWarning(palette.entries.map((entry) => roleLabel(entry.roleSlug, entry.roleName)))],
+    warnings: [customMixWarning(palette.entries.map((entry) => entry.colorName ?? roleLabel(entry.roleSlug, entry.roleName)))],
     entries: [] as ReturnType<typeof matchSystem>["entries"],
   };
 }
@@ -374,7 +466,9 @@ function groupPaintSystems(mappings: ResolvedPaintMapping[]) {
     const key = mapping.paintLineId
       ? String(mapping.paintLineId)
       : `${mapping.brandName}:${mapping.paintLineName ?? mapping.line ?? "legacy"}`;
-    byLine.set(key, [...(byLine.get(key) ?? []), mapping]);
+    const candidates = byLine.get(key);
+    if (candidates) candidates.push(mapping);
+    else byLine.set(key, [mapping]);
   }
   return Array.from(byLine.entries()).map(([lineId, candidates]): PaintSystem => {
     const first = candidates[0];
@@ -394,96 +488,54 @@ function groupPaintSystems(mappings: ResolvedPaintMapping[]) {
 }
 
 function matchSystem(palette: VisualPalette, system: PaintSystem) {
-  const candidateSets = palette.entries.map((entry) => {
+  const candidates = system.candidates.map((paint) => ({
+    paint,
+    lab: paint.preferredMeasurement?.lab ?? hexToLabD65(paint.hexPreview!),
+  }));
+  // A SKU is a reusable paint, not a consumable assignment slot. Match each
+  // independent target in O(colors × catalog samples), without a combinatorial
+  // search or changing targets to manufacture distinct SKU recommendations.
+  const matches = palette.entries.map((entry) => {
     const targetLab = hexToLabD65(entry.targetHex);
-    return {
-      entry,
-      candidates: system.candidates
-        .filter((candidate) => compatibleEffect(entry.paintEffect, candidate))
-        .map((paint) => ({
-          paint,
-          deltaE00: deltaE2000(
-            targetLab,
-            paint.preferredMeasurement?.lab ?? hexToLabD65(paint.hexPreview!)
-          ),
-        }))
-        .filter((candidate) => candidate.deltaE00 <= MAX_RECOMMENDATION_DELTA_E)
-        .sort((left, right) => left.deltaE00 - right.deltaE00 || left.paint.code.localeCompare(right.paint.code)),
-    };
-  });
-
-  // Assign the best one-to-one mapping for this paint system. A role may be
-  // left uncovered when the catalog has no distinct, sufficiently close paint.
-  const ordered = [...candidateSets].sort((left, right) => left.candidates.length - right.candidates.length);
-  let bestAssignment = new Map<string, { paint: ResolvedPaintMapping; deltaE00: number }>();
-  let bestScore = { coverage: -1, distance: Number.POSITIVE_INFINITY };
-  function search(index: number, usedPaintIds: Set<string>, assignment: typeof bestAssignment, distance: number) {
-    if (index === ordered.length) {
-      const coverage = assignment.size;
-      if (coverage > bestScore.coverage || (coverage === bestScore.coverage && distance < bestScore.distance)) {
-        bestScore = { coverage, distance };
-        bestAssignment = new Map(assignment);
+    let best: { paint: ResolvedPaintMapping; deltaE00: number } | null = null;
+    for (const candidate of candidates) {
+      if (!compatibleEffect(entry.paintEffect, candidate.paint)) continue;
+      const deltaE00 = deltaE2000(targetLab, candidate.lab);
+      if (deltaE00 > MAX_RECOMMENDATION_DELTA_E) continue;
+      if (!best || deltaE00 < best.deltaE00 ||
+        (deltaE00 === best.deltaE00 && candidate.paint.code.localeCompare(best.paint.code) < 0)) {
+        best = { paint: candidate.paint, deltaE00 };
       }
-      return;
     }
-    const current = ordered[index];
-    search(index + 1, usedPaintIds, assignment, distance);
-    for (const candidate of current.candidates) {
-      if (usedPaintIds.has(candidate.paint._id)) continue;
-      usedPaintIds.add(candidate.paint._id);
-      assignment.set(current.entry.roleSlug, candidate);
-      search(index + 1, usedPaintIds, assignment, distance + candidate.deltaE00);
-      assignment.delete(current.entry.roleSlug);
-      usedPaintIds.delete(candidate.paint._id);
-    }
-  }
-  search(0, new Set(), new Map(), 0);
-
-  const reusedRoleSlugs = new Set<string>();
-  if (bestAssignment.size < palette.entries.length) {
-    for (const current of candidateSets) {
-      if (bestAssignment.has(current.entry.roleSlug) || current.candidates.length === 0) continue;
-      const fallback = current.candidates[0];
-      bestAssignment.set(current.entry.roleSlug, fallback);
-      reusedRoleSlugs.add(current.entry.roleSlug);
-    }
-  }
-
-  const entries = palette.entries.flatMap((entry) => {
-    const best = bestAssignment.get(entry.roleSlug);
-    if (!best) return [];
-    return [{
-      roleSlug: entry.roleSlug,
-      targetHex: entry.targetHex,
-      paintEffect: entry.paintEffect,
-      deltaE00: round(best.deltaE00),
-      matchBand: matchBand(best.deltaE00),
-      warnings: [
-        ...matchWarnings(best.paint),
-        ...(reusedRoleSlugs.has(entry.roleSlug) ? ["duplicate_paint_model"] : []),
-      ],
-      paint: serializeRecommendationPaint(best.paint),
-    }];
+    return { entry, best };
   });
-  const uncovered = palette.entries.filter((entry) => !entries.some((match) => match.roleSlug === entry.roleSlug));
+  const entries = matches.flatMap(({ entry, best }) => best ? [{
+    ...colorMetadata(entry),
+    roleSlug: entry.roleSlug,
+    targetHex: entry.targetHex,
+    paintEffect: entry.paintEffect,
+    deltaE00: round(best.deltaE00),
+    matchBand: matchBand(best.deltaE00),
+    warnings: matchWarnings(best.paint),
+    paint: serializeRecommendationPaint(best.paint),
+  }] : []);
+  const uncovered = matches.filter(({ best }) => best === null).map(({ entry }) => entry);
   const missingRoleSlugs = uncovered.map((entry) => entry.roleSlug);
   const uncoveredRoles = uncovered.map((entry) => ({
+    ...colorMetadata(entry),
     roleSlug: entry.roleSlug,
     targetHex: entry.targetHex,
     paintEffect: entry.paintEffect,
   }));
-  const weights = new Map(palette.entries.map((entry) => [entry.roleSlug, roleWeight(entry.roleSlug)]));
-  const totalWeight = entries.reduce((sum, entry) => sum + (weights.get(entry.roleSlug) ?? 1), 0);
+  const totalWeight = entries.reduce((sum, entry) => sum + roleWeight(entry.roleSlug), 0);
   const averageDeltaE = totalWeight > 0
-    ? entries.reduce((sum, entry) => sum + entry.deltaE00 * (weights.get(entry.roleSlug) ?? 1), 0) / totalWeight
+    ? entries.reduce((sum, entry) => sum + entry.deltaE00 * roleWeight(entry.roleSlug), 0) / totalWeight
     : null;
   const maxDeltaE = entries.length ? Math.max(...entries.map((entry) => entry.deltaE00)) : null;
   const warnings = Array.from(new Set([
-    ...(uncovered.length ? [customMixWarning(uncovered.map((entry) => roleLabel(entry.roleSlug, entry.roleName)))] : []),
+    ...(uncovered.length ? [customMixWarning(uncovered.map((entry) => entry.colorName ?? roleLabel(entry.roleSlug, entry.roleName)))] : []),
     ...(entries.some((entry) => entry.warnings.includes("approximate_color_data"))
       ? ["Some matches use approximate digital color data."] : []),
-    ...(entries.some((entry) => entry.warnings.includes("duplicate_paint_model"))
-      ? ["Some roles reuse the same paint model because no distinct close catalog match was available."] : []),
   ]));
   return {
     id: system.id,
@@ -493,6 +545,7 @@ function matchSystem(palette: VisualPalette, system: PaintSystem) {
     recommended: false,
     coverageCount: entries.length,
     roleCount: palette.entries.length,
+    ...(palette.version === "visual-palette.v3" ? { colorCount: palette.entries.length, missingColorIds: uncovered.map(paletteColorId) } : {}),
     averageDeltaE: averageDeltaE === null ? null : round(averageDeltaE),
     maxDeltaE: maxDeltaE === null ? null : round(maxDeltaE),
     missingRoleSlugs,

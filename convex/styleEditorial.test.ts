@@ -4,6 +4,7 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { seedUser } from "@/tests/convexTestHelpers";
 import { createAssetGraph, upsertVersionStorageObjects } from "./assetModel";
+import { creativeContractVersion } from "./creativeContracts";
 
 const modules = import.meta.glob("./**/*.ts");
 const intent = {
@@ -73,7 +74,7 @@ describe("official style editorial publication", () => {
     expect(gallery).toHaveLength(1);
     const pair = await f.t.query(api.styleEditorial.getPair, { styleSlug: f.style.slug, modelSlug: f.model.slug });
     expect(pair?.style.intent).toEqual(intent);
-    expect(pair?.palette.entries[0].suggestedPaint.code).toBeTruthy();
+    expect(pair?.palette.entries[0].suggestedPaint?.code).toBeTruthy();
     expect(JSON.stringify(pair)).not.toContain("must-not-leak");
     expect(JSON.stringify(pair)).not.toContain("private/");
     expect(await f.t.query(api.styleEditorial.sitemap, {})).toHaveLength(1);
@@ -111,5 +112,40 @@ describe("official style editorial publication", () => {
     expect(shared).not.toBeNull();
     expect(shared?.indexable).toBe(false);
     expect(shared?.stylePreset?.name).toBe("Cyan Digital");
+  });
+
+  it("preserves independent same-role visual targets and reviewed custom mixes", async () => {
+    const f = await fixture();
+    await f.t.run(async ctx => {
+      const concept = (await ctx.db.get(f.conceptId))!;
+      const plan = JSON.parse(concept.palettePlanJson!);
+      plan.entries[0] = { ...plan.entries[0], colorId: "cyan", colorName: "Cyan armor", targetHex: "#00AABB", paintEffect: "solid" };
+      plan.entries.push({
+        colorId: "violet", colorName: "Violet armor", roleSlug: "armor", roleName: "Armor",
+        targetHex: "#8E24AA", paintEffect: "metallic", rationale: "Required violet armor; custom mix needed.", suggestedPaint: null,
+      });
+      await ctx.db.patch(f.conceptId, { palettePlanJson: JSON.stringify(plan) });
+    });
+    await f.admin.client.mutation(api.styleEditorial.reviewConcept, { conceptId: f.conceptId, confirmed: true });
+    const pair = await f.t.query(api.styleEditorial.getPair, { styleSlug: f.style.slug, modelSlug: f.model.slug });
+    expect(pair?.palette.entries.map(entry => [entry.colorId, entry.targetHex])).toEqual([["cyan", "#00AABB"], ["violet", "#8E24AA"]]);
+    expect(pair?.palette.entries[1]).toMatchObject({ colorName: "Violet armor", paintEffect: "metallic", suggestedPaint: null });
+    const shared = await f.t.query(api.showcase.getSharedConcept, { conceptId: f.conceptId });
+    expect(shared?.visualPalette?.entries.map(entry => [entry.colorId, entry.targetHex])).toEqual([["cyan", "#00AABB"], ["violet", "#8E24AA"]]);
+    expect(JSON.stringify(pair)).not.toContain("must-not-leak");
+  });
+
+  it.each(["modified", "malformed"])("stops official editorial indexing for %s resolved intent while retaining sharing", async state => {
+    const f = await fixture();
+    await f.admin.client.mutation(api.styleEditorial.reviewConcept, { conceptId: f.conceptId, confirmed: true });
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, {
+      resolvedIntentJson: state === "modified" ? JSON.stringify({ version: creativeContractVersion, styleModified: true }) : "malformed",
+    }));
+    expect(await f.t.query(api.styleEditorial.gallery, {})).toEqual([]);
+    expect(await f.t.query(api.styleEditorial.getPair, { styleSlug: f.style.slug, modelSlug: f.model.slug })).toBeNull();
+    expect(await f.t.query(api.styleEditorial.sitemap, {})).toEqual([]);
+    expect((await f.admin.client.query(api.styleEditorial.adminWorkspace, {})).candidates).toEqual([]);
+    await expect(f.admin.client.mutation(api.styleEditorial.reviewConcept, { conceptId: f.conceptId, confirmed: true })).rejects.toThrow(/Modified Style/);
+    expect(await f.t.query(api.showcase.getSharedConcept, { conceptId: f.conceptId })).not.toBeNull();
   });
 });

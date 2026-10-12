@@ -29,6 +29,7 @@ export type CreationRunRecord = {
   styleName: string;
   styleSlug?: string;
   visualPalette?: {
+    entries?: Array<{ colorId?: string; colorName?: string; roleName: string; roleSlug: string; targetHex: string }>;
     primary?: string;
     secondary?: string;
     accent?: string;
@@ -79,10 +80,19 @@ function computeStageStates(status: string, stage: string): {
 }
 
 function resolveColors(
-  visualPalette?: { primary?: string; secondary?: string; accent?: string; frame?: string; detail?: string } | null,
+  visualPalette?: CreationRunRecord["visualPalette"],
   styleSlug?: string
 ): DisplayColor[] {
   if (visualPalette) {
+    const entries = visualPalette.entries;
+    if (entries?.length) {
+      return entries.map((entry) => ({
+        id: entry.colorId,
+        role: entry.colorName ?? entry.roleName,
+        hex: entry.targetHex,
+        weight: 1,
+      }));
+    }
     const list: DisplayColor[] = [];
     if (visualPalette.primary) list.push({ role: "Primary Armor", hex: visualPalette.primary, weight: 42 });
     if (visualPalette.secondary) list.push({ role: "Secondary Armor", hex: visualPalette.secondary, weight: 24 });
@@ -215,14 +225,14 @@ export function GenerationJobSheet({
               )}
             </div>
             {colors.length > 0 ? (
-              <StylePalette colors={colors} large />
+              <StylePalette colors={colors} large showBalance={!run.visualPalette?.entries?.length} />
             ) : (
               <div className="job-palette-empty">Colors mapped from custom description</div>
             )}
             {colors.length > 0 && (
               <div className="job-color-roles-grid">
-                {colors.map((c) => (
-                  <div key={c.role} className="job-color-chip">
+                {colors.map((c, index) => (
+                  <div key={c.id ?? `${c.role}-${index}`} className="job-color-chip">
                     <span
                       className="job-color-dot"
                       style={{ backgroundColor: c.hex }}

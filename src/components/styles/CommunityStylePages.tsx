@@ -27,7 +27,8 @@ export function CommunityStyleDetail({ style }: { style: Shared }) {
     <a className="style-back" href="/styles">← Official styles</a>
     <section className="style-hero"><div><p className="style-eyebrow">Community style / By {style.creator.name}</p>
       <h1>{style.name}</h1><p>{style.intent.graphicLanguage}</p>
-      <dl className="style-palette">{Object.entries(style.intent.palette).map(([role, color]) =>
+      <dl className="style-palette">{style.intent.colors?.length ? style.intent.colors.map((color, index) =>
+        <div key={`${color.name}-${index}`}><dt>{color.role}</dt><dd>{color.name}</dd></div>) : Object.entries(style.intent.palette).map(([role, color]) =>
         <div key={role}><dt>{role}</dt><dd>{Array.isArray(color) ? color.join(" · ") : color}</dd></div>)}</dl>
       <p>{style.intent.finish} · {style.intent.weathering} · {style.intent.mood}</p>
       <p>{style.saveCount} saves · {style.publicPrototypeCount} public prototypes</p>

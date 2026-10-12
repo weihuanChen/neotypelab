@@ -1,4 +1,6 @@
 export interface BriefPaletteEntry {
+  colorId?: string;
+  colorName?: string;
   roleSlug: string;
   roleName: string;
   targetHex: string;
@@ -13,6 +15,7 @@ export interface BriefVisualPalette {
 }
 
 export interface BriefPaintMatch {
+  colorId?: string;
   roleSlug: string;
   targetHex: string;
   paintEffect: string;
@@ -38,19 +41,42 @@ export interface BriefPaintSystem {
   roleCount: number;
   averageDeltaE: number | null;
   missingRoleSlugs: string[];
+  missingColorIds?: string[];
   entries: BriefPaintMatch[];
 }
 
 export const CUSTOM_MIX_LABEL = "No catalog SKU";
 export const CUSTOM_MIX_NOTE = "No direct paint code covers this target. Mix from nearby catalog colors.";
 
-export function roleNeedsCustomMix(system: { missingRoleSlugs?: string[]; entries: Array<{ roleSlug: string }> } | undefined, roleSlug: string) {
+export function missingPaintColorCount(system?: { missingColorIds?: string[]; missingRoleSlugs?: string[] }) {
+  return system?.missingColorIds?.length ?? system?.missingRoleSlugs?.length ?? 0;
+}
+
+export function colorIdentityMatches(
+  left: { colorId?: string; roleSlug: string },
+  right: { colorId?: string; roleSlug: string }
+) {
+  if (left.colorId || right.colorId) return Boolean(left.colorId && left.colorId === right.colorId);
+  return left.roleSlug === right.roleSlug;
+}
+
+export function roleNeedsCustomMix(
+  system: { missingRoleSlugs?: string[]; missingColorIds?: string[]; entries: Array<{ roleSlug: string; colorId?: string }> } | undefined,
+  roleSlug: string,
+  colorId?: string
+) {
   if (!system) return true;
+  if (colorId) {
+    if (system.missingColorIds?.includes(colorId)) return true;
+    return !system.entries.some((entry) => entry.colorId === colorId);
+  }
   if (system.missingRoleSlugs?.includes(roleSlug)) return true;
   return !system.entries.some((entry) => entry.roleSlug === roleSlug);
 }
 
 export interface BriefRepaintPanel {
+  assignmentId?: string;
+  colorId?: string;
   roleSlug: string;
   areas: string[];
   maskingNotes: string;
@@ -93,6 +119,46 @@ function safeJson(value?: string | null): Record<string, unknown> {
   }
 }
 
+export function parseCreativeRequirements(value?: string | null): Array<{ label: string; value: string; source: string }> {
+  const json = safeJson(value);
+  if (json.version !== "creative-intent.v1" || !Array.isArray(json.constraints) || !Array.isArray(json.colors)) return [];
+  const names = new Map<string, string>();
+  for (const item of json.colors) {
+    if (item && typeof item === "object" && typeof item.colorId === "string" && typeof item.name === "string") {
+      names.set(item.colorId, item.name);
+    }
+  }
+  const items: Array<{ label: string; value: string; source: string }> = [];
+  for (const raw of json.constraints) {
+    if (!raw || typeof raw !== "object") continue;
+    const entry = raw as Record<string, unknown>;
+    const evidence = entry.evidence as Record<string, unknown> | undefined;
+    const scope = entry.scope as Record<string, unknown> | undefined;
+    if (entry.status !== "active" || entry.strength !== "hard" || !["user-explicit", "user-selection"].includes(String(evidence?.source))) continue;
+    const source = evidence?.inputRef === "notes" ? "Your refinements" : evidence?.inputRef === "style-description" ? "Your style description" : "Your selection";
+    const name = typeof entry.colorId === "string" ? names.get(entry.colorId) : undefined;
+    const scopeKind = typeof scope?.kind === "string" ? scope.kind : "exterior-armor";
+    if (entry.property === "color-presence" && name) {
+      const location = scope?.kind === "part" && typeof scope.part === "string" ? scope.part : humanizeSlug(scopeKind);
+      items.push({ label: "Required color", value: `${name} · ${location}`, source });
+    } else if (entry.property === "color-hex" && name && typeof entry.value === "string") {
+      items.push({ label: "Exact color", value: `${name} · ${entry.value}`, source });
+    } else if (entry.property === "color-importance" && name && typeof entry.value === "string") {
+      const importance = ["primary", "secondary"].includes(entry.value) ? "Major armor color" : humanizeSlug(entry.value);
+      items.push({ label: "Color use", value: `${name} · ${importance}`, source });
+    } else if (entry.property === "color-coverage" && name && typeof entry.value === "number") {
+      const location = scope?.kind === "part" && typeof scope.part === "string" ? scope.part : humanizeSlug(scopeKind);
+      items.push({ label: "Coverage target", value: `${name} · ${entry.value}% of ${location.toLowerCase()}`, source });
+    } else if (entry.property === "excluded-color" && typeof entry.value === "string") {
+      const location = scope?.kind === "part" && typeof scope.part === "string" ? scope.part : humanizeSlug(scopeKind);
+      items.push({ label: "Excluded color", value: `${humanizeSlug(entry.value)} · ${location}`, source });
+    } else if (["finish", "weathering", "material", "pattern"].includes(String(entry.property)) && typeof entry.value === "string") {
+      items.push({ label: humanizeSlug(String(entry.property)), value: humanizeSlug(entry.value), source });
+    }
+  }
+  return Array.from(new Map(items.map((item) => [`${item.label}:${item.value}:${item.source}`, item])).values());
+}
+
 export function parseVisualPalette(
   paletteJson?: string | null,
   legacyPlanJson?: string | null
@@ -105,6 +171,8 @@ export function parseVisualPalette(
         const raw = item as Record<string, unknown>;
         if (typeof raw.roleSlug === "string" && typeof raw.targetHex === "string") {
           entries.push({
+            colorId: typeof raw.colorId === "string" ? raw.colorId : undefined,
+            colorName: typeof raw.colorName === "string" ? raw.colorName : undefined,
             roleSlug: raw.roleSlug,
             roleName: typeof raw.roleName === "string" ? raw.roleName : humanizeSlug(raw.roleSlug),
             targetHex: raw.targetHex,
@@ -140,6 +208,8 @@ export function parseVisualPalette(
             : null;
         if (typeof raw.roleSlug === "string" && hex) {
           entries.push({
+            colorId: typeof raw.colorId === "string" ? raw.colorId : undefined,
+            colorName: typeof raw.colorName === "string" ? raw.colorName : undefined,
             roleSlug: raw.roleSlug,
             roleName: typeof raw.roleName === "string" ? raw.roleName : humanizeSlug(raw.roleSlug),
             targetHex: hex,
@@ -178,6 +248,7 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
     roleCount?: unknown;
     averageDeltaE?: unknown;
     missingRoleSlugs?: unknown;
+    missingColorIds?: unknown;
     entries?: unknown;
   }
 
@@ -196,6 +267,7 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
         const paint = item.paint as Record<string, unknown> | undefined;
         if (typeof item.roleSlug === "string" && paint && typeof paint.code === "string") {
           entries.push({
+            colorId: typeof item.colorId === "string" ? item.colorId : undefined,
             roleSlug: item.roleSlug,
             targetHex: typeof item.targetHex === "string" ? item.targetHex : "#888888",
             paintEffect: typeof item.paintEffect === "string" ? item.paintEffect : "solid",
@@ -229,6 +301,9 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
     missingRoleSlugs: Array.isArray(chosenSet.missingRoleSlugs)
       ? chosenSet.missingRoleSlugs.filter((slug): slug is string => typeof slug === "string")
       : [],
+    missingColorIds: Array.isArray(chosenSet.missingColorIds)
+      ? chosenSet.missingColorIds.filter((id): id is string => typeof id === "string")
+      : undefined,
     entries,
   };
 }
@@ -249,6 +324,8 @@ export function parseRenderSpecification(jsonStr?: string | null): BriefRepaintS
             ? raw.areas.filter((a): a is string => typeof a === "string")
             : [];
           panels.push({
+            assignmentId: typeof raw.assignmentId === "string" ? raw.assignmentId : undefined,
+            colorId: typeof raw.colorId === "string" ? raw.colorId : undefined,
             roleSlug: raw.roleSlug,
             areas,
             maskingNotes: typeof raw.maskingNotes === "string" ? raw.maskingNotes : "",

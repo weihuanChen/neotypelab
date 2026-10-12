@@ -18,7 +18,7 @@ export const aiModelDisclosure = {
     model: "Google Gemini",
     developer: "Google",
     servedVia: "the Google Gemini API",
-    uses: "Custom Style interpretation, palette and paint plans, and repaint specifications",
+    uses: "Custom Style interpretation, creative intent resolution, palette and paint plans, and repaint specifications",
   },
   safety: {
     provider: "Waffo",

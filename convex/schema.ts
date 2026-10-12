@@ -1001,6 +1001,8 @@ const schema = defineSchema({
     paintRecommendationSetsJson: v.optional(v.string()),
     palettePlanJson: v.optional(v.string()),
     renderSpecificationJson: v.optional(v.string()),
+    resolvedIntentJson: v.optional(v.string()),
+    materialSnapshotJson: v.optional(v.string()),
     styleIntentJson: v.optional(v.string()),
     styleIntentVersion: v.optional(v.string()),
     userId: v.id("users"),

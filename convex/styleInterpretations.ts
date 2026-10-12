@@ -3,11 +3,13 @@ import { failComposition } from "./creativePipeline";
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery, query } from "./functions";
 import { internalMutation as systemMutation } from "./_generated/server";
-import { styleIntentSchema, styleInterpreterSystemPrompt, styleInterpreterUserPromptTemplate, type StyleIntent } from "./creativeContracts";
+import { styleIntentSchema, styleInterpreterSystemPrompt, styleInterpreterUserPromptTemplate, sourceNormalizationProtocolVersion, currentNormalizedUserIntentSchema, type StyleIntent } from "./creativeContracts";
+import { validateNormalizedUserIntent } from "./creativeIntentResolver";
+import { validateCreativeValue } from "./creativeValidation";
 import type { QueryCtx } from "./types";
 import { debitCredits } from "./creditLedger";
 
-const version = "style-interpreter.v2";
+const version = "style-interpreter.v3";
 export type InterpretationResult = {
   promptCompositionId: string;
   intent: StyleIntent;
@@ -22,6 +24,7 @@ type Snapshot = {
   description: string;
   systemPrompt: string;
   templateVersion: string;
+  sourceNormalizationProtocolVersion?: string;
 };
 
 function normalizedDescription(description: string) {
@@ -37,12 +40,13 @@ export const begin = internalMutation({
     if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
     const description = normalizedDescription(args.description);
     if (!args.requestKey.trim() || args.requestKey.length > 120) throw new Error("Invalid request key");
-    const inputKey = JSON.stringify({ version, description });
+    const inputKey = JSON.stringify({ version, description, sourceNormalizationProtocolVersion });
     const existing = await ctx.db.query("promptCompositions").withIndex("by_user_request", q =>
       q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
     if (existing) {
       const snapshot = JSON.parse(existing.inputSnapshotJson) as Snapshot;
-      if (snapshot.kind !== "style-interpreter" || snapshot.inputKey !== inputKey) throw new Error("Request key belongs to different creative inputs");
+      const expectedKey = JSON.stringify({ version: snapshot.templateVersion ?? version, description, ...(snapshot.sourceNormalizationProtocolVersion ? { sourceNormalizationProtocolVersion: snapshot.sourceNormalizationProtocolVersion } : {}) });
+      if (snapshot.kind !== "style-interpreter" || snapshot.inputKey !== expectedKey) throw new Error("Request key belongs to different creative inputs");
       return existing._id;
     }
     const rows = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", viewer._id)).collect();
@@ -56,7 +60,7 @@ export const begin = internalMutation({
     if (account.balance < price.creditCost) {
       throw new Error(`Insufficient credits. ${price.creditCost} credits required, ${account.balance} available.`);
     }
-    const snapshot: Snapshot = { kind: "style-interpreter", inputKey, description, systemPrompt: styleInterpreterSystemPrompt, templateVersion: version };
+    const snapshot: Snapshot = { kind: "style-interpreter", inputKey, description, systemPrompt: styleInterpreterSystemPrompt, templateVersion: version, sourceNormalizationProtocolVersion };
     const id = await ctx.db.insert("promptCompositions", {
       userId: viewer._id, requestKey: args.requestKey, reservedCredits: price.creditCost, status: "ready",
       composedPrompt: styleInterpreterUserPromptTemplate.replace("{{description}}", description),
@@ -105,12 +109,17 @@ export const complete = systemMutation({
     const snapshot = JSON.parse(row.inputSnapshotJson) as Snapshot;
     if (snapshot.kind !== "style-interpreter") throw new Error("Not a style interpretation");
     if (Date.now() >= row._creationTime + 15 * 60 * 1000) throw new Error("Interpretation expired");
-    const intent = styleIntentSchema.parse(JSON.parse(args.responseJson));
+    const intent = validateCreativeValue("Style interpretation", () => styleIntentSchema.parse(JSON.parse(args.responseJson)));
     if (intent.source !== "private" || intent.styleType !== "custom") throw new Error("Interpreter must return a private custom style");
-    if (intent.version !== "style-intent.v2") throw new Error("Interpreter must return a Style Intent v2 with anchored colors");
+    if (snapshot.templateVersion === "style-interpreter.v3") {
+      if (intent.version !== "style-intent.v3") throw new Error("Interpreter must return a Style Intent v3 with explicit provenance");
+      if (intent.explicitRequirements) validateCreativeValue("Style requirement normalization", () => validateNormalizedUserIntent(intent.explicitRequirements, { styleDescription: snapshot.description }));
+      if (snapshot.sourceNormalizationProtocolVersion === sourceNormalizationProtocolVersion) validateCreativeValue("Style importance normalization", () => currentNormalizedUserIntentSchema.parse(intent.explicitRequirements));
+    } else if (intent.version !== "style-intent.v2") throw new Error("Interpreter must return a Style Intent v2 with anchored colors");
     const execution = JSON.parse(args.executionJson) as { model?: string; profileId?: string };
     await ctx.db.patch(row._id, {
-      status: "consumed", outputSummaryJson: JSON.stringify({ intent, model: execution.model ?? "", profileId: execution.profileId ?? "", execution }),
+      status: "consumed", outputSummaryJson: JSON.stringify({ intent, model: execution.model ?? "", profileId: execution.profileId ?? "", execution,
+        sourceNormalizationProtocolVersion: snapshot.sourceNormalizationProtocolVersion }),
     });
   },
 });
@@ -147,9 +156,11 @@ export type DirectionMatch = {
 async function matchingRows(ctx: QueryCtx, description: string) {
   const viewer = ctx.viewer;
   if (!viewer || !description.trim() || description.trim().length > 2000) return [];
-  const inputKey = JSON.stringify({ version, description: description.trim() });
+  const inputKey = JSON.stringify({ version, description: description.trim(), sourceNormalizationProtocolVersion });
+  const priorV3Key = JSON.stringify({ version, description: description.trim() });
   const rows = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", viewer._id)).order("desc").take(50);
-  return rows.filter(row => row.status === "consumed" && JSON.parse(row.inputSnapshotJson).inputKey === inputKey);
+  const legacyKey = JSON.stringify({ version: "style-interpreter.v2", description: description.trim() });
+  return rows.filter(row => row.status === "consumed" && [inputKey, priorV3Key, legacyKey].includes(JSON.parse(row.inputSnapshotJson).inputKey));
 }
 
 export const latest = query({

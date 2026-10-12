@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { StyleIntent } from "@/convex/creativeContracts";
+import { maxCreativeNotesLength, type StyleIntent } from "@/convex/creativeContracts";
 import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const [styleMode, setStyleMode] = useState<"preset" | "custom">(search.communityStyle ? "custom" : "preset");
   const [presetId, setPresetId] = useState<Id<"stylePresets"> | null>(null);
   const [custom, setCustom] = useState<StyleIntent | null>(null);
+  const [customDescription, setCustomDescription] = useState<string>();
   const [savedId, setSavedId] = useState<Id<"userStyles"> | null>(null);
   const [communityId, setCommunityId] = useState<string>();
   const [kitId, setKitId] = useState<Id<"baseModels"> | null>(null);
@@ -68,7 +69,9 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const defaults = resolveStyleRefinements(intent, catalog?.materialPresets ?? [], preset?.recommendedMaterialSlugs);
   const hasStyle = styleMode === "custom" ? Boolean(custom) : Boolean(preset);
   const styleName = styleMode === "custom" ? custom?.name : preset?.name;
-  const colors = styleMode === "preset" ? displayPalette(preset?.slug ?? "") : [];
+  const colors = styleMode === "custom" && custom?.colors?.length
+    ? custom.colors.map((color, index) => ({ id: `style-color-${index}`, role: color.name, hex: color.hex, weight: color.coverage }))
+    : styleMode === "preset" ? displayPalette(preset?.slug ?? "") : [];
   const isRunning = latestRun?.status === "queued" || latestRun?.status === "running";
   const access = getCreatorPackAccessCopy({ creatorHandle: pack?.creator.handle, packType: pack?.packType ?? "free", viewer });
   const locked = Boolean(search.creatorPack && (!pack || (pack.packType === "premium" && !access.allowed)));
@@ -99,7 +102,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
     if (search.recommendedWorkflow === "light-weathering") setWeathering("light");
     if (remix) {
       setKitId(remix.kitVariantId); setPresetId(remix.stylePresetId); setMaterialId(remix.materialPresetId);
-      setWeathering(remix.weatheringLevel); setMood(remix.moodTags); setNotes(remix.notes?.slice(0, 100) ?? "");
+      setWeathering(remix.weatheringLevel); setMood(remix.moodTags); setNotes(remix.notes?.slice(0, maxCreativeNotesLength) ?? "");
     }
   }, [catalog, remix, search]);
 
@@ -109,8 +112,13 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
       kitVariantId: actualKitId, stylePresetId: styleMode === "preset" ? presetId ?? undefined : undefined,
       userStyleId: styleMode === "custom" ? savedId ?? undefined : undefined,
       styleIntentJson: styleMode === "custom" && custom ? JSON.stringify(custom) : undefined,
+      styleDescription: styleMode === "custom" ? customDescription : undefined,
       styleRevision: styleMode === "preset" ? preset?.styleIntentJson : undefined,
       materialPresetId: resolvedMaterial, moodTags: mood, weatheringLevel: resolvedWeathering,
+      selectionSources: {
+        material: materialId ? "user-selection" as const : "system-default" as const,
+        weathering: weathering ? "user-selection" as const : "system-default" as const,
+      },
       notes: notes.trim() || undefined, sourceConceptId: remix?._id,
     };
     const fingerprint = JSON.stringify(input);
@@ -179,11 +187,19 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
         onCommunity={row => { setBusy(true); setError(null); void saveCommunity({ styleId: row.id }).then(saved => { setStyleMode("custom"); setCustom(saved.intent); setSavedId(saved.styleId); setCommunityId(row.id); setMaterialId(null); setWeathering(null); setMood([]); }).catch(failure => setError(errorText(failure))).finally(() => setBusy(false)); }} /></div>
       <div hidden={!styleTakeover && tab === "discover"}><CustomStylePicker userId={viewer?._id ?? "guest"} creditCost={catalog.priceRules.find(row => row.actionType === "generate-style-suggestion")?.creditCost} creditBalance={viewer?.credits?.balance ?? 0} selectedId={savedId} view={styleTakeover || tab !== "saved" ? "describe" : "mine"}
         onPhaseChange={handleStylePhase}
-        onUse={(value, id) => { setStyleMode("custom"); setCustom(value); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setSavedId(null); }} onApply={() => setStep(2)} /></div>
+        onUse={(value, id, description) => { setStyleMode("custom"); setCustom(value); setCustomDescription(description); setSavedId(id); setMaterialId(null); setWeathering(null); setMood([]); }} onClear={() => { setCustom(null); setCustomDescription(undefined); setSavedId(null); }} onApply={() => setStep(2)} /></div>
       {styleTakeover || tab === "create" ? null : <Button className="create-continue" disabled={!hasStyle || busy} onClick={() => setStep(2)}>Apply to a kit →</Button>}
     </section> : <>
       <section className="selected-style-strip" aria-label="Selected style"><p className="workbench-kicker">Selected style</p><div className="selected-style-identity"><StylePalette colors={colors} /><div><strong>{styleName ?? "Choose a style"}</strong><small>{intent?.graphicLanguage ?? preset?.shortDescription ?? "Your selected visual direction"}</small>{!colors.length ? <small>Palette follows your style description</small> : null}</div></div><button type="button" onClick={() => setStep(1)}>Change →</button></section>
-      <div className="create-model-layout"><KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} />
+      <div className="create-model-layout"><div className="create-kit-inputs">
+      <section className="create-style-refinements" aria-labelledby="style-refinements-title">
+        <label htmlFor="style-refinements"><span id="style-refinements-title">Refine this style</span><small>Optional · {notes.length}/{maxCreativeNotesLength}</small></label>
+        <Textarea id="style-refinements" value={notes} disabled={busy || Boolean(isRunning)} maxLength={maxCreativeNotesLength} rows={2}
+          onChange={event => setNotes(event.target.value)} aria-describedby="style-refinements-help"
+          placeholder="Use blue and white armor, or specify colors for particular parts…" />
+        <p id="style-refinements-help">Your color requests override the style’s default colors. Proportions stay open unless you specify them.</p>
+      </section>
+      <KitPicker selectedId={actualKitId ?? null} onSelect={setKitId} disabled={busy || Boolean(isRunning)} /></div>
         <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kit?.portrait} name={kit?.name ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kit?.name ?? "Select a kit"}</h3><p>{kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
           <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
           <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><Button className="create-generate-button" disabled={!canGenerate} onClick={() => void generate()}>{busy || isRunning ? "Generating preview…" : "Generate preview →"}</Button><button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
@@ -197,7 +213,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
       <Button variant="outline" onClick={() => { setDismissedRunId(null); setWatchingRunId(latestRun.id); }}>View job status →</Button>
       {latestRun.conceptId ? <Button asChild variant="outline"><Link to="/library/$conceptId" params={{ conceptId: latestRun.conceptId }} search={{ tab: "overview" }}>View details →</Link></Button> : <Link to="/library">Open library →</Link>}
     </section> : null}
-    <Sheet open={advanced} onOpenChange={setAdvanced}><SheetContent className="create-advanced-sheet"><SheetHeader><SheetTitle>Advanced options</SheetTitle><SheetDescription>Defaults come from your selected style. The standard output includes both the image and paint plan.</SheetDescription></SheetHeader><div className="create-advanced-fields"><label>Finish<select disabled={Boolean(isRunning)} value={materialId ?? "auto"} onChange={event => setMaterialId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}><option value="auto">Style default · {defaults.material?.slug ?? "Unavailable"}</option>{catalog.materialPresets.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select></label><label>Weathering<select disabled={Boolean(isRunning)} value={weathering ?? "auto"} onChange={event => setWeathering(event.target.value === "auto" ? null : event.target.value as "clean" | "light" | "heavy")}><option value="auto">Style default · {defaults.weathering}</option>{["clean", "light", "heavy"].map(value => <option key={value}>{value}</option>)}</select></label><fieldset disabled={Boolean(isRunning)}><legend>Mood</legend><button type="button" aria-pressed={!mood.length} onClick={() => setMood([])}>Style default · {defaults.mood}</button>{moodOptions.map(value => <button type="button" key={value} aria-pressed={mood.includes(value)} onClick={() => setMood(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}>{value.replace(/-/g, " ")}</button>)}</fieldset><label>Notes · {notes.length}/100<Textarea value={notes} disabled={Boolean(isRunning)} maxLength={100} onChange={event => setNotes(event.target.value)} placeholder="Optional refinements" /></label><p>New works are private. Publish them later from your library.</p><Button onClick={() => setAdvanced(false)}>Done</Button></div></SheetContent></Sheet>
+    <Sheet open={advanced} onOpenChange={setAdvanced}><SheetContent className="create-advanced-sheet"><SheetHeader><SheetTitle>Advanced options</SheetTitle><SheetDescription>Defaults come from your selected style. The standard output includes both the image and paint plan.</SheetDescription></SheetHeader><div className="create-advanced-fields"><label>Finish<select disabled={Boolean(isRunning)} value={materialId ?? "auto"} onChange={event => setMaterialId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}><option value="auto">Style default · {defaults.material?.slug ?? "Unavailable"}</option>{catalog.materialPresets.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select></label><label>Weathering<select disabled={Boolean(isRunning)} value={weathering ?? "auto"} onChange={event => setWeathering(event.target.value === "auto" ? null : event.target.value as "clean" | "light" | "heavy")}><option value="auto">Style default · {defaults.weathering}</option>{["clean", "light", "heavy"].map(value => <option key={value}>{value}</option>)}</select></label><fieldset disabled={Boolean(isRunning)}><legend>Mood</legend><button type="button" aria-pressed={!mood.length} onClick={() => setMood([])}>Style default · {defaults.mood}</button>{moodOptions.map(value => <button type="button" key={value} aria-pressed={mood.includes(value)} onClick={() => setMood(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}>{value.replace(/-/g, " ")}</button>)}</fieldset><p>New works are private. Publish them later from your library.</p><Button onClick={() => setAdvanced(false)}>Done</Button></div></SheetContent></Sheet>
   </div>;
 }
 

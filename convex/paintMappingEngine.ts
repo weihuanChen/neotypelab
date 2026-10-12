@@ -1,5 +1,6 @@
 import { Doc, Id } from "./_generated/dataModel";
 import { MoodTag, WeatheringLevel } from "./domain";
+import type { VisualPaletteEntry } from "./paintRecommendationEngine";
 
 type ColorRoleRecord = Pick<
   Doc<"colorRoles">,
@@ -32,7 +33,16 @@ type PaintMappingRecord = Pick<
   > | null;
 };
 
-export type PaintPlan = ReturnType<typeof buildRuleBasedPaintPlan>;
+type LegacyPaintPlan = ReturnType<typeof buildRuleBasedPaintPlan>;
+export type PaintPlan = Omit<LegacyPaintPlan, "entries"> & {
+  entries: Array<LegacyPaintPlan["entries"][number] & {
+    colorId?: string;
+    colorName?: string;
+    targetHex?: string;
+    paintEffect?: VisualPaletteEntry["paintEffect"];
+    coverage?: VisualPaletteEntry["coverage"];
+  }>;
+};
 
 export function readStoredPaintPlan(
   approvedPlanJson: string | undefined,
@@ -47,7 +57,7 @@ export function readStoredPaintPlan(
   return { ...approved, conceptId, conceptTitle };
 }
 
-export function buildPaintPlan(input: Parameters<typeof buildRuleBasedPaintPlan>[0] & { approvedPlanJson?: string }) {
+export function buildPaintPlan(input: Parameters<typeof buildRuleBasedPaintPlan>[0] & { approvedPlanJson?: string }): PaintPlan {
   const stored = readStoredPaintPlan(input.approvedPlanJson, input.conceptId, input.conceptTitle);
   if (stored) return stored;
   return buildRuleBasedPaintPlan(input);

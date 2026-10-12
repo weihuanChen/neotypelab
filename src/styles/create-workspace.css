@@ -14,6 +14,17 @@
 .selected-style-identity strong { font-size: .95rem; }
 .selected-style-identity small { font-size: .78rem; color: var(--color-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52ch; }
 .selected-style-strip > button { border: 0; background: none; color: var(--color-ink); white-space: nowrap; cursor: pointer; font-size: .85rem; }
+.create-style-refinements { display: grid; gap: .45rem; padding: .85rem 0 1rem; border-bottom: 1px solid var(--color-rule); }
+.create-kit-inputs { min-width: 0; }
+.create-style-refinements label { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; font-size: .85rem; }
+.create-style-refinements label small { font-family: var(--font-mono); font-size: .7rem; color: var(--color-muted); }
+.create-style-refinements textarea { min-height: 4rem; max-height: 12rem; resize: vertical; background: transparent; border-color: var(--color-rule-2); }
+.create-style-refinements p { margin: 0; color: var(--color-muted); font-size: .75rem; }
+.creative-requirements { padding: 1rem 0; border-bottom: 1px solid var(--color-rule); }
+.creative-requirements dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .75rem 1.5rem; }
+.creative-requirements dt { color: var(--color-muted); font-family: var(--font-mono); font-size: .7rem; }
+.creative-requirements dd { margin: .2rem 0 0; font-size: .85rem; }
+.creative-requirements dd small { display: block; margin-top: .2rem; color: var(--color-muted); font-size: .72rem; }
 .create-model-layout { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.8rem; align-items: start; }
 .kit-picker { min-width: 0; }
 .kit-picker h2 { margin: .4rem 0 1rem; font-size: clamp(1.2rem, 1.6vw, 1.65rem); font-weight: 500; }

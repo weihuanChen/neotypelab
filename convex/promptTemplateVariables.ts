@@ -9,6 +9,7 @@ export type PromptTemplateVariableDefinition = {
 };
 
 export const promptTemplateVariableDefinitions: PromptTemplateVariableDefinition[] = [
+  { key: "resolvedIntent", label: "Effective creative intent", description: "Execution-only resolved colors, stable IDs, property constraints and scopes. Excludes original inputs and source evidence.", kinds: ["palette-plan", "repaint-concept", "hd-render"], example: "creative-intent.v1: user hue, HEX, coverage and part constraints" },
   { key: "paintCatalog", label: "Paint catalog capabilities", description: "Per-line hues, effects, transparent samples, and the preferred Mr. Color system.", kinds: ["palette-plan"], example: "Mr. Color C Series: solid red/white, clear blue" },
   { key: "approvedPalette", label: "Approved palette", description: "Full persisted palette JSON.", kinds: ["repaint-concept", "hd-render"], example: "Approved color-role paint assignments" },
   { key: "renderSpecification", label: "Approved repaint specification", description: "Persisted panel, material, weathering and decal instructions.", kinds: ["hd-render"], example: "Approved repaint specification JSON" },

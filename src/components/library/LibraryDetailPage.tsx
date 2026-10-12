@@ -23,8 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
 import type { LibraryDetailTab } from "./libraryDetailSearch";
-import { computeMaskingSummary, CUSTOM_MIX_LABEL, CUSTOM_MIX_NOTE, roleNeedsCustomMix } from "./libraryBriefData";
+import { colorIdentityMatches, computeMaskingSummary, CUSTOM_MIX_LABEL, CUSTOM_MIX_NOTE, missingPaintColorCount, roleNeedsCustomMix } from "./libraryBriefData";
 import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
+import { CreativeRequirements } from "@/src/components/create/CreativeRequirements";
 import {
   SystemSignInButton,
   SystemState,
@@ -108,7 +109,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
     } catch (error) {
       const cleanupFailed = error instanceof Error && error.message.includes("public asset cleanup");
       setWithdrawalError(cleanupFailed
-        ? "Your work is private, but its public images could not be fully removed. Retry to finish removing them."
+        ? "Your work is private, but its public image cleanup is still pending. We will retry automatically; you can also retry now."
         : "Could not make this work private. Please retry.");
     } finally {
       setWithdrawing(false);
@@ -316,7 +317,8 @@ function WorkbenchActionBar({
       lines.push("--- Matched Paints ---");
       selectedSystem.entries.forEach((entry, idx) => {
         const role =
-          detail.palette?.entries.find((p) => p.roleSlug === entry.roleSlug)?.roleName ??
+          detail.palette?.entries.find((p) => colorIdentityMatches(p, entry))?.colorName ??
+          detail.palette?.entries.find((p) => colorIdentityMatches(p, entry))?.roleName ??
           humanize(entry.roleSlug);
         lines.push(
           `${String(idx + 1).padStart(2, "0")}. [${entry.paint.code}] ${entry.paint.colorName}`
@@ -333,7 +335,7 @@ function WorkbenchActionBar({
       lines.push("--- Color Roles ---");
       detail.palette.entries.forEach((entry, idx) => {
         lines.push(
-          `${String(idx + 1).padStart(2, "0")}. ${entry.roleName}: ${entry.targetHex} (${humanize(entry.paintEffect)})`
+          `${String(idx + 1).padStart(2, "0")}. ${entry.colorName ?? entry.roleName}: ${entry.targetHex} (${humanize(entry.paintEffect)})`
         );
         if (entry.recommendedArea) lines.push(`    Area: ${entry.recommendedArea}`);
       });
@@ -343,7 +345,8 @@ function WorkbenchActionBar({
       lines.push("", "--- Target Zones & Masking ---");
       detail.specification.panels.forEach((panel) => {
         const role =
-          detail.palette?.entries.find((e) => e.roleSlug === panel.roleSlug)?.roleName ??
+          detail.palette?.entries.find((e) => colorIdentityMatches(e, panel))?.colorName ??
+          detail.palette?.entries.find((e) => colorIdentityMatches(e, panel))?.roleName ??
           humanize(panel.roleSlug);
         lines.push(`* ${role}: ${panel.areas.join(", ")}`);
         if (panel.maskingNotes) lines.push(`  Masking: ${panel.maskingNotes}`);
@@ -377,7 +380,7 @@ function WorkbenchActionBar({
         <span className="work-detail-workbench-bar__badge">MODELER MANUAL</span>
         <span className="work-detail-workbench-bar__desc">
           {selectedSystem
-            ? `${(selectedSystem.missingRoleSlugs?.length ?? 0) > 0 ? "Mix required" : "Ready to spray"} · ${selectedSystem.brand} ${selectedSystem.line} (${selectedSystem.coverageCount}/${selectedSystem.roleCount} matched)`
+            ? `${missingPaintColorCount(selectedSystem) > 0 ? "Mix required" : "Ready to spray"} · ${selectedSystem.brand} ${selectedSystem.line} (${selectedSystem.coverageCount}/${selectedSystem.roleCount} matched)`
             : "Physical Kit Painting Directives"}
         </span>
       </div>
@@ -444,6 +447,7 @@ function Overview({
 
   return (
     <div className="work-detail-overview">
+      <CreativeRequirements intentJson={detail.resolvedIntentJson} />
       {/* Section 01: Part-by-Part Color Plan Matrix */}
       <section aria-labelledby="palette-title" className="work-detail-section">
         <SectionHeading
@@ -452,7 +456,7 @@ function Overview({
           id="palette-title"
           note={
             detail.palette
-              ? `${detail.palette.entries.length} color roles · ${
+              ? `${detail.palette.entries.length} colors · ${
                   selectedSystem ? `${selectedSystem.brand} ${selectedSystem.line}` : "Target Hex"
                 }`
               : "No saved palette"
@@ -464,11 +468,11 @@ function Overview({
             <p className="work-detail-intro">
               Complete workbench matrix mapping kit parts to visual color roles, catalog paint codes, and surface prep instructions.
             </p>
-            {selectedSystem && (selectedSystem.missingRoleSlugs?.length ?? 0) > 0 ? (
+            {selectedSystem && missingPaintColorCount(selectedSystem) > 0 ? (
               <p className="work-detail-mix-banner">
-                {selectedSystem.missingRoleSlugs.length === 1
-                  ? "1 color role has no direct catalog SKU in this system and needs a custom mix."
-                  : `${selectedSystem.missingRoleSlugs.length} color roles have no direct catalog SKU in this system and need a custom mix.`}
+                {missingPaintColorCount(selectedSystem) === 1
+                  ? "1 color has no direct catalog SKU in this system and needs a custom mix."
+                  : `${missingPaintColorCount(selectedSystem)} colors have no direct catalog SKU in this system and need a custom mix.`}
               </p>
             ) : null}
 
@@ -507,8 +511,12 @@ function Overview({
                 </thead>
                 <tbody>
                   {detail.palette.entries.map((color, index) => {
-                    const match = selectedSystem?.entries.find((entry) => entry.roleSlug === color.roleSlug);
-                    const panel = detail.specification?.panels.find((p) => p.roleSlug === color.roleSlug);
+                    const match = selectedSystem?.entries.find((entry) => colorIdentityMatches(entry, color));
+                    const assignments = detail.specification?.panels.filter((entry) => colorIdentityMatches(entry, color)) ?? [];
+                    const panel = assignments.length ? {
+                      areas: Array.from(new Set(assignments.flatMap((entry) => entry.areas))),
+                      maskingNotes: assignments.map((entry) => entry.maskingNotes).filter(Boolean).join(" "),
+                    } : undefined;
                     const areas =
                       panel?.areas && panel.areas.length > 0
                         ? panel.areas
@@ -518,7 +526,7 @@ function Overview({
                     const primerAdvice = recommendPrimer(color.targetHex, color.paintEffect);
 
                     return (
-                      <tr key={`${color.roleSlug}-${index}`}>
+                      <tr key={color.colorId ?? `${color.roleSlug}-${index}`}>
                         <td className="work-detail-matrix__role" data-label="Color Role">
                           <div className="work-detail-matrix__role-inner">
                             <span
@@ -527,14 +535,15 @@ function Overview({
                               aria-hidden="true"
                             />
                             <div>
-                              <strong>{color.roleName}</strong>
+                              <strong>{color.colorName ?? color.roleName}</strong>
+                              {color.colorName ? <span>{color.roleName}</span> : null}
                               <span className="work-detail-matrix__hex">{color.targetHex}</span>
                               <span className="work-detail-matrix__effect">{color.paintEffect} target</span>
                             </div>
                           </div>
                         </td>
                         <td className="work-detail-matrix__match" data-label={selectedSystem ? `Paint Match · ${selectedSystem.brand} ${selectedSystem.line}` : "Paint Match"}>
-                          {match && !roleNeedsCustomMix(selectedSystem, color.roleSlug) ? (
+                          {match && !roleNeedsCustomMix(selectedSystem, color.roleSlug, color.colorId) ? (
                             <>
                               <div className="work-detail-matrix__code-row">
                                 <strong>{match.paint.code}</strong>

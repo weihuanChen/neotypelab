@@ -3,6 +3,14 @@ import { MutationCtx, QueryCtx } from "./types";
 
 type PromptCtx = MutationCtx | QueryCtx;
 
+/** Remove the one known color-bearing identity anchor without guessing at catalog names. */
+export function normalizeModelGeometryText(text: string) {
+  return text.replace(/\bgreen chest accents\b/gi, "chest accent panel geometry");
+}
+export function normalizeModelGeometryAnchors(anchors: string[]) {
+  return anchors.map(normalizeModelGeometryText);
+}
+
 export type ModelPromptContext = {
   promptText: string;
   shortLabel: string;
@@ -66,22 +74,25 @@ export async function buildModelPromptContext(
   const ipSeries = baseUnit ? await ctx.db.get(baseUnit.ipSeriesId) : null;
   const shortLabel = formatKitVariantLabel(baseModel, baseUnit?.name);
   const baseUnitName = baseUnit?.name ?? baseModel.name;
+  const keyShapeAnchors = normalizeModelGeometryAnchors(baseUnit?.keyShapeAnchors ?? []);
+  const modelPromptAnchor = baseModel.promptAnchor ? normalizeModelGeometryText(baseModel.promptAnchor) : undefined;
+  const unitPromptAnchor = baseUnit?.promptAnchor ? normalizeModelGeometryText(baseUnit.promptAnchor) : undefined;
   const lines = [
     "Model DNA v1: identity and geometry only; do not transfer original paint colors.",
     `Kit Variant: ${shortLabel}.`,
-    baseModel.promptAnchor ??
+    modelPromptAnchor ??
       `Preserve this kit version without simplifying its surface language or mixing with other ${baseUnitName} versions.`,
     baseModel.panelDensity ? `Panel density: ${baseModel.panelDensity}. Keep marking and masking sizes appropriate.` : undefined,
     baseModel.complexityLevel ? `Build complexity: ${baseModel.complexityLevel}.` : undefined,
     baseModel.silhouetteType ? `Silhouette: ${baseModel.silhouetteType}.` : undefined,
     baseUnit ? `Base Unit: ${baseUnit.name}.` : undefined,
-    baseUnit?.keyShapeAnchors.length
-      ? `Key identity anchors: ${baseUnit.keyShapeAnchors.join(", ")}.`
+    keyShapeAnchors.length
+      ? `Key identity anchors: ${keyShapeAnchors.join(", ")}.`
       : undefined,
     baseUnit?.nativeEquipment?.length
       ? `Native equipment: ${baseUnit.nativeEquipment.join(", ")}.`
       : undefined,
-    baseUnit?.promptAnchor,
+    unitPromptAnchor,
     baseUnit?.forbiddenChanges.length
       ? `Forbidden changes: ${baseUnit.forbiddenChanges.join(", ")}.`
       : undefined,
@@ -105,7 +116,7 @@ export async function buildModelPromptContext(
       panelDensity: baseModel.panelDensity,
       aliases: baseModel.aliases,
       tags: baseModel.tags,
-      promptAnchor: baseModel.promptAnchor,
+      promptAnchor: modelPromptAnchor,
       baseUnit: baseUnit
         ? {
             id: baseUnit._id,
@@ -114,10 +125,10 @@ export async function buildModelPromptContext(
             unitCode: baseUnit.unitCode,
             aliases: baseUnit.aliases,
             silhouetteType: baseUnit.silhouetteType,
-            keyShapeAnchors: baseUnit.keyShapeAnchors,
+            keyShapeAnchors,
             nativeEquipment: baseUnit.nativeEquipment ?? [],
             forbiddenChanges: baseUnit.forbiddenChanges,
-            promptAnchor: baseUnit.promptAnchor,
+            promptAnchor: unitPromptAnchor,
             ipSeries: ipSeries
               ? {
                   id: ipSeries._id,
@@ -126,8 +137,8 @@ export async function buildModelPromptContext(
                   universe: ipSeries.universe,
                   manufacturer: ipSeries.manufacturer,
                   rightsOwner: ipSeries.rightsOwner ?? ipSeries.manufacturer,
-                  visualDNA: ipSeries.visualDNA,
-                  promptAnchor: ipSeries.promptAnchor,
+                  visualDNA: ipSeries.visualDNA ? normalizeModelGeometryText(ipSeries.visualDNA) : undefined,
+                  promptAnchor: ipSeries.promptAnchor ? normalizeModelGeometryText(ipSeries.promptAnchor) : undefined,
                 }
               : null,
           }

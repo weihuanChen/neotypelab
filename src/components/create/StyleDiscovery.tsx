@@ -30,7 +30,7 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
       featured: Boolean(previews.find(p => p.id === preset._id)?.featured), colors: displayPalette(preset.slug),
       intent: readStyleIntent(preset.styleIntentJson), choose: () => onPreset(preset) })),
     ...(community ?? []).map(style => ({ id: style.id, name: style.name, description: style.intent.graphicLanguage,
-      summary: paletteNames(style.intent.palette),
+      summary: paletteNames(style.intent.palette, style.intent.colors),
       category: "Community", source: "community", image: style.preview?.imageUrl, featured: false,
       colors: [], intent: style.intent, choose: () => onCommunity(style) })),
   ];

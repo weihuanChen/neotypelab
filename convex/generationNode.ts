@@ -16,6 +16,7 @@ import { executeCompositionHandler } from "./creativeNode";
 import { screenPromptBeforeGeneration } from "./contentSafetyNode";
 
 import { loadShapeReferenceDataUri, supportsShapeReference, withShapeReferenceDirective } from "./shapeReference";
+import { assertImagePromptCapacity, finalImagePrompt } from "./imagePromptBudget";
 import { chatImage, cloudflareAiImage, cloudflareAiRunUrl, cloudflareFailureMessage, cloudflareImageDownloadHeaders, cloudflareImageRequest, completionUrl, imageDefaults, imageGenerationUrl, imagesApiImage, jsonObject, providerConnectionUrl, requestTextCompletion } from "./llmProtocol";
 
 // Internal building block; creative stages will persist and validate their own domain output.
@@ -694,10 +695,12 @@ async function generateWithOpenAICompatibleImage({
     );
   }
 
+  const apiFormat = route.profile.apiFormat;
+  const cloudflarePrompt = apiFormat === "cloudflare-ai-run" ? finalImagePrompt(prompt, negativePrompt) : null;
+  if (cloudflarePrompt) assertImagePromptCapacity(cloudflarePrompt);
   const timeoutMs = route.profile.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  const apiFormat = route.profile.apiFormat;
   let response: Response;
   try {
     response = await fetch(imageRequestUrl(route), {
@@ -707,7 +710,7 @@ async function generateWithOpenAICompatibleImage({
         apiFormat === "cloudflare-ai-run"
           ? cloudflareImageRequest({
               modelId: route.profile.modelId,
-              prompt: negativePrompt ? `${prompt}\n\nAvoid: ${negativePrompt}` : prompt,
+              prompt: cloudflarePrompt!,
               quality: getDefaultImageQuality(renderMode),
               images: referenceImages,
             })

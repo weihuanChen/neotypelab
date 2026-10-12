@@ -1318,11 +1318,15 @@ function publicVisualPalette(concept: Doc<"concepts">) {
   }
 
   return {
+    version: parsed.version,
     entries: parsed.entries.map((entry) => ({
+      ...(entry.colorId ? { colorId: entry.colorId, colorName: entry.colorName } : {}),
       roleSlug: entry.roleSlug,
       roleName: entry.roleName,
       targetHex: entry.targetHex,
       recommendedArea: entry.recommendedArea,
+      paintEffect: entry.paintEffect,
+      ...(entry.coverage ? { coverage: entry.coverage } : {}),
     })),
   };
 }

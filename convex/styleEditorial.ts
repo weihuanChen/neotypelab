@@ -3,20 +3,31 @@ import { z } from "zod";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./functions";
 import { requireSuperAdmin, writeAdminAuditLog } from "./adminAccess";
-import { styleIntentSchema } from "./creativeContracts";
+import { hasIndexableStyle, styleIntentSchema } from "./creativeContracts";
 import { isPublicModelCatalogRecord } from "./modelCatalogStatus";
 import { getPublishedRenditions } from "./publications";
+import { visualColorCoverageSchema, visualPaintEffectSchema } from "./paintRecommendationEngine";
 import type { QueryCtx } from "./types";
 
 // A deliberate public projection. Never expose storage keys or raw provider prompts.
 const publicPaletteSchema = z.object({
   entries: z.array(z.object({
+    colorId: z.string().min(1).optional(), colorName: z.string().min(1).optional(),
     roleName: z.string(), roleSlug: z.string(), rationale: z.string(),
+    targetHex: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
+    paintEffect: visualPaintEffectSchema.optional(),
+    coverage: visualColorCoverageSchema.optional(),
     suggestedPaint: z.object({
       _id: z.string(), brand: z.string(), code: z.string(), colorName: z.string(),
       hexPreview: z.string().regex(/^#[0-9a-f]{6}$/i).optional(),
-    }),
+    }).nullable(),
   })).min(1),
+}).superRefine((palette, ctx) => {
+  palette.entries.forEach((entry, index) => {
+    if (!entry.suggestedPaint && !entry.targetHex) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["entries", index], message: "Custom mixes need an approved target color" });
+    }
+  });
 });
 
 function officialIntent(style: Doc<"stylePresets">) {
@@ -36,6 +47,7 @@ async function resolveReview(ctx: QueryCtx, review: Doc<"styleEditorialReviews">
   ]);
   const intent = style ? officialIntent(style) : null;
   if (!style || !intent || !model || !isPublicModelCatalogRecord(model) || !concept ||
+    !hasIndexableStyle(concept) ||
     concept.visibility !== "public" || !["generated", "archived"].includes(concept.status) ||
     concept.baseModelId !== model._id || concept.stylePresetId !== style._id ||
     concept.activePublicationId !== review.publicationId ||
@@ -127,7 +139,7 @@ export const adminWorkspace = query({
         id: review._id, styleId: review.stylePresetId, conceptId: review.conceptId,
         isPublished: review.isPublished, live: Boolean(await resolveReview(ctx, review)),
       }))),
-      candidates: concepts.filter(c => c.stylePresetId && c.styleIntentJson && c.palettePlanJson && c.renderSpecificationJson)
+      candidates: concepts.filter(c => hasIndexableStyle(c) && c.stylePresetId && c.styleIntentJson && c.palettePlanJson && c.renderSpecificationJson)
         .map(c => ({ id: c._id, title: c.title, styleId: c.stylePresetId })),
     };
   },
@@ -160,12 +172,14 @@ export const reviewConcept = mutation({
       !concept.palettePlanJson || !concept.renderSpecificationJson || !concept.activePublicationId) {
       throw new Error("Choose a generated preset concept with frozen intent, palette and a public preview");
     }
+    if (!hasIndexableStyle(concept)) throw new Error("Modified Style intent cannot be reviewed as an unchanged official preset");
     const palette = publicPaletteSchema.parse(JSON.parse(concept.palettePlanJson));
     for (const entry of palette.entries) {
+      if (!entry.suggestedPaint) continue;
       const id = ctx.db.normalizeId("paintMappings", entry.suggestedPaint._id);
       const paint = id ? await ctx.db.get(id) : null;
       if (!paint?.isActive || paint.code !== entry.suggestedPaint.code || paint.brand !== entry.suggestedPaint.brand) {
-        throw new Error("Every role must map to a real active catalog paint");
+        throw new Error("Every suggested SKU must map to a real active catalog paint");
       }
     }
     const previous = await ctx.db.query("styleEditorialReviews").withIndex("by_style_model", q =>

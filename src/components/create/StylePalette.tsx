@@ -1,4 +1,4 @@
-export type DisplayColor = { role: string; hex: string; weight: number };
+export type DisplayColor = { id?: string; role: string; hex: string; weight: number };
 const roles = ["Armor primary", "Armor secondary", "Frame", "Accent", "Detail"];
 const weights = [42, 24, 16, 10, 8];
 // Editorial display studies only. These values never enter generation requests.
@@ -15,19 +15,19 @@ const studies: Record<string, string[]> = {
   "naval-grey": ["#8D9396", "#50565A", "#2E3236", "#8E2B24", "#ECEDE8"],
 };
 /** Colour names from a Style Intent palette, without the HEX anchors meant for the planner. */
-export function paletteNames(palette: Record<string, string | string[] | undefined>): string {
-  return Object.values(palette).flat().filter((c): c is string => Boolean(c))
+export function paletteNames(palette: Record<string, string | string[] | undefined>, colors?: Array<{ name: string }>): string {
+  return (colors?.length ? colors.map((color) => color.name) : Object.values(palette).flat().filter((c): c is string => Boolean(c)))
     .map(c => c.replace(/\s*#[0-9a-f]{6}\b/gi, "").trim()).filter(Boolean).join(" · ");
 }
 export function displayPalette(slug: string): DisplayColor[] {
   return (studies[slug] ?? []).map((hex, i) => ({ hex, role: roles[i], weight: weights[i] }));
 }
-export function StylePalette({ colors, large = false }: { colors: DisplayColor[]; large?: boolean }) {
+export function StylePalette({ colors, large = false, showBalance = true }: { colors: DisplayColor[]; large?: boolean; showBalance?: boolean }) {
   if (!colors.length) return null;
-  return <div className={large ? "style-color-strip is-large" : "style-color-strip"} aria-label="Illustrative palette balance">
-    {colors.map(color => <span key={color.role} tabIndex={0} style={{ flexGrow: color.weight, backgroundColor: color.hex }}
-      aria-label={`${color.role}: ${color.hex}, illustrative weight ${color.weight}%`}>
-      <span className="style-color-tip">{color.role}<br />{color.hex}<br />Palette balance · {color.weight}%</span>
+  return <div className={large ? "style-color-strip is-large" : "style-color-strip"} aria-label={showBalance ? "Illustrative palette balance" : "Approved palette colors"}>
+    {colors.map((color, index) => <span key={color.id ?? `${color.role}-${index}`} tabIndex={0} style={{ flexGrow: color.weight, backgroundColor: color.hex }}
+      aria-label={`${color.role}: ${color.hex}${showBalance ? `, illustrative weight ${color.weight}%` : ""}`}>
+      <span className="style-color-tip">{color.role}<br />{color.hex}{showBalance ? <><br />Palette balance · {color.weight}%</> : null}</span>
     </span>)}
   </div>;
 }

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { LibraryDetailPage, type WorkDetail } from "./LibraryDetailPage";
+import { repaintV3Schema } from "@/convex/creativeContracts";
 
 vi.mock("convex/react", () => ({
   useAction: () => vi.fn(),
@@ -172,6 +173,53 @@ const mockDetail = {
 } as unknown as WorkDetail;
 
 describe("LibraryDetailPage overview language", () => {
+  it("shows distinct same-role colors with their own paint and all assigned parts", () => {
+    const previousPalette = mockDetail.palette;
+    const previousSpecification = mockDetail.specification;
+    const paintSet = mockDetail.paintRecommendations!.sets[0];
+    const previousEntries = paintSet.entries;
+    const previousMissing = paintSet.missingRoleSlugs;
+    const previousMissingColors = paintSet.missingColorIds;
+    try {
+      mockDetail.palette = {
+        version: "visual-palette.v3",
+        entries: [
+          { colorId: "red", colorName: "Spectrum Red", roleSlug: "primary-armor", roleName: "Primary armor", targetHex: "#E53935", paintEffect: "solid", rationale: "Red armor" },
+          { colorId: "blue", colorName: "Spectrum Blue", roleSlug: "primary-armor", roleName: "Primary armor", targetHex: "#1565C0", paintEffect: "solid", rationale: "Blue armor" },
+        ], sprayNotes: [],
+      };
+      paintSet.entries = [{ ...previousEntries[0], colorId: "red", roleSlug: "primary-armor" }];
+      paintSet.missingRoleSlugs = ["primary-armor"];
+      paintSet.missingColorIds = ["blue"];
+      mockDetail.specification = repaintV3Schema.parse({
+        ...previousSpecification!,
+        version: "repaint-specification.v3",
+        material: { ...previousSpecification!.material, finish: "matte", intent: ["Painted armor"] },
+        panels: [
+          { assignmentId: "red-chest", colorId: "red", roleSlug: "primary-armor", areas: ["Chest plates"], maskingNotes: "Mask chest seams" },
+          { assignmentId: "blue-shoulders", colorId: "blue", roleSlug: "primary-armor", areas: ["Shoulder plates"], maskingNotes: "Mask shoulder seams" },
+          { assignmentId: "blue-arms", colorId: "blue", roleSlug: "secondary-armor", areas: ["Forearm plates"], maskingNotes: "Mask arm seams" },
+        ],
+      });
+      const html = renderToStaticMarkup(<LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />);
+      const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) ?? [];
+      const red = rows.find((row) => row.includes("Spectrum Red"))!;
+      const blue = rows.find((row) => row.includes("Spectrum Blue"))!;
+      expect(red).toContain(previousEntries[0].paint.code);
+      expect(red).toContain("Chest plates");
+      expect(red).not.toContain("No catalog SKU");
+      expect(blue).toContain("No catalog SKU");
+      expect(blue).toContain("Shoulder plates · Forearm plates");
+      expect(blue).not.toContain("Chest plates");
+    } finally {
+      mockDetail.palette = previousPalette;
+      mockDetail.specification = previousSpecification;
+      paintSet.entries = previousEntries;
+      paintSet.missingRoleSlugs = previousMissing;
+      paintSet.missingColorIds = previousMissingColors;
+    }
+  });
+
   it("renders a matrix, editorial process columns, and a spray timeline instead of nested cards", () => {
     const html = renderToStaticMarkup(
       <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />

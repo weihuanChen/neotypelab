@@ -16,6 +16,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { ShoppingListActions } from "@/src/components/public/ShoppingListActions";
 import { ConceptEngagementBar } from "@/src/components/showcase/EngagementBars";
 import { useStartProviderStatus } from "@/src/providers/StartProviders";
+import { colorIdentityMatches } from "@/src/components/library/libraryBriefData";
 import type {
   PrototypeSnapshot,
   PublicPrototypeFeasibility,
@@ -31,6 +32,7 @@ type AdjacentPath = PublicPrototypeRecommendations["beginnerAlternatives"][numbe
 
 type ColorSystemRow = {
   index: string;
+  colorId?: string;
   roleSlug: string;
   roleName: string;
   targetHex?: string;
@@ -406,14 +408,14 @@ function ColorSystemSection({
               <span>{number}</span>
               <h2 id="case-color-title">Color System</h2>
             </div>
-            <p>{colorRows.length} roles</p>
+            <p>{colorRows.length} colors</p>
           </header>
         </div>
         <div className="case-palette__bars">
           {colorRows.map((row) => (
             <div
               className="case-palette__bar"
-              key={row.roleSlug}
+              key={row.colorId ?? `${row.roleSlug}-${row.index}`}
               style={row.targetHex ? { backgroundColor: row.targetHex } : undefined}
               title={row.roleName}
             />
@@ -437,7 +439,7 @@ function ColorSystemSection({
           </div>
           <ol className="case-callouts">
             {colorRows.map((row) => (
-              <li className="case-callout" key={row.roleSlug}>
+              <li className="case-callout" key={row.colorId ?? `${row.roleSlug}-${row.index}`}>
                 <span className="case-callout__index">{row.index}</span>
                 {row.targetHex ? (
                   <span className="case-swatch" style={{ backgroundColor: row.targetHex }} aria-hidden="true" />
@@ -462,7 +464,7 @@ function ColorSystemSection({
         <table className="case-matrix">
           <thead>
             <tr>
-              <th scope="col">Role</th>
+              <th scope="col">Color</th>
               <th scope="col">Paint</th>
               <th scope="col">Areas</th>
               <th scope="col">Note</th>
@@ -470,7 +472,7 @@ function ColorSystemSection({
           </thead>
           <tbody>
             {colorRows.map((row) => (
-              <tr key={row.roleSlug}>
+              <tr key={row.colorId ?? `${row.roleSlug}-${row.index}`}>
                 <td>
                   <div className="case-matrix__role">
                     {row.targetHex ? (
@@ -717,7 +719,7 @@ function CreateYoursSection({
           <div className="case-create__swatches" aria-hidden="true">
             {colorRows.map((row) => (
               <span
-                key={row.roleSlug}
+                key={row.colorId ?? `${row.roleSlug}-${row.index}`}
                 style={row.targetHex ? { backgroundColor: row.targetHex } : undefined}
               />
             ))}
@@ -909,10 +911,11 @@ function RemixesSection({
 
 function buildColorSystemRows(concept: SharedPrototype): ColorSystemRow[] {
   const visual = concept.visualPalette?.entries ?? [];
-  const bySlug = new Map(concept.paintPlan.entries.map((entry) => [entry.roleSlug, entry]));
   const order = visual.length > 0
     ? visual
     : concept.paintPlan.entries.map((entry) => ({
+        colorId: entry.colorId,
+        colorName: entry.colorName,
         roleSlug: entry.roleSlug,
         roleName: entry.roleName,
         targetHex: entry.suggestedPaint?.hexPreview,
@@ -920,12 +923,13 @@ function buildColorSystemRows(concept: SharedPrototype): ColorSystemRow[] {
       }));
 
   return order.map((entry, index) => {
-    const plan = bySlug.get(entry.roleSlug);
+    const plan = concept.paintPlan.entries.find((candidate) => colorIdentityMatches(entry, candidate));
     const targetHex = "targetHex" in entry ? entry.targetHex : plan?.suggestedPaint?.hexPreview;
     return {
       index: pad(index + 1),
+      colorId: entry.colorId,
       roleSlug: entry.roleSlug,
-      roleName: entry.roleName,
+      roleName: entry.colorName ?? entry.roleName,
       targetHex,
       area: entry.recommendedArea ?? plan?.recommendedArea,
       paint: plan?.suggestedPaint ?? undefined,

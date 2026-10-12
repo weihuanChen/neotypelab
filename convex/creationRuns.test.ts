@@ -6,6 +6,7 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
 import { seedUser } from "@/tests/convexTestHelpers";
+import type { CreativeSnapshot } from "./creativePipeline";
 
 const modules = import.meta.glob("./**/*.ts");
 beforeEach(() => vi.useFakeTimers());
@@ -22,8 +23,12 @@ async function fixture(balance = 20) {
 }
 async function finishPalette(f: Awaited<ReturnType<typeof fixture>>, runId: Id<"creationRuns">) {
   const run = (await f.t.mutation(internal.creationRuns.claim, { runId, attempt: 1 }))!;
+  const composition = (await f.t.run(ctx => ctx.db.get(run.paletteId!)))!;
+  const intent = (JSON.parse(composition.inputSnapshotJson) as CreativeSnapshot).resolvedIntent!;
   await f.t.mutation(internal.creativePipeline.complete, { promptCompositionId: run.paletteId!,
-    responseJson: JSON.stringify({ entries: f.data.roles.map(role => ({ roleSlug: role.slug, targetHex: "#EEEEEE", paintEffect: "solid", rationale: "Neutral build" })), sprayNotes: ["Thin coats"] }), executionJson: "{}" });
+    responseJson: JSON.stringify({ version: "visual-palette.v3", entries: intent.colors.map(color => ({ colorId: color.colorId, colorName: color.name,
+      roleSlug: color.scope.kind === "inner-frame" ? "inner-frame" : color.scope.kind === "sensors" ? "sensor-color" : color.scope.kind === "markings" ? "markings" : "primary-armor",
+      targetHex: color.hex ?? "#EEEEEE", paintEffect: "solid", rationale: "Neutral build" })), sprayNotes: ["Thin coats"] }), executionJson: "{}" });
   await f.t.mutation(internal.creationRuns.advance, { runId, attempt: 1 });
 }
 
@@ -127,7 +132,10 @@ describe("complete preview runs", () => {
     const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "chain", expectedCost: f.cost });
     await finishPalette(f, runId);
     const specRun = (await f.t.mutation(internal.creationRuns.claim, { runId, attempt: 1 }))!;
-    const spec = { summary: "Neutral model", panels: f.data.roles.map(role => ({ roleSlug: role.slug, areas: [role.name], maskingNotes: "Follow panel edges" })), material: { surfaceTexture: "Smooth", reflectivity: "Low", coating: "Matte" }, weathering: { level: "clean", applicationNotes: "No wear" }, decals: { density: "low", placementNotes: "Shoulders" } };
+    const prepared = (await f.t.run(ctx => ctx.db.get(specRun.conceptId!)))!;
+    const palette = JSON.parse(prepared.visualPaletteJson!) as { entries: Array<{ colorId: string; roleSlug: string }> };
+    const effective = JSON.parse(prepared.resolvedIntentJson!).effectiveStyle;
+    const spec = { version: "repaint-specification.v3", summary: "Neutral model", panels: palette.entries.map((color, index) => ({ assignmentId: `assignment-${index}`, colorId: color.colorId, roleSlug: color.roleSlug, areas: ["Existing armor panels"], maskingNotes: "Follow panel edges" })), material: { surfaceTexture: "Smooth", reflectivity: "Low", coating: "Matte", finish: effective.finish, intent: effective.materialIntent }, weathering: { level: "clean", applicationNotes: "No wear" }, decals: { density: "low", placementNotes: "Shoulders" } };
     await f.t.mutation(internal.creativePipeline.complete, { promptCompositionId: specRun.specificationId!, responseJson: JSON.stringify(spec), executionJson: "{}" });
     await f.t.mutation(internal.creationRuns.advance, { runId, attempt: 1 });
     const imageRun = (await f.t.mutation(internal.creationRuns.claim, { runId, attempt: 1 }))!;

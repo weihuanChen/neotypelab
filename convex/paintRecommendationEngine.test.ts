@@ -4,9 +4,13 @@ import { hexToLabD65 } from "./paintColor";
 import {
   buildPaintRecommendationSets,
   buildVisualPalette,
+  materializePrimaryPaintPlan,
+  paintRecommendationSetsSchema,
+  samePaletteColor,
   summarizePaintCatalogForPrompt,
   visualPaletteForRender,
   visualPaletteFromLegacyPlan,
+  visualPaletteSchema,
 } from "./paintRecommendationEngine";
 
 describe("paint recommendation sets", () => {
@@ -83,7 +87,7 @@ describe("paint recommendation sets", () => {
     });
   });
 
-  it("does not reuse one paint for distinct roles or accept distant matches", () => {
+  it("does not accept distant matches just to cover another role", () => {
     const mappings = [
       fakePaint("GSI Creos", "Mr. Color", "C", "C9", "#DFB512", "metallic", "mr-color"),
       fakePaint("Tamiya", "Tamiya Color Acrylic", "X", "X-12", "#CCA208", "metallic", "tamiya-acrylic"),
@@ -150,8 +154,79 @@ describe("paint recommendation sets", () => {
     });
     expect(summary.systems[0].transparents.map((paint) => paint.hex)).toContain("#E60012");
     expect(summary.matchRule).toMatch(/custom mix/);
+    expect(summary.matchRule).toMatch(/independent of catalog availability/);
+  });
+
+  it("matches same-role independent colors by ID and preserves their target metadata", () => {
+    const palette = customPalette([
+      { colorId: "blue", colorName: "Blue", targetHex: "#1565C0" },
+      { colorId: "white", colorName: "White", targetHex: "#EEEEEE" },
+    ]);
+    palette.entries[0].coverage = { scope: "exterior-armor", percent: 70, source: "resolved-constraint" };
+    const recommendations = buildPaintRecommendationSets(palette, [
+      fakePaint("GSI Creos", "Mr. Color", "C", "C5", "#1565C0", "solid", "mr-color"),
+      fakePaint("GSI Creos", "Mr. Color", "C", "C1", "#EEEEEE", "solid", "mr-color"),
+    ], 123);
+    expect(recommendations.version).toBe("paint-recommendations.v3");
+    expect(recommendations.sets[0]).toMatchObject({ coverageCount: 2, colorCount: 2, missingColorIds: [] });
+    expect(recommendations.sets[0].entries.map((entry) => [entry.colorId, entry.paint.code])).toEqual([["blue", "C5"], ["white", "C1"]]);
+    const plan = materializePrimaryPaintPlan({ palette, recommendations, conceptTitle: "Blue-white", weatheringLevel: "clean", moodTags: [] });
+    expect(plan.entries.map((entry) => [entry.colorId, entry.suggestedPaint?.code])).toEqual([["blue", "C5"], ["white", "C1"]]);
+    expect(plan.entries[0].coverage).toEqual(palette.entries[0].coverage);
+    expect(visualPaletteForRender(palette).entries.map((entry) => entry.colorId)).toEqual(["blue", "white"]);
+    expect(visualPaletteFromLegacyPlan(JSON.stringify(plan))).toMatchObject({ version: "visual-palette.v3", entries: palette.entries });
+  });
+
+  it("keeps seven independent armor colors when a catalog effect is unavailable", () => {
+    const targets = ["#E53935", "#1565C0", "#43A047", "#FB8C00", "#8E24AA", "#EEEEEE", "#FDD835"];
+    const palette = customPalette(targets.map((targetHex, index) => ({ colorId: `color-${index}`, colorName: `Color ${index}`, targetHex })));
+    palette.entries[2].paintEffect = "metallic";
+    const recommendations = buildPaintRecommendationSets(palette,
+      targets.map((hex, index) => fakePaint("GSI Creos", "Mr. Color", "C", `C${index}`, hex, "solid", "mr-color")), 123);
+    const primary = recommendations.sets[0];
+    expect(primary).toMatchObject({ coverageCount: 6, roleCount: 7, colorCount: 7, missingColorIds: ["color-2"] });
+    expect(primary.uncoveredRoles).toEqual([{ colorId: "color-2", colorName: "Color 2", roleSlug: "primary-armor", targetHex: targets[2], paintEffect: "metallic" }]);
+    const plan = materializePrimaryPaintPlan({ palette, recommendations, conceptTitle: "Spectrum", weatheringLevel: "clean", moodTags: [] });
+    expect(plan.entries).toHaveLength(7);
+    expect(plan.entries[2]).toMatchObject({ colorId: "color-2", targetHex: "#43A047", paintEffect: "metallic", suggestedPaint: null });
+    expect(plan.entries.filter((entry) => entry.suggestedPaint)).toHaveLength(6);
+    expect(visualPaletteForRender(palette).entries.map((entry) => entry.targetHex)).toEqual(targets);
+  });
+
+  it("reuses the nearest compatible paint for equivalent targets with bounded work", () => {
+    // All colors can match all samples: a one-to-one recursive search grows
+    // factorially here, while reusable nearest matching stays linear per color.
+    const palette = customPalette(Array.from({ length: 32 }, (_, index) => ({ colorId: `color-${index}`, colorName: `Color ${index}`, targetHex: "#1565C0" })));
+    const mappings = Array.from({ length: 48 }, (_, index) => fakePaint("GSI Creos", "Mr. Color", "C", `C${String(index).padStart(2, "0")}`, "#1565C0", "solid", "mr-color"));
+    const started = performance.now();
+    const recommendations = buildPaintRecommendationSets(palette, mappings, 123);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(recommendations.sets[0]).toMatchObject({ coverageCount: 32, colorCount: 32 });
+    expect(new Set(recommendations.sets[0].entries.map((entry) => entry.paint.code))).toEqual(new Set(["C00"]));
+    expect(recommendations.sets[0].entries.map((entry) => entry.colorId)).toEqual(palette.entries.map((entry) => entry.colorId));
+  });
+
+  it("preserves legacy identity but rejects incomplete or duplicated v3 identities", () => {
+    expect(samePaletteColor({ roleSlug: "accent" }, { roleSlug: "accent" })).toBe(true);
+    expect(samePaletteColor({ colorId: "accent", roleSlug: "accent" }, { roleSlug: "accent" })).toBe(false);
+    const palette = customPalette([{ colorId: "red", colorName: "Red", targetHex: "#E53935" }]);
+    expect(visualPaletteSchema.safeParse({ ...palette, entries: [palette.entries[0], palette.entries[0]] }).success).toBe(false);
+    const { colorId, ...withoutId } = palette.entries[0];
+    expect(colorId).toBe("red");
+    expect(visualPaletteSchema.safeParse({ ...palette, entries: [withoutId] }).success).toBe(false);
+    const recommendations = buildPaintRecommendationSets(palette, [], 123);
+    expect(recommendations.sets[0]).toMatchObject({ colorCount: 1, missingColorIds: ["red"] });
+    expect(paintRecommendationSetsSchema.safeParse({ ...recommendations, sets: [{ ...recommendations.sets[0], missingColorIds: undefined }] }).success).toBe(false);
   });
 });
+
+function customPalette(entries: Array<{ colorId: string; colorName: string; targetHex: string }>) {
+  return buildVisualPalette({
+    roles: [{ slug: "primary-armor", name: "Primary armor", recommendedArea: "outer armor" }],
+    entries: entries.map((entry) => ({ ...entry, roleSlug: "primary-armor", paintEffect: "solid", rationale: "Approved independent armor color." })),
+    sprayNotes: ["Mask along existing panel boundaries."],
+  });
+}
 
 function fakePaint(
   brand: string,

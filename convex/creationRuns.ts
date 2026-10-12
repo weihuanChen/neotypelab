@@ -6,7 +6,8 @@ import { internal } from "./_generated/api";
 import { prototypeArgs, initializeConcept } from "./prototypes";
 import { beginCreative } from "./creativePipeline";
 import { queueConceptRender } from "./prototypeTools";
-import { creativeInputKey } from "./creativeContracts";
+import { creativeInputKey, legacyCreativeInputKey } from "./creativeContracts";
+import { visualPaletteSchema, visualPaletteFromLegacyPlan, type VisualPalette } from "./paintRecommendationEngine";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./types";
 import { portraitUrl } from "./kitPicker";
@@ -62,7 +63,8 @@ export const start = mutation({
     const inputKey = creativeInputKey(args.input) + JSON.stringify({ sourceConceptId: args.input.sourceConceptId });
     const prior = await ctx.db.query("creationRuns").withIndex("by_user_request", q => q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
     if (prior) {
-      if (prior.inputKey !== inputKey) throw new Error("Request key already used for another preview");
+      const legacyKey = legacyCreativeInputKey(args.input) + JSON.stringify({ sourceConceptId: args.input.sourceConceptId });
+      if (prior.inputKey !== inputKey && prior.inputKey !== legacyKey) throw new Error("Request key already used for another preview");
       return prior._id;
     }
     const runs = await ctx.db.query("creationRuns").withIndex("by_user", q => q.eq("userId", viewer._id)).collect();
@@ -131,39 +133,29 @@ export const latest = query({ args: {}, handler: async ctx => {
   const styleName = stylePreset?.name ?? userStyle?.name ?? styleIntent?.name ?? "Custom Style";
   const styleSlug = stylePreset?.slug;
 
-  let visualPalette: { primary?: string; secondary?: string; accent?: string; frame?: string; detail?: string } | null = null;
-  if (concept?.visualPaletteJson) {
-    try {
-      const parsed = JSON.parse(concept.visualPaletteJson);
-      visualPalette = {
-        primary: parsed.primary,
-        secondary: parsed.secondary,
-        accent: parsed.accent,
-        frame: parsed.frame,
-        detail: parsed.detail,
-      };
-    } catch {
-      visualPalette = null;
-    }
+  let palette: VisualPalette | null = null;
+  if (concept?.visualPaletteJson || concept?.palettePlanJson) {
+    try { palette = concept.visualPaletteJson ? visualPaletteSchema.parse(JSON.parse(concept.visualPaletteJson)) : visualPaletteFromLegacyPlan(concept.palettePlanJson); }
+    catch { palette = null; }
   } else if (run.paletteId) {
     const paletteComp = await ctx.db.get(run.paletteId);
     if (paletteComp?.outputSummaryJson) {
       try {
         const output = JSON.parse(paletteComp.outputSummaryJson);
-        if (output?.visualPalette) {
-          visualPalette = {
-            primary: output.visualPalette.primary,
-            secondary: output.visualPalette.secondary,
-            accent: output.visualPalette.accent,
-            frame: output.visualPalette.frame,
-            detail: output.visualPalette.detail,
-          };
-        }
+        if (output?.visualPalette) palette = visualPaletteSchema.parse(output.visualPalette);
       } catch {
-        visualPalette = null;
+        palette = null;
       }
     }
   }
+  const visualPalette = palette ? {
+    primary: palette.entries.find(entry => entry.roleSlug === "primary-armor")?.targetHex,
+    secondary: palette.entries.find(entry => entry.roleSlug === "secondary-armor")?.targetHex,
+    accent: palette.entries.find(entry => entry.roleSlug === "accent")?.targetHex,
+    frame: palette.entries.find(entry => entry.roleSlug === "inner-frame")?.targetHex,
+    detail: palette.entries.find(entry => entry.roleSlug === "markings")?.targetHex,
+    entries: palette.entries,
+  } : null;
 
   const rawJobNum = concept?.recordNumber ? String(concept.recordNumber).padStart(4, "0") : run._id.slice(-4).toUpperCase();
   const jobId = `NPL-${rawJobNum}`;

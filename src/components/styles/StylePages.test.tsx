@@ -32,6 +32,20 @@ const pair = {
 };
 
 describe("style editorial pages", () => {
+  it("shows every anchored community color even when all share primary importance", () => {
+    const names = ["Spectrum Red", "Spectrum Blue", "Spectrum Green", "Spectrum Orange", "Spectrum Purple", "Spectrum Yellow", "Spectrum Pink"];
+    const html = renderToStaticMarkup(<CommunityStyleDetail style={{
+      id: "rainbow" as Id<"userStyles">, name: "Rainbow", creator: { name: "Creator", handle: "creator" },
+      saveCount: 0, publicPrototypeCount: 0, preview: null, promoted: false, createdAt: 1,
+      intent: { ...style.intent, version: "style-intent.v3", source: "community", styleType: "custom", pattern: "none",
+        explicitRequirements: { version: "normalized-user-intent.v1", requirements: [], unresolved: [] },
+        colors: names.map((name) => ({ name, role: "primary", hex: "#112233", coverage: 14 })),
+      },
+    }} />);
+    for (const name of names) expect(html).toContain(name);
+    expect((html.match(/<dt>primary<\/dt>/g) ?? []).length).toBe(7);
+  });
+
   it("renders style-first links, kit application and actual mapped paint values", () => {
     const gallery = renderToStaticMarkup(<StyleGallery styles={[{ ...style, imageUrl, modelCount: 1, reviewedAt: 1 }]} />);
     const detail = renderToStaticMarkup(<StyleDetail detail={{ style, pairs: [pair] }} />);

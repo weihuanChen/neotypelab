@@ -4,6 +4,8 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { createAssetGraph } from "./assetModel";
 import { seedUser } from "@/tests/convexTestHelpers";
+import { styleIntentSchema } from "./creativeContracts";
+import { resolveCreativeIntent } from "./creativeIntentResolver";
 
 const modules = import.meta.glob("./**/*.ts");
 async function fixture() {
@@ -109,6 +111,46 @@ describe("library work details", () => {
     expect(detail?.hero.storageObjectId).toBeNull();
   });
 
+  it("reads seven v3 colors and many-to-many panel assignments without role collapse", async () => {
+    const f = await fixture();
+    const colors = ["#E53935", "#1565C0", "#43A047", "#FB8C00", "#8E24AA", "#EEEEEE", "#FDD835"];
+    const entries = colors.map((targetHex, index) => ({
+      colorId: `color-${index}`, colorName: `Color ${index}`, roleSlug: "primary-armor", roleName: "Primary armor",
+      targetHex, paintEffect: "solid", rationale: "Required armor color.",
+    }));
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, {
+      visualPaletteJson: JSON.stringify({ version: "visual-palette.v3", entries, sprayNotes: [] }),
+      paintRecommendationSetsJson: JSON.stringify({
+        version: "paint-recommendations.v3", generatedAt: 123,
+        sets: [{
+          id: "fixture", brand: "Fixture", line: "Fixture", label: "Fixture", recommended: true,
+          coverageCount: 6, colorCount: 7, roleCount: 7, averageDeltaE: 0, maxDeltaE: 0,
+          missingColorIds: ["color-2"], missingRoleSlugs: ["primary-armor"],
+          uncoveredRoles: [{ colorId: "color-2", colorName: "Color 2", roleSlug: "primary-armor", targetHex: colors[2], paintEffect: "solid" }],
+          warnings: ["Color 2 needs a custom mix."],
+          entries: entries.filter(entry => entry.colorId !== "color-2").map(entry => ({
+            colorId: entry.colorId, colorName: entry.colorName, roleSlug: entry.roleSlug, targetHex: entry.targetHex, paintEffect: entry.paintEffect,
+            deltaE00: 0, matchBand: "very_close", warnings: [], paint: { _id: entry.colorId, mappingKey: entry.colorId, brand: "Fixture", code: entry.colorId, colorName: entry.colorName },
+          })),
+        }],
+      }),
+      renderSpecificationJson: JSON.stringify({
+        version: "repaint-specification.v3", summary: "Seven armor colors.",
+        panels: [
+          ...entries.map((entry, index) => ({ assignmentId: `panel-${index}`, colorId: entry.colorId, roleSlug: entry.roleSlug, areas: [`Armor zone ${index}`], maskingNotes: "Follow panel boundaries" })),
+          { assignmentId: "white-secondary", colorId: "color-5", roleSlug: "secondary-armor", areas: ["Shield"], maskingNotes: "Mask shield edge" },
+        ],
+        material: { surfaceTexture: "Smooth", reflectivity: "Low", coating: "Matte", finish: "matte", intent: ["painted armor"] },
+        weathering: { level: "clean", applicationNotes: "No wear" }, decals: { density: "low", placementNotes: "Shoulder markings" },
+      }),
+    }));
+    const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
+    expect(detail?.palette?.entries.map(entry => entry.colorId)).toEqual(entries.map(entry => entry.colorId));
+    expect(detail?.paintRecommendations?.sets[0]).toMatchObject({ colorCount: 7, missingColorIds: ["color-2"] });
+    expect(detail?.specification?.panels).toHaveLength(8);
+    expect(detail?.specification?.panels[7]).toMatchObject({ colorId: "color-5", assignmentId: "white-secondary", roleSlug: "secondary-armor" });
+  });
+
   it("surfaces a custom style name when no official preset is attached", async () => {
     const f = await fixture();
     await f.t.run(ctx => ctx.db.patch(f.conceptId, {
@@ -121,6 +163,60 @@ describe("library work details", () => {
     }));
     const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
     expect(detail?.style).toBe("Digital Teal Idol");
+  });
+
+  it("shows the frozen effective gloss material after a Notes override and catalog rename", async () => {
+    const f = await fixture();
+    const notes = "Override the selected finish with gloss.";
+    const resolvedIntent = resolveCreativeIntent({
+      styleIntent: styleIntentSchema.parse({
+        version: "style-intent.v1", source: "official", styleType: "preset", name: "Blue study",
+        palette: { primary: "blue" }, surfaceLogic: "Solid armor panels", graphicLanguage: "Conventional unit markings",
+        contrast: "medium", markingDensity: "low", materialIntent: ["painted armor"], mood: "Technical",
+        weathering: "clean", finish: "matte", paintability: "high",
+      }),
+      material: { name: "Matte Armor", finish: "matte" }, selectionSources: { material: "user-selection" }, notes,
+      normalizedNotes: {
+        version: "normalized-user-intent.v1", requirements: [{
+          id: "finish", property: "finish", operation: "set", scope: { kind: "whole-kit" },
+          value: "gloss", overridesSelection: true, evidence: { inputRef: "notes", quote: notes },
+        }], unresolved: [],
+      },
+    });
+    await f.t.run(async ctx => {
+      const materialId = await ctx.db.insert("materialPresets", {
+        name: "Matte Armor", slug: "detail-matte-armor", finishType: "matte", promptKeywords: [], isActive: true,
+      });
+      await ctx.db.patch(f.conceptId, {
+        materialPresetId: materialId, resolvedIntentJson: JSON.stringify(resolvedIntent),
+        materialSnapshotJson: JSON.stringify({ id: materialId, name: "Matte Armor", finishType: "matte" }),
+      });
+      await ctx.db.patch(materialId, { name: "Renamed Live Matte Catalog Profile" });
+    });
+    const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
+    expect(detail?.material).toBe(resolvedIntent.effectiveStyle.materialIntent.join(" · "));
+    expect(detail?.material).toMatch(/gloss/i);
+    expect(detail?.material).not.toMatch(/matte|renamed/i);
+    expect(await f.other.client.query(api.libraryDetails.get, { conceptId: f.conceptId })).toBeNull();
+    expect(await f.t.query(api.libraryDetails.get, { conceptId: f.conceptId })).toBeNull();
+    expect(JSON.stringify(detail)).not.toContain("secret-storage-key");
+    expect(JSON.stringify(detail)).not.toContain("private-library");
+  });
+
+  it("uses frozen material names defensively and preserves legacy live-name fallback", async () => {
+    const f = await fixture();
+    await f.t.run(async ctx => {
+      const materialId = await ctx.db.insert("materialPresets", {
+        name: "Renamed Live Profile", slug: "detail-legacy-material", finishType: "matte", promptKeywords: [], isActive: true,
+      });
+      await ctx.db.patch(f.conceptId, {
+        materialPresetId: materialId, materialSnapshotJson: JSON.stringify({ name: "Frozen Matte Armor" }),
+        resolvedIntentJson: '{"effectiveStyle":{"materialIntent":["Unvalidated gloss"]}}',
+      });
+    });
+    expect((await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId }))?.material).toBe("Frozen Matte Armor");
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, { materialSnapshotJson: "malformed" }));
+    expect((await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId }))?.material).toBe("Renamed Live Profile");
   });
 
   it("automatically includes reference-image resources without replacing the main render", async () => {

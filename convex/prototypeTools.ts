@@ -12,10 +12,12 @@ import {
 import { MoodTag } from "./domain";
 import { mutation } from "./functions";
 import { action } from "./_generated/server";
-import { creativeArgs, type CreativeResult } from "./creativePipeline";
+import { creativeArgs, effectiveMaterialForExecution, type CreativeResult } from "./creativePipeline";
 import { styleIntentSchema } from "./creativeContracts";
+import { effectiveStyleForExecution, resolvedCreativeIntentSchema, resolvedIntentForExecution } from "./creativeIntentResolver";
+import type { CreativeSnapshot } from "./creativePipeline";
 import type { InterpretationResult } from "./styleInterpretations";
-import { buildModelPromptContext } from "./modelPromptContext";
+import { buildModelPromptContext, normalizeModelGeometryText } from "./modelPromptContext";
 import {
   patternGuardLine,
   patternNegativeTerms,
@@ -32,6 +34,8 @@ import { MutationCtx } from "./types";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 import { reserveGenerationStorageForJob } from "./storageAccounting";
 import { debitCredits } from "./creditLedger";
+import { compileRenderIntentPrompt } from "./renderIntentCompiler";
+import { assertImagePromptCapacity, finalImagePrompt } from "./imagePromptBudget";
 
 type RenderMode =
   | "hd-render"
@@ -216,6 +220,7 @@ export async function queueConceptRender(
     ]);
 
   const intent = concept.styleIntentJson ? styleIntentSchema.parse(JSON.parse(concept.styleIntentJson)) : null;
+  const resolvedIntent = concept.resolvedIntentJson ? resolvedCreativeIntentSchema.parse(JSON.parse(concept.resolvedIntentJson)) : null;
   if (baseModel === null || (!stylePreset && !intent) || materialPreset === null) {
     throw new Error("Concept is missing its base model, Style DNA, or material profile");
   }
@@ -257,19 +262,23 @@ export async function queueConceptRender(
   }
   const renderPalette = visualPaletteForRender(visualPalette);
   const renderWeathering = renderWeatheringLevel(
-    concept.weatheringLevel,
+    resolvedIntent?.effectiveStyle.weathering ?? concept.weatheringLevel,
     renderMode === "weathering-simulation" ||
       renderMode === "weathering-split-preview" ||
       simulationStage === "weathering-pass"
   );
-  const renderIntent = intent ? styleIntentForRender(intent, renderWeathering) : null;
+  const effectiveGuardIntent = resolvedIntent ? styleIntentSchema.parse({
+    ...resolvedIntent.effectiveStyle, version: "style-intent.v1", source: intent?.source ?? "official", styleType: intent?.styleType ?? "preset",
+    palette: { primary: "Approved visual colors" }, paintability: intent?.paintability ?? "high",
+  }) : intent;
+  const renderIntent = effectiveGuardIntent ? styleIntentForRender(effectiveGuardIntent, renderWeathering) : null;
   const renderStyleName = renderIntent?.name ?? stylePreset?.name ?? "Custom Style";
   const renderSpecification = sanitizeRenderSpecification(
     concept.renderSpecificationJson,
     visualPalette,
     paintMappings,
     renderWeathering,
-    solidColorsOnly(intent)
+    solidColorsOnly(effectiveGuardIntent)
   );
   const materialComparisonVariants = selectMaterialComparisonVariants(
     materialPreset,
@@ -278,32 +287,43 @@ export async function queueConceptRender(
   );
   const materialComparisonSummary = formatMaterialComparisonVariants(materialComparisonVariants);
   const modelPromptContext = await buildModelPromptContext(ctx, baseModel);
+  const approvedComposition = resolvedIntent && concept.paletteCompositionId ? await ctx.db.get(concept.paletteCompositionId) : null;
+  const approvedInput = approvedComposition ? JSON.parse(approvedComposition.inputSnapshotJson) as CreativeSnapshot : null;
+  const effectiveMaterial = resolvedIntent && concept.materialSnapshotJson
+    ? effectiveMaterialForExecution(JSON.parse(concept.materialSnapshotJson), resolvedIntent)
+    : materialPreset;
+  const effectiveNotes = resolvedIntent ? "Apply only the frozen effective creative intent and approved panel assignments." : concept.notes ?? "No extra notes.";
+  const effectiveMood = resolvedIntent?.effectiveStyle.mood ?? formatMoodTags(concept.moodTags ?? []);
 
   const promptPreview = composePrompt(template.userPromptTemplate, {
-    baseModel: modelPromptContext.promptText,
+    baseModel: normalizeModelGeometryText(approvedInput?.promptValues?.baseModel ?? modelPromptContext.promptText),
     conceptId: concept._id,
-    materialPreset: materialPreset.name,
-    mood: formatMoodTags(concept.moodTags ?? []),
-    notes: concept.notes ?? "No extra notes.",
-    stylePreset: renderStyleName,
+    materialPreset: resolvedIntent ? JSON.stringify(effectiveMaterial) : materialPreset.name,
+    mood: effectiveMood,
+    notes: effectiveNotes,
+    stylePreset: resolvedIntent ? JSON.stringify(effectiveStyleForExecution(resolvedIntent)) : renderStyleName,
     colorRoles: JSON.stringify(renderPalette.entries),
     topPalette: JSON.stringify(renderPalette.entries),
-    weatheringLevel: concept.weatheringLevel,
+    weatheringLevel: resolvedIntent?.effectiveStyle.weathering ?? concept.weatheringLevel,
     approvedPalette: JSON.stringify(renderPalette),
+    resolvedIntent: resolvedIntent ? JSON.stringify(resolvedIntentForExecution(resolvedIntent)) : "Legacy approved palette and repaint specification are authoritative.",
     renderSpecification,
+    renderMode: getRenderLabel(renderMode), renderDirective: getRenderDirective(renderMode, simulationStage),
+    layoutSpec: getRenderLayoutSpec(renderMode), simulationStage: simulationStage ? getBuildStageLabel(simulationStage) : "",
+    materialComparison: renderMode === "material-finish-comparison" ? materialComparisonSummary : "",
   });
-  const promptPreviewWithFallback = [template.systemPrompt, appendPromptFallbackLines(
+  const legacyPromptWithFallback = [template.systemPrompt, appendPromptFallbackLines(
     promptPreview,
     template.userPromptTemplate,
     {
       stylePreset: `Style DNA: ${renderStyleName}`,
-      mood: `Mood Vector: ${formatMoodTags(concept.moodTags ?? [])}`,
-      weatheringLevel: `Weathering: ${concept.weatheringLevel}`,
+      mood: `Mood Vector: ${effectiveMood}`,
+      weatheringLevel: `Weathering: ${resolvedIntent?.effectiveStyle.weathering ?? concept.weatheringLevel}`,
       simulationStage: simulationStage
         ? `Simulation Stage: ${getBuildStageLabel(simulationStage)}`
         : "",
       topPalette: `Visual color assignment (render instructions only): ${JSON.stringify(renderPalette.entries)}`,
-      notes: `Operator notes: ${concept.notes ?? "No extra notes."}`,
+      notes: `Operator notes: ${effectiveNotes}`,
       renderMode: `Render Mode: ${getRenderLabel(renderMode)}`,
       renderDirective: `Render Directive: ${getRenderDirective(renderMode, simulationStage)}`,
       layoutSpec: `Layout Spec: ${getRenderLayoutSpec(renderMode)}`,
@@ -315,11 +335,34 @@ export async function queueConceptRender(
   ),
     "Output guard: render only the painted model and its native in-universe markings. Do not render paint brands, product names, catalog numbers, HEX strings, palette legends, color swatches, callout lines, specification panels, or technical annotation text.",
     sceneGuardLine(renderWeathering),
-    patternGuardLine(intent),
-    renderIntent ? `Frozen Style Intent:\n${JSON.stringify(renderIntent)}` : "",
+    patternGuardLine(effectiveGuardIntent),
+    resolvedIntent ? `Frozen effective creative intent:\n${JSON.stringify(resolvedIntentForExecution(resolvedIntent))}`
+      : renderIntent ? `Frozen Style Intent:\n${JSON.stringify(renderIntent)}` : "",
     `Approved repaint specification (authoritative):\n${renderSpecification}`,
     `Complete visual palette (authoritative render colors; never reproduce these strings as text):\n${JSON.stringify(renderPalette)}`,
   ].filter(Boolean).join("\n\n");
+  const negativePrompt = [
+    template.negativePromptTemplate,
+    "paint brand labels, paint product codes, catalog numbers, hex text, palette legend, color chart, specification sheet, technical callouts",
+    sceneNegativeTerms(renderWeathering).join(", "),
+    patternNegativeTerms(effectiveGuardIntent).join(", "),
+  ].filter(Boolean).join(", ");
+  const compactRender = resolvedIntent && renderIntent ? compileRenderIntentPrompt({
+    systemPrompt: template.systemPrompt, userPromptTemplate: template.userPromptTemplate,
+    geometry: normalizeModelGeometryText(approvedInput?.promptValues?.baseModel ?? modelPromptContext.promptText),
+    palette: visualPalette, specificationJson: renderSpecification, intent: resolvedIntent, guardedStyle: renderIntent,
+    materialType: "materialType" in effectiveMaterial ? effectiveMaterial.materialType : undefined,
+    view: { mode: getRenderLabel(renderMode), directive: getRenderDirective(renderMode, simulationStage), layout: getRenderLayoutSpec(renderMode),
+      ...(simulationStage ? { stage: getBuildStageLabel(simulationStage) } : {}),
+      ...(renderMode === "material-finish-comparison" ? { materialComparison: materialComparisonSummary } : {}) },
+    guards: [
+      "Output guard: render only the painted model and native in-universe markings. Never render paint brands, product codes, HEX strings, palette legends, color charts, callouts, specification panels or annotation text.",
+      sceneGuardLine(renderWeathering), patternGuardLine(effectiveGuardIntent),
+    ],
+  }) : null;
+  const promptPreviewWithFallback = compactRender?.prompt ?? legacyPromptWithFallback;
+  // Reserve the full reference directive even if loading later fails; final provider input is never larger.
+  assertImagePromptCapacity(finalImagePrompt(promptPreviewWithFallback, negativePrompt, true));
 
   const promptCompositionId = await ctx.db.insert("promptCompositions", {
     userId: viewer._id,
@@ -328,27 +371,19 @@ export async function queueConceptRender(
     promptTemplateVersionId: template.promptTemplateVersionId,
     status: "ready",
     composedPrompt: promptPreviewWithFallback,
-    negativePrompt: [
-      template.negativePromptTemplate,
-      "paint brand labels, paint product codes, catalog numbers, hex text, palette legend, color chart, specification sheet, technical callouts",
-      sceneNegativeTerms(renderWeathering).join(", "),
-      patternNegativeTerms(intent).join(", "),
-    ].filter(Boolean).join(", "),
+    negativePrompt,
     additionalNotes: concept.notes,
     inputSnapshotJson: JSON.stringify({
       sourceConceptId: concept._id,
       styleIntent: intent,
+      resolvedIntent,
       baseModel: modelPromptContext.snapshot,
       stylePreset: {
         id: stylePreset?._id,
         name: (intent?.name ?? stylePreset?.name ?? "Custom Style"),
         slug: stylePreset?.slug,
       },
-      materialPreset: {
-        id: materialPreset._id,
-        name: materialPreset.name,
-        slug: materialPreset.slug,
-      },
+      materialPreset: effectiveMaterial,
       moodTags: concept.moodTags ?? [],
       weatheringLevel: concept.weatheringLevel,
       renderWeatheringLevel: renderWeathering,
@@ -485,7 +520,7 @@ function formatMoodTags(moodTags: MoodTag[]) {
   return moodTags.length > 0 ? moodTags.join(", ") : "No mood vector selected.";
 }
 
-function sanitizeRenderSpecification(
+export function sanitizeRenderSpecification(
   value: string | undefined,
   palette: VisualPalette,
   paintMappings: Array<{ brand: string; code: string }>,
@@ -514,11 +549,18 @@ function sanitizeRenderSpecification(
       ? { ...panel, maskingNotes: solid((panel as Record<string, unknown>).maskingNotes, "Mask each panel for one solid color.") }
       : panel)
     : parsed.panels;
+  const material = parsed.material !== null && typeof parsed.material === "object" && !Array.isArray(parsed.material)
+    ? parsed.material as Record<string, unknown> : null;
+  const materialFinish = parsed.version === "repaint-specification.v3" && material && typeof material.finish === "string" ? material.finish : null;
   const serialized = JSON.stringify({
+    version: parsed.version,
     summary: solid(typeof parsed.summary === "string" ? scrubWearText(parsed.summary, weatheringLevel) : parsed.summary,
       "Solid-color repaint following the approved palette."),
     panels,
-    material: parsed.material,
+    material: materialFinish ? {
+      ...material, coating: `${materialFinish} coating within the approved visual color targets`,
+      reflectivity: materialFinish === "matte" ? "Low" : materialFinish === "gloss" ? "High" : "Medium",
+    } : parsed.material,
     weathering: weathering
       ? {
           ...weathering,

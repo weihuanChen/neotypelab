@@ -44,6 +44,7 @@ import {
   computeMaskingSummary,
   CUSTOM_MIX_LABEL,
   CUSTOM_MIX_NOTE,
+  missingPaintColorCount,
   parsePaintRecommendations,
   parseRenderSpecification,
   parseVisualPalette,
@@ -287,15 +288,15 @@ export function BuildBriefInspector({
             <div className="brief-color-system mt-2">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-mono text-[11px] text-ink-muted uppercase tracking-wider">
-                  Color System ({visualPalette.entries.length} roles)
+                  Color System ({visualPalette.entries.length} colors)
                 </span>
               </div>
               <div className="brief-color-swatches flex flex-wrap gap-1.5">
                 {visualPalette.entries.map((color, idx) => (
                   <div
-                    key={`${color.roleSlug}-${idx}`}
+                    key={color.colorId ?? `${color.roleSlug}-${idx}`}
                     className="brief-color-chip flex items-center gap-1.5 px-2 py-1 bg-surface-muted border border-line-secondary"
-                    title={`${color.roleName} (${color.targetHex}) · ${color.paintEffect}`}
+                    title={`${color.colorName ?? color.roleName} (${color.targetHex}) · ${color.paintEffect}`}
                   >
                     <span
                       className="brief-swatch w-3.5 h-3.5 shrink-0 border border-black/15 shadow-inner"
@@ -303,7 +304,7 @@ export function BuildBriefInspector({
                     />
                     <div className="min-w-0">
                       <span className="font-mono text-[10px] text-ink font-semibold block truncate max-w-[80px]">
-                        {color.roleName}
+                        {color.colorName ?? color.roleName}
                       </span>
                     </div>
                   </div>
@@ -333,11 +334,11 @@ export function BuildBriefInspector({
                     : ""}
                 </span>
               </div>
-              {paintSystem.missingRoleSlugs.length > 0 ? (
+              {missingPaintColorCount(paintSystem) > 0 ? (
                 <p className="font-mono text-[10px] text-ink-muted leading-relaxed">
-                  {paintSystem.missingRoleSlugs.length === 1
-                    ? "1 role has no catalog SKU and needs a custom mix."
-                    : `${paintSystem.missingRoleSlugs.length} roles have no catalog SKU and need a custom mix.`}
+                  {missingPaintColorCount(paintSystem) === 1
+                    ? "1 color has no catalog SKU and needs a custom mix."
+                    : `${missingPaintColorCount(paintSystem)} colors have no catalog SKU and need a custom mix.`}
                 </p>
               ) : null}
 
@@ -345,7 +346,7 @@ export function BuildBriefInspector({
               <div className="brief-paint-chips grid grid-cols-2 gap-1.5 mt-2">
                 {paintSystem.entries.slice(0, 4).map((entry, idx) => (
                   <div
-                    key={`${entry.roleSlug}-${idx}`}
+                    key={entry.colorId ?? `${entry.roleSlug}-${idx}`}
                     className="flex items-center gap-2 p-1.5 bg-surface-muted border border-line-secondary text-xs"
                     title={`${entry.paint.code} ${entry.paint.colorName}`}
                   >
@@ -364,10 +365,10 @@ export function BuildBriefInspector({
                   </div>
                 ))}
                 {(visualPalette?.entries ?? [])
-                  .filter((color) => roleNeedsCustomMix(paintSystem, color.roleSlug))
+                  .filter((color) => roleNeedsCustomMix(paintSystem, color.roleSlug, color.colorId))
                   .map((color) => (
                     <div
-                      key={`mix-${color.roleSlug}`}
+                      key={`mix-${color.colorId ?? color.roleSlug}-${color.targetHex}`}
                       className="flex items-center gap-2 p-1.5 bg-surface-muted border border-dashed border-line-secondary text-xs"
                       title={CUSTOM_MIX_NOTE}
                     >
@@ -380,7 +381,7 @@ export function BuildBriefInspector({
                           {CUSTOM_MIX_LABEL}
                         </strong>
                         <span className="text-[10px] text-ink-muted block truncate">
-                          {color.roleName}
+                          {color.colorName ?? color.roleName}
                         </span>
                       </div>
                     </div>

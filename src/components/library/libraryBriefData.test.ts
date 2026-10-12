@@ -1,12 +1,92 @@
 import { describe, expect, it } from "vitest";
 import {
+  colorIdentityMatches,
   computeMaskingSummary,
   parsePaintRecommendations,
+  parseCreativeRequirements,
   parseRenderSpecification,
   parseVisualPalette,
+  roleNeedsCustomMix,
 } from "./libraryBriefData";
 
 describe("libraryBriefData parsers", () => {
+  it("shows explicit retained requirements with their sources, without turning inferred ratios into promises", () => {
+    const requirements = parseCreativeRequirements(JSON.stringify({
+      version: "creative-intent.v1",
+      colors: [{ colorId: "blue", name: "Blue armor" }, { colorId: "white", name: "White armor" }],
+      constraints: [
+        { colorId: "blue", property: "color-presence", status: "active", strength: "hard", scope: { kind: "exterior-armor" }, value: "clearly-visible", evidence: { source: "user-explicit", inputRef: "notes" } },
+        { colorId: "blue", property: "color-coverage", status: "active", strength: "hard", scope: { kind: "exterior-armor" }, value: 70, evidence: { source: "user-explicit", inputRef: "notes" } },
+        { colorId: "white", property: "color-coverage", status: "active", strength: "soft", scope: { kind: "whole-kit" }, value: 50, evidence: { source: "ai-inference", inputRef: "style.colors.white" } },
+        { colorId: "white", property: "color-presence", status: "superseded", strength: "hard", scope: { kind: "exterior-armor" }, value: "required", evidence: { source: "user-explicit", inputRef: "style-description" } },
+      ],
+    }));
+    expect(requirements).toEqual([
+      { label: "Required color", value: "Blue armor · Exterior armor", source: "Your refinements" },
+      { label: "Coverage target", value: "Blue armor · 70% of exterior armor", source: "Your refinements" },
+    ]);
+    expect(parseCreativeRequirements("invalid")).toEqual([]);
+  });
+
+  it("retains seven colors sharing armor roles and joins recommendations by color ID", () => {
+    const targets = ["#E53935", "#1565C0", "#43A047", "#FB8C00", "#8E24AA", "#FDD835", "#00ACC1"];
+    const palette = parseVisualPalette(JSON.stringify({
+      version: "visual-palette.v3",
+      entries: targets.map((targetHex, index) => ({
+        colorId: `rainbow-${index}`, colorName: `Spectrum ${index}`, roleSlug: "primary-armor",
+        roleName: "Primary armor", targetHex, paintEffect: "solid",
+      })),
+      sprayNotes: ["Mask each armor panel separately."],
+    }));
+    expect(palette?.entries.map((entry) => entry.targetHex)).toEqual(targets);
+    expect(palette?.entries.map((entry) => entry.colorId)).toHaveLength(7);
+
+    const system = parsePaintRecommendations(JSON.stringify({
+      version: "paint-recommendations.v3",
+      sets: [{
+        id: "catalog", recommended: true, coverageCount: 1, roleCount: 7,
+        missingRoleSlugs: ["primary-armor"], missingColorIds: ["rainbow-1"],
+        entries: [{ colorId: "rainbow-0", roleSlug: "primary-armor", targetHex: targets[0],
+          paint: { code: "RED", colorName: "Red", brand: "Catalog" } }],
+      }],
+    }));
+    expect(system?.missingColorIds).toEqual(["rainbow-1"]);
+    expect(roleNeedsCustomMix(system ?? undefined, "primary-armor", "rainbow-0")).toBe(false);
+    expect(roleNeedsCustomMix(system ?? undefined, "primary-armor", "rainbow-1")).toBe(true);
+    expect(colorIdentityMatches(palette!.entries[0], system!.entries[0])).toBe(true);
+    expect(colorIdentityMatches(palette!.entries[1], system!.entries[0])).toBe(false);
+  });
+
+  it("shows explicit HEX and scoped exclusions while hiding superseded targets", () => {
+    expect(parseCreativeRequirements(JSON.stringify({
+      version: "creative-intent.v1", colors: [{ colorId: "blue", name: "Blue" }],
+      constraints: [
+        { colorId: "blue", property: "color-hex", status: "active", strength: "hard", value: "#1565C0", evidence: { source: "user-explicit", inputRef: "notes" } },
+        { colorId: "blue", property: "color-importance", status: "active", strength: "hard", value: "secondary", evidence: { source: "user-explicit", inputRef: "notes" } },
+        { colorId: "blue", property: "color-hex", status: "superseded", strength: "hard", value: "#0000FF", evidence: { source: "user-explicit", inputRef: "style-description" } },
+        { property: "excluded-color", status: "active", strength: "hard", scope: { kind: "part", part: "Shoulders" }, value: "red", evidence: { source: "user-explicit", inputRef: "notes" } },
+      ],
+    }))).toEqual([
+      { label: "Exact color", value: "Blue · #1565C0", source: "Your refinements" },
+      { label: "Color use", value: "Blue · Major armor color", source: "Your refinements" },
+      { label: "Excluded color", value: "Red · Shoulders", source: "Your refinements" },
+    ]);
+  });
+
+  it("keeps multiple assignments for one color and does not fall back to roles for identified colors", () => {
+    const specification = parseRenderSpecification(JSON.stringify({
+      version: "repaint-specification.v3", summary: "Blue across multiple armor groups",
+      panels: [
+        { assignmentId: "chest", colorId: "blue", roleSlug: "primary-armor", areas: ["Chest"], maskingNotes: "Follow chest seams." },
+        { assignmentId: "arms", colorId: "blue", roleSlug: "secondary-armor", areas: ["Forearms"], maskingNotes: "Mask wrist joints." },
+      ],
+    }));
+    expect(specification?.panels.map((entry) => entry.assignmentId)).toEqual(["chest", "arms"]);
+    expect(specification?.panels.every((entry) => colorIdentityMatches(entry, { colorId: "blue", roleSlug: "primary-armor" }))).toBe(true);
+    expect(colorIdentityMatches({ colorId: "blue", roleSlug: "primary-armor" }, { roleSlug: "primary-armor" })).toBe(false);
+    expect(colorIdentityMatches({ roleSlug: "primary-armor" }, { roleSlug: "primary-armor" })).toBe(true);
+  });
+
   it("parses visualPalette v2 cleanly", () => {
     const json = JSON.stringify({
       version: "visual-palette.v2",
