@@ -4,6 +4,7 @@ import { COMPLETE_BUILD_CREDITS, STARTER_CREDITS } from "@/lib/productPricing";
 import { appPaths } from "@/src/lib/appPaths";
 import { HeroPlate } from "./HeroPlate";
 import { HomeCarousel } from "./HomeCarousel";
+import { heroShowcase } from "./heroShowcase";
 import { HOME_FAQ_OPEN_COUNT, homeFaqFor, homeKitStory, starterBuildsLabel, type HomeFaqItem } from "./homeContent";
 import type { HomeData, HomeHero, HomeHeroPaint } from "./types";
 
@@ -19,7 +20,7 @@ export function HomeLanding({ data, customKit = false }: { data: HomeData | null
 
   return (
     <main className="home-page">
-      <HeroSection hero={hero} lede={story.lede} />
+      <HeroSection lede={story.lede} />
       <PlanSection hero={hero} />
       <StepsSection story={story} />
       {works.length > 0 ? (
@@ -47,9 +48,9 @@ export function HomeLanding({ data, customKit = false }: { data: HomeData | null
   );
 }
 
-function HeroSection({ hero, lede }: { hero: HomeHero | null; lede: string }) {
+function HeroSection({ lede }: { lede: string }) {
   return (
-    <section aria-labelledby="home-hero-title" className={hero ? "home-hero" : "home-hero is-text-only"}>
+    <section aria-labelledby="home-hero-title" className="home-hero">
       <div className="home-wrap home-hero__grid">
         <div className="home-hero__copy">
           <h1 id="home-hero-title">Plan your Gunpla paint scheme before you spray.</h1>
@@ -62,25 +63,21 @@ function HeroSection({ hero, lede }: { hero: HomeHero | null; lede: string }) {
             New accounts start with {STARTER_CREDITS} credits, enough for {starterBuildsLabel}. Preset styles are free.
           </p>
         </div>
-        {hero ? (
-          <figure className="home-hero__figure">
-            <HeroPlate
-              alt={`${hero.kitName ?? hero.title} painted in ${hero.styleName ?? "this scheme"}`}
-              callouts={hero.callouts}
-              imageUrl={hero.imageUrl}
-              lineArtUrl={hero.showLineArt ? hero.lineArtUrl : null}
-            />
-            <figcaption className="home-hero__caption">
-              <span>
-                <a href={hero.href}><b>{hero.kitName ?? hero.title}</b></a>
-                {hero.styleName ? <> in {hero.styleName}</> : null}
-                {hero.creator ? <> · by {hero.creator}</> : null}
-              </span>
-              {hero.showLineArt && hero.lineArtUrl ? <span>Drag to compare</span> : null}
-            </figcaption>
-            <PaintKey paints={hero.paints} />
-          </figure>
-        ) : null}
+        <figure className="home-hero__figure">
+          <HeroPlate
+            alt={heroShowcase.alt}
+            beforeUrl={heroShowcase.beforeUrl}
+            callouts={heroShowcase.callouts}
+            imageUrl={heroShowcase.afterUrl}
+            labels={{ before: heroShowcase.beforeLabel, after: heroShowcase.afterLabel }}
+            square
+          />
+          <figcaption className="home-hero__caption">
+            <span><b>{heroShowcase.kitName}</b>, before and after its paint plan</span>
+            <span>Drag to compare</span>
+          </figcaption>
+          <PaintKey paints={heroShowcase.paints} />
+        </figure>
       </div>
     </section>
   );
@@ -143,7 +140,7 @@ function PlanSection({ hero }: { hero: HomeHero | null }) {
           <h2 id="home-plan-title">What a plan gives you</h2>
           <p>
             Every build is a working sheet for the bench, not only a picture.
-            {hero ? " This is the plan behind the build above." : null}
+            {hero ? " Here is a real one from the showcase." : null}
           </p>
         </header>
         <div className="home-parts">

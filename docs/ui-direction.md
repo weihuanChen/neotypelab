@@ -120,13 +120,16 @@ filtering belong to `/showcase` (old `/?style=…` links 301 to
 `/showcase/archive`). Order: hero (positioning + curated build plate) →
 what a plan gives you → three steps → build carousel → FAQ → closing CTA.
 
-- The hero build, its A–H paint markers, the optional kit line-art
-  comparison and the carousel order are curated at `/admin/home`
-  (`convex/homeFeature.ts`). Without curation the page falls back to the
-  newest public builds.
+- The hero plate is static (`src/components/home/heroShowcase.ts` +
+  `public/assets/home/`): the same kit photographed before and after its
+  repaint, square and pixel-aligned, with a drag seam and A–E paint
+  markers on the "after" half. Replace both files together.
+- The build behind "What a plan gives you" and the carousel order are
+  curated at `/admin/home` (`convex/homeFeature.ts`). Without curation the
+  page falls back to the newest public builds.
 - Navy appears on the hero CTA and the closing CTA only; they are never
   on screen together. No psy green here.
-- One motion moment: the build sweeps in over the line art once on load.
+- One motion moment: the repaint sweeps in over the kit photo once on load.
   The carousel advances slowly (6.5 s), pauses on hover/focus/off-screen,
   and never auto-plays under `prefers-reduced-motion`.
 - FAQ copy lives in `src/components/home/homeContent.ts` and also feeds

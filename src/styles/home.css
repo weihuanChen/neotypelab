@@ -177,12 +177,21 @@
   object-fit: cover;
 }
 
+.home-plate.is-square {
+  aspect-ratio: 1 / 1;
+}
+
+.home-plate__before {
+  object-fit: cover;
+}
+
 .home-plate__line {
   object-fit: contain;
   mix-blend-mode: multiply;
 }
 
-.home-plate.is-compare .home-plate__render {
+.home-plate.is-compare .home-plate__render,
+.home-plate.is-compare .home-plate__callouts {
   clip-path: inset(0 0 0 var(--split));
 }
 
@@ -209,7 +218,8 @@
 }
 
 /* One orchestrated moment: the build sweeps in over the line art on load. */
-.home-plate.is-intro .home-plate__render {
+.home-plate.is-intro .home-plate__render,
+.home-plate.is-intro .home-plate__callouts {
   animation: home-plate-reveal 1.5s var(--ease-out) 0.35s both;
 }
 
@@ -240,6 +250,12 @@
 
 .home-plate__tag.is-left { left: 0.6rem; }
 .home-plate__tag.is-right { right: 0.6rem; }
+
+.home-plate__callouts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
 .home-plate__callout {
   position: absolute;
@@ -935,6 +951,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .home-plate.is-intro .home-plate__render,
+  .home-plate.is-intro .home-plate__callouts,
   .home-plate.is-intro .home-plate__seam {
     animation: none;
   }

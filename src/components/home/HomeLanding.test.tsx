@@ -39,6 +39,7 @@ const work = {
 describe("HomeLanding", () => {
   it("states what the site does and leads to Create even with no data", () => {
     const html = renderToStaticMarkup(<HomeLanding data={null} />);
+    expect(html).toContain("/assets/home/hero-build.webp");
     expect(html).toContain("Plan your Gunpla paint scheme before you spray.");
     expect(html).toContain('href="/create"');
     expect(html).toContain("What a plan gives you");
@@ -50,9 +51,12 @@ describe("HomeLanding", () => {
 
   it("renders the curated build, its paint key and the carousel", () => {
     const html = renderToStaticMarkup(<HomeLanding data={{ hero, works: [work], curated: { hero: true, works: true } }} />);
-    expect(html).toContain("https://cdn.test/lineart.webp");
+    // The hero plate is static; the curated build drives "What a plan gives you".
+    expect(html).toContain("/assets/home/hero-kit.webp");
+    expect(html).toContain("/assets/home/hero-build.webp");
+    expect(html).not.toContain("https://cdn.test/lineart.webp");
     expect(html).toContain("Mr. Color C1");
-    expect(html).toContain("Mix #C25F2A");
+    expect(html).toContain("Mr. Color C72");
     expect(html).toContain("Hazard orange (custom mix)");
     expect(html).toContain("Prime all parts in grey");
     expect(html).not.toContain("Let it cure overnight");
