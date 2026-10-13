@@ -53,12 +53,12 @@ export type JobResultProps = {
  *              ↘ open record / use style
  *                         ↘ INTERRUPTED → retry or INPUT
  *
- * EXISTING asks before reuse: open a prior record, or form again.
+ * EXISTING offers three choices: use the style again (free), view the last
+ * build made with it, or start a new style.
  * REVIEW is 回看: interpretation exists, userStyle is not written yet.
  * STORED is 入库: userStyle is saved privately.
- * REVIEW, STORED and EXISTING return to INPUT:
- *   - Revise direction keeps the text
- *   - New style clears the draft
- * FORMING never claims Library storage. Styles stay in Create → Saved.
+ * REVIEW, STORED and EXISTING return to INPUT only through New style, which
+ * clears the draft; earlier styles stay in Create → Your styles.
+ * FORMING never claims Library storage. Styles stay in Create → Your styles.
  */
 export type StyleJobPhase = "input" | "existing" | "forming" | "review" | "stored" | "interrupted";

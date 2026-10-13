@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ export type CreationRunRecord = {
     scale?: string;
     portrait?: string | null;
     fullBody?: string | null;
+    /** Custom Kit only: the user's private reference photo. */
+    referenceObjectId?: Id<"storageObjects"> | null;
   } | null;
   styleName: string;
   styleSlug?: string;
@@ -116,10 +118,17 @@ export function GenerationJobSheet({
   retryBusy?: boolean;
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const privatePreviewUrl = usePrivateAssetUrl(
     run.previewAsset?.publicUrl ? null : run.previewAsset?.storageObjectId
   );
-  const previewUrl = run.previewAsset?.publicUrl ?? privatePreviewUrl;
+  const previewUrl = previewFailed ? null : (run.previewAsset?.publicUrl ?? privatePreviewUrl);
+  const referenceUrl = usePrivateAssetUrl(run.kit?.referenceObjectId ?? null);
+  const isCustomKit = run.kit?.grade === "Custom Kit" || Boolean(run.kit?.referenceObjectId);
+  useEffect(() => {
+    setImageLoaded(false);
+    setPreviewFailed(false);
+  }, [run.previewAsset?.publicUrl, run.previewAsset?.storageObjectId]);
   const isRunning = run.status === "queued" || run.status === "running";
   const isSucceeded = run.status === "succeeded";
   const isFailed = run.status === "failed";
@@ -172,7 +181,7 @@ export function GenerationJobSheet({
           <span className="job-hero-style">{run.styleName}</span>
         </h2>
         <p className="job-hero-caption">
-          {[run.kit?.grade, run.kit?.scale, "Custom Repaint Prototype"]
+          {(isCustomKit ? ["Your upload · private", "Repaint preview"] : [run.kit?.grade, run.kit?.scale, "Custom Repaint Prototype"])
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -195,13 +204,25 @@ export function GenerationJobSheet({
             {/* Scanning Line Beam */}
             {isRunning && <div className="job-scanner-beam" aria-hidden="true" />}
 
-            {/* Silhouette Base */}
-            <div className="job-silhouette-media">
-              <KitPortrait
-                url={run.kit?.fullBody ?? run.kit?.portrait}
-                name={run.kit?.name ?? "Kit"}
-              />
+            {/* Base: the user's own photo for a Custom Kit, catalog line art otherwise */}
+            <div className={`job-silhouette-media${isCustomKit ? " is-reference" : ""}`}>
+              {isCustomKit ? (
+                referenceUrl ? <img src={referenceUrl} alt={`${run.kit?.name ?? "Your kit"}, your uploaded photo`} />
+                  : <span className="job-reference-loading">Loading your photo…</span>
+              ) : (
+                <KitPortrait
+                  url={run.kit?.fullBody ?? run.kit?.portrait}
+                  name={run.kit?.name ?? "Kit"}
+                />
+              )}
             </div>
+            {isCustomKit && !(isSucceeded && previewUrl && imageLoaded) ? (
+              <span className="job-reference-tag">{isRunning ? "Repainting your photo" : "Your photo"}</span>
+            ) : null}
+
+            {isCustomKit && referenceUrl && isSucceeded && previewUrl && imageLoaded ? (
+              <figure className="job-reference-inset"><img src={referenceUrl} alt="" /><figcaption>Your photo</figcaption></figure>
+            ) : null}
 
             {/* Completed Render Image */}
             {previewUrl && (
@@ -210,6 +231,7 @@ export function GenerationJobSheet({
                 alt={run.title}
                 className="job-result-render-image"
                 onLoad={() => setImageLoaded(true)}
+                onError={() => setPreviewFailed(true)}
               />
             )}
           </div>

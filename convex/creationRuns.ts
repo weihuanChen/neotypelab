@@ -14,6 +14,53 @@ import { portraitUrl } from "./kitPicker";
 import { creationWorkflowManager } from "./workflowManager";
 import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
 import { customKitDisplay } from "./customKitContracts";
+import { resolveEffectiveEntitlements } from "./entitlements";
+import type { Doc } from "./_generated/dataModel";
+
+/** The frozen reference photo of a Custom Kit run, or the live kit photo when the snapshot has no readable id. */
+function customKitReferenceObjectId(ctx: QueryCtx, snapshotJson: string | undefined, liveObjectId: Id<"storageObjects"> | undefined) {
+  if (snapshotJson) {
+    try {
+      const parsed = JSON.parse(snapshotJson) as { storageObjectId?: unknown };
+      if (typeof parsed.storageObjectId === "string") {
+        const id = ctx.db.normalizeId("storageObjects", parsed.storageObjectId);
+        if (id) return id;
+      }
+    } catch { /* fall back to the live reference */ }
+  }
+  return liveObjectId ?? null;
+}
+
+function snapshotCustomKitId(ctx: QueryCtx, snapshotJson: string | undefined) {
+  if (!snapshotJson) return null;
+  try {
+    const parsed = JSON.parse(snapshotJson) as { id?: unknown };
+    return typeof parsed.id === "string" ? ctx.db.normalizeId("customKits", parsed.id) : null;
+  } catch { return null; }
+}
+
+/** The image the owner can actually open. Original files stay behind the download entitlement, same as Library. */
+async function viewablePreview(ctx: QueryCtx, userId: Id<"users">, concept: Doc<"concepts"> | null) {
+  if (!concept) return null;
+  const entitlements = await resolveEffectiveEntitlements(ctx, userId);
+  const readable = (object: Doc<"storageObjects"> | null) => Boolean(
+    object && object.userId === userId && object.bucketRole === "private" && object.status === "ready"
+    && (!object.retainUntil || object.retainUntil > Date.now())
+    && (object.rendition !== "original" || entitlements.originalDownloadAllowed),
+  );
+  const objects = concept.currentAssetVersionId
+    ? await ctx.db.query("storageObjects").withIndex("by_assetVersionId", (q) => q.eq("assetVersionId", concept.currentAssetVersionId!)).collect()
+    : [];
+  const display = (["master", "preview", "thumbnail"] as const)
+    .map((rendition) => objects.find((object) => object.rendition === rendition && readable(object)))
+    .find((object) => object !== undefined);
+  if (display) return { storageObjectId: display._id };
+  const legacy = concept.previewAssetId ? await ctx.db.get(concept.previewAssetId) : null;
+  if (!legacy || legacy.userId !== userId || legacy.status === "deleted") return null;
+  const legacyObject = legacy.storageObjectId ? await ctx.db.get(legacy.storageObjectId) : null;
+  if (readable(legacyObject)) return { storageObjectId: legacyObject!._id };
+  return legacy.publicUrl?.startsWith("http") ? { publicUrl: legacy.publicUrl } : null;
+}
 
 const { paletteCompositionId: _palette, visibility: _visibility, requestKey: _key, ...inputArgs } = prototypeArgs;
 const inputValidator = v.object(inputArgs);
@@ -107,7 +154,7 @@ export const latest = query({ args: {}, handler: async ctx => {
   const run = await ctx.db.query("creationRuns").withIndex("by_user", q => q.eq("userId", ctx.viewer!._id)).order("desc").first();
   if (!run) return null;
   const concept = run.conceptId ? await ctx.db.get(run.conceptId) : null;
-  const previewAsset = concept?.previewAssetId ? await ctx.db.get(concept.previewAssetId) : null;
+  const preview = await viewablePreview(ctx, ctx.viewer._id, concept);
 
   let input: any = null;
   try {
@@ -122,6 +169,7 @@ export const latest = query({ args: {}, handler: async ctx => {
   const customId = typeof input?.customKitId === "string" ? ctx.db.normalizeId("customKits", input.customKitId) : null;
   const custom = customId ? await ctx.db.get(customId) : null;
   const customName = customKitDisplay(concept?.customKitSnapshotJson)?.name ?? (custom?.userId === run.userId ? custom.name : undefined);
+  const resolvedCustomKitId = customId ?? snapshotCustomKitId(ctx, concept?.customKitSnapshotJson);
   const stylePresetId = typeof input?.stylePresetId === "string" ? ctx.db.normalizeId("stylePresets", input.stylePresetId) : null;
   const stylePreset = stylePresetId ? await ctx.db.get(stylePresetId) : null;
   const userStyleId = typeof input?.userStyleId === "string" ? ctx.db.normalizeId("userStyles", input.userStyleId) : null;
@@ -174,20 +222,29 @@ export const latest = query({ args: {}, handler: async ctx => {
     error: run.error,
     conceptId: run.conceptId,
     title: concept?.title ?? (kit || customName ? `${kit?.name ?? customName} × ${styleName}` : "Repaint Preview"),
-    kit: kit ? {
+    kit: customName && resolvedCustomKitId ? {
+      id: resolvedCustomKitId,
+      name: customName,
+      grade: "Custom Kit",
+      scale: "",
+      portrait: null,
+      fullBody: null,
+      referenceObjectId: customKitReferenceObjectId(ctx, concept?.customKitSnapshotJson,
+        custom?.userId === run.userId && custom.status === "active" ? custom.storageObjectId : undefined),
+    } : kit ? {
       id: kit._id,
       name: kit.name,
       grade: kit.grade ?? "",
       scale: kit.scale ?? "",
       portrait: portraitUrl(kit.thumbnailAssetKey),
       fullBody: portraitUrl(kit.fullBodyAssetKey) ?? portraitUrl(kit.thumbnailAssetKey),
-    } : customName ? { id: customId!, name: customName, grade: "Custom Kit", scale: "", portrait: null, fullBody: null } : null,
+    } : null,
     styleName,
     styleSlug,
     visualPalette,
-    previewAsset: previewAsset ? {
-      publicUrl: previewAsset.publicUrl,
-      storageObjectId: previewAsset.storageObjectId,
+    previewAsset: preview ? {
+      publicUrl: "publicUrl" in preview ? preview.publicUrl : undefined,
+      storageObjectId: "storageObjectId" in preview ? preview.storageObjectId : undefined,
     } : null,
     updatedAt: run.updatedAt,
   };

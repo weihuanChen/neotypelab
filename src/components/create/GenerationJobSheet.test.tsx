@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GenerationJobSheet, type CreationRunRecord } from "./GenerationJobSheet";
 
-vi.mock("@/src/hooks/usePrivateAssetUrl", () => ({ usePrivateAssetUrl: () => null }));
+vi.mock("@/src/hooks/usePrivateAssetUrl", () => ({ usePrivateAssetUrl: (id?: string | null) => id === "reference-object" ? "https://signed.example.test/reference.png" : null }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, ...props }: any) => <a href={typeof to === "string" ? to : "#"} {...props}>{children}</a>,
 }));
@@ -128,5 +128,25 @@ describe("GenerationJobSheet Component", () => {
     expect(html).toContain("Retry preview · 8 credits");
     expect(html).toContain("Return to setup");
     expect(html).toContain("job-stage-item is-failed");
+  });
+  it("shows the user's own photo, not the catalog silhouette, while a Custom Kit repaint builds", () => {
+    const html = renderToStaticMarkup(<GenerationJobSheet run={{ ...baseRun, stage: "render",
+      kit: { id: "custom-1" as any, name: "RX-93 front", grade: "Custom Kit", scale: "", portrait: null, fullBody: null, referenceObjectId: "reference-object" as any } }}
+      onRetry={() => {}} onReset={() => {}} />);
+    expect(html).toContain("https://signed.example.test/reference.png");
+    expect(html).toContain("Repainting your photo");
+    expect(html).toContain("Your upload · private");
+    expect(html).not.toContain("Portrait pending");
+  });
+
+  it("keeps the uploaded photo in the preview when the repaint is ready", () => {
+    const html = renderToStaticMarkup(<GenerationJobSheet run={{ ...baseRun, status: "succeeded", stage: "render",
+      previewAsset: { storageObjectId: "render-object" as any },
+      kit: { id: "custom-1" as any, name: "RX-93 front", grade: "Custom Kit", scale: "", portrait: null, fullBody: null, referenceObjectId: "reference-object" as any } }}
+      onRetry={() => {}} onReset={() => {}} />);
+    expect(html).toContain("✓ REPAINT READY");
+    expect(html).toContain("https://signed.example.test/reference.png");
+    expect(html).toContain("Your photo");
+    expect(html).not.toContain("Portrait pending");
   });
 });

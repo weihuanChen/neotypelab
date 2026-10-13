@@ -153,15 +153,6 @@ export function CustomStylePicker({
     } catch { /* Optional recovery storage. */ }
   }
 
-  function reviseDirection() {
-    setAdjusting(true);
-    setAcceptedExisting(false);
-    setSavedResult(null);
-    setError("");
-    setFormingStartedAt(null);
-    onClear();
-  }
-
   function newStyle() {
     setAdjusting(false);
     setAcceptedExisting(false);
@@ -170,15 +161,19 @@ export function CustomStylePicker({
     persistDraft("", null, true);
   }
 
-  function useExisting() {
+  /** Re-use the style formed for this exact direction (free): save it first if it never was, then go to the kit step. */
+  function useExistingStyle() {
     if (!recovered) return;
-    setAcceptedExisting(true);
-    setAdjusting(false);
-    setError("");
-    if (match?.style) {
-      onUse(recovered.intent, match.style.id as Id<"userStyles">, recovered.sourceDescription);
+    void run(async () => {
+      const saved = match?.style
+        ? { intent: recovered.intent, styleId: match.style.id as Id<"userStyles"> }
+        : await save({ promptCompositionId: recovered.promptCompositionId as Id<"promptCompositions"> });
+      setAcceptedExisting(true);
+      setAdjusting(false);
+      onUse(saved.intent, saved.styleId, recovered.sourceDescription);
       setSavedResult(recovered.promptCompositionId);
-    }
+      onApply();
+    });
   }
 
   function submitDirection() {
@@ -239,14 +234,10 @@ export function CustomStylePicker({
     {tab === "describe" && phase === "existing" && recovered && match ? (
       <StyleJobExisting
         busy={busy}
-        creditBalance={creditBalance}
-        creditCost={creditCost}
         direction={description}
         match={match}
-        onFormAgain={() => { void run(() => onInterpret(true)); }}
         onNewStyle={newStyle}
-        onRevise={reviseDirection}
-        onUseExisting={useExisting}
+        onUse={useExistingStyle}
       />
     ) : null}
     {tab === "describe" && interpretation && (phase === "review" || phase === "stored") ? (
@@ -264,7 +255,6 @@ export function CustomStylePicker({
           onUse(saved.intent, saved.styleId, interpretation.sourceDescription); setSavedResult(interpretation.promptCompositionId);
         }); }}
         onNewStyle={newStyle}
-        onRevise={reviseDirection}
       />
     ) : null}
     {tab === "describe" && phase === "input" ? <div className="style-command">
@@ -317,109 +307,59 @@ export function CustomStylePicker({
   </div>;
 }
 
+/**
+ * Returning to a direction that was already formed. Three choices only:
+ * use it again (free), look at the last build made with it, or start fresh.
+ * Older styles stay reachable from "Your styles".
+ */
 export function StyleJobExisting({
   busy,
-  creditBalance,
-  creditCost,
   direction,
   match,
-  onFormAgain,
   onNewStyle,
-  onRevise,
-  onUseExisting,
+  onUse,
 }: {
   busy: boolean;
-  creditBalance?: number;
-  creditCost?: number;
   direction: string;
   match: DirectionMatch;
-  onFormAgain: () => void;
   onNewStyle: () => void;
-  onRevise: () => void;
-  onUseExisting: () => void;
+  onUse: () => void;
 }) {
-  const records = match.records;
-  const latest = records[0];
-  const title = match.style?.name ?? match.interpretation?.intent.name ?? "Existing style";
+  const latest = match.records.length ? match.records[0] : null;
+  const title = match.style?.name ?? match.interpretation?.intent.name ?? "Your last style";
   return (
     <JobResult
       identity="Custom Style / Exists"
-      kicker="Direction found"
+      kicker="Your last style"
       title={title}
-      message={existingCopy(Boolean(match.style), records.length)}
-      details={
+      message={existingCopy(match.records.length)}
+      details={direction.trim() ? <p className="job-result__note">{truncateDirection(direction)}</p> : null}
+      actions={
         <>
-          {direction.trim() ? <p className="job-result__note">{truncateDirection(direction)}</p> : null}
-          {records.length > 0 ? (
-            <ol className="job-result__records">
-              {records.map((record, index) => (
-                <li key={record.conceptId}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <strong>{recordLabel(record.recordNumber)} / {record.title}</strong>
-                    <small>{[record.kitName, record.status].filter(Boolean).join(" · ")}</small>
-                  </div>
-                  <Link
-                    className="system-state__link"
-                    params={{ conceptId: record.conceptId }}
-                    search={{ tab: "overview" }}
-                    to="/library/$conceptId"
-                  >
-                    Open →
-                  </Link>
-                </li>
-              ))}
-            </ol>
+          <button type="button" className="psy-btn" disabled={busy} aria-busy={busy || undefined} onClick={onUse}>
+            {busy ? "Opening…" : "Use this style"}<small className="psy-btn-note">Free</small>
+          </button>
+          {latest ? (
+            <Button asChild variant="outline">
+              <Link params={{ conceptId: latest.conceptId }} search={{ tab: "overview" }} to="/library/$conceptId">View last result</Link>
+            </Button>
           ) : null}
         </>
       }
-      actions={
-        <>
-          {latest ? (
-            <Button asChild>
-              <Link params={{ conceptId: latest.conceptId }} search={{ tab: "overview" }} to="/library/$conceptId" onClick={onUseExisting}>
-                Open latest record →
-              </Link>
-            </Button>
-          ) : (
-            <Button disabled={busy} onClick={onUseExisting}>
-              {match.style ? "Use existing style →" : "Review previous →"}
-            </Button>
-          )}
-          <Button disabled={busy || creditCost === undefined || (creditBalance !== undefined && creditCost !== undefined && creditBalance < creditCost)} onClick={onFormAgain} variant="outline">
-            {busy ? "Forming…" : creditCost === undefined ? "Form again unavailable" : `Form again · ${creditCost} credit${creditCost === 1 ? "" : "s"}`}
-          </Button>
-        </>
-      }
       secondary={
-        <>
-          <button className="system-state__link" disabled={busy} onClick={onRevise} type="button">
-            Revise direction
-          </button>
-          <button className="system-state__link" disabled={busy} onClick={onNewStyle} type="button">
-            New style
-          </button>
-        </>
+        <button className="system-state__link" disabled={busy} onClick={onNewStyle} type="button">
+          New style
+        </button>
       }
     />
   );
 }
 
-function existingCopy(hasStyle: boolean, recordCount: number) {
-  if (hasStyle && recordCount > 0) {
-    return `This direction already has a saved style and ${recordCount} build${recordCount === 1 ? "" : "s"}. Open an existing record, or form a new style.`;
-  }
+function existingCopy(recordCount: number) {
   if (recordCount > 0) {
-    return `This direction already has ${recordCount} build${recordCount === 1 ? "" : "s"}. Open an existing record, or form a new style.`;
+    return `You formed this style before and used it in ${recordCount} build${recordCount === 1 ? "" : "s"}. Use it again for free, or start a new one.`;
   }
-  if (hasStyle) {
-    return "This style is already in your archive. Use it, or form a new style from the same direction.";
-  }
-  return "This direction was already formed. Review it, or form a new style.";
-}
-
-function recordLabel(recordNumber: number | null) {
-  return recordNumber ? `N° ${String(recordNumber).padStart(4, "0")}` : "Record";
+  return "You formed this style before. Use it again for free, or start a new one.";
 }
 
 function StyleJobComplete({
@@ -428,7 +368,6 @@ function StyleJobComplete({
   interpretation,
   onApply,
   onNewStyle,
-  onRevise,
   onSave,
   phase,
 }: {
@@ -437,7 +376,6 @@ function StyleJobComplete({
   interpretation: InterpretationResult;
   onApply: () => void;
   onNewStyle: () => void;
-  onRevise: () => void;
   onSave: () => void;
   phase: "review" | "stored";
 }) {
@@ -445,11 +383,11 @@ function StyleJobComplete({
   return (
     <JobResult
       identity={stored ? "Custom Style / Stored" : "Custom Style / Review"}
-      kicker={stored ? "In archive" : "Direction received"}
+      kicker={stored ? "Saved to Your styles" : "Your new style"}
       title={interpretation.intent.name}
       message={stored
-        ? "Saved privately. Apply it to a model, or start another direction."
-        : "Review the formed style before you keep it or apply it to a model."}
+        ? "Saved privately. Apply it to a kit, or start a new style."
+        : "Check the colors below, then apply it to a kit. Applying also saves it to Your styles."}
       details={
         <>
           {direction.trim() ? <p className="job-result__note">{truncateDirection(direction)}</p> : null}
@@ -458,26 +396,15 @@ function StyleJobComplete({
         </>
       }
       actions={
-        stored ? (
-          <Button disabled={busy} onClick={onApply}>Apply to a kit →</Button>
-        ) : (
-          <>
-            <Button disabled={busy} onClick={onSave}>Save style</Button>
-            <Button disabled={busy} onClick={onApply}>Apply to a kit →</Button>
-          </>
-        )
+        <>
+          <button type="button" className="psy-btn" disabled={busy} aria-busy={busy || undefined} onClick={onApply}>Apply to a kit</button>
+          {stored ? null : <Button disabled={busy} onClick={onSave} variant="outline">Save for later</Button>}
+        </>
       }
       secondary={
-        <>
-          {stored ? null : (
-            <button className="system-state__link" disabled={busy} onClick={onRevise} type="button">
-              Revise direction
-            </button>
-          )}
-          <button className="system-state__link" disabled={busy} onClick={onNewStyle} type="button">
-            New style
-          </button>
-        </>
+        <button className="system-state__link" disabled={busy} onClick={onNewStyle} type="button">
+          New style
+        </button>
       }
     />
   );
@@ -489,7 +416,7 @@ function truncateDirection(value: string) {
 }
 
 function costCopy(creditCost?: number, creditBalance?: number) {
-  if (creditCost === undefined) return "Interpretation currently unavailable";
+  if (creditCost === undefined) return "Style forming is unavailable right now";
   if (creditBalance !== undefined && creditBalance < creditCost) {
     return `Needs ${creditCost} credit${creditCost === 1 ? "" : "s"} · ${creditBalance} available`;
   }

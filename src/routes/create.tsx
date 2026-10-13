@@ -3,6 +3,7 @@ import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import { Suspense } from "react";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import { CreateWorkbench } from "@/src/components/create/CreateWorkbench";
+import { CreateIntro } from "@/src/components/create/CreateIntro";
 import { parseCreateSearch } from "@/src/components/create/createSearch";
 import { RoutePending } from "@/src/components/system-state/RoutePending";
 import {
@@ -14,8 +15,8 @@ import {
 import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const createShell = {
-  description: "Pick a color direction, apply it to a kit, and preview the paint plan before you spray.",
-  title: "Create",
+  description: "Describe a color scheme, upload your kit or pick one from the catalog, and preview the result with a paint plan.",
+  title: "Plan a custom paint job",
 } as const;
 
 export const Route = createFileRoute("/create")({
@@ -47,6 +48,7 @@ function CreateRoute() {
           primary={<SystemSignInButton />}
           secondary={<SystemSignInLink />}
         />
+        <CreateIntro />
       </Unauthenticated>
 
       <Authenticated>

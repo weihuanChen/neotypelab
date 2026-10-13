@@ -6,6 +6,7 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
 import { seedUser } from "@/tests/convexTestHelpers";
+import { createAssetGraph } from "./assetModel";
 import type { CreativeSnapshot } from "./creativePipeline";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -185,5 +186,45 @@ describe("complete preview runs", () => {
     });
     const fallback = await f.client.query(api.creationRuns.latest, {});
     expect(fallback?.kit?.fullBody).toBe("https://cdn.example.test/catalog/kits/demo/cover.webp");
+  });
+
+  it("shows the uploaded photo and a viewable preview instead of the original file", async () => {
+    const f = await fixture();
+    await f.t.mutation(internal.init.seedEntitlementProfiles, {});
+    await f.t.run(async (ctx) => {
+      const profile = (await ctx.db.query("entitlementProfiles").withIndex("by_slug", (q) => q.eq("slug", "free-mvp-v2")).unique())!;
+      await ctx.db.patch(profile._id, { originalDownloadAllowed: false });
+    });
+    const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "custom-preview", expectedCost: f.cost });
+    const ids = await f.t.run(async (ctx) => {
+      const conceptId = await ctx.db.insert("concepts", {
+        userId: f.userId, title: "Front photo repaint", status: "generated", visibility: "private", weatheringLevel: "clean", searchText: "Front photo",
+      });
+      const uploaded = await createAssetGraph(ctx, {
+        legacyAsset: { userId: f.userId, key: "reference.webp", bucket: "private-library", kind: "reference", status: "active", contentType: "image/webp", byteSize: 1000 },
+        mediaKind: "reference-image", rendition: "source", origin: "uploaded", bucketRole: "private", title: "Front photo",
+      });
+      const kitId = await ctx.db.insert("customKits", {
+        userId: f.userId, name: "Front photo", storageObjectId: uploaded.storageObjectId, referenceVersionId: uploaded.assetVersionId, checksum: "abc", status: "active", updatedAt: Date.now(),
+      });
+      const graph = await createAssetGraph(ctx, {
+        legacyAsset: { userId: f.userId, key: "secret/original.png", bucket: "private-library", kind: "preview", status: "active", contentType: "image/png", byteSize: 3000 },
+        mediaKind: "generated-image", rendition: "original", origin: "generated", bucketRole: "private", conceptId,
+      });
+      const source = (await ctx.db.get(graph.storageObjectId))!;
+      const { _id, _creationTime, ...fields } = source;
+      const masterId = await ctx.db.insert("storageObjects", { ...fields, rendition: "master", key: "secret/master.webp", contentType: "image/webp" });
+      await ctx.db.patch(conceptId, {
+        mediaAssetId: graph.mediaAssetId, currentAssetVersionId: graph.assetVersionId, previewAssetId: graph.legacyAssetId,
+        customKitSnapshotJson: JSON.stringify({ kind: "custom", id: kitId, name: "Front photo", version: 1, storageObjectId: "not-a-storage-id" }),
+      });
+      await ctx.db.patch(runId, { conceptId, status: "succeeded", stage: "render", inputJson: JSON.stringify({ ...f.input, customKitId: kitId, kitVariantId: undefined }) });
+      return { masterId, reference: uploaded.storageObjectId, originalId: graph.storageObjectId };
+    });
+    const latest = await f.client.query(api.creationRuns.latest, {});
+    expect(latest?.kit).toMatchObject({ name: "Front photo", grade: "Custom Kit", referenceObjectId: ids.reference });
+    expect(latest?.previewAsset?.storageObjectId).toBe(ids.masterId);
+    expect(latest?.previewAsset?.storageObjectId).not.toBe(ids.originalId);
+    expect(JSON.stringify(latest)).not.toContain("secret/");
   });
 });

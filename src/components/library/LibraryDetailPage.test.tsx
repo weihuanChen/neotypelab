@@ -303,4 +303,18 @@ describe("LibraryDetailPage overview language", () => {
     paintSet.missingRoleSlugs = previous.missingRoleSlugs;
     paintSet.entries = previous.entries;
   });
+  it("tells a Custom Kit owner the plan covers only the parts visible in their photo", () => {
+    const detail = mockDetail as Record<string, unknown>;
+    detail.customKit = { name: "RX-93 front", version: 1, storageObjectId: "object-1", requestedEdits: [],
+      parts: [{ id: "chest", category: "torso", name: "Chest", description: "Boxy chest.", visibility: "visible" },
+        { id: "backpack", category: "back", name: "Backpack", description: "Hidden.", visibility: "not-visible" }],
+      uncertainFeatures: ["Rear leg armor"] };
+    const html = renderToStaticMarkup(
+      <LibraryDetailPage conceptId="concept-1" tab="overview" onTabChange={() => undefined} />
+    );
+    delete detail.customKit;
+    expect(html).toContain("Covers the parts visible in your photo.");
+    expect(html).toContain("Not in this plan: Backpack; Rear leg armor.");
+    expect(html).not.toContain("Complete workbench matrix");
+  });
 });

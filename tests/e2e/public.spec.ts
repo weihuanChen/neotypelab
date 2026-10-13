@@ -85,7 +85,7 @@ test("shows the signed-out create gate", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/create");
   await expect(
-    page.getByRole("heading", { name: /Plan a paint scheme/i })
+    page.getByRole("heading", { level: 2, name: "Plan a custom Gunpla paint job." })
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in/i }).first()).toBeVisible();
   expect(consoleErrors).toEqual([]);
@@ -186,6 +186,6 @@ test("does not index unavailable custom style links", async ({ page }) => {
 test("preserves the community style when opening the create sign-in gate", async ({ page }) => {
   await page.goto("/create?communityStyle=integration-shared-style");
   await expect(page).toHaveURL(/communityStyle=integration-shared-style/);
-  await expect(page.getByRole("heading", { name: /Plan a paint scheme/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Plan a custom Gunpla paint job." })).toBeVisible();
   await expect(page.getByRole("button", { name: /Sign in/i }).last()).toBeVisible();
 });

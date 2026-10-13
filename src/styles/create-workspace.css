@@ -441,3 +441,187 @@
 .create-workspace .custom-kit-edit legend { font-family: var(--font-mono); font-size: .7rem; padding-right: .5rem; }
 .create-workspace .custom-kit-edit button { font-size: .75rem; text-decoration: underline; text-underline-offset: .2rem; }
 .create-workspace .custom-kit-picker :focus-visible { outline: 2px solid var(--color-psy-deep); outline-offset: 3px; }
+
+/* ==========================================================================
+   Custom Kit · after upload — the user's photo is the subject.
+   Catalog line art stays desaturated (Almanac rule); user uploads never are.
+   ========================================================================== */
+.create-kit-portrait.is-custom { height: auto; aspect-ratio: 1; max-height: 16rem; }
+.create-kit-portrait.is-custom img { padding: 0; filter: none; }
+.create-kit-portrait-badge { position: absolute; left: .4rem; bottom: .4rem; padding: .1rem .4rem; border: 1px solid var(--color-ink); background: var(--color-decal); color: var(--color-ink); font-family: var(--font-mono); font-size: .62rem; }
+
+.create-workspace .custom-kit-reference { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 1.8rem; align-items: start; margin-top: .4rem; }
+.create-workspace .custom-kit-plate { position: sticky; top: var(--create-top); margin: 0; border: 1.5px solid var(--color-ink); background: var(--color-paper-2); }
+.create-workspace .custom-kit-plate-stage { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 5; max-height: min(34rem, 70vh); overflow: hidden;
+  background: linear-gradient(var(--color-paper-3) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, var(--color-paper-3) 1px, transparent 1px) 0 0 / 24px 24px, var(--color-paper-2); }
+.create-workspace .custom-kit-plate-stage::before, .create-workspace .custom-kit-plate-stage::after { content: ""; position: absolute; z-index: 2; width: 18px; height: 18px; border: 2px solid var(--color-decal-deep); pointer-events: none; }
+.create-workspace .custom-kit-plate-stage::before { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+.create-workspace .custom-kit-plate-stage::after { right: 10px; bottom: 10px; border-left: 0; border-top: 0; }
+.create-workspace .custom-kit-plate-open { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.create-workspace .custom-kit-plate-open img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.create-workspace .custom-kit-plate-tag { position: absolute; top: .8rem; right: .8rem; z-index: 3; padding: .2rem .5rem; border: 1px solid var(--color-ink); background: var(--color-paper); font-family: var(--font-mono); font-size: .66rem; pointer-events: none; }
+.create-workspace .custom-kit-plate-zoom { position: absolute; right: .8rem; bottom: .8rem; z-index: 3; padding: .25rem .55rem; background: color-mix(in oklch, var(--color-ink) 82%, transparent); color: var(--color-paper); font-family: var(--font-mono); font-size: .7rem; pointer-events: none; }
+.create-workspace .custom-kit-plate-loading { font-size: .8rem; color: var(--color-muted); }
+.create-workspace .custom-kit-plate-beam { display: none; position: absolute; left: 0; right: 0; z-index: 2; height: 2px; background: linear-gradient(90deg, transparent, var(--color-decal) 35%, var(--color-decal) 65%, transparent); box-shadow: 0 0 12px 2px color-mix(in oklch, var(--color-decal) 45%, transparent); pointer-events: none; }
+.create-workspace .custom-kit-plate.is-scanning .custom-kit-plate-beam { display: block; animation: decalScan 2.4s ease-in-out infinite alternate; }
+@keyframes decalScan { from { top: 4%; } to { top: 94%; } }
+.create-workspace .custom-kit-picker .custom-kit-plate-warn { margin: 0; padding: .6rem .9rem; border-top: 1px solid var(--color-rule); background: color-mix(in oklch, oklch(80% 0.15 85) 14%, var(--color-paper)); color: var(--color-ink-2); font-size: .78rem; }
+.create-workspace .custom-kit-plate-caption { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: .65rem .9rem; border-top: 1px solid var(--color-ink); background: var(--color-paper); }
+.create-workspace .custom-kit-plate-caption > div:first-child { display: grid; min-width: 0; }
+.create-workspace .custom-kit-plate-caption strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-workspace .custom-kit-plate-caption small { font-family: var(--font-mono); font-size: .68rem; color: var(--color-muted); overflow-wrap: anywhere; }
+.create-workspace .custom-kit-plate-actions { display: flex; gap: 1rem; margin-left: auto; }
+.create-workspace .custom-kit-plate-actions button, .create-workspace .custom-kit-plate-remove button, .create-workspace .custom-kit-text-button { padding: 0; border: 0; background: none; font-size: .8rem; color: var(--color-ink); cursor: pointer; text-decoration: underline; text-decoration-color: var(--color-rule-2); text-underline-offset: 3px; }
+.create-workspace .custom-kit-plate-actions button:hover, .create-workspace .custom-kit-text-button:hover { text-decoration-color: currentColor; }
+.create-workspace .custom-kit-plate-remove { display: flex; flex-wrap: wrap; gap: .4rem 1rem; width: 100%; }
+.create-workspace .custom-kit-plate-remove p { width: 100%; margin: 0; font-size: .78rem; color: var(--color-ink-2); }
+.create-workspace .custom-kit-plate-remove button:first-of-type { color: var(--color-danger); font-weight: 600; }
+
+.create-workspace .custom-kit-steps h3 { margin: 0 0 .4rem; font: 400 1.45rem/1.1 var(--font-display); }
+.create-workspace .custom-kit-steps > p { color: var(--color-ink-2); font-size: .85rem; }
+.create-workspace .custom-kit-steps .psy-btn { margin: 1rem 0 .5rem; }
+.create-workspace .custom-kit-picker .custom-kit-fine { font-size: .76rem; color: var(--color-muted); }
+.create-workspace .custom-kit-status { display: flex; align-items: center; gap: .65rem; margin-top: 1rem; }
+.create-workspace .custom-kit-status i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--color-decal); animation: pulseDot 1.4s ease-in-out infinite; }
+.create-workspace .custom-kit-picker .custom-kit-verdict { margin: .3rem 0 .8rem; padding: .65rem .9rem; border-left: 3px solid var(--color-psy-deep); background: var(--color-psy-wash); color: var(--color-ink); font-size: .85rem; }
+.create-workspace .custom-kit-parts { margin: .8rem 0 0; padding: 0; list-style: none; border-top: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-parts .custom-kit-part { display: grid; gap: .3rem; padding: .75rem 0; border-block-start: 0; border-bottom: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-part-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.create-workspace .custom-kit-part-head strong { font-size: .9rem; }
+.create-workspace .custom-kit-parts .custom-kit-part small { margin: 0; font-family: var(--font-mono); font-size: .68rem; color: var(--color-muted); white-space: nowrap; }
+.create-workspace .custom-kit-parts .custom-kit-part small.is-partial { color: var(--color-decal-deep); }
+.create-workspace .custom-kit-parts .custom-kit-part p { margin: 0; font-size: .82rem; color: var(--color-ink-2); }
+.create-workspace .custom-kit-part .custom-kit-text-button { justify-self: start; font-size: .76rem; }
+.create-workspace .custom-kit-unknown p { margin-top: .4rem; font-size: .76rem; }
+.create-workspace .custom-kit-shape { margin-top: 1rem; border-top: 1px solid var(--color-rule); padding-top: .9rem; }
+.create-workspace .custom-kit-shape summary { cursor: pointer; font-size: .85rem; }
+.create-workspace .custom-kit-confirm { margin-top: 1.2rem; }
+.create-workspace .custom-kit-confirm .psy-btn { margin: 0 0 .4rem; }
+
+.create-workspace .custom-kit-lightbox { width: min(92vw, 60rem); max-width: none; padding: 0; border: 1.5px solid var(--color-ink); background: var(--color-paper); color: var(--color-ink); }
+.create-workspace .custom-kit-lightbox::backdrop { background: color-mix(in oklch, var(--color-ink) 72%, transparent); }
+.create-workspace .custom-kit-lightbox img { display: block; width: 100%; height: min(80vh, 48rem); object-fit: contain; background: var(--color-paper-2); }
+.create-workspace .custom-kit-lightbox footer { display: flex; justify-content: space-between; align-items: center; padding: .6rem .9rem; border-top: 1px solid var(--color-ink); font-family: var(--font-mono); font-size: .75rem; }
+.create-workspace .custom-kit-lightbox footer button { border: 0; background: none; font-size: .85rem; cursor: pointer; text-decoration: underline; }
+
+@media (max-width: 980px) {
+  .create-workspace .custom-kit-reference { grid-template-columns: minmax(0, 1fr); }
+  .create-workspace .custom-kit-plate { position: static; }
+  .create-workspace .custom-kit-plate-stage { aspect-ratio: auto; height: min(60vh, 26rem); }
+}
+@media (prefers-reduced-motion: reduce) { .create-workspace .custom-kit-plate.is-scanning .custom-kit-plate-beam { animation: none; top: 50%; } }
+
+/* Signed-out /create: how it works + FAQ (Almanac voice; outside the console exception). */
+.create-intro { display: grid; gap: 3rem; max-width: 68rem; margin: 2.5rem auto 4rem; padding: 0 1.5rem; }
+.create-intro h2 { margin: 0 0 1.2rem; padding-bottom: .6rem; border-bottom: 1px solid var(--color-rule); font: 400 clamp(1.6rem, 2.6vw, 2.2rem)/1 var(--font-display); }
+.create-intro-steps ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin: 0; padding: 0; list-style: none; }
+.create-intro-steps li { display: grid; align-content: start; gap: .45rem; }
+.create-intro-index { font: 400 2.4rem/1 var(--font-display); color: var(--color-accent); }
+.create-intro-steps h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.create-intro-steps p, .create-intro-faq dd { margin: 0; max-width: 60ch; color: var(--color-ink-2); font-size: .9rem; line-height: 1.6; }
+.create-intro-faq dl { display: grid; margin: 0; }
+.create-intro-faq dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: .4rem 2rem; padding: 1rem 0; border-bottom: 1px solid var(--color-rule); }
+.create-intro-faq dt { font-weight: 600; font-size: .95rem; }
+.create-intro-faq dd a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 760px) {
+  .create-intro-steps ol { grid-template-columns: minmax(0, 1fr); }
+  .create-intro-faq dl > div { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* After upload: compact header (title + progress on one row), no repeated intro. */
+.create-workspace .custom-kit-header.is-compact { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1.5rem; padding-bottom: .8rem; margin-bottom: 1.2rem; border-bottom: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-picker .custom-kit-header.is-compact h2 { margin: 0; font-size: clamp(1.35rem, 2vw, 1.7rem); }
+.create-workspace .custom-kit-header.is-compact .custom-kit-track { margin: 0; }
+
+/* Before the parts check: a shorter plate beside a full step column, so neither side leaves a void. */
+.create-workspace .custom-kit-reference.is-before-scan { grid-template-columns: minmax(13rem, 2fr) minmax(0, 3fr); align-items: stretch; }
+.create-workspace .custom-kit-reference.is-before-scan .custom-kit-plate { position: static; align-self: start; }
+.create-workspace .custom-kit-reference.is-before-scan .custom-kit-plate-stage { max-height: 26rem; }
+.create-workspace .custom-kit-reference.is-before-scan .custom-kit-steps { display: flex; flex-direction: column; min-width: 0; }
+.create-workspace .custom-kit-reference.is-before-scan .custom-kit-steps .psy-btn { align-self: flex-start; }
+.create-workspace .custom-kit-checklist { margin: 1.1rem 0 1.2rem; padding: .8rem 1rem; border: 1px solid var(--color-rule); background: color-mix(in oklch, var(--color-paper) 55%, white); }
+.create-workspace .custom-kit-picker .custom-kit-checklist p { margin: 0 0 .45rem; font-family: var(--font-mono); font-size: .68rem; color: var(--color-muted); }
+.create-workspace .custom-kit-checklist ul { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; font-size: .84rem; color: var(--color-ink-2); }
+.create-workspace .custom-kit-checklist li { display: flex; gap: .6rem; align-items: baseline; }
+.create-workspace .custom-kit-checklist li::before { content: ""; flex-shrink: 0; width: .5rem; height: .5rem; border: 1px solid var(--color-decal-deep); transform: translateY(-.05rem); }
+/* File details sit at the bottom of the step column, level with the plate's lower edge. */
+.create-workspace .custom-kit-file-card { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--color-rule); }
+.create-workspace .custom-kit-file-details { display: grid; min-width: 0; }
+.create-workspace .custom-kit-file-details strong { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.create-workspace .custom-kit-file-details small { font-family: var(--font-mono); font-size: .68rem; color: var(--color-muted); overflow-wrap: anywhere; }
+.create-workspace .custom-kit-file-card .custom-kit-field { width: 100%; margin: .2rem 0 0; }
+.create-workspace .custom-kit-switch .custom-kit-field { max-width: 22rem; }
+.create-workspace .custom-kit-plate.is-dragging { outline: 2px dashed var(--color-decal-deep); outline-offset: 4px; }
+
+@media (max-width: 980px) {
+  .create-workspace .custom-kit-reference.is-before-scan { grid-template-columns: minmax(0, 1fr); }
+  .create-workspace .custom-kit-file-card { margin-top: 1.2rem; }
+}
+
+/* ==========================================================================
+   Generate panel · summary + launch dock. The dock (price, Generate, model
+   disclosure) is pinned to the panel bottom so the action never scrolls away.
+   ========================================================================== */
+.create-workspace .create-generate-panel { display: flex; flex-direction: column; overflow: hidden; }
+.create-panel-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: .8rem 1rem .6rem; }
+.create-panel-summary > .workbench-kicker { margin-bottom: .55rem; }
+.create-build-card { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .75rem; align-items: start; }
+.create-build-thumb { position: relative; aspect-ratio: 1; overflow: hidden; display: grid; place-items: center; background: var(--color-paper-2); }
+.create-build-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 8%; filter: saturate(.18); }
+.create-build-thumb.is-custom img { padding: 0; filter: none; }
+.create-build-thumb .kit-portrait-empty small { display: none; }
+.create-build-thumb .create-kit-portrait-badge { left: 2px; bottom: 2px; padding: 0 .25rem; font-size: .52rem; }
+.create-build-copy { display: grid; gap: .15rem; min-width: 0; }
+.create-build-copy strong { font-size: .88rem; line-height: 1.25; overflow-wrap: anywhere; }
+.create-build-copy small { font-size: .7rem; color: var(--color-muted); }
+.create-build-copy .create-build-style { margin-top: .35rem; font-size: .8rem; font-weight: 500; }
+.create-build-copy .style-color-strip { height: .55rem; margin-top: .15rem; }
+.create-panel-chips { display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin: .8rem 0 0; padding: .6rem 0 0; border-top: 1px solid var(--color-rule); list-style: none; font-size: .74rem; color: var(--color-muted); }
+.create-panel-chips li { display: flex; align-items: center; gap: .35rem; }
+.create-panel-chips i { width: .5rem; height: .5rem; flex-shrink: 0; border: 1px solid var(--color-rule-2); transition: background var(--dur-base), box-shadow var(--dur-base); }
+.create-panel-chips li.is-ok { color: var(--color-ink); }
+.create-panel-chips li.is-ok i { background: var(--color-psy); border-color: var(--color-psy-deep); box-shadow: 0 0 .4em var(--color-psy); }
+.create-panel-summary .create-advanced-link { display: block; margin-top: .5rem; padding: .2rem 0; }
+
+.create-panel-dock { flex: none; display: grid; gap: .45rem; padding: .75rem 1rem .85rem; border-top: 1.5px solid var(--color-ink); background: var(--color-paper); }
+.create-panel-price { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
+.create-panel-price .create-total-price { margin: 0; font-size: 1rem; }
+.create-panel-price small { font-size: .72rem; color: var(--color-muted); }
+.create-workspace .create-panel-dock .create-generate-button { width: 100%; min-height: 3.3rem; padding: .4rem .8rem; white-space: nowrap; flex-direction: column; gap: .1rem; line-height: 1.15; font-size: 1rem; }
+.create-panel-dock .create-generate-button small { font-family: var(--font-mono); font-size: .66rem; font-weight: 500; }
+.create-panel-dock .create-hint { margin: 0; min-height: 0; }
+.create-panel-dock .create-hint:empty { display: none; }
+.create-panel-dock .ai-disclosure-note { margin-top: .1rem; }
+
+/* Inline Generate where the kit step finishes (same action as the dock). */
+.create-inline-generate { display: grid; justify-items: start; gap: .3rem; margin-top: .9rem; }
+.create-inline-generate .ai-disclosure-note { max-width: 46ch; margin-top: 0; }
+.kit-picker-count-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem; margin: .75rem 0; }
+.kit-picker-count-row .kit-picker-count { margin: 0; }
+.kit-picker-count-row .create-inline-generate { margin: 0; justify-items: end; }
+.kit-picker-count-row .create-inline-generate .ai-disclosure-note { text-align: right; }
+
+/* Short screens: drop the thumbnail, keep the dock intact. */
+@media (max-height: 700px) and (min-width: 861px) {
+  .create-build-card { grid-template-columns: minmax(0, 1fr); }
+  .create-build-thumb { display: none; }
+}
+@media (max-width: 860px) {
+  .create-workspace .create-generate-panel { overflow: visible; }
+  .create-panel-summary { overflow: visible; }
+  .kit-picker-count-row .create-inline-generate { justify-items: start; }
+  .kit-picker-count-row .create-inline-generate .ai-disclosure-note { text-align: left; }
+}
+
+/* Job sheet · Custom Kit: the user's photo fills the viewport while the repaint builds,
+   then stays as a small "before" inset once the render fades in. */
+.job-silhouette-media.is-reference { position: absolute; inset: 0; filter: none; }
+.job-silhouette-media.is-reference > img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 1rem; object-fit: contain; }
+.job-reference-loading { font-size: .8rem; color: var(--color-muted); }
+.job-reference-tag { position: absolute; top: .8rem; left: 50%; z-index: 3; transform: translateX(-50%); padding: .2rem .55rem; border: 1px solid var(--color-ink); background: var(--color-decal); color: var(--color-ink); font-family: var(--font-mono); font-size: .66rem; white-space: nowrap; }
+.job-reference-inset { position: absolute; left: .8rem; bottom: .8rem; z-index: 4; width: 22%; min-width: 4.5rem; margin: 0; border: 1px solid var(--color-ink); background: var(--color-paper); box-shadow: 3px 3px 0 var(--color-decal); }
+.job-reference-inset img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: contain; background: var(--color-paper-2); }
+.job-reference-inset figcaption { padding: .15rem .35rem; border-top: 1px solid var(--color-ink); font-family: var(--font-mono); font-size: .58rem; text-align: center; }
+
+/* Small qualifier inside a psy action, e.g. "Use this style · Free". */
+.create-workspace .psy-btn .psy-btn-note { margin-left: .5rem; padding: .05rem .35rem; border: 1px solid color-mix(in oklch, var(--color-ink) 45%, transparent); font-family: var(--font-mono); font-size: .66rem; font-weight: 500; }

@@ -70,7 +70,7 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
     <div className="discover-style-grid">{visible.map(entry => <article key={entry.id} className={selectedId === entry.id ? "discover-style-card is-selected" : "discover-style-card"}>
       <button type="button" className="discover-style-select" disabled={busy} onClick={entry.choose} aria-pressed={selectedId === entry.id}>
         {entry.image ? <img src={entry.image} alt={entry.name + " preview"} loading="lazy" /> :
-          entry.colors.length ? <div className="palette-study">{entry.colors.map(color => <span key={color.role} style={{ backgroundColor: color.hex, flexGrow: color.weight }} />)}<small>Palette study</small></div> :
+          entry.colors.length ? <div className="palette-study">{entry.colors.map(color => <span key={color.role} style={{ backgroundColor: color.hex, flexGrow: color.weight }} />)}<small>Color study</small></div> :
             <div className="palette-study is-unmapped"><strong>{entry.name}</strong><small>Preview coming soon</small></div>}
       </button>
       <StylePalette colors={entry.colors} />
@@ -84,7 +84,7 @@ export function StyleDiscovery({ presets, community, previews, selectedId, onPre
       <details><summary>Palette details</summary>
         <p>{entry.source === "official" ? "Official" : "Community"} · {entry.category}</p>
         <p>{entry.description}</p>
-        {entry.colors.length ? <><p>Illustrative frontend palette · not a verified paint mapping.</p>{entry.colors.map(c => <p key={c.role}>{c.role} · {c.hex}</p>)}</> : <p>Exact colors have not been specified.</p>}
+        {entry.colors.length ? <><p>Sample colors only. Your paint plan maps real paints.</p>{entry.colors.map(c => <p key={c.role}>{c.role} · {c.hex}</p>)}</> : <p>Colors are decided when you form the style.</p>}
       </details>
     </article>)}</div>
     {!visible.length ? <p role="status">{source === "community" && community === undefined ? "Loading community styles…" : "No styles match these filters."}</p> : null}

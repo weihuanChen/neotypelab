@@ -196,6 +196,19 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
   </article>;
 }
 
+/** A Custom Kit plan only covers what the single reference photo shows; say so, and name what is left out. */
+function CustomKitCoverage({ customKit }: { customKit: NonNullable<WorkDetail["customKit"]> }) {
+  const hidden = [
+    ...customKit.parts.filter(part => part.visibility === "not-visible" && part.source !== "user-request").map(part => part.name),
+    ...customKit.uncertainFeatures,
+  ];
+  return <div className="work-detail-coverage" role="note">
+    <strong>Covers the parts visible in your photo.</strong>
+    {hidden.length ? <> Not in this plan: {hidden.join("; ")}.</> : null}
+    {" "}Paint hidden areas, such as the back, to match the nearest visible part.
+  </div>;
+}
+
 function WorkPreview({ detail }: { detail: WorkDetail }) {
   const image = useDetailImage(detail.hero);
   const [expanded, setExpanded] = useState(false);
@@ -308,6 +321,7 @@ function WorkbenchActionBar({
     const lines: string[] = [
       `=== ${detail.title.toUpperCase()} // PAINT SHOPPING LIST ===`,
       `Kit: ${detail.kit ? [detail.kit.grade, detail.kit.name].filter(Boolean).join(" ") : "Custom Kit"}`,
+      ...(detail.customKit ? ["Coverage: parts visible in your uploaded photo. Paint hidden parts to match the nearest visible part."] : []),
       selectedSystem
         ? `Paint System: ${selectedSystem.brand} - ${selectedSystem.line}`
         : "Color Palette Specification",
@@ -467,8 +481,11 @@ function Overview({
         {detail.palette ? (
           <>
             <p className="work-detail-intro">
-              Complete workbench matrix mapping kit parts to visual color roles, catalog paint codes, and surface prep instructions.
+              {detail.customKit
+                ? "Workbench matrix mapping the parts visible in your photo to color roles, catalog paint codes, and surface prep instructions."
+                : "Complete workbench matrix mapping kit parts to visual color roles, catalog paint codes, and surface prep instructions."}
             </p>
+            {detail.customKit ? <CustomKitCoverage customKit={detail.customKit} /> : null}
             {selectedSystem && missingPaintColorCount(selectedSystem) > 0 ? (
               <p className="work-detail-mix-banner">
                 {missingPaintColorCount(selectedSystem) === 1

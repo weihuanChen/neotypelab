@@ -25,11 +25,16 @@ describe("Custom Kit structure confirmation", () => {
   it("separates correction, modification and uncertain observations without requiring a known IP", () => {
     enabled = true; confirmed = false;
     const html = renderToStaticMarkup(<CustomKitPicker selectedId={"custom" as Id<"customKits">} disabled={false} onChange={() => {}} />);
-    expect(html).toContain("Confirm structure and modifications");
-    expect(html).toContain("Correction for Shoulder armor");
-    expect(html).toContain("Modify structure");
+    expect(html).toContain("Use these parts");
+    expect(html).toContain("We found 1 part");
+    expect(html).toContain("Fully visible");
+    expect(html).not.toContain("shoulders ·");
+    expect(html).toContain("Fix this description");
+    expect(html).toContain("Change the shape (optional)");
+    expect(html).toContain("Not visible in this photo");
+    expect(html).toContain("They aren’t in your paint plan");
+    expect(html).toContain("Private · only you see this");
     expect(html).toContain("Back attachment is not visible.");
-    expect(html).toContain("animal-shaped robots and original designs are welcome");
     expect(html).not.toContain("second reference");
     if (process.env.CUSTOM_KIT_VISUAL_QA) {
       const css = ["tokens.css", "globals.css", "create-workspace.css"].map(file => readFileSync(`src/styles/${file}`, "utf8")).join("\n");
@@ -39,25 +44,27 @@ describe("Custom Kit structure confirmation", () => {
   it("leads an empty Custom Kit with the drop zone and an optional name", () => {
     enabled = true;
     const html = renderToStaticMarkup(<CustomKitPicker selectedId={null} disabled={false} onChange={() => {}} />);
-    expect(html).toContain("Drop your mecha here");
+    expect(html).toContain("Drop a photo of your kit here");
     expect(html).toContain('type="file"');
-    expect(html).toContain("Optional · defaults to the file name");
+    expect(html).toContain("We’ll use the file name if you leave this empty");
+    expect(html).toContain("animal-shaped robots are welcome");
+    expect(html).toContain("A straight front view works best");
     expect(html).toContain('aria-current="step">');
-    expect(html).not.toContain("Replace with a new reference");
+    expect(html).not.toContain("Replace photo");
   });
   it("explains a policy block and returns to a fresh upload without showing the reference", () => {
     enabled = true; blocked = true;
     const html = renderToStaticMarkup(<CustomKitPicker selectedId={"custom" as Id<"customKits">} disabled={false} onChange={() => {}} />);
     blocked = false;
-    expect(html).toContain("Image not accepted.");
-    expect(html).toContain("Drop your mecha here");
-    expect(html).not.toContain("Scan reference");
+    expect(html).toContain("We can’t use this image.");
+    expect(html).toContain("Drop a photo of your kit here");
+    expect(html).not.toContain("Check parts ·");
     expect(html).not.toContain("private reference\"");
   });
   it("keeps paid actions closed before the verified deployment flag is enabled", () => {
     enabled = false;
     const html = renderToStaticMarkup(<CustomKitPicker selectedId={null} disabled={false} onChange={() => {}} />);
-    expect(html).toContain("Custom Kit is being prepared");
+    expect(html).toContain("Uploading your own kit is coming soon");
     expect(html).not.toContain('type="file"');
   });
 });

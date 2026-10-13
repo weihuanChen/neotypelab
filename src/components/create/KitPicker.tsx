@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { HeartIcon, HeartFilledIcon, MagnifyingGlassIcon, MixerHorizontalIcon, CheckIcon } from "@radix-ui/react-icons";
 import { api } from "@/convex/_generated/api";
@@ -17,7 +17,7 @@ export function KitPortrait({ url, name }: { url?: string | null; name: string }
     : <div className="kit-portrait-empty"><svg viewBox="0 0 64 72" aria-hidden="true"><path d="M22 9h20v9H22zM13 24h38v22H13zM18 51h10v16H18zM36 51h10v16H36zM4 26h5v28H4zM55 26h5v28h-5z" /></svg><small>Portrait pending</small></div>;
 }
 
-export function KitPicker({ selectedId, onSelect, disabled = false }: { selectedId: Id<"baseModels"> | null; onSelect: (id: Id<"baseModels">) => void; disabled?: boolean }) {
+export function KitPicker({ selectedId, onSelect, disabled = false, selectedAction }: { selectedId: Id<"baseModels"> | null; onSelect: (id: Id<"baseModels">) => void; disabled?: boolean; selectedAction?: ReactNode }) {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<"all" | "recent" | "favorites" | "featured">("all");
@@ -42,7 +42,7 @@ export function KitPicker({ selectedId, onSelect, disabled = false }: { selected
     </div>
     {count > 0 ? <div className="kit-active-filters">{groups.flatMap(group => filters[group.key].map(value => <button key={`${group.key}:${value}`} onClick={() => { setFilters(toggle(group.key, value, filters)); setPage(1); }} type="button" aria-label={`Remove ${group.label}: ${value}`}>{value} ×</button>))}<button type="button" onClick={() => { setFilters(empty); setPage(1); }}>Clear all</button></div> : null}
     {error ? <p role="alert" className="kit-picker-error">{error}</p> : null}
-    <p className="kit-picker-count" role="status">{data ? `${data.total} kits${scope === "featured" ? " · Catalog selections" : ""}` : "Finding kits…"}</p>
+    <div className="kit-picker-count-row"><p className="kit-picker-count" role="status">{data ? `${data.total} kits${scope === "featured" ? " · Catalog selections" : ""}` : "Finding kits…"}</p>{selectedId ? selectedAction : null}</div>
     <div className="kit-picker-grid" aria-busy={!data}>{data?.items.map(kit => <article className={kit.id === selectedId ? "kit-portrait-card is-selected" : "kit-portrait-card"} key={kit.id}>
       <button type="button" className="kit-portrait-select" disabled={disabled} aria-pressed={kit.id === selectedId} onClick={() => onSelect(kit.id)}>
         <div className="kit-portrait"><span className="kit-portrait-grade">{kit.grade || "Kit"}</span><KitPortrait url={kit.portrait} name={kit.name} />{kit.id === selectedId ? <span className="kit-portrait-selected"><CheckIcon />Selected</span> : null}</div>

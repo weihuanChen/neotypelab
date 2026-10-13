@@ -210,7 +210,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   function requestGenerate(button: HTMLElement | null) {
     if (busy || isRunning) return;
     if (!hasStyle) { nudge({ button, target: styleStripRef.current, text: "Pick a style first." }); return; }
-    if (!hasKit) { nudge({ button, target: kitAreaRef.current, focus: kitAreaRef.current?.querySelector<HTMLInputElement>(kitMode === "custom" ? 'input[type="file"]' : 'input[type="search"]'), text: kitMode === "custom" ? "Upload, scan and confirm your Custom Kit first." : "Pick a kit from the grid." }); return; }
+    if (!hasKit) { nudge({ button, target: kitAreaRef.current, focus: kitAreaRef.current?.querySelector<HTMLInputElement>(kitMode === "custom" ? 'input[type="file"]' : 'input[type="search"]'), text: kitMode === "custom" ? (customKit ? "Check and confirm your kit’s parts first." : "Upload a photo of your kit first.") : "Pick a kit from the grid." }); return; }
     if (locked) { tell({ tone: "info", text: pack ? access.message : "Loading creator pack access…" }); return; }
     if (!quote) { tell({ tone: "info", text: "Pricing is unavailable right now. Try again in a moment." }); return; }
     if (!resolvedMaterial) { tell({ tone: "info", text: "Choose a finish in Advanced options to continue." }); setAdvanced(true); return; }
@@ -228,9 +228,14 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
   const styleTakeover = stylePhase === "forming" || stylePhase === "interrupted";
   const generateClass = `psy-btn${ready ? " is-ready" : ""}${igniting ? " is-igniting" : ""}`;
   const hintLine = <p className={`create-hint${hint ? ` is-${hint.tone}` : ""}`} role="status">{hint?.text}{hint?.action ? <> <a href={hint.action.href}>{hint.action.label}</a></> : null}</p>;
+  /** Same action as the dock button, placed where the user finishes the kit step. Ignition plays on the dock only. */
+  const inlineGenerate = hasStyle ? <div className="create-inline-generate">
+    <button type="button" className={`psy-btn${ready ? " is-ready" : ""}`} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating preview…" : `Generate preview${quote ? ` · ${quote.cost} credits` : ""}`}</button>
+    <AiDisclosureNote kind="text-and-image" />
+  </div> : null;
   const lights = [
     { key: "style", label: "Style", ok: hasStyle, value: hasStyle ? "Ready" : "Missing" },
-    { key: "kit", label: kitMode === "custom" ? "Custom Kit" : "Kit", ok: hasKit, value: hasKit ? "Ready" : kitMode === "custom" ? "Confirm structure" : "Pick one" },
+    { key: "kit", label: "Kit", ok: hasKit, value: hasKit ? "Ready" : kitMode === "custom" ? (customKit ? "Confirm parts" : "Upload a photo") : "Pick one" },
     { key: "credits", label: "Credits", ok: Boolean(quote) && creditsOk, value: creditBalance === undefined ? "—" : `${creditBalance} available` },
   ];
   return <div className={`create-workspace ${styleTakeover ? "is-job-wait" : step === 1 ? "is-style" : "is-model"}`}>
@@ -266,23 +271,42 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
         <p id="style-refinements-help">Your color requests override the style’s default colors. Proportions stay open unless you specify them.</p>
         </> : <button type="button" className="create-refine-toggle" aria-expanded="false" onClick={() => setRefineOpen(true)}><span id="style-refinements-title">+ Refine colors for this build</span><small>Optional</small></button>}
       </section>
-      <div ref={kitAreaRef} className="create-kit-area"><div className="create-kit-source" role="group" aria-label="Kit source"><button type="button" className="is-custom" disabled={working} aria-pressed={kitMode === "custom"} onClick={() => setKitMode("custom")}>Custom Kit</button><button type="button" disabled={working} aria-pressed={kitMode === "catalog"} onClick={() => setKitMode("catalog")}>Official Kit</button></div>
-        {kitMode === "custom" ? <CustomKitPicker selectedId={customKit?.id ?? null} disabled={working} onChange={setCustomKit} /> : <KitPicker selectedId={actualKitId ?? null} onSelect={id => { setKitId(id); clearHint(); }} disabled={working} />}</div></div>
-        <aside className="create-generate-panel" aria-label="Your preview"><p className="workbench-kicker">Your preview</p><div className="create-kit-portrait"><KitPortrait url={kitPortrait} name={kitName ?? "Kit"} /></div><div className="create-kit-caption"><h3>{kitName ?? "Select a kit"}</h3><p>{kitMode === "custom" ? "Custom Kit · Private reference" : kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose the model for your next build"}</p></div>
-          <section className="create-panel-style"><p className="workbench-kicker">Style</p><StylePalette colors={colors} /><strong>{styleName}</strong></section>
-          <section className="create-panel-ready" aria-label="Build readiness"><ul>{lights.map(light => <li key={light.key} className={light.ok ? "is-ok" : undefined}><i aria-hidden="true" />{light.label}<span>{light.value}</span></li>)}</ul></section>
-          <section className="create-panel-output"><p className="workbench-kicker">Output</p><strong>Preview image + paint plan</strong><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span><button type="button" className={`${generateClass} create-generate-button`} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating preview…" : "Generate preview"}</button>{hintLine}<button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button><AiDisclosureNote kind="text-and-image" /></section>
+      <div ref={kitAreaRef} className="create-kit-area"><div className="create-kit-source" role="group" aria-label="Where your kit comes from"><button type="button" className="is-custom" disabled={working} aria-pressed={kitMode === "custom"} onClick={() => setKitMode("custom")}>Upload your kit</button><button type="button" disabled={working} aria-pressed={kitMode === "catalog"} onClick={() => setKitMode("catalog")}>Choose from catalog</button></div>
+        {kitMode === "custom" ? <CustomKitPicker selectedId={customKit?.id ?? null} disabled={working} onChange={setCustomKit} readyAction={inlineGenerate} /> : <KitPicker selectedId={actualKitId ?? null} onSelect={id => { setKitId(id); clearHint(); }} disabled={working} selectedAction={inlineGenerate} />}</div></div>
+        <aside className="create-generate-panel" aria-label="Your build">
+          <div className="create-panel-summary">
+            <p className="workbench-kicker">Your build</p>
+            <div className="create-build-card">
+              <div className={`create-build-thumb${kitMode === "custom" ? " is-custom" : ""}`}><KitPortrait url={kitPortrait} name={kitName ?? "Kit"} />{kitMode === "custom" && kitPortrait ? <span className="create-kit-portrait-badge">You</span> : null}</div>
+              <div className="create-build-copy">
+                <strong>{kitName ?? "No kit yet"}</strong>
+                <small>{kitMode === "custom" ? (customKit ? "Your upload · private" : "Upload a photo of your kit") : kit ? [kit.grade, kit.scale, kit.releaseVersion].filter(Boolean).join(" · ") : "Choose a kit from the catalog"}</small>
+                <strong className="create-build-style">{styleName ?? "No style yet"}</strong>
+                <StylePalette colors={colors} />
+              </div>
+            </div>
+            <ul className="create-panel-chips" aria-label="Build readiness">{lights.map(light => <li key={light.key} className={light.ok ? "is-ok" : undefined}><i aria-hidden="true" />{light.key === "credits" ? light.value : light.label}<span className="sr-only">{light.key === "credits" ? "" : ` · ${light.value}`}</span></li>)}</ul>
+            <button className="create-advanced-link" type="button" onClick={() => setAdvanced(true)}>Advanced options +</button>
+          </div>
+          <div className="create-panel-dock">
+            <div className="create-panel-price"><span className="create-total-price">{quote ? `${quote.cost} credits` : "Pricing unavailable"}</span>{creditBalance === undefined ? null : <small>{creditBalance} available</small>}</div>
+            <button type="button" className={`${generateClass} create-generate-button`} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>
+              <span>{working ? "Generating preview…" : "Generate preview"}</span><small>Image + paint plan</small>
+            </button>
+            {hintLine}
+            <AiDisclosureNote kind="text-and-image" />
+          </div>
         </aside>
       </div>
       <div className="create-mobile-generate"><div><strong>{kitName ?? "Choose a kit"}</strong><span>{hint?.text ?? `${quote?.cost ?? "—"} credits · Image + plan`}</span></div><button type="button" className={generateClass} aria-busy={working || undefined} onClick={event => requestGenerate(event.currentTarget)}>{working ? "Generating…" : "Generate"}</button></div>
     </>}
     {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
     {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
-    {latestRun && !shouldShowJobSheet && !styleTakeover ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "Generation failed."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
+    {latestRun && !shouldShowJobSheet && !styleTakeover ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "The preview didn’t finish."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
       <Button variant="outline" onClick={() => { setDismissedRunId(null); setWatchingRunId(latestRun.id); }}>View job status →</Button>
       {latestRun.conceptId ? <Button asChild variant="outline"><Link to="/library/$conceptId" params={{ conceptId: latestRun.conceptId }} search={{ tab: "overview" }}>View details →</Link></Button> : <Link to="/library">Open library →</Link>}
     </section> : null}
-    <Sheet open={advanced} onOpenChange={setAdvanced}><SheetContent className="create-advanced-sheet"><SheetHeader><SheetTitle>Advanced options</SheetTitle><SheetDescription>Defaults come from your selected style. The standard output includes both the image and paint plan.</SheetDescription></SheetHeader><div className="create-advanced-fields"><label>Finish<select disabled={Boolean(isRunning)} value={materialId ?? "auto"} onChange={event => setMaterialId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}><option value="auto">Style default · {defaults.material?.slug ?? "Unavailable"}</option>{catalog.materialPresets.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select></label><label>Weathering<select disabled={Boolean(isRunning)} value={weathering ?? "auto"} onChange={event => setWeathering(event.target.value === "auto" ? null : event.target.value as "clean" | "light" | "heavy")}><option value="auto">Style default · {defaults.weathering}</option>{["clean", "light", "heavy"].map(value => <option key={value}>{value}</option>)}</select></label><fieldset disabled={Boolean(isRunning)}><legend>Mood</legend><button type="button" aria-pressed={!mood.length} onClick={() => setMood([])}>Style default · {defaults.mood}</button>{moodOptions.map(value => <button type="button" key={value} aria-pressed={mood.includes(value)} onClick={() => setMood(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}>{value.replace(/-/g, " ")}</button>)}</fieldset><p>New works are private. Publish them later from your library.</p><Button onClick={() => setAdvanced(false)}>Done</Button></div></SheetContent></Sheet>
+    <Sheet open={advanced} onOpenChange={setAdvanced}><SheetContent className="create-advanced-sheet"><SheetHeader><SheetTitle>Advanced options</SheetTitle><SheetDescription>Defaults come from your selected style. The standard output includes both the image and paint plan.</SheetDescription></SheetHeader><div className="create-advanced-fields"><label>Finish<select disabled={Boolean(isRunning)} value={materialId ?? "auto"} onChange={event => setMaterialId(event.target.value === "auto" ? null : event.target.value as Id<"materialPresets">)}><option value="auto">Style default ({defaults.material?.name ?? "not set"})</option>{catalog.materialPresets.map(row => <option key={row._id} value={row._id}>{row.name}</option>)}</select></label><label>Weathering<select disabled={Boolean(isRunning)} value={weathering ?? "auto"} onChange={event => setWeathering(event.target.value === "auto" ? null : event.target.value as "clean" | "light" | "heavy")}><option value="auto">Style default ({defaults.weathering})</option>{["clean", "light", "heavy"].map(value => <option key={value}>{value}</option>)}</select></label><fieldset disabled={Boolean(isRunning)}><legend>Mood</legend><button type="button" aria-pressed={!mood.length} onClick={() => setMood([])}>Style default ({defaults.mood})</button>{moodOptions.map(value => <button type="button" key={value} aria-pressed={mood.includes(value)} onClick={() => setMood(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}>{value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, " ")}</button>)}</fieldset><p>New works are private. Publish them later from your library.</p><Button onClick={() => setAdvanced(false)}>Done</Button></div></SheetContent></Sheet>
   </div>;
 }
 

@@ -27,9 +27,9 @@ export const publicSeo = {
     keywords: coreKeywords,
   },
   create: {
-    title: "Plan a Custom Gunpla Paint Job | NeotypeLab",
+    title: "Custom Gunpla Paint Planner: Upload Your Kit | NeotypeLab",
     description:
-      "Build a spray-ready paint plan for a Gunpla or mecha model kit. Keep the kit identity, map real paints, and preview the finish before you spray.",
+      "Upload a photo of your Gunpla or mecha kit, describe the colors you want, and preview the repaint with a spray-ready paint plan before you paint.",
     keywords: "gunpla paint, custom gunpla, gundam custom paint, model kit painting, gunpla weathering",
   },
   pricing: {

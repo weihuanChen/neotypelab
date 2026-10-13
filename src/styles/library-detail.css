@@ -107,6 +107,8 @@
 .work-detail-match-warnings { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--color-muted); font-size: .78rem; line-height: 1.6; }
 .work-detail-match-note { max-width: 68ch; margin: 1rem 0 0; color: var(--color-muted); font-size: .72rem; line-height: 1.65; }
 .work-detail-intro { margin: 0 0 1.8rem; max-width: 65ch; color: var(--color-ink-2); font-size: 1rem; line-height: 1.75; }
+.work-detail-coverage { margin: -1rem 0 1.8rem; max-width: 72ch; padding: .7rem 1rem; border-left: 3px solid var(--color-rule-2); background: var(--color-paper-2); color: var(--color-ink-2); font-size: .88rem; line-height: 1.6; }
+.work-detail-coverage strong { color: var(--color-ink); }
 .work-detail-panel-map > div { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1.5rem; padding: 1rem 0; border-top: 1px solid var(--color-rule); }
 .work-detail-panel-map h3 { margin: 0; font-size: .88rem; font-weight: 600; }
 .work-detail-panel-map p { margin: 0 0 .3rem; font-size: .9rem; line-height: 1.65; }

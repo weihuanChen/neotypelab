@@ -184,6 +184,15 @@ holds a soft glow. The console scan line runs only while the textarea
 is focused. All of it is disabled under `prefers-reduced-motion`
 (nudges fall back to a static outline + text).
 
+**Generate is always on screen.** The desktop panel is a summary zone
+(build card with a 72px thumbnail, readiness chips, Advanced options;
+scrolls internally if needed) above a pinned launch dock (price and
+balance, the 3.3rem Generate button, hint, and the full model
+disclosure). Never put tall content between the panel top and the dock.
+Where the kit step finishes (Custom Kit "Ready", or a selected catalog
+kit) the same action appears inline with its own full disclosure; the
+ignition plays on the dock button only. Mobile keeps the bottom bar.
+
 **Custom Kit upload (decal magenta).** Approved 2026-10-12, alongside the
 custom-first direction: Custom Kit is the first and default Kit source
 (Remix links, recommended official kits and deployments without Custom

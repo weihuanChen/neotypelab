@@ -55,9 +55,9 @@ export const systemStates = {
   authCreate: {
     code: "AUTH",
     archive: "Create / Session required",
-    headline: "Plan a\npaint scheme.",
+    headline: "Plan a custom\nGunpla paint job.",
     message: [
-      "Sign in to pick a kit, choose a color direction, and preview the finish before you spray.",
+      "Sign in to upload your kit or choose one from the catalog, describe the colors you want, and preview the repaint with a matching paint plan.",
     ],
     signal: "locked",
     signalLabel: "Access / Locked",
@@ -232,9 +232,9 @@ export const systemStates = {
   createLoading: {
     code: "SYNC",
     archive: "Create / Opening",
-    headline: "Opening\nthe create console.",
+    headline: "Loading\nyour workspace.",
     message: [
-      "Color directions, kits, and your credit balance are loading.",
+      "Getting styles, kits and your credits ready.",
     ],
     signal: "loading",
     signalLabel: "Console / Sync",
