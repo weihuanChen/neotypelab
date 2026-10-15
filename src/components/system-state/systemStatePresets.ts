@@ -148,7 +148,7 @@ export const systemStates = {
     archive: "Showcase / Public archive",
     headline: "No paint plans\nyet",
     message: [
-      "Published Gunpla and mecha paint plans will show up here after a builder shares one.",
+      "Published mecha paint plans will show up here after a builder shares one.",
     ],
     signal: "empty",
     signalLabel: "Public / Empty",

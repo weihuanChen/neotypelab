@@ -1,6 +1,7 @@
 import { COMPLETE_BUILD_CREDITS, STARTER_CREDITS } from "@/lib/productPricing";
 import { aiModelDisclosure } from "@/src/lib/aiDisclosure";
 import { appPaths } from "@/src/lib/appPaths";
+import { publicSeo } from "@/src/lib/publicSeo";
 
 /**
  * Copy for the home page that also feeds structured data. Keep the visible FAQ
@@ -27,8 +28,7 @@ const catalogKitStory = {
   stepTitle: "Pick your kit",
   stepBody: "Choose the kit on your bench. The plan is fitted to its real armor panels and parts.",
   stepNote: null as string | null,
-  description:
-    "Plan spray-ready Gunpla and mecha paint schemes before you spray: describe a color direction, pick your kit, and get real paints, a painting sequence, and an HD preview.",
+  description: publicSeo.home.description,
 };
 
 const customKitStory = {
@@ -36,8 +36,7 @@ const customKitStory = {
   stepTitle: "Bring your model",
   stepBody: "Upload a photo of the model on your bench. The plan follows the parts the scan can see. You can still pick a catalog kit instead.",
   stepNote: "The scan price is shown before you scan",
-  description:
-    "Plan spray-ready Gunpla and mecha paint schemes before you spray: describe a color direction, upload your model or pick a catalog kit, and get real paints, a painting sequence, and an HD preview.",
+  description: publicSeo.home.description,
 };
 
 /** Copy that changes with Custom Kit. Catalog wording stays on deployments where the feature is off. */

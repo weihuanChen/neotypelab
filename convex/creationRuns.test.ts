@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import workflowTest from "@convex-dev/workflow/test";
 import type { WorkflowId } from "@convex-dev/workflow";
 import { api, internal } from "./_generated/api";
@@ -8,6 +9,8 @@ import type { Id } from "./_generated/dataModel";
 import { seedUser } from "@/tests/convexTestHelpers";
 import { createAssetGraph } from "./assetModel";
 import type { CreativeSnapshot } from "./creativePipeline";
+import { sourceNormalizationProtocolVersion, styleIntentSchema, type NormalizedRequirement } from "./creativeContracts";
+import { convexErrorMessage } from "@/src/lib/convexError";
 
 const modules = import.meta.glob("./**/*.ts");
 beforeEach(() => vi.useFakeTimers());
@@ -22,6 +25,17 @@ async function fixture(balance = 20) {
   const cost = (await owner.client.query(api.creationRuns.quote, {}))!.cost;
   return { t, ...owner, data, input, cost };
 }
+async function saveCustomStyle(f: Awaited<ReturnType<typeof fixture>>, description: string, requirements: NormalizedRequirement[]) {
+  const intent = styleIntentSchema.parse({ ...JSON.parse(f.data.style.styleIntentJson!), version: "style-intent.v3", source: "private", styleType: "custom",
+    colors: [{ role: "primary", name: "Industrial gray", hex: "#78828C", coverage: 100 }], pattern: "none",
+    explicitRequirements: { version: "normalized-user-intent.v1", requirements, unresolved: [] } });
+  const promptCompositionId = await f.t.run(ctx => ctx.db.insert("promptCompositions", {
+    userId: f.userId, status: "consumed", composedPrompt: "Completed interpretation",
+    inputSnapshotJson: JSON.stringify({ kind: "style-interpreter", description }),
+    outputSummaryJson: JSON.stringify({ intent, sourceNormalizationProtocolVersion }),
+  }));
+  return await f.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId });
+}
 async function finishPalette(f: Awaited<ReturnType<typeof fixture>>, runId: Id<"creationRuns">) {
   const run = (await f.t.mutation(internal.creationRuns.claim, { runId, attempt: 1 }))!;
   const composition = (await f.t.run(ctx => ctx.db.get(run.paletteId!)))!;
@@ -34,6 +48,39 @@ async function finishPalette(f: Awaited<ReturnType<typeof fixture>>, runId: Id<"
 }
 
 describe("complete preview runs", () => {
+  it("starts a saved custom style with two mood clauses and charges the preview once", async () => {
+    const f = await fixture();
+    const saved = await saveCustomStyle(f, "hazard unit  Industrial Alert", [
+      { id: "hazard", property: "mood", operation: "set", scope: { kind: "whole-kit" }, value: "industrial hazard support", evidence: { inputRef: "style-description", quote: "hazard unit" } },
+      { id: "alert", property: "mood", operation: "set", scope: { kind: "whole-kit" }, value: "high-visibility warning", evidence: { inputRef: "style-description", quote: "Industrial Alert" } },
+    ]);
+    const args = { input: { ...f.input, stylePresetId: undefined, styleRevision: undefined, userStyleId: saved.styleId, styleIntentJson: JSON.stringify(saved.intent) }, requestKey: "combined-mood", expectedCost: f.cost };
+    const runId = await f.client.mutation(api.creationRuns.start, args);
+    expect(await f.client.mutation(api.creationRuns.start, args)).toBe(runId);
+    const run = (await f.t.run(ctx => ctx.db.get(runId)))!;
+    const palette = (await f.t.run(ctx => ctx.db.get(run.paletteId!)))!;
+    expect((JSON.parse(palette.inputSnapshotJson) as CreativeSnapshot).resolvedIntent?.effectiveStyle.mood)
+      .toBe("industrial hazard support, high-visibility warning");
+    expect((await f.t.run(ctx => ctx.db.query("creditAccounts").first()))?.balance).toBe(20 - f.cost);
+    expect(await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_reference", q => q.eq("referenceTable", "creationRuns").eq("referenceId", runId)).collect())).toHaveLength(1);
+  });
+
+  it("returns readable requirement conflicts and rolls back the preview and debit", async () => {
+    const f = await fixture();
+    const saved = await saveCustomStyle(f, "matte and gloss", ["matte", "gloss"].map(value => ({
+      id: value, property: "finish", operation: "set", scope: { kind: "whole-kit" }, value, evidence: { inputRef: "style-description", quote: value },
+    })));
+    const error = await f.client.mutation(api.creationRuns.start, {
+      input: { ...f.input, stylePresetId: undefined, styleRevision: undefined, userStyleId: saved.styleId, styleIntentJson: JSON.stringify(saved.intent) },
+      requestKey: "conflicting-finish", expectedCost: f.cost,
+    }).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ConvexError);
+    expect(convexErrorMessage(error, "Unexpected server error")).toContain("Explicit finish conflicts");
+    expect(await f.t.run(ctx => ctx.db.query("creationRuns").collect())).toHaveLength(0);
+    expect(await f.t.run(ctx => ctx.db.query("creditTransactions").collect())).toHaveLength(0);
+    expect((await f.t.run(ctx => ctx.db.query("creditAccounts").first()))?.balance).toBe(20);
+  });
+
   it("repairs a historical failed retry by its debit once and rejects mismatched repairs", async () => {
     const f = await fixture();
     const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "historical", expectedCost: f.cost });

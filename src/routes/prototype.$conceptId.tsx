@@ -12,7 +12,7 @@ import type {
 import { absoluteUrl } from "@/lib/site";
 import { buildPrototypeStructuredData } from "@/lib/structuredData";
 import { getPublicConcept } from "@/src/lib/publicConceptServer";
-import { documentMeta, prototypeSeo } from "@/src/lib/publicSeo";
+import { documentMeta, prototypeSeo, supportKeywords } from "@/src/lib/publicSeo";
 
 const getPrototypeSnapshot = createServerFn({ method: "GET" })
   .validator(z.object({ conceptId: z.string() }))
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/prototype/$conceptId")({
       meta: [
         { name: "robots", content: loaderData?.concept?.indexable ? "index, follow" : "noindex, follow" },
         ...documentMeta(
-          { title: meta.title, description: meta.description, keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit" },
+          { title: meta.title, description: meta.description, keywords: meta.keywords ?? supportKeywords },
           { ogType: "article", twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
         ),
       ],
@@ -124,10 +124,10 @@ function getConceptIdFromSnapshot(snapshot: PrototypeSnapshot) {
 
 function buildFallbackPrototypeMeta(conceptId: string): PrototypeMeta {
   return {
-    title: "Shared Gunpla Paint Plan | NeotypeLab",
+    title: "Shared Mecha Paint Plan | NeotypeLab",
     description:
-      "A shared spray-ready Gunpla or mecha model paint plan, with its color layout and paint mapping.",
-    keywords: "gunpla paint, custom gunpla, mecha model kit",
+      "A shared spray-ready mecha model paint plan, with its color layout and paint mapping.",
+    keywords: supportKeywords,
     canonicalPath: `/prototype/${conceptId}`,
   };
 }

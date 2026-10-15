@@ -10,7 +10,7 @@ import {
 } from "@/src/lib/showcaseRouteData";
 
 const archiveShell = {
-  description: "Search published Gunpla and mecha paint plans by kit, color direction, finish, weathering, and builder.",
+  description: "Search published mecha paint plans by kit, including Gunpla, mecha girls, and Zoids.",
   title: "Archive",
 } as const;
 

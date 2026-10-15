@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import type { CreditActionType, UserPlan } from "./domain";
@@ -85,7 +86,7 @@ export async function debitCredits(
   const account = await ensureCreditAccount(ctx, input.userId);
   const buckets = creditBuckets(account);
   if (buckets.balance < input.amount) {
-    throw new Error(input.insufficientMessage ?? "Insufficient credits");
+    throw new ConvexError(input.insufficientMessage ?? "Insufficient credits");
   }
 
   const subscriptionSpent = Math.min(buckets.subscriptionBalance, input.amount);

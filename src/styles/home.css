@@ -526,6 +526,7 @@
 
 .home-part__preview {
   position: relative;
+  container: home-preview / inline-size;
   overflow: hidden;
   min-height: 13rem;
   height: 100%;
@@ -539,9 +540,16 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 62% 45%;
-  transform: scale(1.55);
-  transform-origin: 62% 45%;
+  /* Head and chest armor of the current showcase hero. */
+  object-position: 48% 10%;
+  transform: scale(1.62);
+  transform-origin: 48% 10%;
+}
+
+@container home-preview (max-width: 30rem) {
+  .home-part__preview img {
+    transform: scale(2.55);
+  }
 }
 
 .home-part__preview span {

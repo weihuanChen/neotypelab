@@ -3,16 +3,18 @@ import { createMiddleware, createStart } from "@tanstack/react-start";
 import { getResponseStatus } from "@tanstack/react-start/server";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const developmentWorker = import.meta.env.MODE === "worker-dev";
 
 // Apply to the final response, including TanStack's not-found boundary. Route
 // headers and server-function headers are not preserved by every error path.
 const showcaseCacheMiddleware = createMiddleware({ type: "request" }).server(async ({ pathname, next }) => {
   const result = await next();
-  if (pathname === "/" || pathname === "/showcase" || pathname === "/sitemap.xml" ||
+  if (developmentWorker || pathname === "/" || pathname === "/showcase" || pathname === "/sitemap.xml" ||
     ["/prototype/", "/showcase/", "/pilot/", "/creator/", "/creator-pack/"].some(prefix => pathname.startsWith(prefix))) {
     const headers = new Headers(result.response.headers);
     headers.set("Cache-Control", "no-store");
     if (result.response.status === 404) headers.set("X-Robots-Tag", "noindex");
+    if (developmentWorker) headers.set("X-Robots-Tag", "noindex, nofollow");
     const requestedStatus = getResponseStatus();
     const status = result.response.status === 200 && requestedStatus >= 500 ? requestedStatus : result.response.status;
     if (status === 503 && !headers.has("Retry-After")) headers.set("Retry-After", "60");

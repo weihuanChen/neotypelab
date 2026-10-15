@@ -247,4 +247,18 @@ describe("library work details", () => {
     expect(JSON.stringify(detail)).not.toContain("private-provider-prompt");
     expect(JSON.stringify(detail)).not.toContain("private-provider-response");
   });
+
+  it("lets the owner rename a work without dropping the rest of its search text", async () => {
+    const f = await fixture();
+    await f.t.run(ctx => ctx.db.patch(f.conceptId, { searchText: "Workshop repaint lacquer", visibility: "public" }));
+    await expect(f.other.client.mutation(api.concepts.rename, { conceptId: f.conceptId, title: "Taken" })).rejects.toThrow(/your own work/);
+    await expect(f.owner.client.mutation(api.concepts.rename, { conceptId: f.conceptId, title: "   " })).rejects.toThrow(/Enter a title/);
+    await f.owner.client.mutation(api.concepts.rename, { conceptId: f.conceptId, title: "  Desert   Nu  " });
+    const concept = await f.t.run(ctx => ctx.db.get(f.conceptId));
+    expect(concept?.title).toBe("Desert Nu");
+    expect(concept?.searchText).toBe("Desert Nu lacquer");
+    expect(concept?.publicContentUpdatedAt).toEqual(expect.any(Number));
+    const detail = await f.owner.client.query(api.libraryDetails.get, { conceptId: f.conceptId });
+    expect(detail?.title).toBe("Desert Nu");
+  });
 });

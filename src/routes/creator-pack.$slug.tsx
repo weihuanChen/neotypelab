@@ -4,7 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildCreatorPackStructuredData } from "@/lib/structuredData";
-import { creatorPackSeo, documentMeta } from "@/src/lib/publicSeo";
+import { creatorPackSeo, documentMeta, supportKeywords } from "@/src/lib/publicSeo";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   CreatorPackView,
@@ -98,10 +98,10 @@ function CreatorPackRoute() {
 
 function buildFallbackCreatorPackMeta(slug: string): PublicRouteMeta {
   return {
-    title: "Gunpla Paint Pack | NeotypeLab",
+    title: "Mecha Paint Pack | NeotypeLab",
     description:
-      "A curated pack of Gunpla and mecha model color directions, kits, and paint finishes to preview before you spray.",
-    keywords: "gunpla paint, custom gunpla, mecha model kit",
+      "A curated pack of mecha model color directions, kits, and paint finishes to preview before you spray.",
+    keywords: supportKeywords,
     canonicalPath: `/creator-pack/${slug}`,
   };
 }
@@ -166,7 +166,7 @@ function buildHead(meta: PublicRouteMeta, ogType: string) {
       {
         title: meta.title,
         description: meta.description,
-        keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit",
+        keywords: meta.keywords ?? supportKeywords,
       },
       { ogType, twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
     ),

@@ -53,7 +53,7 @@ function HeroSection({ lede }: { lede: string }) {
     <section aria-labelledby="home-hero-title" className="home-hero">
       <div className="home-wrap home-hero__grid">
         <div className="home-hero__copy">
-          <h1 id="home-hero-title">Plan your Gunpla paint scheme before you spray.</h1>
+          <h1 id="home-hero-title">Plan a mecha model paint scheme before you spray.</h1>
           <p className="home-hero__lede">{lede}</p>
           <div className="home-hero__actions">
             <Link className="home-cta" to={appPaths.create}>Plan a paint scheme</Link>

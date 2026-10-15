@@ -13,7 +13,7 @@ import { useStartProviderStatus } from "@/src/providers/StartProviders";
 
 const homeShell = {
   description:
-    "Spray-ready paint plans for Gunpla and mecha kits.",
+    "Spray-ready paint plans for Gunpla, mecha girls, and Zoids.",
   title: "Home",
 } as const;
 

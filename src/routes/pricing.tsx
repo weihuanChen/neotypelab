@@ -15,7 +15,7 @@ import {
 import { documentMeta, publicSeo } from "@/src/lib/publicSeo";
 
 const pricingShell = {
-  description: "Credits and plans for prototyping Gunpla and mecha paint schemes.",
+  description: "Credits and plans for prototyping mecha model paint schemes.",
   title: "Pricing",
 } as const;
 

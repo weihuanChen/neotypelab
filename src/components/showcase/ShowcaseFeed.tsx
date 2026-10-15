@@ -220,7 +220,7 @@ function ShowcaseFeedView({
             <p className="showcase-kicker">Public archive</p>
             <h1>Published paint plans</h1>
             <p>
-              These are Gunpla and mecha paint plans marked public. Private plans stay in your library and can still be opened from a direct link.
+              These are mecha paint plans marked public, including Gunpla, mecha girls, and Zoids. Private plans stay in your library and can still be opened from a direct link.
             </p>
           </div>
         )}

@@ -29,7 +29,7 @@ export const legalDocuments: readonly LegalDocument[] = [
     id: "terms",
     number: "01",
     title: "Terms of Service",
-    summary: "Rules for planning spray-ready Gunpla and mecha paint schemes on NeotypeLab.",
+    summary: "Rules for planning spray-ready mecha model paint schemes on NeotypeLab.",
     updatedLabel: "Updated Oct 8, 2026",
     effectiveLabel: "Effective Sep 22, 2026",
     href: appPaths.legalTerms,

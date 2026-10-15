@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { vResultValidator, vWorkflowId } from "@convex-dev/workflow";
 import { mutation, query } from "./functions";
 import { internalMutation, internalQuery, type MutationCtx } from "./_generated/server";
@@ -104,26 +104,27 @@ async function viewerContext(ctx: MutationCtx, userId: Id<"users">) {
 
 export const start = mutation({
   args: { input: inputValidator, requestKey: v.string(), expectedCost: v.number() },
+  returns: v.id("creationRuns"),
   handler: async (ctx, args) => {
     const viewer = ctx.viewerX();
-    if (viewer.accountStatus === "suspended") throw new Error("Account unavailable");
-    if (!args.requestKey || args.requestKey.length > 120) throw new Error("Invalid request key");
+    if (viewer.accountStatus === "suspended") throw new ConvexError("Account unavailable");
+    if (!args.requestKey || args.requestKey.length > 120) throw new ConvexError("Invalid request key");
     const inputKey = creativeInputKey(args.input) + JSON.stringify({ sourceConceptId: args.input.sourceConceptId });
     const prior = await ctx.db.query("creationRuns").withIndex("by_user_request", q => q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
     if (prior) {
       const legacyKey = legacyCreativeInputKey(args.input) + JSON.stringify({ sourceConceptId: args.input.sourceConceptId });
-      if (prior.inputKey !== inputKey && prior.inputKey !== legacyKey) throw new Error("Request key already used for another preview");
+      if (prior.inputKey !== inputKey && prior.inputKey !== legacyKey) throw new ConvexError("Request key already used for another preview");
       return prior._id;
     }
     const runs = await ctx.db.query("creationRuns").withIndex("by_user", q => q.eq("userId", viewer._id)).collect();
-    if (runs.some(run => run.status === "queued" || run.status === "running")) throw new Error("A preview is already in progress");
+    if (runs.some(run => run.status === "queued" || run.status === "running")) throw new ConvexError("A preview is already in progress");
     const costs = await activePreviewCosts(ctx.db);
-    if (costs.some((cost) => cost === undefined || cost < 0)) throw new Error("Preview pricing unavailable");
+    if (costs.some((cost) => cost === undefined || cost < 0)) throw new ConvexError("Preview pricing unavailable");
     const cost = costs.reduce<number>((total, item) => total + item!, 0);
-    if (cost !== args.expectedCost) throw new Error("Preview price changed. Review the updated total and try again");
+    if (cost !== args.expectedCost) throw new ConvexError("Preview price changed. Review the updated total and try again");
     if (args.input.sourceConceptId) {
       const source = await ctx.db.get(args.input.sourceConceptId);
-      if (!source || source.visibility === "private" || source.status === "draft") throw new Error("Remix source unavailable");
+      if (!source || source.visibility === "private" || source.status === "draft") throw new ConvexError("Remix source unavailable");
     }
     const now = Date.now();
     const id = await ctx.db.insert("creationRuns", { userId: viewer._id, requestKey: args.requestKey, inputJson: JSON.stringify(args.input), inputKey,
@@ -368,13 +369,13 @@ export const completeWorkflow = internalMutation({
   },
 });
 
-export const retry = mutation({ args: { runId: v.id("creationRuns") }, handler: async (ctx, { runId }) => {
+export const retry = mutation({ args: { runId: v.id("creationRuns") }, returns: v.id("creationRuns"), handler: async (ctx, { runId }) => {
   const viewer = ctx.viewerX();
   const run = await ctx.db.get(runId);
-  if (!run || run.userId !== viewer._id || viewer.accountStatus === "suspended") throw new Error("Preview unavailable");
+  if (!run || run.userId !== viewer._id || viewer.accountStatus === "suspended") throw new ConvexError("Preview unavailable");
   if (run.status !== "failed" || !run.refunded) return runId;
   const runs = await ctx.db.query("creationRuns").withIndex("by_user", q => q.eq("userId", viewer._id)).collect();
-  if (runs.some(row => row.status === "queued" || row.status === "running")) throw new Error("A preview is already in progress");
+  if (runs.some(row => row.status === "queued" || row.status === "running")) throw new ConvexError("A preview is already in progress");
   const input = JSON.parse(run.inputJson) as RunInput;
   const palette = run.paletteId ? await ctx.db.get(run.paletteId) : null;
   const specification = run.specificationId ? await ctx.db.get(run.specificationId) : null;

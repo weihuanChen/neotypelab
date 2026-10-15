@@ -4,7 +4,7 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { absoluteUrl } from "@/lib/site";
 import { buildCreatorHubStructuredData } from "@/lib/structuredData";
-import { creatorHubSeo, documentMeta } from "@/src/lib/publicSeo";
+import { creatorHubSeo, documentMeta, supportKeywords } from "@/src/lib/publicSeo";
 import { AppShell } from "@/src/components/app-shell/AppShell";
 import {
   CreatorHubView,
@@ -103,9 +103,9 @@ function CreatorHubRoute() {
 
 function buildFallbackCreatorHubMeta(handle: string): PublicRouteMeta {
   return {
-    title: "Gunpla Paint Plans | NeotypeLab",
-    description: "A creator hub of spray-ready Gunpla and mecha model paint plans.",
-    keywords: "gunpla paint, custom gunpla, mecha model kit",
+    title: "Mecha Paint Plans | NeotypeLab",
+    description: "A creator hub of spray-ready mecha model paint plans.",
+    keywords: supportKeywords,
     canonicalPath: `/creator/${handle}`,
   };
 }
@@ -157,7 +157,7 @@ function buildHead(meta: PublicRouteMeta, ogType: string) {
       {
         title: meta.title,
         description: meta.description,
-        keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit",
+        keywords: meta.keywords ?? supportKeywords,
       },
       { ogType, twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
     ),

@@ -5,7 +5,7 @@ test("renders the home page", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/NeotypeLab/);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 1, name: /Plan your Gunpla paint scheme/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /Plan a mecha model paint scheme/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Plan a paint scheme" }).first()).toHaveAttribute("href", "/create");
   await expect(page.getByRole("heading", { name: "Questions before you start" })).toBeVisible();
   await expect(page.locator('nav[aria-label="Primary"] a[href="/"]')).toHaveText(/Home/);
@@ -25,7 +25,7 @@ test("gates the home page curation workspace", async ({ page }) => {
 test("renders the public showcase page", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   await page.goto("/showcase");
-  await expect(page).toHaveTitle(/Color Schemes and Mecha Repaint Gallery/);
+  await expect(page).toHaveTitle(/Mecha Color Schemes for Gunpla, Girlpla, and Zoids/);
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
   await expect(
     page

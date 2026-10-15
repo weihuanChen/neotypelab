@@ -13,6 +13,7 @@ const requiredPublicEnv = [
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, root, "");
+  const developmentWorker = mode === "worker-dev";
   const missingEnv = requiredPublicEnv.filter((name) => !env[name]?.trim());
 
   if (missingEnv.length > 0) {
@@ -30,6 +31,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       cloudflare({
+        configPath: developmentWorker ? "wrangler.dev.jsonc" : "wrangler.jsonc",
         inspectorPort: false,
         viteEnvironment: { name: "ssr" },
       }),

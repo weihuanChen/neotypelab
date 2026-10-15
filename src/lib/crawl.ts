@@ -46,6 +46,9 @@ export async function buildSitemapXml(request: Request) {
 }
 
 export function buildRobotsTxt(request: Request) {
+  if (import.meta.env.MODE === "worker-dev") {
+    return "User-agent: *\nDisallow: /\n";
+  }
   const siteUrl = getSiteUrl(request);
 
   return [

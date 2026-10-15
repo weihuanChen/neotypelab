@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ConvexError } from "convex/values";
 import { creativeInputKey, creativeTemplateSeeds, currentNormalizedUserIntentSchema, fillCreativeTemplate, hasIndexableStyle, legacyCreativeInputKey, normalizedUserIntentSchema, paletteV3Schema, repaintV3Schema, sourceNormalizationProtocolVersion, styleIntentSchema, type NormalizedRequirement, type NormalizedUserIntent } from "./creativeContracts";
 import { promptTemplateVariableDefinitions } from "./promptTemplateVariables";
 import { assertExecutableIntent, effectiveStyleForExecution, hexMatchesColorFamily, requiredPaletteRolesForExecution, resolveCreativeIntent, resolvedCreativeIntentSchema, resolvedIntentForExecution, validateNormalizedUserIntent, validateResolvedPalette, validateResolvedSpecification, type ResolvedCreativeIntent } from "./creativeIntentResolver";
@@ -42,6 +43,76 @@ function specFor(intent: ResolvedCreativeIntent) {
 }
 
 describe("Creative Intent deterministic resolution", () => {
+  it("combines independent mood clauses from one saved description and preserves their evidence", () => {
+    const source = "hazard unit  Industrial Alert";
+    const saved = styleIntentSchema.parse({ ...style, version: "style-intent.v3", source: "private", styleType: "custom",
+      explicitRequirements: notes([
+        requirement("hazard unit", { id: "hazard", property: "mood", operation: "set", scope: { kind: "whole-kit" }, colors: undefined,
+          value: "industrial hazard support", evidence: { inputRef: "style-description", quote: "hazard unit" } }),
+        requirement("Industrial Alert", { id: "alert", property: "mood", operation: "set", scope: { kind: "whole-kit" }, colors: undefined,
+          value: "high-visibility warning", evidence: { inputRef: "style-description", quote: "Industrial Alert" } }),
+      ]) });
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: source });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(() => resolvedCreativeIntentSchema.parse(intent)).not.toThrow();
+    expect(intent.effectiveStyle.mood).toBe("industrial hazard support, high-visibility warning");
+    expect(intent.constraints.filter(c => c.property === "mood" && c.status === "active")).toMatchObject([
+      { id: "description:hazard", strength: "hard", evidence: { quote: "hazard unit" } },
+      { id: "description:alert", strength: "hard", evidence: { quote: "Industrial Alert" } },
+    ]);
+    expect(intent.originalStyle).toEqual(saved);
+  });
+
+  it.each(["set", "add", "preserve"] as const)("combines %s mood clauses within Notes without repeating duplicate qualities", operation => {
+    const quote = "Industrial, alert, industrial";
+    const intent = resolveCreativeIntent({ styleIntent: style, notes: quote, normalizedNotes: notes(
+      ["industrial", "alert", "industrial"].map((value, index) => requirement(quote, {
+        id: `mood-${index}`, property: "mood", operation, scope: { kind: "whole-kit" }, colors: undefined, value,
+      })),
+    ) });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(intent.effectiveStyle.mood).toBe("industrial, alert");
+  });
+
+  it.each(["set", "add"] as const)("%s mood Notes retain the existing description precedence", operation => {
+    const source = "Industrial";
+    const saved = styleIntentSchema.parse({ ...style, explicitRequirements: notes([
+      requirement(source, { id: "industrial", property: "mood", operation: "set", scope: { kind: "whole-kit" }, colors: undefined,
+        value: "industrial", evidence: { inputRef: "style-description", quote: source } }),
+    ]) });
+    const quote = "Alert and utilitarian";
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: source, notes: quote, normalizedNotes: notes(
+      ["alert", "utilitarian"].map(value => requirement(quote, {
+        id: value, property: "mood", operation, scope: { kind: "whole-kit" }, colors: undefined, value,
+      })),
+    ) });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(intent.effectiveStyle.mood).toBe(operation === "add" ? "industrial, alert, utilitarian" : "alert, utilitarian");
+    expect(intent.constraints.find(c => c.id === "description:industrial")?.status).toBe(operation === "add" ? "active" : "superseded");
+  });
+
+  it("still rejects an additional mood after an explicitly exclusive mood", () => {
+    const quote = "Only industrial. Add ceremonial.";
+    const intent = resolveCreativeIntent({ styleIntent: style, notes: quote, normalizedNotes: notes([
+      requirement(quote, { id: "only", property: "mood", operation: "only", scope: { kind: "whole-kit" }, colors: undefined, value: "industrial" }),
+      requirement(quote, { id: "add", property: "mood", operation: "add", scope: { kind: "whole-kit" }, colors: undefined, value: "ceremonial" }),
+    ]) });
+    expect(() => assertExecutableIntent(intent)).toThrow(ConvexError);
+    expect(intent.conflicts).toContainEqual(expect.objectContaining({ property: "mood" }));
+  });
+
+  it.each([
+    { property: "finish", values: ["matte", "gloss"] },
+    { property: "weathering", values: ["clean", "heavy"] },
+  ] as const)("keeps conflicting $property values as visible business errors", ({ property, values }) => {
+    const quote = values.join(" and ");
+    const intent = resolveCreativeIntent({ styleIntent: style, notes: quote, normalizedNotes: notes(values.map((value, index) =>
+      requirement(quote, { id: `${property}-${index}`, property, operation: "set", scope: { kind: "whole-kit" }, colors: undefined, value }),
+    )) });
+    expect(() => assertExecutableIntent(intent)).toThrow(ConvexError);
+    expect(() => assertExecutableIntent(intent)).toThrow(`Explicit ${property} conflicts`);
+  });
+
   it("replaces style armor colors with blue and white without inferring 50:50 or HEX locks", () => {
     const before = JSON.stringify(style);
     const intent = resolve("blue and white color combination");

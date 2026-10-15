@@ -8,6 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { maxCreativeNotesLength, type StyleIntent } from "@/convex/creativeContracts";
 import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
+import { convexErrorMessage } from "@/src/lib/convexError";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -311,6 +312,5 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
 }
 
 function errorText(error: unknown) {
-  const text = error instanceof Error ? error.message : "Could not start this preview";
-  return (text.match(/Uncaught (?:Error|ConvexError): ([^\n]+)/)?.[1] ?? text.split("\n")[0]).replace(/^(?:Uncaught Error:\s*)+/, "");
+  return convexErrorMessage(error, "Could not start this preview. Please try again.");
 }

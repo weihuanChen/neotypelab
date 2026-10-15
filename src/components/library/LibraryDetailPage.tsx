@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Authenticated, AuthLoading, Unauthenticated, useAction, useQuery } from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated, useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
   ArrowLeftIcon,
@@ -19,6 +19,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { convexErrorMessage } from "@/src/lib/convexError";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
@@ -125,7 +126,7 @@ function OwnedWorkDetail({ conceptId, tab, onTabChange }: { conceptId: string; t
     <header className="work-detail-header">
       <Link className="work-detail-back" to="/library"><ArrowLeftIcon aria-hidden="true" />Library</Link>
       <div className="work-detail-heading">
-        <div><p className="work-detail-eyebrow">Work archive / {recordLabel(detail)}</p><h1 id="work-title">{detail.title}</h1></div>
+        <WorkTitle conceptId={workId} title={detail.title} recordLabel={recordLabel(detail)} />
         <div className="work-detail-badges"><StatusPill label={detail.specification && detail.status === "draft" ? "Plan ready" : detail.status} tone={mapStatusTone(detail.status)} /><span>{detail.visibility === "private" ? <LockClosedIcon aria-hidden="true" /> : null}{detail.visibility}</span></div>
       </div>
     </header>
@@ -864,6 +865,53 @@ function NeotypeLabQr() {
       <path fill="none" stroke="#111" d="M1 1.5h7m4 0h1m4 0h1m1 0h7M1 2.5h1m5 0h1m3 0h4m1 0h2m1 0h1m5 0h1M1 3.5h1m1 0h3m1 0h1m1 0h1m2 0h1m3 0h1m2 0h1m1 0h3m1 0h1M1 4.5h1m1 0h3m1 0h1m1 0h6m1 0h1m2 0h1m1 0h3m1 0h1M1 5.5h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1M1 6.5h1m5 0h1m1 0h4m1 0h3m2 0h1m5 0h1M1 7.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M9 8.5h1m1 0h1m4 0h2M1 9.5h1m1 0h5m2 0h1m2 0h3m3 0h5M3 10.5h3m2 0h2m2 0h2m3 0h1m2 0h1m3 0h1M2 11.5h1m1 0h1m2 0h1m5 0h2m1 0h4m1 0h2m1 0h2M1 12.5h2m1 0h3m4 0h1m1 0h1m1 0h7m3 0h1M1 13.5h1m3 0h5m2 0h1m1 0h3m1 0h2m1 0h1m1 0h3M1 14.5h5m7 0h2m2 0h1m2 0h1m1 0h1m1 0h1M1 15.5h1m1 0h5m2 0h2m2 0h3m1 0h1m1 0h3m1 0h2M1 16.5h1m1 0h1m1 0h2m2 0h2m2 0h1m1 0h2m1 0h1m1 0h2m3 0h1M1 17.5h1m3 0h1m1 0h5m1 0h9m1 0h1M9 18.5h3m2 0h1m2 0h1m3 0h2M1 19.5h7m4 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h3M1 20.5h1m5 0h1m1 0h4m2 0h1m1 0h1m3 0h2M1 21.5h1m1 0h3m1 0h1m1 0h2m1 0h1m3 0h6m1 0h3M1 22.5h1m1 0h3m1 0h1m1 0h2m2 0h2m3 0h2m1 0h5M1 23.5h1m1 0h3m1 0h1m1 0h2m3 0h5m3 0h2m1 0h1M1 24.5h1m5 0h1m2 0h1m2 0h2m2 0h6m2 0h1M1 25.5h7m1 0h1m3 0h1m1 0h1m3 0h7" />
     </svg>
   );
+}
+
+function WorkTitle({ conceptId, title, recordLabel }: { conceptId: Id<"concepts">; title: string; recordLabel: string }) {
+  const rename = useMutation(api.concepts.rename);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(title);
+  }, [editing, title]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const next = draft.trim().replace(/\s+/g, " ");
+    if (!next) { setError("Enter a title"); return; }
+    if (next === title) { setEditing(false); setError(null); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await rename({ conceptId, title: next });
+      setEditing(false);
+    } catch (failure) {
+      setError(convexErrorMessage(failure, "Could not rename this work. Please retry."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <div>
+    <p className="work-detail-eyebrow">Work archive / {recordLabel}</p>
+    <div className="work-detail-title-row">
+      <h1 id="work-title">{title}</h1>
+      {editing ? null : <button type="button" className="work-detail-rename" onClick={() => { setDraft(title); setError(null); setEditing(true); }}>Rename</button>}
+    </div>
+    {editing ? <form className="work-detail-title-form" onSubmit={event => void save(event)}>
+      <label htmlFor="work-title-input">Showcase title</label>
+      <input id="work-title-input" value={draft} maxLength={160} disabled={saving} autoFocus onChange={event => setDraft(event.target.value)} />
+      <p>This is the title on your Showcase page. A slash splits it onto two lines.</p>
+      {error ? <p className="is-error" role="alert">{error}</p> : null}
+      <div className="work-detail-title-actions">
+        <Button type="submit" className="work-detail-action is-primary" disabled={saving}>{saving ? "Saving…" : "Save title"}</Button>
+        <Button type="button" variant="outline" className="work-detail-action" disabled={saving} onClick={() => { setEditing(false); setError(null); }}>Cancel</Button>
+      </div>
+    </form> : null}
+  </div>;
 }
 
 function DetailLoading() { return <section className="work-detail-loading" role="status" aria-label="Loading work details"><span>Opening work archive…</span><div /><div /></section>; }

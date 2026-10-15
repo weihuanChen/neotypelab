@@ -7,6 +7,7 @@ import { repaintV3Schema } from "@/convex/creativeContracts";
 
 vi.mock("convex/react", () => ({
   useAction: () => vi.fn(),
+  useMutation: () => vi.fn(),
   useQuery: () => mockDetail,
   AuthLoading: () => null,
   Unauthenticated: () => null,
@@ -249,6 +250,7 @@ describe("LibraryDetailPage overview language", () => {
 
     expect(html).toContain("ΔE 5.9");
     expect(html).toContain("solid target");
+    expect(html).toContain("Rename");
     expect(html).toContain("Publish to Showcase");
     expect(html).toContain("Share this prototype to Showcase");
     expect(html).not.toContain("Remove from Showcase");

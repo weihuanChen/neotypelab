@@ -253,7 +253,7 @@ function StyleCollectionPanel({ profile }: { profile: PublicPilotProfile }) {
               <h3>{style.name}</h3>
               <p>
                 {style.shortDescription ??
-                  "A reusable color direction for Gunpla and mecha kits."}
+                  "A reusable color direction for mecha model kits."}
               </p>
               <dl className="showcase-meta">
                 <MetaRow label="Creator concepts" value={`${style.creatorConceptCount}`} />

@@ -73,6 +73,30 @@ npm run build
 npm run deploy
 ```
 
+### Public development Worker
+
+The development site is [neotypelab-dev.shendongloving123.workers.dev](https://neotypelab-dev.shendongloving123.workers.dev).
+It uses Convex `hallowed-raven-873` and the development Clerk instance.
+
+Copy `.env.worker-dev.example` to `.env.worker-dev.local` and set the development
+Clerk publishable key. The local file is gitignored. Build and deploy with:
+
+```bash
+npm run build:dev
+npm run deploy:dev
+```
+
+The `worker-dev` build mode selects `wrangler.dev.jsonc`, sets the development
+site's canonical origin, and disables search indexing with `X-Robots-Tag` and
+`robots.txt`. Local `npm run dev` and the production build keep their existing
+configurations. Wrangler reads its Cloudflare credentials from `.env.local`.
+The development Worker's `CLERK_SECRET_KEY` must be the matching `sk_test_` key;
+configure it as a Worker secret during first-time setup. Later deployments retain it.
+
+The development origin must also be included in both Convex checkout return-origin
+variables and the private R2 upload/download CORS rules. Upload configuration
+replaces its rule, so include all existing upload origins when updating it.
+
 ## Migration Ownership
 
 TanStack Start under `src/` is the only frontend runtime. The former Next App

@@ -11,7 +11,7 @@ import {
 } from "@/src/lib/showcaseRouteData";
 
 const showcaseShell = {
-  description: "Community Gunpla and mecha color schemes, with the paint map behind each preview.",
+  description: "Color schemes for Gunpla, mecha girls, and Zoids, with the paint map behind each preview.",
   title: "Showcase",
 } as const;
 

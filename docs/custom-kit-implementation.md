@@ -1,8 +1,8 @@
 # Custom Kit 实施记录
 
-更新日期：2026-10-12。
+更新日期：2026-10-14。
 
-状态：P4–P6 首版已完成开发验收，真实上传、Vision 与参考图生成已验证。上传图片两层审核已按当前尺度校准（非露骨机娘放行，明确色情与未成年人性化内容拦截），`dev:hallowed-raven-873` 的 `CUSTOM_KIT_SAFESEARCH_MODE` 为 `enforce`。该部署已配置 Vision profile、本地上传 CORS，并设 `CUSTOM_KIT_ENABLED=true`，可在开发环境使用。未配置该开关的部署默认关闭；生产环境尚未发布。首页在开关打开时以「上传自己的模型」为主说明，开关关闭时仍只介绍目录机型。
+状态：P4–P6 首版已完成开发验收，真实上传、Vision 与参考图生成已验证。上传图片两层审核已按当前尺度校准（非露骨机娘放行，明确色情与未成年人性化内容拦截），`dev:hallowed-raven-873` 的 `CUSTOM_KIT_SAFESEARCH_MODE` 为 `enforce`。该部署已配置 Vision profile、本地上传 CORS，并设 `CUSTOM_KIT_ENABLED=true`，可在开发环境使用。生产部署 `prod:resolute-giraffe-272` 已于 2026-10-14 配齐配置并开放，见下方生产记录。未配置该开关的部署默认关闭。首页在开关打开时以「上传自己的模型」为主说明，开关关闭时仍只介绍目录机型。
 
 ## 已实现范围
 
@@ -56,6 +56,26 @@ npx convex run customKitsNode:configureUploadCors '{"origins":["http://localhost
 上传 CORS 是独立的 PUT 规则，保留现有 Library GET / HEAD 规则。线上只配置精确的 HTTPS 前端 origins，不用通配符。复用 `GEMINI_API_KEY_OFFCIAL` 和现有私有 R2 配置；新增的环境变量只有 `CUSTOM_KIT_ENABLED`。
 
 确认具体模型支持图像 content parts 和 JSON Schema 后，才在开发验收目标开放开关。SDK / API 语法依据 [Gemini OpenAI 兼容官方文档](https://ai.google.dev/gemini-api/docs/openai)，文档能力不能替代真实样本验收。
+
+## 生产环境开放记录（2026-10-14）
+
+按用户授权开放 `prod:resolute-giraffe-272`：
+
+- `CUSTOM_KIT_ENABLED=true`，`CUSTOM_KIT_SAFESEARCH_MODE=enforce`；现有 `CONTENT_SAFETY_MODE=enforce`。
+- 从生产官方 Gemini 文本 Profile 创建独立 `custom-kit-vision` Profile（`mn79fs6anr4z5wefa98eye5htx8g8htt`），使用已通过开发验收的同型 `gemini-3.5-flash`、官方 OpenAI 兼容端点和 `GEMINI_API_KEY_OFFCIAL`。
+- 生产已配置 `GOOGLE_CLOUD_VISION_API_KEY`，与已验收开发环境的 SafeSearch 密钥一致；密钥内容未打印或写入仓库。
+- 私有 R2 只允许准确的生产 origins：`https://neotypelab.com` 和 `https://neotypelab-terminal.shendongloving123.workers.dev`。Library 下载规则为 GET / HEAD，Custom Kit 上传规则为 PUT。
+- 当前扫描费率为 1 Credit，沿用已激活的 Style suggestion 费率；后续仍以界面显示的实际费率为准。
+
+开放后生产 `customKits:availability` 返回 `enabled: true`、`scanCost: 1`。两个生产域名的首页均已显示上传自己的模型、Bring your model 步骤及对应 FAQ。两个 origins 的 PUT / GET / HEAD 预检均返回 204 且跨域头正确，非许可 origin 被拒绝。
+
+本次复用下方已经完成的真实开发验收记录，没有追加付费扫描或图像生成。生产开关和配置核验通过不等于本次重新执行了生产付费生成。
+
+需要暂停入口时，明确生产目标后执行：
+
+```sh
+npx convex env set CUSTOM_KIT_ENABLED false --deployment resolute-giraffe-272
+```
 
 ## 验证与开发交付
 

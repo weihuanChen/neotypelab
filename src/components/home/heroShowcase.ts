@@ -12,13 +12,13 @@ export const heroShowcase = {
   afterUrl: "/assets/home/hero-build.webp",
   beforeLabel: "Your kit",
   afterLabel: "Your build",
-  alt: "ν Gundam repainted in white and blue gray, with yellow and muted red accents",
+  alt: "ν Gundam repainted in off-white and blue gray, with ochre and russet accents",
   /** Paint key for the "after" image. Photo-sampled swatches and matching paint references. */
   paints: [
-    { letter: "A", name: "White", roleName: "Armor base", hex: "#D9D5D2", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C1", colorName: "White" } },
+    { letter: "A", name: "Off white", roleName: "Armor base", hex: "#D9D5D2", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C69", colorName: "Off White" } },
     { letter: "B", name: "Blue gray", roleName: "Chest, knees, shield, feet", hex: "#395879", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C72", colorName: "Intermediate Blue" } },
-    { letter: "C", name: "Yellow", roleName: "Vents, fins, shield tip", hex: "#DDA845", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C4", colorName: "Yellow" } },
-    { letter: "D", name: "Muted red", roleName: "Chest and waist marks", hex: "#A75A5A", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C3", colorName: "Red" } },
+    { letter: "C", name: "Middle Stone", roleName: "Vents, fins, shield tip", hex: "#DDA845", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C21", colorName: "Middle Stone" } },
+    { letter: "D", name: "Russet", roleName: "Chest and waist marks", hex: "#A75A5A", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C81", colorName: "Russet" } },
     { letter: "E", name: "Frame gray", roleName: "Hands, joints", hex: "#414246", area: null, coverage: null, paint: { brand: "Mr. Color", code: "C40", colorName: "German Gray" } },
   ] as HomeHeroPaint[],
   /** Positions on the full "after" photo (0–1); the comparison seam clips hidden markers. */

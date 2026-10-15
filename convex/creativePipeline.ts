@@ -1,4 +1,4 @@
-import { v, type Infer } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import type { MutationCtx as ViewerMutationCtx } from "./types";
 import { ownedStyle } from "./userStyles";
 import { internal } from "./_generated/api";
@@ -156,46 +156,46 @@ const beginArgs = { ...creativeArgs, kind: v.union(v.literal("style-suggestion")
 export const begin = internalMutation({ args: beginArgs, handler: (ctx, args) => beginCreative(ctx, args) });
 export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnType<typeof beginValidator>>, prepaid = false) {
     const viewer = ctx.viewerX();
-    if (viewer.accountStatus === "suspended") throw new Error("Account is suspended");
-    if (!args.requestKey.trim() || args.requestKey.length > 120) throw new Error("Invalid request key");
+    if (viewer.accountStatus === "suspended") throw new ConvexError("Account is suspended");
+    if (!args.requestKey.trim() || args.requestKey.length > 120) throw new ConvexError("Invalid request key");
     const existing = await ctx.db.query("promptCompositions").withIndex("by_user_request", q => q.eq("userId", viewer._id).eq("requestKey", args.requestKey)).unique();
-    if (args.userStyleId && args.stylePresetId) throw new Error("Choose either a saved style or a preset");
+    if (args.userStyleId && args.stylePresetId) throw new ConvexError("Choose either a saved style or a preset");
     const savedStyle = args.userStyleId ? await ownedStyle(ctx, args.userStyleId, args.styleIntentJson) : null;
     const inputKey = creativeInputKey(args);
     if (existing) {
       const prior = JSON.parse(existing.inputSnapshotJson) as Snapshot;
-      if (prior.inputKey !== (prior.contractVersion ? inputKey : legacyCreativeInputKey(args)) || prior.kind !== args.kind) throw new Error("Request key belongs to different creative inputs");
+      if (prior.inputKey !== (prior.contractVersion ? inputKey : legacyCreativeInputKey(args)) || prior.kind !== args.kind) throw new ConvexError("Request key belongs to different creative inputs");
       return existing._id;
     }
-    if ((args.notes?.trim().length ?? 0) > 2000) throw new Error("Notes must be 2000 characters or fewer");
-    if ((args.styleDescription?.trim().length ?? 0) > 2000) throw new Error("Style description must be 2000 characters or fewer");
+    if ((args.notes?.trim().length ?? 0) > 2000) throw new ConvexError("Notes must be 2000 characters or fewer");
+    if ((args.styleDescription?.trim().length ?? 0) > 2000) throw new ConvexError("Style description must be 2000 characters or fewer");
     const pending = await ctx.db.query("promptCompositions").withIndex("by_userId", q => q.eq("userId", viewer._id)).collect();
-    if (pending.filter(p => p.status === "ready" && p.reservedCredits !== undefined).length >= 2) throw new Error("Two text generations are already active");
+    if (pending.filter(p => p.status === "ready" && p.reservedCredits !== undefined).length >= 2) throw new ConvexError("Two text generations are already active");
     const modelId = args.kitVariantId ?? args.baseModelId;
     const customKitContext = await customKitModelContext(ctx, viewer._id, args);
     const model = modelId ? await ctx.db.get(modelId) : null;
-    if (!customKitContext && (!model || !isPublicModelCatalogRecord(model))) throw new Error("Selected kit variant is unavailable");
+    if (!customKitContext && (!model || !isPublicModelCatalogRecord(model))) throw new ConvexError("Selected kit variant is unavailable");
     const style = args.stylePresetId ? await ctx.db.get(args.stylePresetId) : null;
     const material = args.materialPresetId ? await ctx.db.get(args.materialPresetId) : null;
-    if (args.stylePresetId && args.styleIntentJson) throw new Error("Choose either a preset or custom style");
-    if (args.stylePresetId && !style?.isActive) throw new Error("Selected style is unavailable");
+    if (args.stylePresetId && args.styleIntentJson) throw new ConvexError("Choose either a preset or custom style");
+    if (args.stylePresetId && !style?.isActive) throw new ConvexError("Selected style is unavailable");
     const customIntent = args.styleIntentJson ? styleIntentSchema.parse(JSON.parse(args.styleIntentJson)) : style?.styleIntentJson ? styleIntentSchema.parse(JSON.parse(style.styleIntentJson)) : null;
     if (args.kind === "palette-plan" && style && customIntent &&
       (!args.styleRevision || JSON.stringify(styleIntentSchema.parse(JSON.parse(args.styleRevision))) !== JSON.stringify(customIntent))) {
-      throw new Error("Style intent changed. Refresh the style catalog before generating");
+      throw new ConvexError("Style intent changed. Refresh the style catalog before generating");
     }
-    if (args.kind === "palette-plan" && ((!style?.isActive && !customIntent) || !material?.isActive || !args.weatheringLevel)) throw new Error("Select an active style, material and weathering level");
+    if (args.kind === "palette-plan" && ((!style?.isActive && !customIntent) || !material?.isActive || !args.weatheringLevel)) throw new ConvexError("Select an active style, material and weathering level");
     const template = await resolvePipelineTemplate(ctx, args.kind);
-    if (!template) throw new Error("No published creative template is configured");
+    if (!template) throw new ConvexError("No published creative template is configured");
     const actionType = args.kind === "palette-plan" ? "generate-palette" : "generate-style-suggestion";
     const configuredPrice = (await ctx.db.query("creditPriceRules").withIndex("by_actionType", q => q.eq("actionType", actionType)).collect()).find(p => p.isActive);
     const priceRule = configuredPrice ? { ...configuredPrice, creditCost: prepaid ? 0 : configuredPrice.creditCost } : null;
     const account = await ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", viewer._id)).unique();
-    if (!priceRule || !account || account.balance < priceRule.creditCost) throw new Error("Insufficient credits or missing active price rule");
+    if (!priceRule || !account || account.balance < priceRule.creditCost) throw new ConvexError("Insufficient credits or missing active price rule");
     const modelContext = customKitContext ?? await buildModelPromptContext(ctx, model!);
     const sourceInterpretation = savedStyle?.promptCompositionId ? await ctx.db.get(savedStyle.promptCompositionId) : null;
     if (sourceInterpretation && (sourceInterpretation.userId !== viewer._id || sourceInterpretation.status !== "consumed" || JSON.parse(sourceInterpretation.inputSnapshotJson).kind !== "style-interpreter")) {
-      throw new Error("Saved style source is unavailable");
+      throw new ConvexError("Saved style source is unavailable");
     }
     const sourceDescription = sourceInterpretation ? (JSON.parse(sourceInterpretation.inputSnapshotJson) as { description?: string }).description : args.styleDescription?.trim();
     const sourceOutput = sourceInterpretation ? JSON.parse(sourceInterpretation.outputSummaryJson ?? "{}") as { intent?: unknown; sourceNormalizationProtocolVersion?: string } : null;
@@ -203,10 +203,10 @@ export async function beginCreative(ctx: ViewerMutationCtx, args: Infer<ReturnTy
     const sourceReceipt = recordedIntent?.success && JSON.stringify(recordedIntent.data) === JSON.stringify(customIntent)
       ? sourceOutput?.sourceNormalizationProtocolVersion : undefined;
     const styles = (await ctx.db.query("stylePresets").collect()).filter(s => s.isActive);
-    if (args.kind === "style-suggestion" && !styles.length) throw new Error("No active styles available");
+    if (args.kind === "style-suggestion" && !styles.length) throw new ConvexError("No active styles available");
     const roles = await ctx.db.query("colorRoles").withIndex("by_sortOrder").collect();
     const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive && /^#[0-9a-f]{6}$/i.test(p.hexPreview ?? ""));
-    if (args.kind === "palette-plan" && !mappings.length) throw new Error("Paint catalog has no active color samples");
+    if (args.kind === "palette-plan" && !mappings.length) throw new ConvexError("Paint catalog has no active color samples");
     const snapshot: Snapshot = {
       contractVersion: "creation.v3",
       customKit: customKitContext?.kitSnapshot,

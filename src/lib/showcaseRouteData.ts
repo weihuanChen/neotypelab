@@ -75,9 +75,9 @@ export function buildShowcaseStructuredData(snapshot: ShowcaseSnapshot) {
   return {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "Gunpla Color Schemes and Mecha Repaint Gallery",
+    name: "Mecha Color Schemes for Gunpla, Girlpla, and Zoids",
     description:
-      "Browse spray-ready Gunpla and mecha model repaints. Compare color schemes, paint maps, and weathering, then remix a plan before you open the paint.",
+      "Browse spray-ready color schemes for Gunpla, mecha girls, and Zoids. Compare paint maps and weathering, then remix a plan before you open the paint.",
     url: "/showcase",
     about: [
       {
@@ -86,10 +86,11 @@ export function buildShowcaseStructuredData(snapshot: ShowcaseSnapshot) {
       },
       {
         "@type": "Thing",
-        name: "Gunpla color schemes",
+        name: "Gunpla, girlpla, and Zoids color schemes",
       },
     ],
-    keywords: "gunpla color scheme, custom gunpla, gundam custom paint, gunpla gallery, mecha model kit",
+    keywords:
+      "gundam color scheme, girlpla, 30 minute sisters, megami device, zoids model kit, mecha musume, gunpla weathering",
     interactionStatistic: [
       {
         "@type": "InteractionCounter",

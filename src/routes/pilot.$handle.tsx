@@ -12,7 +12,7 @@ import type {
 import { createConvexHttpClient } from "@/src/lib/convexServer";
 import { absoluteUrl } from "@/lib/site";
 import { buildPilotProfileStructuredData } from "@/lib/structuredData";
-import { documentMeta, pilotSeo } from "@/src/lib/publicSeo";
+import { documentMeta, pilotSeo, supportKeywords } from "@/src/lib/publicSeo";
 
 const getPilotSnapshot = createServerFn({ method: "GET" })
   .validator(z.object({ handle: z.string() }))
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/pilot/$handle")({
 
     return {
       meta: documentMeta(
-        { title: meta.title, description: meta.description, keywords: meta.keywords ?? "gunpla paint, custom gunpla, mecha model kit" },
+        { title: meta.title, description: meta.description, keywords: meta.keywords ?? supportKeywords },
         { ogType: "profile", twitter: true, imageUrl: meta.imageUrl, url: meta.canonicalPath },
       ),
       links: [{ rel: "canonical", href: meta.canonicalPath }],
@@ -116,9 +116,9 @@ function getHandleFromSnapshot(snapshot: PilotSnapshot) {
 
 function buildFallbackPilotMeta(handle: string): PilotMeta {
   return {
-    title: "Gunpla Paint Plans | NeotypeLab",
-    description: "A public builder profile of spray-ready Gunpla and mecha model paint plans.",
-    keywords: "gunpla paint, custom gunpla, mecha model kit",
+    title: "Mecha Paint Plans | NeotypeLab",
+    description: "A public builder profile of spray-ready mecha model paint plans.",
+    keywords: supportKeywords,
     canonicalPath: `/pilot/${handle}`,
   };
 }

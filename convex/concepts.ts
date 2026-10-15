@@ -1,5 +1,5 @@
 import { customKitDisplay } from "./customKitContracts";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { summarizeBaseModelWithHierarchy } from "./baseModelHierarchy";
 import { Id } from "./_generated/dataModel";
 import { getConceptEngagementSnapshot } from "./engagement";
@@ -474,6 +474,29 @@ export const createDraft = mutation({
       visibility: "private",
       searchText: [title, notes ?? "", sanitizedMoodTags.join(" ")].join(" ").trim(),
     });
+  },
+});
+
+const maxConceptTitleLength = 160;
+
+/** The title Library and public Showcase pages both read. */
+export const rename = mutation({
+  args: { conceptId: v.id("concepts"), title: v.string() },
+  returns: v.null(),
+  async handler(ctx, args) {
+    const concept = await ctx.db.get(args.conceptId);
+    if (concept === null) throw new ConvexError("Work not found");
+    if (concept.userId !== ctx.viewerX()._id) throw new ConvexError("You can only rename your own work");
+    const title = args.title.trim().replace(/\s+/g, " ");
+    if (!title) throw new ConvexError("Enter a title");
+    if (title.length > maxConceptTitleLength) throw new ConvexError(`Keep the title under ${maxConceptTitleLength} characters`);
+    if (title === concept.title) return null;
+    const currentSearch = concept.searchText ?? "";
+    const searchText = currentSearch.startsWith(concept.title)
+      ? `${title}${currentSearch.slice(concept.title.length)}`.trim()
+      : [title, currentSearch].filter(Boolean).join(" ").trim();
+    await ctx.db.patch(args.conceptId, { title, searchText, publicContentUpdatedAt: Date.now() });
+    return null;
   },
 });
 

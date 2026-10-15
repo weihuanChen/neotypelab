@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ConvexError } from "convex/values";
 import {
   colorFamilies,
   creativeContractVersion,
@@ -285,6 +286,7 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
   }
   else if (input.notes?.trim()) result.unresolved.push({ text: input.notes.trim(), reason: "Creative notes must be normalized before generation" });
   if (input.useNormalizedDescription && !input.normalizedNotes) result.unresolved.push({ text: input.styleDescription ?? originalStyle.name, reason: "The saved style source requires current normalization before generation" });
+  const descriptiveMoodIds = new Set<string>();
   for (const { intent, prefix } of inputs) {
     result.unresolved.push(...intent.unresolved);
     for (const requirement of intent.requirements) {
@@ -316,6 +318,11 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
           result.unresolved.push({ text: requirement.evidence.quote, reason: `Unsupported ${property} value` }); continue;
         }
         const active = result.constraints.filter((constraint) => constraint.property === property && constraint.status === "active" && affectsScope(requirement.scope, constraint.scope));
+        // Mood describes a collection of qualities. Keep each clause's evidence
+        // instead of treating different descriptions as competing scalar values.
+        const descriptiveMood = property === "mood" && ["set", "add", "preserve"].includes(requirement.operation);
+        const mergesMood = (constraint: IntentConstraint) => descriptiveMood && descriptiveMoodIds.has(constraint.id)
+          && (constraint.evidence.inputRef === evidence.inputRef || requirement.operation === "add");
         const currentSelection = prefix === "description" ? active.find((constraint) => constraint.strength === "hard" && constraint.evidence.source === "user-selection" && constraint.value !== value) : undefined;
         if (currentSelection) {
           addConstraint({ id: requirementId, property, scope: requirement.scope, strength: "hard", value, evidence });
@@ -324,7 +331,7 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
         }
         // Independent preservation statements reinforce the geometry lock. Their
         // wording need not be identical to the system's identity description.
-        const competing = property === "geometry" && requirement.operation === "preserve" ? [] : active.filter((constraint) => constraint.strength === "hard" && constraint.value !== value && !replacesPriorDescription(constraint));
+        const competing = property === "geometry" && requirement.operation === "preserve" ? [] : active.filter((constraint) => constraint.strength === "hard" && constraint.value !== value && !replacesPriorDescription(constraint) && !mergesMood(constraint));
         const selectionOverride = competing.length > 0 && requirement.overridesSelection === true && competing.every((constraint) => constraint.evidence.source === "user-selection");
         if (competing.length && !selectionOverride) {
           result.conflicts.push({ property, message: `Explicit ${property} conflicts with an active requirement; specify which choice to replace`, constraintIds: [...competing.map((constraint) => constraint.id), requirementId] });
@@ -332,6 +339,7 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
         }
         supersede(active.filter((constraint) => overridable(constraint) || selectionOverride), requirementId, "Current user input overrides only the corresponding default, prior description property or explicitly replaced selection");
         addConstraint({ id: requirementId, property, scope: requirement.scope, strength: "hard", value, evidence });
+        if (descriptiveMood) descriptiveMoodIds.add(requirementId);
         if (requirement.scope.kind === "whole-kit") {
           if (property === "finish") {
             result.effectiveStyle.finish = value as StyleIntent["finish"];
@@ -345,7 +353,9 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
           }
           if (property === "weathering") result.effectiveStyle.weathering = value as StyleIntent["weathering"];
           if (property === "pattern") result.effectiveStyle.pattern = value as StyleIntent["pattern"];
-          if (property === "mood") result.effectiveStyle.mood = value;
+          if (property === "mood") result.effectiveStyle.mood = Array.from(new Set(result.constraints
+            .filter((constraint) => constraint.property === "mood" && constraint.status === "active")
+            .map((constraint) => String(constraint.value)))).join(", ");
           if (property === "material") result.effectiveStyle.materialIntent = [value];
         }
         continue;
@@ -523,8 +533,8 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
 }
 
 export function assertExecutableIntent(intent: ResolvedCreativeIntent) {
-  if (intent.conflicts.length) throw new Error(intent.conflicts.map((conflict) => conflict.message).join("; "));
-  if (intent.unresolved.length) throw new Error(intent.unresolved.map((item) => `${item.text}: ${item.reason}`).join("; "));
+  if (intent.conflicts.length) throw new ConvexError(intent.conflicts.map((conflict) => conflict.message).join("; "));
+  if (intent.unresolved.length) throw new ConvexError(intent.unresolved.map((item) => `${item.text}: ${item.reason}`).join("; "));
 }
 
 /** Behavior-only execution DTO; StyleIntent metadata and its original palette stay in storage. */
