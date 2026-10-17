@@ -16,6 +16,7 @@ import { debitCredits, findDebitByReference, refundCreditTransaction } from "./c
 import { customKitDisplay } from "./customKitContracts";
 import { resolveEffectiveEntitlements } from "./entitlements";
 import type { Doc } from "./_generated/dataModel";
+import { creationFailureMessage } from "../lib/creationFailure";
 
 /** The frozen reference photo of a Custom Kit run, or the live kit photo when the snapshot has no readable id. */
 function customKitReferenceObjectId(ctx: QueryCtx, snapshotJson: string | undefined, liveObjectId: Id<"storageObjects"> | undefined) {
@@ -220,7 +221,7 @@ export const latest = query({ args: {}, handler: async ctx => {
     stage: run.stage,
     cost: run.cost,
     refunded: run.refunded,
-    error: run.error,
+    error: run.status === "failed" ? creationFailureMessage(run.error, run.stage) : undefined,
     conceptId: run.conceptId,
     title: concept?.title ?? (kit || customName ? `${kit?.name ?? customName} × ${styleName}` : "Repaint Preview"),
     kit: customName && resolvedCustomKitId ? {

@@ -10,6 +10,21 @@ import {
 } from "./libraryBriefData";
 
 describe("libraryBriefData parsers", () => {
+  it("retains local material areas and displays their scope rather than claiming a whole-kit treatment", () => {
+    const requirements = parseCreativeRequirements(JSON.stringify({ version: "creative-intent.v1", colors: [], constraints: [
+      { property: "material", status: "active", strength: "hard", value: "chitin shell", scope: { kind: "exterior-armor" }, evidence: { source: "user-explicit", inputRef: "style-description" } },
+      { property: "material", status: "active", strength: "hard", value: "polished steel", scope: { kind: "part", part: "Left shoulder" }, evidence: { source: "user-explicit", inputRef: "notes" } },
+    ] }));
+    expect(requirements).toEqual([
+      { label: "Material", value: "Chitin shell · Exterior armor", source: "Your style description" },
+      { label: "Material", value: "Polished steel · Left shoulder", source: "Your refinements" },
+    ]);
+    const specification = parseRenderSpecification(JSON.stringify({ summary: "Scoped material", panels: [], material: { surfaceTexture: "Smooth paint",
+      scopedIntents: [{ constraintId: "private-source-id", intent: "chitin shell", scope: { kind: "exterior-armor" }, areas: ["Chest", "Shoulders"] }, { intent: 7, areas: ["Frame"] }] } }));
+    expect(specification!.material.scopedIntents).toEqual([{ intent: "chitin shell", areas: ["Chest", "Shoulders"] }]);
+    expect(JSON.stringify(specification)).not.toContain("private-source-id");
+  });
+
   it("shows explicit retained requirements with their sources, without turning inferred ratios into promises", () => {
     const requirements = parseCreativeRequirements(JSON.stringify({
       version: "creative-intent.v1",

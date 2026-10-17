@@ -29,6 +29,17 @@ effects fail explicitly instead of inventing a product. Catalog changes cannot
 replace paints in an already approved concept palette. Paintability is a style
 intent estimate, not a verified physical paint-match guarantee.
 
+Scoped material requirements retain their `exterior-armor`, `inner-frame`,
+`sensors`, `markings`, or named-part scope. The whole-kit material and finish
+remain defaults; named-part material treatments take precedence only on their
+matching areas. Specification validation derives `material.scopedIntents` from
+the frozen hard constraints and actual panel areas. Missing targets, overlapping
+conflicting treatments, and combined area labels that would widen a named-part
+treatment are rejected. The frozen render contract and Library manual preserve
+these assignments. Existing v3 specifications without scoped materials remain
+valid. Local finish, weathering, pattern and mood rules retain their existing
+restrictions; this extension does not turn them into material overrides.
+
 Verification: lint (zero errors), 120 integration/unit tests, and 6 public E2E
 checks passed. Tests include both preset and custom specification/render paths,
 cross-model intent preservation, invalid/ambiguous input rejection, unavailable

@@ -9,6 +9,7 @@ import type { CreativeSnapshot } from "./creativePipeline";
 import { executeTextRequest } from "./textGenerationNode";
 import { finalImagePrompt } from "./imagePromptBudget";
 import { sourceNormalizationProtocolVersion } from "./creativeContracts";
+import { localChitinMaterialStyle, orangeShadesDescription } from "@/tests/fixtures/orangeShades";
 
 vi.mock("./textGenerationNode", () => ({ executeTextRequest: vi.fn() }));
 
@@ -274,6 +275,40 @@ describe("resolved Style creation", () => {
       decals: { density: "low", placementNotes: "Native markings only" },
     };
   }
+
+  it("carries a saved local chitin material through Palette, Specification, private Library and the frozen render contract", async () => {
+    const f = await fixture();
+    const sourceId = await f.t.run(ctx => ctx.db.insert("promptCompositions", { userId: f.userId, status: "consumed", composedPrompt: "Completed interpretation",
+      inputSnapshotJson: JSON.stringify({ kind: "style-interpreter", description: orangeShadesDescription }),
+      outputSummaryJson: JSON.stringify({ intent: localChitinMaterialStyle, sourceNormalizationProtocolVersion }) }));
+    const saved = await f.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId: sourceId });
+    Object.assign(f.input, { stylePresetId: undefined, styleRevision: undefined, userStyleId: saved.styleId, styleIntentJson: JSON.stringify(saved.intent) });
+    const id = await completePalette(f);
+    const result = await f.client.query(internal.creativePipeline.result, { promptCompositionId: id });
+    expect(result.resolvedIntent!.conflicts).toEqual([]);
+    expect(result.resolvedIntent!.unresolved).toEqual([]);
+    expect(result.resolvedIntent!.effectiveStyle.materialIntent.join(" ")).not.toContain("chitin");
+    const repaint = await f.client.mutation(api.prototypes.initializePrototype, { ...f.input, paletteCompositionId: id });
+    const specRecord = (await f.t.run(ctx => ctx.db.get(repaint.promptCompositionId)))!;
+    expect(JSON.parse(specRecord.inputSnapshotJson).systemPrompt).toContain("never promote a local material to the entire kit");
+    await f.t.mutation(internal.creativePipeline.complete, { promptCompositionId: repaint.promptCompositionId, responseJson: JSON.stringify(specification(result)), executionJson: "{}" });
+    const concept = (await f.t.run(ctx => ctx.db.get(repaint.conceptId)))!;
+    const frozen = JSON.parse(concept.renderSpecificationJson!);
+    expect(frozen.material.scopedIntents).toEqual([{ constraintId: "description:req-material", scope: { kind: "exterior-armor" }, intent: "chitinous shell finish", areas: ["Shoulder armor and chest armor"] }]);
+    expect(JSON.parse(concept.styleIntentJson!)).toEqual(localChitinMaterialStyle);
+    const detail = (await f.client.query(api.libraryDetails.get, { conceptId: repaint.conceptId }))!;
+    expect(detail.specification!.material).toMatchObject({ scopedIntents: frozen.material.scopedIntents });
+    const other = await seedUser(f.t, { tokenIdentifier: "local-material-other", email: "local-material-other@example.test", balance: 30 });
+    expect(await other.client.query(api.libraryDetails.get, { conceptId: repaint.conceptId })).toBeNull();
+    const render = await f.client.mutation(api.prototypeTools.requestHdRender, { conceptId: repaint.conceptId });
+    const renderRecord = (await f.t.run(ctx => ctx.db.get(render.promptCompositionId)))!;
+    const contract = JSON.parse(renderRecord.composedPrompt.split("Frozen render contract JSON:\n")[1]);
+    expect(contract.material.scopedIntents).toEqual(frozen.material.scopedIntents);
+    expect(contract.hardConstraints).toContainEqual({ property: "material", scope: { kind: "exterior-armor" }, value: "chitinous shell finish" });
+    expect(renderRecord.composedPrompt).toContain("whole-kit material remains the default elsewhere");
+    expect(contract.material.finish).toBe(result.resolvedIntent!.effectiveStyle.finish);
+    expect(contract.palette).toHaveLength(6);
+  });
 
   it("normalizes Notes once on the current text route before Palette and keeps the same tariff", async () => {
     const f = await fixture();
@@ -564,7 +599,7 @@ describe("resolved Style creation", () => {
     const normalized = { version: "normalized-user-intent.v1", requirements: [{ id: "major-yellow", property: "colors", operation: "add", scope: { kind: "exterior-armor" },
       colors: [{ name: "Yellow armor", family: "yellow", visualRole: "primary" }], evidence: { inputRef: "notes", quote: notes } }], unresolved: [] };
     const response = (json: Record<string, unknown>) => ({ json, text: JSON.stringify(json), model: "fixture", profileId: "fixture", providerRequestId: null, usage: null });
-    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(normalized)).mockImplementationOnce(async (_ctx, args) => {
+    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(normalized)).mockImplementation(async (_ctx, args) => {
       const snapshot = JSON.parse((await f.t.run(ctx => ctx.db.get(id)))!.inputSnapshotJson) as CreativeSnapshot;
       const yellow = snapshot.resolvedIntent!.colors.find(color => color.family === "yellow" && color.visualRole === "primary" && color.scope.kind === "exterior-armor")!;
       const line = args.userPrompt.split("\n").find(item => item.startsWith("Roles: "))!;
@@ -617,13 +652,13 @@ describe("resolved Style creation", () => {
     expect(account!.balance).toBe(30);
   });
 
-  it("retains the rejected Palette response for private diagnostics and refunds without retrying the model", async () => {
+  it("limits invalid palettes to one correction, retains both diagnostics and refunds once", async () => {
     const f = await fixture();
     const notes = "Use only blue and white armor";
     const id = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, notes, kind: "palette-plan", requestKey: "wrong-palette-hue" });
     const response = (json: Record<string, unknown>) => ({ json, text: JSON.stringify(json), model: "fixture", profileId: "fixture", providerRequestId: "palette-provider-request", usage: { total_tokens: 12 } });
     let rejected: unknown;
-    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(blueWhiteNotes(notes))).mockImplementationOnce(async () => {
+    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(blueWhiteNotes(notes))).mockImplementation(async () => {
       const output = await paletteResponse(f.t, id);
       const snapshot = JSON.parse((await f.t.run(ctx => ctx.db.get(id)))!.inputSnapshotJson) as CreativeSnapshot;
       const blueId = snapshot.resolvedIntent!.colors.find(color => color.family === "blue")!.colorId;
@@ -636,11 +671,91 @@ describe("resolved Style creation", () => {
     const snapshot = JSON.parse(composition.inputSnapshotJson) as CreativeSnapshot;
     expect(snapshot.lastExecutionAttempt!.response).toEqual(rejected);
     expect(snapshot.lastExecutionAttempt!.metadata.providerRequestId).toBe("palette-provider-request");
+    expect(snapshot.lastExecutionAttempt!.validationError).toContain("color-family");
+    expect(snapshot.rejectedExecutionAttempt!.response).toEqual(rejected);
     expect(snapshot.lastExecutionAttempt).not.toHaveProperty("text");
     expect(composition.status).toBe("failed");
-    expect(executeTextRequest).toHaveBeenCalledTimes(2);
+    expect(executeTextRequest).toHaveBeenCalledTimes(3);
     const account = await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique());
     expect(account!.balance).toBe(30);
+    await f.t.mutation(internal.creativePipeline.failStale, { promptCompositionId: id });
+    const tx = await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_reference", q => q.eq("referenceTable", "promptCompositions").eq("referenceId", id)).collect());
+    expect(tx.filter(t => t.delta > 0)).toHaveLength(1);
+  });
+
+  it("corrects a rejected palette under the same reservation and preserves the original hard requirements", async () => {
+    const f = await fixture();
+    const notes = "Use only blue and white armor";
+    const id = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, notes, kind: "palette-plan", requestKey: "palette-correction" });
+    const response = (json: Record<string, unknown>, requestId: string) => ({ json, text: JSON.stringify(json), model: "fixture", profileId: "fixture", providerRequestId: requestId, usage: null });
+    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(blueWhiteNotes(notes), "normalize"))
+      .mockImplementationOnce(async () => {
+        const invalid = await paletteResponse(f.t, id);
+        invalid.entries[0].targetHex = "#FF0000";
+        return response(invalid, "invalid-palette");
+      }).mockImplementationOnce(async (_ctx, args) => {
+        expect(args.userPrompt).toContain("Palette correction (one final attempt)");
+        expect(args.userPrompt).toContain("Palette violates color-family");
+        expect(args.userPrompt).toContain("#FF0000");
+        expect(args.systemPrompt).toContain("orange: [10,45]");
+        const valid = await paletteResponse(f.t, id);
+        // Allocation labels are corrected deterministically, without a third model request.
+        for (const entry of valid.entries) Object.assign(entry, { coverage: { percent: 40, scope: "exterior-armor", source: "resolved-constraint" } });
+        return response(valid, "corrected-palette");
+      });
+    await f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: id });
+    expect(executeTextRequest).toHaveBeenCalledTimes(3);
+    const calls = vi.mocked(executeTextRequest).mock.calls;
+    expect(calls[1][1].deadlineMs).toBe(calls[2][1].deadlineMs);
+    expect(calls[2][1].userPrompt.startsWith(calls[1][1].userPrompt)).toBe(true);
+    const stored = (await f.t.run(ctx => ctx.db.get(id)))!;
+    const snapshot = JSON.parse(stored.inputSnapshotJson) as CreativeSnapshot;
+    expect(stored.status).toBe("consumed");
+    expect(snapshot.rejectedExecutionAttempt!.metadata.providerRequestId).toBe("invalid-palette");
+    expect(snapshot.rejectedExecutionAttempt!.validationError).toContain("color-family");
+    expect(snapshot.lastExecutionAttempt!.metadata.providerRequestId).toBe("corrected-palette");
+    expect(snapshot.lastExecutionAttempt!.validationError).toBeUndefined();
+    const output = JSON.parse(stored.outputSummaryJson!);
+    expect(output.visualPalette.entries.every((entry: { coverage: { source: string } }) => entry.coverage.source === "ai-allocation")).toBe(true);
+    const tx = await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_reference", q => q.eq("referenceTable", "promptCompositions").eq("referenceId", id)).collect());
+    expect(tx.filter(t => t.delta < 0)).toHaveLength(1);
+    expect(tx.filter(t => t.delta > 0)).toHaveLength(0);
+  });
+
+  it("does not correct transport failures or start another request after the shared deadline", async () => {
+    const f = await fixture();
+    const id = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, kind: "palette-plan", requestKey: "transport-failure" });
+    vi.mocked(executeTextRequest).mockRejectedValueOnce(new Error("Palette violates color-family: HTTP 503"));
+    await expect(f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: id })).rejects.toThrow(/HTTP 503/);
+    expect(executeTextRequest).toHaveBeenCalledTimes(1);
+    vi.mocked(executeTextRequest).mockReset();
+    const expiredId = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, kind: "palette-plan", requestKey: "expired-correction" });
+    vi.mocked(executeTextRequest).mockImplementationOnce(async (_ctx, args) => {
+      const json = await paletteResponse(f.t, expiredId);
+      json.entries[0].roleSlug = "unknown-role";
+      vi.setSystemTime(args.deadlineMs!);
+      return { json, text: "{}", model: "fixture", profileId: "fixture", providerRequestId: null, usage: null };
+    });
+    await expect(f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: expiredId })).rejects.toThrow(/unknown role/);
+    expect(executeTextRequest).toHaveBeenCalledTimes(1);
+    expect((await f.t.run(ctx => ctx.db.get(expiredId)))!.status).toBe("failed");
+  });
+
+  it("discards a late response and does not correct a composition that expired during the request", async () => {
+    const f = await fixture();
+    const id = await f.client.mutation(internal.creativePipeline.begin, { ...f.input, kind: "palette-plan", requestKey: "stale-palette-response" });
+    vi.mocked(executeTextRequest).mockImplementationOnce(async () => {
+      const json = await paletteResponse(f.t, id);
+      json.entries[0].roleSlug = "unknown-role";
+      await f.t.mutation(internal.creativePipeline.failStale, { promptCompositionId: id });
+      return { json, text: "{}", model: "fixture", profileId: "fixture", providerRequestId: null, usage: null };
+    });
+    await f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: id });
+    expect(executeTextRequest).toHaveBeenCalledTimes(1);
+    const composition = (await f.t.run(ctx => ctx.db.get(id)))!;
+    expect(composition.status).toBe("failed");
+    expect(JSON.parse(composition.inputSnapshotJson).lastExecutionAttempt).toBeUndefined();
+    expect((await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique()))!.balance).toBe(30);
   });
 
   it("applies Notes to a saved custom style without mutating the saved intent", async () => {

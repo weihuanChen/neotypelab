@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ConvexError } from "convex/values";
+import { bindScopedMaterialIntents } from "./scopedMaterialIntents";
 import {
   colorFamilies,
   creativeContractVersion,
@@ -128,7 +129,20 @@ function familyFromName(name: string): ColorFamily | undefined {
   return colorFamilies.find((family) => familyWords[family].some((word) => /[a-z]/i.test(word) ? new RegExp(`\\b${word}\\b`, "i").test(lower) : lower.includes(word)));
 }
 
-/** A bounded hue check; it validates broad user hue families, never guesses exact shades. */
+const hueFamilyRanges = {
+  red: [345, 20], orange: [10, 45], yellow: [40, 75], green: [65, 170],
+  cyan: [165, 205], blue: [200, 265], purple: [255, 310], pink: [300, 350],
+} as const;
+
+/** These instructions also apply to saved templates; keep their numeric rules shared with validation. */
+export const paletteExecutionRules = `Palette validation rules (authoritative):
+Hue H is in degrees; S is HSV saturation; L=(max(R,G,B)+min(R,G,B))/2 with RGB in [0,1].
+Chromatic families require S>=0.12 and max(R,G,B)>=0.12. Allowed hue ranges: ${Object.entries(hueFamilyRanges).map(([family, [min, max]]) => `${family}: ${min > max ? `[${min},360) or [0,${max})` : `[${min},${max}${family === "pink" ? ")" : "]"}`}`).join("; ")}.
+Black requires max(R,G,B)<0.26; white requires min(R,G,B)>0.7 and max-min<0.25; gray requires S<0.2 and 0.08<=L<=0.91. Beige requires 20<=H<=70, 0.08<=S<0.5 and L>0.42; brown requires 5<=H<=65, S>=0.18 and L<0.5.
+Hard color-family requirements take precedence over inferred reference HEX. Choose a compatible shade when the reference conflicts; an explicit hard HEX must remain exact.
+Only active hard color-coverage constraints are user-specified percentages. Copy their percent, scope and part exactly and mark source=resolved-constraint. Any other coverage is optional AI allocation and must use source=ai-allocation; never copy a whole-kit estimate as an exterior-armor requirement.`;
+
+/** Broad families overlap at hue boundaries, including red-orange shades such as #FF5722. */
 export function hexMatchesColorFamily(hex: string, family: ColorFamily) {
   const values = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
   const [red, green, blue] = values;
@@ -143,16 +157,9 @@ export function hexMatchesColorFamily(hex: string, family: ColorFamily) {
   if (family === "beige") return hue >= 20 && hue <= 70 && saturation >= 0.08 && saturation < 0.5 && lightness > 0.42;
   if (family === "brown") return hue >= 5 && hue <= 65 && saturation >= 0.18 && lightness < 0.5;
   if (saturation < 0.12 || max < 0.12) return false;
-  switch (family) {
-    case "red": return hue < 20 || hue >= 345;
-    case "orange": return hue >= 15 && hue <= 45;
-    case "yellow": return hue >= 40 && hue <= 75;
-    case "green": return hue >= 65 && hue <= 170;
-    case "cyan": return hue >= 165 && hue <= 205;
-    case "blue": return hue >= 200 && hue <= 265;
-    case "purple": return hue >= 255 && hue <= 310;
-    case "pink": return hue >= 300 && hue < 350;
-  }
+  const [minHue, maxHue] = hueFamilyRanges[family];
+  return minHue > maxHue ? hue >= minHue || hue < maxHue
+    : hue >= minHue && (family === "pink" ? hue < maxHue : hue <= maxHue);
 }
 
 export function validateNormalizedUserIntent(value: unknown, sources: { notes?: string; styleDescription?: string }): NormalizedUserIntent {
@@ -205,6 +212,53 @@ function descriptorMatchesForUpdate(color: ResolvedIntentColor, descriptor: NonN
   const family = descriptor.family ?? familyFromName(descriptor.name);
   return !!family && (color.family === family || (!color.family && !!color.hex && hexMatchesColorFamily(color.hex, family)));
 }
+
+type ColorDescriptor = NonNullable<NormalizedRequirement["colors"]>[number];
+function normalizedColorName(name: string) { return name.trim().replace(/\s+/g, " ").toLowerCase(); }
+function descriptorIdentity(descriptor: ColorDescriptor) {
+  return descriptor.hex ? `hex:${descriptor.hex.toUpperCase()}` : `name:${normalizedColorName(descriptor.name)}`;
+}
+function boundDescriptorColor(bindings: Map<string, ResolvedIntentColor>, descriptor: ColorDescriptor, descriptors: ColorDescriptor[]) {
+  const direct = bindings.get(descriptorIdentity(descriptor));
+  if (direct) return direct;
+  const alias = descriptors.find(other => (descriptor.hex && other.hex
+    ? descriptor.hex.toUpperCase() === other.hex.toUpperCase()
+    : normalizedColorName(descriptor.name) === normalizedColorName(other.name)) && bindings.has(descriptorIdentity(other)));
+  return alias ? bindings.get(descriptorIdentity(alias)) : undefined;
+}
+
+/** Bind a collection before applying edits, so one descriptor cannot consume another shade's anchor. */
+function bindColorDescriptors(colors: ResolvedIntentColor[], requirement: NormalizedRequirement) {
+  const changingProperties = ["set", "replace", "only"].includes(requirement.operation);
+  const descriptors = requirement.colors!;
+  const choices = descriptors.map(descriptor => ({
+    descriptor,
+    key: descriptorIdentity(descriptor),
+    candidates: colors.filter(color => (affectsScope(requirement.scope, color.scope) || requirement.scope.kind === "part")
+      && (changingProperties ? descriptorMatchesForUpdate(color, descriptor) : descriptorMatches(color, descriptor)))
+      .map(color => ({ color, score:
+        (descriptor.hex && descriptor.hex.toUpperCase() === color.hex ? 1000 : 0)
+        + (normalizedColorName(descriptor.name) === normalizedColorName(color.name) ? 2000 : 0)
+        + (descriptor.visualRole && descriptor.visualRole !== "unspecified" && descriptor.visualRole === color.visualRole ? 10 : 0)
+        + (sameScope(requirement.scope, color.scope) ? 1 : 0),
+      })).sort((left, right) => right.score - left.score),
+  }));
+  // Reserve exact identities first, even if a broad descriptor appeared earlier in the input.
+  choices.sort((left, right) => (right.candidates[0]?.score ?? -1) - (left.candidates[0]?.score ?? -1));
+  const bindings = new Map<string, ResolvedIntentColor>();
+  const usedIds = new Set<string>();
+  for (const choice of choices) {
+    // Repeated references to the same name or explicit HEX share an identity; real conflicts remain detectable.
+    const existing = boundDescriptorColor(bindings, choice.descriptor, descriptors);
+    if (existing) { bindings.set(choice.key, existing); continue; }
+    const selected = choice.candidates.find(candidate => !usedIds.has(candidate.color.colorId));
+    if (!selected) continue;
+    bindings.set(choice.key, selected.color);
+    usedIds.add(selected.color.colorId);
+  }
+  return bindings;
+}
+
 function styleAnchors(style: StyleIntent): ResolvedIntentColor[] {
   if (style.colors) return style.colors.map((color, index) => ({
     colorId: `style-color-${index + 1}`, name: color.name, hex: color.hex.toUpperCase(), family: familyFromName(color.name), visualRole: color.role,
@@ -296,9 +350,19 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
       const replacesPriorDescription = (constraint: IntentConstraint) => prefix === "notes" && ["set", "replace", "only", "exclude"].includes(requirement.operation) && hasDescriptionOrigin(constraint);
       const overridable = (constraint: IntentConstraint) => constraint.strength !== "hard" || replacesPriorDescription(constraint);
       if (requirement.property !== "colors") {
-        if (requirement.property !== "geometry" && requirement.scope.kind !== "whole-kit") {
+        if (!["geometry", "material"].includes(requirement.property) && requirement.scope.kind !== "whole-kit") {
           result.unresolved.push({ text: requirement.evidence.quote, reason: `Local ${requirement.property} rules are not yet supported by the specification contract; use a whole-kit choice` });
           continue;
+        }
+        if (requirement.property === "material" && requirement.scope.kind !== "whole-kit") {
+          if (requirement.operation === "exclude") {
+            result.unresolved.push({ text: requirement.evidence.quote, reason: "Specify a positive local material treatment instead of a material exclusion" });
+            continue;
+          }
+          if (requirement.scope.kind === "part" && input.kit?.source === "custom" && !input.customKitParts?.some(part => part.toLowerCase() === requirement.scope.part?.toLowerCase())) {
+            result.unresolved.push({ text: requirement.evidence.quote, reason: "Local material must target an approved Custom Kit part" });
+            continue;
+          }
         }
         if (requirement.property === "geometry" && requirement.operation !== "preserve") {
           if (input.kit?.source === "custom" && requirement.scope.kind === "part" && input.customKitParts?.some(part => part.toLowerCase() === requirement.scope.part?.toLowerCase())) {
@@ -317,7 +381,8 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
           (property === "pattern" && !["none", "camouflage", "stripes", "geometric", "gradient", "other"].includes(value))) {
           result.unresolved.push({ text: requirement.evidence.quote, reason: `Unsupported ${property} value` }); continue;
         }
-        const active = result.constraints.filter((constraint) => constraint.property === property && constraint.status === "active" && affectsScope(requirement.scope, constraint.scope));
+        const active = result.constraints.filter((constraint) => constraint.property === property && constraint.status === "active"
+          && (property === "material" ? sameScope(requirement.scope, constraint.scope) : affectsScope(requirement.scope, constraint.scope)));
         // Mood describes a collection of qualities. Keep each clause's evidence
         // instead of treating different descriptions as competing scalar values.
         const descriptiveMood = property === "mood" && ["set", "add", "preserve"].includes(requirement.operation);
@@ -345,7 +410,7 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
             result.effectiveStyle.finish = value as StyleIntent["finish"];
             const materialLanguage = result.effectiveStyle.materialIntent.map((name) => name.replace(/semi-gloss|matte|satin|gloss/gi, "").replace(/\s+/g, " ").trim()).filter(Boolean);
             result.effectiveStyle.materialIntent = materialLanguage.length ? materialLanguage.map((name) => `${name} (${value} finish)`) : [`${value} painted armor`];
-            const activeMaterial = result.constraints.find((constraint) => constraint.property === "material" && constraint.status === "active");
+            const activeMaterial = result.constraints.find((constraint) => constraint.property === "material" && constraint.status === "active" && constraint.scope.kind === "whole-kit");
             if (activeMaterial && /matte|satin|semi-gloss|gloss/i.test(String(activeMaterial.value))) {
               supersede([activeMaterial], requirementId, "Explicit finish removes contradictory finish wording from the automatic material description");
               addConstraint({ id: `${requirementId}:material-finish`, property: "material", scope: wholeKit, strength: activeMaterial.strength, value: result.effectiveStyle.materialIntent, evidence: activeMaterial.strength === "hard" ? activeMaterial.evidence : evidence });
@@ -373,8 +438,10 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
         supersede(priorRestrictions.filter((constraint) => constraint.property === "excluded-color" && sameScope(constraint.scope, requirement.scope) && matchesExcludedColor(constraint)), requirementId, "Current additive color request removes only the matching saved-description exclusion in this scope");
       }
       if (["set", "replace", "only"].includes(requirement.operation)) supersede(result.constraints.filter((constraint) => constraint.property === "excluded-color" && affectsScope(requirement.scope, constraint.scope) && replacesPriorDescription(constraint) && descriptors.some((descriptor) => descriptor.hex?.toUpperCase() === constraint.value || descriptor.family === constraint.value || (!!descriptor.hex && colorFamilies.includes(constraint.value as ColorFamily) && hexMatchesColorFamily(descriptor.hex, constraint.value as ColorFamily)))), requirementId, "Current user color request overrides the matching prior-description exclusion in this scope");
+      const colorBindings = requirement.operation === "exclude" ? new Map<string, ResolvedIntentColor>() : bindColorDescriptors(result.colors, requirement);
       if (["replace", "only"].includes(requirement.operation)) {
-        const removed = result.colors.filter((color) => affectsScope(requirement.scope, color.scope) && !descriptors.some((descriptor) => descriptorMatchesForUpdate(color, descriptor)));
+        const retainedIds = new Set([...colorBindings.values()].map(color => color.colorId));
+        const removed = result.colors.filter((color) => affectsScope(requirement.scope, color.scope) && !retainedIds.has(color.colorId));
         for (const color of removed) {
           const active = result.constraints.filter((constraint) => constraint.colorId === color.colorId && constraint.status === "active");
           const protectedHard = active.filter((constraint) => !overridable(constraint));
@@ -400,12 +467,13 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
       const requiredIds: string[] = [];
       for (const [index, descriptor] of descriptors.entries()) {
         const explicitVisualRole = descriptor.visualRole === "unspecified" ? undefined : descriptor.visualRole;
-        const changingProperties = ["set", "replace", "only"].includes(requirement.operation);
-        let color = result.colors.find((candidate) => (affectsScope(requirement.scope, candidate.scope) || requirement.scope.kind === "part") && (changingProperties ? descriptorMatchesForUpdate(candidate, descriptor) : descriptorMatches(candidate, descriptor)));
+        const identity = descriptorIdentity(descriptor);
+        let color = boundDescriptorColor(colorBindings, descriptor, descriptors);
         if (!color) {
           color = { colorId: `${requirementId}:color:${index + 1}`, name: descriptor.name, family: descriptor.family, hex: descriptor.hex?.toUpperCase(), visualRole: explicitVisualRole ?? (requirement.scope.kind === "sensors" ? "glow" : requirement.scope.kind === "inner-frame" ? "frame" : requirement.scope.kind === "markings" ? "marking" : "primary"), scope: requirement.scope, presence: "required", constraintIds: [] };
           result.colors.push(color);
         }
+        colorBindings.set(identity, color);
         const replaceColorProperty = (property: IntentConstraint["property"]) => supersede(result.constraints.filter((constraint) => constraint.colorId === color.colorId && constraint.property === property && (affectsScope(requirement.scope, constraint.scope) || (constraint.strength === "soft" && property === "color-coverage")) && overridable(constraint)), requirementId, "Current user input updates this color property and scope while preserving unrelated requirements");
         if (descriptor.family) replaceColorProperty("color-family");
         if (descriptor.hex) replaceColorProperty("color-hex");
@@ -444,7 +512,7 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
           addConstraint({ id: `resolver:description-add:${requirementId}:${constraint.id}`, property: "allowed-colors", scope: constraint.scope, strength: constraint.strength, value: expanded, evidence: { source: "system-rule", inputRef: constraint.id } });
         }
       }
-      if (requirement.operation === "only") addConstraint({ id: `${requirementId}:allowed`, property: "allowed-colors", scope: requirement.scope, strength: "hard", value: requiredIds, evidence });
+      if (requirement.operation === "only") addConstraint({ id: `${requirementId}:allowed`, property: "allowed-colors", scope: requirement.scope, strength: "hard", value: [...new Set(requiredIds)], evidence });
     }
   }
   // Keep the compact color metadata synchronized with active property constraints.
@@ -529,7 +597,30 @@ export function resolveCreativeIntent(input: ResolveCreativeIntentInput): Resolv
     }
     if (result.effectiveStyle.weathering === "clean") result.effectiveStyle.surfaceLogic = "Paint existing panels with crisp separation and the resolved finish; preserve existing surface construction without dirt, wear or chipping.";
   }
+  reconcileColorReferences(result);
   return result;
+}
+
+/** Inferred HEX is guidance; never send a reference that contradicts a hard hue requirement. */
+function reconcileColorReferences(intent: ResolvedCreativeIntent) {
+  for (const color of intent.colors) {
+    const active = intent.constraints.filter(constraint => constraint.status === "active" && constraint.colorId === color.colorId);
+    const families = active.filter(constraint => constraint.strength === "hard" && constraint.property === "color-family");
+    const exact = active.find(constraint => constraint.strength === "hard" && constraint.property === "color-hex");
+    const conflictingFamilies = families.filter(constraint => {
+      const hex = exact ? String(exact.value) : color.hex;
+      return !!hex && !hexMatchesColorFamily(hex, constraint.value as ColorFamily);
+    });
+    if (!conflictingFamilies.length) continue;
+    if (exact) {
+      intent.conflicts.push({ property: "colors", message: `Explicit HEX conflicts with the required color family for ${color.name}`, constraintIds: [exact.id, ...conflictingFamilies.map(constraint => constraint.id)] });
+      continue;
+    }
+    delete color.hex;
+    const superseded = active.filter(constraint => constraint.property === "color-hex" && constraint.strength === "soft");
+    for (const constraint of superseded) constraint.status = "superseded";
+    intent.decisions.push({ requirementId: conflictingFamilies[0].id, supersededConstraintIds: superseded.map(constraint => constraint.id), reason: "Discard an inferred HEX that conflicts with the explicit hue family; choose a compatible shade without changing the user requirement." });
+  }
 }
 
 export function assertExecutableIntent(intent: ResolvedCreativeIntent) {
@@ -569,6 +660,9 @@ export function requiredPaletteRolesForExecution(intent: ResolvedCreativeIntent,
 
 /** Execution projection deliberately omits original inputs and superseded instructions. */
 export function resolvedIntentForExecution(intent: ResolvedCreativeIntent) {
+  // Older frozen compositions may predate reference reconciliation.
+  intent = structuredClone(intent);
+  reconcileColorReferences(intent);
   assertExecutableIntent(intent);
   return {
     version: intent.version, resolverVersion: intent.resolverVersion, kit: intent.kit,
@@ -607,8 +701,11 @@ export function validateResolvedPalette(value: unknown, intent: ResolvedCreative
     }
   }
   for (const entry of palette.entries) {
-    const color = intent.colors.find((candidate) => candidate.colorId === entry.colorId);
-    if (entry.coverage?.source === "resolved-constraint" && (!color?.coverage || entry.coverage.percent !== color.coverage.percent || entry.coverage.scope !== color.coverage.scope || entry.coverage.part !== color.coverage.part)) throw new Error("Palette mislabeled AI coverage as a resolved constraint");
+    if (entry.coverage) {
+      // Provenance is server-owned. Hard values were checked above; inferred allocations stay soft.
+      const explicitCoverage = intent.constraints.some(constraint => constraint.status === "active" && constraint.strength === "hard" && constraint.colorId === entry.colorId && constraint.property === "color-coverage");
+      entry.coverage.source = explicitCoverage ? "resolved-constraint" : "ai-allocation";
+    }
     for (const constraint of intent.constraints.filter((candidate) => candidate.status === "active" && candidate.scope.kind !== "part" && scopeAcceptsRole(candidate.scope, entry.roleSlug))) {
       if (constraint.property === "allowed-colors" && !(constraint.value as string[]).includes(entry.colorId)) throw new Error("Palette added a color outside the explicit allowed color set");
       if (constraint.property === "excluded-color" && (entry.targetHex.toUpperCase() === constraint.value || (colorFamilies.includes(constraint.value as ColorFamily) && hexMatchesColorFamily(entry.targetHex, constraint.value as ColorFamily)))) throw new Error("Palette used an explicitly excluded color");
@@ -656,5 +753,5 @@ export function validateResolvedSpecification(value: unknown, paletteInput: { en
   if (specification.weathering.level !== intent.effectiveStyle.weathering) throw new Error("Specification changed the resolved weathering level");
   if (specification.material.finish !== intent.effectiveStyle.finish) throw new Error("Specification changed the resolved surface finish");
   if (JSON.stringify(specification.material.intent) !== JSON.stringify(intent.effectiveStyle.materialIntent)) throw new Error("Specification changed the resolved material intent");
-  return specification;
+  return bindScopedMaterialIntents(specification, intent);
 }

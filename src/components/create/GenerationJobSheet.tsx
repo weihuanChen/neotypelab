@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { KitPortrait } from "./KitPicker";
 import { StylePalette, type DisplayColor, displayPalette } from "./StylePalette";
 import { usePrivateAssetUrl } from "@/src/hooks/usePrivateAssetUrl";
+import { creationFailureMessage } from "@/lib/creationFailure";
 
 export type CreationRunRecord = {
   id: Id<"creationRuns">;
@@ -406,7 +407,7 @@ export function GenerationJobSheet({
             <div className="job-failed-card" role="alert">
               <h4 className="job-failed-title">Generation Interrupted</h4>
               <p className="job-failed-error">
-                {run.error ?? "The preview renderer did not return a valid image."}
+                {creationFailureMessage(run.error, run.stage)}
               </p>
               {run.refunded && (
                 <p className="job-failed-refund">

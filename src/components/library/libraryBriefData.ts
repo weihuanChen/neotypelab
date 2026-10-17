@@ -89,6 +89,7 @@ export interface BriefRepaintSpecification {
     surfaceTexture: string;
     reflectivity: string;
     coating: string;
+    scopedIntents?: Array<{ intent: string; areas: string[] }>;
   };
   weathering: {
     level: "clean" | "light" | "heavy";
@@ -153,7 +154,8 @@ export function parseCreativeRequirements(value?: string | null): Array<{ label:
       const location = scope?.kind === "part" && typeof scope.part === "string" ? scope.part : humanizeSlug(scopeKind);
       items.push({ label: "Excluded color", value: `${humanizeSlug(entry.value)} · ${location}`, source });
     } else if (["finish", "weathering", "material", "pattern"].includes(String(entry.property)) && typeof entry.value === "string") {
-      items.push({ label: humanizeSlug(String(entry.property)), value: humanizeSlug(entry.value), source });
+      const location = scope?.kind && scope.kind !== "whole-kit" ? scope.kind === "part" && typeof scope.part === "string" ? scope.part : humanizeSlug(scopeKind) : null;
+      items.push({ label: humanizeSlug(String(entry.property)), value: `${humanizeSlug(entry.value)}${location ? ` · ${location}` : ""}`, source });
     }
   }
   return Array.from(new Map(items.map((item) => [`${item.label}:${item.value}:${item.source}`, item])).values());
@@ -308,6 +310,17 @@ export function parsePaintRecommendations(jsonStr?: string | null): BriefPaintSy
   };
 }
 
+export function scopedMaterialTreatments(value: unknown): Array<{ intent: string; areas: string[] }> {
+  if (!value || typeof value !== "object") return [];
+  const material = value as Record<string, unknown>;
+  return Array.isArray(material.scopedIntents) ? material.scopedIntents.flatMap((item: unknown) => {
+    if (!item || typeof item !== "object") return [];
+    const entry = item as Record<string, unknown>;
+    const areas = Array.isArray(entry.areas) ? entry.areas.filter((area): area is string => typeof area === "string" && !!area.trim()) : [];
+    return typeof entry.intent === "string" && entry.intent.trim() && areas.length ? [{ intent: entry.intent, areas }] : [];
+  }) : [];
+}
+
 export function parseRenderSpecification(jsonStr?: string | null): BriefRepaintSpecification | null {
   const json = safeJson(jsonStr);
   if (typeof json.summary !== "string" && !Array.isArray(json.panels)) {
@@ -338,6 +351,7 @@ export function parseRenderSpecification(jsonStr?: string | null): BriefRepaintS
   const material = (json.material && typeof json.material === "object"
     ? json.material
     : {}) as Record<string, unknown>;
+  const scopedIntents = scopedMaterialTreatments(material);
 
   const weathering = (json.weathering && typeof json.weathering === "object"
     ? json.weathering
@@ -354,6 +368,7 @@ export function parseRenderSpecification(jsonStr?: string | null): BriefRepaintS
       surfaceTexture: typeof material.surfaceTexture === "string" ? material.surfaceTexture : "Standard plastic",
       reflectivity: typeof material.reflectivity === "string" ? material.reflectivity : "Satin sheen",
       coating: typeof material.coating === "string" ? material.coating : "Semi-gloss protective clear coat",
+      ...(scopedIntents.length ? { scopedIntents } : {}),
     },
     weathering: {
       level: (weathering.level === "light" || weathering.level === "heavy") ? weathering.level : "clean",

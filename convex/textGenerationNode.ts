@@ -14,6 +14,8 @@ export type TextExecutionArgs = {
   jsonOutput?: boolean;
   /** Links the safety-scan audit row to the composition being executed. */
   safetyReference?: ContentSafetyReference;
+  /** Shared by an initial palette request and its one correction. */
+  deadlineMs?: number;
 };
 
 export async function executeTextRequest(
@@ -36,13 +38,13 @@ export async function executeTextRequest(
     : [route.primary];
   const attempts = policy.fallbackBehavior === "fail-job" ? 1 : policy.maxRetryCount + 1;
   let lastError: unknown;
-  const deadline = Date.now() + 8 * 60 * 1000;
+  const deadline = Math.min(Date.now() + 8 * 60 * 1000, args.deadlineMs ?? Infinity);
 
   for (const candidate of routes) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       if (Date.now() >= deadline) break;
       try {
-        const { safetyReference: _safetyReference, ...requestArgs } = args;
+        const { safetyReference: _safetyReference, deadlineMs: _deadlineMs, ...requestArgs } = args;
         const result = await requestTextCompletion({
           ...requestArgs,
           profile: {

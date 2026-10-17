@@ -1,4 +1,5 @@
 import { ZodError, type ZodIssue } from "zod";
+import { ConvexError } from "convex/values";
 
 function issuesIn(error: ZodError): ZodIssue[] {
   return error.issues.flatMap(issue => issue.code === "invalid_union"
@@ -24,4 +25,17 @@ export function creativeValidationMessage(error: unknown, stage: string) {
 export function validateCreativeValue<T>(stage: string, validate: () => T): T {
   try { return validate(); }
   catch (error) { throw new Error(creativeValidationMessage(error, stage)); }
+}
+
+/** Only output validation failures permit a palette correction, never provider or database failures. */
+export function validatePaletteValue<T>(validate: () => T): T {
+  try { return validate(); }
+  catch (error) { throw new ConvexError({ code: "PALETTE_VALIDATION_FAILED", message: creativeValidationMessage(error, "Palette") }); }
+}
+
+export function paletteValidationFeedback(error: unknown): string | null {
+  if (!(error instanceof ConvexError)) return null;
+  const data: unknown = error.data;
+  if (!data || typeof data !== "object" || !("code" in data) || data.code !== "PALETTE_VALIDATION_FAILED" || !("message" in data) || typeof data.message !== "string") return null;
+  return data.message.slice(0, 500);
 }

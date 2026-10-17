@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { StatusPill, mapStatusTone } from "@/src/components/ui/workbench";
 import type { LibraryDetailTab } from "./libraryDetailSearch";
-import { colorIdentityMatches, computeMaskingSummary, CUSTOM_MIX_LABEL, CUSTOM_MIX_NOTE, missingPaintColorCount, roleNeedsCustomMix } from "./libraryBriefData";
+import { colorIdentityMatches, computeMaskingSummary, CUSTOM_MIX_LABEL, CUSTOM_MIX_NOTE, missingPaintColorCount, roleNeedsCustomMix, scopedMaterialTreatments } from "./libraryBriefData";
 import { ShowcasePublishDialog } from "./ShowcasePublishDialog";
 import { CreativeRequirements } from "@/src/components/create/CreativeRequirements";
 import {
@@ -460,6 +460,7 @@ function Overview({
   onSelectSystemId: (id: string) => void;
 }) {
   const maskingSummary = computeMaskingSummary(detail.specification, detail.palette);
+  const localMaterials = scopedMaterialTreatments(detail.specification?.material);
 
   return (
     <div className="work-detail-overview">
@@ -657,6 +658,11 @@ function Overview({
                 <SpecField label="Surface">{detail.specification.material.surfaceTexture}</SpecField>
                 <SpecField label="Reflectivity">{detail.specification.material.reflectivity}</SpecField>
                 <SpecField label="Topcoat">{detail.specification.material.coating}</SpecField>
+                {localMaterials.length ? (
+                  <SpecField label="Local materials"><ul>
+                    {localMaterials.map(item => <li key={`${item.intent}:${item.areas.join("|")}`}><strong>{item.intent}</strong> · {joinList(item.areas)}</li>)}
+                  </ul></SpecField>
+                ) : null}
                 <p className="work-detail-process-note">
                   Apply 1000–1200 grit primer to verify seamline elimination. Sand nubs flat before spraying color coats.
                 </p>

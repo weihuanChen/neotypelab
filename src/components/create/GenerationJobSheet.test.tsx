@@ -110,7 +110,7 @@ describe("GenerationJobSheet Component", () => {
     expect(html).not.toContain("job-scanner-beam");
   });
 
-  it("renders diagnostic failure state and credit refund confirmation when status is failed", () => {
+  it("renders a useful timeout reason and credit refund confirmation without private diagnostics", () => {
     const failedRun: CreationRunRecord = {
       ...baseRun,
       status: "failed",
@@ -123,11 +123,21 @@ describe("GenerationJobSheet Component", () => {
     );
     expect(html).toContain("! INTERRUPTED");
     expect(html).toContain("Generation Interrupted");
-    expect(html).toContain("GPU cluster timeout while synthesizing render.");
+    expect(html).toContain("Generation took too long to finish. Please try again.");
+    expect(html).not.toContain("GPU cluster");
     expect(html).toContain("All 8 credits were returned to your account.");
     expect(html).toContain("Retry preview · 8 credits");
     expect(html).toContain("Return to setup");
     expect(html).toContain("job-stage-item is-failed");
+  });
+
+  it("hides a legacy workflow stack while showing a palette recovery message", () => {
+    const html = renderToStaticMarkup(<GenerationJobSheet run={{ ...baseRun, status: "failed", refunded: true,
+      error: "Error: Uncaught ConvexError: Palette violates color-family for Fiery Orange\n at run (../../node_modules/@convex-dev/workflow/src/client/workflowContext.ts:321:9)" }} onRetry={() => {}} onReset={() => {}} />);
+    expect(html).toContain("match the palette to your color requirements");
+    expect(html).not.toMatch(/ConvexError|node_modules|workflowContext|Fiery Orange/);
+    expect(html).toContain("All 8 credits were returned");
+    expect(html).toContain("Retry preview · 8 credits");
   });
   it("shows the user's own photo, not the catalog silhouette, while a Custom Kit repaint builds", () => {
     const html = renderToStaticMarkup(<GenerationJobSheet run={{ ...baseRun, stage: "render",

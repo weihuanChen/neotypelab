@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ConvexError } from "convex/values";
 import { creativeInputKey, creativeTemplateSeeds, currentNormalizedUserIntentSchema, fillCreativeTemplate, hasIndexableStyle, legacyCreativeInputKey, normalizedUserIntentSchema, paletteV3Schema, repaintV3Schema, sourceNormalizationProtocolVersion, styleIntentSchema, type NormalizedRequirement, type NormalizedUserIntent } from "./creativeContracts";
 import { promptTemplateVariableDefinitions } from "./promptTemplateVariables";
+import { orangeShadesDescription, orangeShadesStyle } from "@/tests/fixtures/orangeShades";
 import { assertExecutableIntent, effectiveStyleForExecution, hexMatchesColorFamily, requiredPaletteRolesForExecution, resolveCreativeIntent, resolvedCreativeIntentSchema, resolvedIntentForExecution, validateNormalizedUserIntent, validateResolvedPalette, validateResolvedSpecification, type ResolvedCreativeIntent } from "./creativeIntentResolver";
 
 const style = styleIntentSchema.parse({
@@ -43,6 +44,163 @@ function specFor(intent: ResolvedCreativeIntent) {
 }
 
 describe("Creative Intent deterministic resolution", () => {
+  it.each(["add", "preserve", "set", "replace", "only"] as const)("binds the production orange shades separately for a %s collection, regardless of descriptor order", operation => {
+    for (const reverse of [false, true]) {
+      const saved = structuredClone(orangeShadesStyle);
+      const requirement = saved.explicitRequirements!.requirements[0];
+      requirement.operation = operation;
+      if (reverse) requirement.colors!.reverse();
+      const before = JSON.stringify(saved);
+      const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: orangeShadesDescription });
+      expect(() => assertExecutableIntent(intent)).not.toThrow();
+      const primary = intent.constraints.find(c => c.status === "active" && c.property === "color-importance" && c.value === "primary")!;
+      const secondary = intent.constraints.find(c => c.status === "active" && c.property === "color-importance" && c.value === "secondary")!;
+      expect(primary.colorId).toBe("style-color-1");
+      expect(secondary.colorId).toBe("style-color-2");
+      expect(intent.colors.find(c => c.colorId === primary.colorId)).toMatchObject({ name: "Bright Orange", hex: "#FF6600", visualRole: "primary" });
+      expect(intent.colors.find(c => c.colorId === secondary.colorId)).toMatchObject({ name: "Burnt Orange", hex: "#A33B00", visualRole: "secondary" });
+      expect(intent.colors).toHaveLength(operation === "replace" || operation === "only" ? 5 : 6);
+      expect(() => validateResolvedPalette(paletteFor(intent), intent)).not.toThrow();
+      expect(JSON.stringify(saved)).toBe(before);
+    }
+  });
+
+  it("reserves named anchors before a broader same-family descriptor, even when its intended role changes", () => {
+    const saved = structuredClone(orangeShadesStyle);
+    saved.explicitRequirements!.requirements[0].colors = [
+      { name: "dark orange", family: "orange", visualRole: "primary" },
+      { name: "bright orange", family: "orange", visualRole: "secondary" },
+    ];
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: orangeShadesDescription });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(intent.colors.find(c => c.name === "Bright Orange")?.visualRole).toBe("secondary");
+    expect(intent.colors.find(c => c.name === "Burnt Orange")?.visualRole).toBe("primary");
+  });
+
+  it("preserves multiple blue shades with the same importance instead of merging their distinct HEX values", () => {
+    const quote = "Use pale blue #87CEFA and navy #001F54 as major armor colors";
+    const saved = styleIntentSchema.parse({ ...style, colors: [
+      { role: "primary", name: "Navy blue", hex: "#001F54", coverage: 60 },
+      { role: "secondary", name: "Pale blue", hex: "#87CEFA", coverage: 40 },
+    ] });
+    const intent = resolveCreativeIntent({ styleIntent: saved, notes: quote, normalizedNotes: notes([requirement(quote, {
+      operation: "only", colors: [{ name: "Pale blue", family: "blue", hex: "#87CEFA", visualRole: "primary" }, { name: "Navy", family: "blue", hex: "#001F54", visualRole: "primary" }],
+    })]) });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(intent.colors.map(c => c.hex).sort()).toEqual(["#001F54", "#87CEFA"]);
+    expect(intent.colors.every(c => c.visualRole === "primary")).toBe(true);
+    expect(() => validateResolvedPalette(paletteFor(intent), intent)).not.toThrow();
+  });
+
+  it("creates a separate requested shade when only one matching anchor exists", () => {
+    const saved = structuredClone(orangeShadesStyle);
+    saved.colors = saved.colors!.filter(color => color.name !== "Burnt Orange" && color.name !== "Bright Amber");
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: orangeShadesDescription });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    const shades = intent.colors.filter(c => c.scope.kind === "exterior-armor");
+    expect(shades).toHaveLength(2);
+    expect(new Set(shades.map(c => c.colorId)).size).toBe(2);
+    expect(shades.map(c => c.visualRole)).toEqual(["primary", "secondary"]);
+  });
+
+  it.each([false, true])("still rejects contradictory roles for the same named or exact-HEX color (HEX=%s)", exactHex => {
+    const saved = structuredClone(orangeShadesStyle);
+    const requirement = saved.explicitRequirements!.requirements[0];
+    requirement.evidence.quote = exactHex ? "shades of orange #FF6600" : "shades of orange";
+    requirement.colors = [
+      { name: "Bright Orange", family: "orange", ...(exactHex ? { hex: "#FF6600" } : {}), visualRole: "primary" },
+      { name: exactHex ? "Same orange" : " bright orange ", family: "orange", ...(exactHex ? { hex: "#FF6600" } : {}), visualRole: "secondary" },
+    ];
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: requirement.evidence.quote });
+    expect(() => assertExecutableIntent(intent)).toThrow(/Conflicting explicit values/);
+    expect(intent.conflicts.some(c => c.property === "color-importance")).toBe(true);
+  });
+
+  it("keeps a named reference and its explicit HEX reference on the same color so conflicts cannot escape", () => {
+    const saved = structuredClone(orangeShadesStyle);
+    const requirement = saved.explicitRequirements!.requirements[0];
+    requirement.evidence.quote = "bright orange #FF6600";
+    requirement.colors = [
+      { name: "Bright Orange", family: "orange", visualRole: "primary", hex: "#FF6600" },
+      { name: "bright orange", family: "orange", visualRole: "secondary" },
+    ];
+    const intent = resolveCreativeIntent({ styleIntent: saved, styleDescription: requirement.evidence.quote });
+    expect(() => assertExecutableIntent(intent)).toThrow(/Conflicting explicit values/);
+  });
+
+  it("updates the named blue shade even when its new HEX matches a different existing shade", () => {
+    const saved = styleIntentSchema.parse({ ...style, colors: [
+      { role: "primary", name: "Pale blue", hex: "#87CEFA", coverage: 60 },
+      { role: "secondary", name: "Navy blue", hex: "#001F54", coverage: 40 },
+    ] });
+    const quote = "Set Pale blue to #001F54";
+    const intent = resolveCreativeIntent({ styleIntent: saved, notes: quote, normalizedNotes: notes([requirement(quote, {
+      operation: "set", colors: [{ name: "Pale blue", family: "blue", hex: "#001F54" }],
+    })]) });
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    expect(intent.constraints.find(c => c.status === "active" && c.strength === "hard" && c.property === "color-hex")?.colorId).toBe("style-color-1");
+  });
+
+  it.each([
+    ["#FF5722", true], ["#FF4500", true], ["#FF8C00", true],
+    ["#FF2200", false], ["#FF0000", false], ["#0055DD", false], ["#888888", false],
+  ])("classifies the orange boundary shade %s without accepting unrelated colors", (hex, matches) => {
+    expect(hexMatchesColorFamily(hex, "orange")).toBe(matches);
+  });
+
+  it("drops an incompatible inferred reference HEX while preserving the user's hard hue and original style", () => {
+    const saved = styleIntentSchema.parse({ ...style, colors: [{ role: "primary", name: "Fiery Orange", hex: "#FF0000", coverage: 100 }] });
+    const quote = "Use orange armor";
+    const intent = resolveCreativeIntent({ styleIntent: saved, notes: quote, normalizedNotes: notes([
+      requirement(quote, { operation: "add", colors: [{ name: "Orange", family: "orange" }] }),
+    ]) });
+    expect(intent.colors[0]).toMatchObject({ name: "Fiery Orange", family: "orange" });
+    expect(intent.colors[0].hex).toBeUndefined();
+    expect(intent.constraints.find(c => c.id === "style-color-1:hex")?.status).toBe("superseded");
+    expect(intent.originalStyle.colors?.[0].hex).toBe("#FF0000");
+    expect(saved.colors?.[0].hex).toBe("#FF0000");
+    expect(() => assertExecutableIntent(intent)).not.toThrow();
+    // A frozen composition created before this fix gets the same safe execution projection.
+    const old = structuredClone(intent);
+    old.colors[0].hex = "#FF0000";
+    old.constraints.find(c => c.id === "style-color-1:hex")!.status = "active";
+    const execution = resolvedIntentForExecution(old);
+    expect(execution.colors[0].hex).toBeUndefined();
+    expect(execution.constraints.some(c => c.property === "color-hex")).toBe(false);
+    expect(old.colors[0].hex).toBe("#FF0000");
+  });
+
+  it("reports a conflicting explicit HEX instead of silently replacing it with a compatible shade", () => {
+    const saved = styleIntentSchema.parse({ ...style, colors: [{ role: "primary", name: "Fiery Orange", hex: "#FF5722", coverage: 100 }] });
+    const quote = "Use orange with #FF0000";
+    const intent = resolveCreativeIntent({ styleIntent: saved, notes: quote, normalizedNotes: notes([
+      requirement(quote, { id: "hue", operation: "add", colors: [{ name: "Fiery Orange", family: "orange" }] }),
+      requirement(quote, { id: "hex", operation: "set", colors: [{ name: "Fiery Orange", hex: "#FF0000" }] }),
+    ]) });
+    expect(intent.colors[0].hex).toBe("#FF0000");
+    expect(() => assertExecutableIntent(intent)).toThrow(/Explicit HEX conflicts/);
+  });
+
+  it("accepts the production Fiery Orange shade and corrects inferred coverage provenance without changing allocation", () => {
+    const saved = styleIntentSchema.parse({ ...style, colors: [{ role: "primary", name: "Fiery Orange", hex: "#FF5722", coverage: 25 }] });
+    const quote = "shades of orange";
+    const intent = resolveCreativeIntent({ styleIntent: saved, notes: quote, normalizedNotes: notes([
+      requirement(quote, { operation: "add", colors: [{ name: "Orange", family: "orange" }] }),
+    ]) });
+    const raw = paletteFor(intent);
+    raw.entries[0].coverage!.scope = "exterior-armor";
+    const validated = validateResolvedPalette(raw, intent);
+    expect(validated.palette.entries[0]).toMatchObject({ targetHex: "#FF5722", coverage: { percent: 25, scope: "exterior-armor", source: "ai-allocation" } });
+    expect(raw.entries[0].coverage!.source).toBe("resolved-constraint");
+    const explicit = resolve("70% blue armor, 30% white armor", { colors: [{ name: "Blue", family: "blue", coveragePercent: 70 }, { name: "White", family: "white", coveragePercent: 30 }] });
+    const wrongScope = paletteFor(explicit);
+    wrongScope.entries[0].coverage!.scope = "whole-kit";
+    expect(() => validateResolvedPalette(wrongScope, explicit)).toThrow(/color-coverage/);
+    const right = paletteFor(explicit);
+    right.entries[0].coverage!.source = "ai-allocation";
+    expect(validateResolvedPalette(right, explicit).palette.entries[0].coverage!.source).toBe("resolved-constraint");
+  });
+
   it("combines independent mood clauses from one saved description and preserves their evidence", () => {
     const source = "hazard unit  Industrial Alert";
     const saved = styleIntentSchema.parse({ ...style, version: "style-intent.v3", source: "private", styleType: "custom",

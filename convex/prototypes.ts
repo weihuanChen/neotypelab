@@ -10,6 +10,7 @@ import { nextArchiveNumber } from "./archiveNumbers";
 import { assertGenerationCapacity, resolvePipelineTemplate } from "./pipelineSettings";
 import { creativeInputKey, legacyCreativeInputKey, creativeTemplateSeeds, fillCreativeTemplate, styleIntentSchema, stylePlanningRules, legacyRepaintTemplate, legacyStylePlanningRules } from "./creativeContracts";
 import { assertExecutableIntent, effectiveStyleForExecution, requiredPaletteRolesForExecution, resolvedCreativeIntentSchema, resolvedIntentForExecution } from "./creativeIntentResolver";
+import { scopedMaterialPlanningRules } from "./creativeContracts";
 import { effectiveMaterialForExecution, type CreativeSnapshot } from "./creativePipeline";
 import type { PaintPlan } from "./paintMappingEngine";
 import { listResolvedPaintMappings } from "./paintCatalogCompatibility";
@@ -111,7 +112,7 @@ export async function initializeConcept(ctx: MutationCtx, args: Infer<ReturnType
       contractVersion: paletteInput.contractVersion, resolvedIntent, materialSnapshot: material,
       customKit: paletteInput.customKit,
       kind: "repaint-concept", textStage: "repaint-concept", inputKey: paletteInput.contractVersion ? inputKey : legacyCreativeInputKey(args),
-      systemPrompt: executionTemplate.systemPrompt + "\n" + (resolvedIntent ? stylePlanningRules : legacyStylePlanningRules) + (customKitContext ? `\n${customKitPlanningRules}` : ""), templateName: template.name, templateVersion: resolvedIntent ? template.version : "creation.v2",
+      systemPrompt: executionTemplate.systemPrompt + "\n" + (resolvedIntent ? `${stylePlanningRules}\n${scopedMaterialPlanningRules}` : legacyStylePlanningRules) + (customKitContext ? `\n${customKitPlanningRules}` : ""), templateName: template.name, templateVersion: resolvedIntent ? template.version : "creation.v2",
       baseModel: paletteInput.contractVersion ? paletteInput.baseModel : modelContext.snapshot, ...(style ? { stylePreset: { id: style._id, name: style.name, slug: style.slug } } : {}), styleIntent: intent,
       materialPreset: { id: material.id, name: material.name, slug: material.slug },
       weatheringLevel: resolvedIntent?.effectiveStyle.weathering ?? args.weatheringLevel, moodTags: Array.from(new Set(args.moodTags ?? [])),

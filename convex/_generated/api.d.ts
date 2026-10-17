@@ -107,6 +107,7 @@ import type * as renderGuards from "../renderGuards.js";
 import type * as renderHistory from "../renderHistory.js";
 import type * as renderIntentCompiler from "../renderIntentCompiler.js";
 import type * as renderSpecification from "../renderSpecification.js";
+import type * as scopedMaterialIntents from "../scopedMaterialIntents.js";
 import type * as shapeReference from "../shapeReference.js";
 import type * as shopping from "../shopping.js";
 import type * as showcase from "../showcase.js";
@@ -245,6 +246,7 @@ declare const fullApi: ApiFromModules<{
   renderHistory: typeof renderHistory;
   renderIntentCompiler: typeof renderIntentCompiler;
   renderSpecification: typeof renderSpecification;
+  scopedMaterialIntents: typeof scopedMaterialIntents;
   shapeReference: typeof shapeReference;
   shopping: typeof shopping;
   showcase: typeof showcase;

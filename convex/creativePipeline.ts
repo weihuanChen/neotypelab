@@ -20,10 +20,10 @@ import {
 } from "./paintRecommendationEngine";
 import { vMoodTag, vWeatheringLevel, type MaterialSpec } from "./domain";
 import { assertExactRoles, creativeInputKey, legacyCreativeInputKey, fillCreativeTemplate, paletteSchema, repaintSchema, legacyPaletteSchema, legacyRepaintSchema, creativeTemplateSeeds, styleSuggestionSchema, styleIntentSchema, stylePlanningRules, sourceNormalizationProtocolVersion, currentNormalizedUserIntentSchema, type StyleIntent } from "./creativeContracts";
-import { assertExecutableIntent, effectiveStyleForExecution, requiredPaletteRolesForExecution, resolveCreativeIntent, resolvedIntentForExecution, validateResolvedPalette, validateResolvedSpecification, type NormalizedUserIntent, type ResolvedCreativeIntent } from "./creativeIntentResolver";
+import { assertExecutableIntent, effectiveStyleForExecution, paletteExecutionRules, requiredPaletteRolesForExecution, resolveCreativeIntent, resolvedIntentForExecution, validateResolvedPalette, validateResolvedSpecification, type NormalizedUserIntent, type ResolvedCreativeIntent } from "./creativeIntentResolver";
 import type { Id } from "./_generated/dataModel";
 import { debitCredits, findDebitByReference, refundCreditTransaction } from "./creditLedger";
-import { creativeValidationMessage, validateCreativeValue } from "./creativeValidation";
+import { creativeValidationMessage, validateCreativeValue, validatePaletteValue } from "./creativeValidation";
 import { customKitModelContext } from "./customKits";
 import { customKitPlanningRules, type CustomKitSnapshot } from "./customKitContracts";
 
@@ -58,8 +58,10 @@ export type CreativeSnapshot = {
   normalizationExecution?: unknown;
   lastExecutionAttempt?: {
     response?: unknown; responsePreview?: string; truncated?: boolean;
+    validationError?: string;
     metadata: { model?: string; profileId?: string; providerRequestId?: string | null; usage?: unknown };
   };
+  rejectedExecutionAttempt?: CreativeSnapshot["lastExecutionAttempt"];
   rawNotes?: string;
   styleDescription?: string;
   normalizationProtocolVersion?: string;
@@ -150,6 +152,11 @@ function resolvedPalettePrompt(snapshot: Snapshot, intent: ResolvedCreativeInten
   };
   snapshot.promptValues = executionValues;
   return fillCreativeTemplate(seed.userPromptTemplate, executionValues);
+}
+
+function executionSystemPrompt(snapshot: Snapshot) {
+  return snapshot.kind === "palette-plan" && snapshot.contractVersion
+    ? `${snapshot.systemPrompt}\n${paletteExecutionRules}` : snapshot.systemPrompt;
 }
 
 const beginArgs = { ...creativeArgs, kind: v.union(v.literal("style-suggestion"), v.literal("palette-plan")) };
@@ -279,8 +286,12 @@ export const claim = systemMutation({
     await ctx.db.patch(composition._id, { executionStartedAt: Date.now() });
     if (composition.generationJobId) await ctx.db.patch(composition.generationJobId, { status: "running" });
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
+    if (snapshot.kind === "palette-plan" && snapshot.contractVersion && snapshot.resolvedIntent) {
+      composition.composedPrompt = resolvedPalettePrompt(snapshot, snapshot.resolvedIntent);
+      await ctx.db.patch(composition._id, { composedPrompt: composition.composedPrompt, inputSnapshotJson: JSON.stringify(snapshot) });
+    }
     const { explicitRequirements: _requirements, referenceNotes: _reference, ...normalizationStyle } = snapshot.styleIntent ?? {};
-    return { composition, kind: snapshot.kind, systemPrompt: snapshot.systemPrompt,
+    return { composition, kind: snapshot.kind, systemPrompt: executionSystemPrompt(snapshot),
       normalization: snapshot.contractVersion && snapshot.kind === "palette-plan" && !snapshot.resolvedIntent
         ? { notes: snapshot.rawNotes ?? "", styleDescription: snapshot.needsSourceNormalization || !snapshot.styleIntent?.explicitRequirements ? snapshot.styleDescription ?? "" : "",
             kit: snapshot.customKit ? { source: "custom", parts: snapshot.customKit.effectiveParts.map(part => ({ id: part.id, name: part.name, category: part.category })) } : { source: "catalog" },
@@ -303,7 +314,7 @@ export const resolveIntent = systemMutation({
     }
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
     if (snapshot.contractVersion !== "creation.v3" || snapshot.kind !== "palette-plan") throw new Error("This composition does not support intent resolution");
-    if (snapshot.resolvedIntent) return { userPrompt: composition.composedPrompt, systemPrompt: snapshot.systemPrompt };
+    if (snapshot.resolvedIntent) return { userPrompt: composition.composedPrompt, systemPrompt: executionSystemPrompt(snapshot) };
     snapshot.normalizationExecution = JSON.parse(args.executionJson);
     let userPrompt: string;
     try {
@@ -321,13 +332,13 @@ export const resolveIntent = systemMutation({
       return { error: creativeValidationMessage(error, "Creative requirement normalization") };
     }
     await ctx.db.patch(composition._id, { inputSnapshotJson: JSON.stringify(snapshot), composedPrompt: userPrompt });
-    return { userPrompt, systemPrompt: snapshot.systemPrompt };
+    return { userPrompt, systemPrompt: executionSystemPrompt(snapshot) };
   },
 });
 
-/** Retain one private provider attempt so failed semantic validation remains diagnosable. */
+/** Retain the final attempt and at most one rejected attempt for private diagnostics. */
 export const recordExecutionAttempt = systemMutation({
-  args: { promptCompositionId: v.id("promptCompositions"), responseJson: v.string(), executionJson: v.string() },
+  args: { promptCompositionId: v.id("promptCompositions"), responseJson: v.string(), executionJson: v.string(), validationError: v.optional(v.string()) },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const composition = await ctx.db.get(args.promptCompositionId);
@@ -338,10 +349,12 @@ export const recordExecutionAttempt = systemMutation({
     }
     const snapshot = JSON.parse(composition.inputSnapshotJson) as Snapshot;
     const execution = JSON.parse(args.executionJson) as { model?: string; profileId?: string; providerRequestId?: string | null; usage?: unknown };
+    if (snapshot.lastExecutionAttempt?.validationError && !snapshot.rejectedExecutionAttempt) snapshot.rejectedExecutionAttempt = snapshot.lastExecutionAttempt;
     snapshot.lastExecutionAttempt = {
-      ...(args.responseJson.length <= 180000 ? { response: JSON.parse(args.responseJson) as unknown }
-        : { responsePreview: args.responseJson.slice(0, 180000), truncated: true }),
+      ...(new TextEncoder().encode(args.responseJson).byteLength <= 90000 ? { response: JSON.parse(args.responseJson) as unknown }
+        : { responsePreview: args.responseJson.slice(0, 20000), truncated: true }),
       metadata: { model: execution.model, profileId: execution.profileId, providerRequestId: execution.providerRequestId, usage: execution.usage },
+      ...(args.validationError ? { validationError: args.validationError.slice(0, 500) } : {}),
     };
     await ctx.db.patch(composition._id, { inputSnapshotJson: JSON.stringify(snapshot) });
     return true;
@@ -374,10 +387,13 @@ export const complete = systemMutation({
         return { stylePresetId: preset._id, name: preset.name, slug: preset.slug, rationale: suggestion.rationale, confidenceLabel: index === 0 ? "Best fit" : "Alternative" };
       });
     } else if (snapshot.kind === "palette-plan") {
-      const result = validateCreativeValue("Palette", () => snapshot.contractVersion ? paletteSchema.parse(raw) : legacyPaletteSchema.parse(raw));
+      const parsed = snapshot.contractVersion ? validatePaletteValue(() => paletteSchema.parse(raw)) : validateCreativeValue("Palette", () => legacyPaletteSchema.parse(raw));
+      let result = parsed;
       if (snapshot.contractVersion) {
         if (!snapshot.resolvedIntent) throw new Error("Creative intent must be resolved before palette generation");
-        deviations = validateCreativeValue("Palette", () => validateResolvedPalette(result, snapshot.resolvedIntent!, snapshot.colorRoles.map(r => r.slug))).deviations;
+        const validated = validatePaletteValue(() => validateResolvedPalette(parsed, snapshot.resolvedIntent!, snapshot.colorRoles.map(r => r.slug)));
+        result = validated.palette;
+        deviations = validated.deviations;
       } else assertExactRoles(result.entries.map(e => e.roleSlug), snapshot.colorRoles.map(r => r.slug));
       const mappings = (await listResolvedPaintMappings(ctx)).filter(p => p.isActive);
       visualPalette = buildVisualPalette({
@@ -398,13 +414,13 @@ export const complete = systemMutation({
         moodTags: snapshot.moodTags,
       }) as PaintPlan;
     } else {
-      const result = validateCreativeValue("Specification", () => snapshot.contractVersion ? repaintSchema.parse(raw) : legacyRepaintSchema.parse(raw));
+      let result = validateCreativeValue("Specification", () => snapshot.contractVersion ? repaintSchema.parse(raw) : legacyRepaintSchema.parse(raw));
       const approvedVisualPalette = snapshot.visualPalette
         ?? visualPaletteFromLegacyPlan(snapshot.palettePlan ? JSON.stringify(snapshot.palettePlan) : undefined);
       if (!approvedVisualPalette || !composition.conceptId || !composition.generationJobId) throw new Error("Missing approved palette or concept");
       if (snapshot.contractVersion) {
         if (!snapshot.resolvedIntent) throw new Error("Missing frozen creative intent");
-        validateCreativeValue("Specification", () => validateResolvedSpecification(result, approvedVisualPalette, snapshot.resolvedIntent!));
+        result = validateCreativeValue("Specification", () => validateResolvedSpecification(result, approvedVisualPalette, snapshot.resolvedIntent!));
       } else assertExactRoles(result.panels.map(p => p.roleSlug), approvedVisualPalette.entries.map(e => e.roleSlug));
       if (snapshot.customKit) {
         const partIds = new Set(snapshot.customKit.effectiveParts.filter(part => part.visibility !== "not-visible" || part.source === "user-request").map(part => part.id));

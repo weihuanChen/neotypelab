@@ -11,9 +11,13 @@ import { createAssetGraph } from "./assetModel";
 import type { CreativeSnapshot } from "./creativePipeline";
 import { sourceNormalizationProtocolVersion, styleIntentSchema, type NormalizedRequirement } from "./creativeContracts";
 import { convexErrorMessage } from "@/src/lib/convexError";
+import { executeTextRequest } from "./textGenerationNode";
+import { localChitinMaterialStyle, orangeShadesDescription, orangeShadesStyle } from "@/tests/fixtures/orangeShades";
+
+vi.mock("./textGenerationNode", () => ({ executeTextRequest: vi.fn() }));
 
 const modules = import.meta.glob("./**/*.ts");
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => { vi.useFakeTimers(); vi.mocked(executeTextRequest).mockReset(); });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 async function fixture(balance = 20) {
   const t = convexTest(schema, modules);
@@ -48,6 +52,85 @@ async function finishPalette(f: Awaited<ReturnType<typeof fixture>>, runId: Id<"
 }
 
 describe("complete preview runs", () => {
+  it.each([{ label: "orange shades", savedIntent: orangeShadesStyle }, { label: "local chitin material", savedIntent: localChitinMaterialStyle }])("starts the saved $label style, freezes distinct colors and charges one preview", async ({ savedIntent }) => {
+    const f = await fixture();
+    const promptCompositionId = await f.t.run(ctx => ctx.db.insert("promptCompositions", {
+      userId: f.userId, status: "consumed", composedPrompt: "Completed interpretation",
+      inputSnapshotJson: JSON.stringify({ kind: "style-interpreter", description: orangeShadesDescription }),
+      outputSummaryJson: JSON.stringify({ intent: savedIntent, sourceNormalizationProtocolVersion }),
+    }));
+    const saved = await f.client.mutation(api.userStyles.saveInterpretation, { promptCompositionId });
+    const input = { ...f.input, stylePresetId: undefined, styleRevision: undefined, userStyleId: saved.styleId, styleIntentJson: JSON.stringify(saved.intent) };
+    const args = { input, requestKey: "orange-shades", expectedCost: f.cost };
+    const runId = await f.client.mutation(api.creationRuns.start, args);
+    expect(await f.client.mutation(api.creationRuns.start, args)).toBe(runId);
+    const run = (await f.t.run(ctx => ctx.db.get(runId)))!;
+    const palette = (await f.t.run(ctx => ctx.db.get(run.paletteId!)))!;
+    const intent = (JSON.parse(palette.inputSnapshotJson) as CreativeSnapshot).resolvedIntent!;
+    expect(intent.conflicts).toEqual([]);
+    expect(intent.colors.find(c => c.name === "Bright Orange")).toMatchObject({ colorId: "style-color-1", visualRole: "primary", hex: "#FF6600" });
+    expect(intent.colors.find(c => c.name === "Burnt Orange")).toMatchObject({ colorId: "style-color-2", visualRole: "secondary", hex: "#A33B00" });
+    expect(intent.colors).toHaveLength(6);
+    expect(JSON.parse((await f.t.run(ctx => ctx.db.get(saved.styleId)))!.intentJson)).toEqual(savedIntent);
+    await finishPalette(f, runId);
+    const advanced = (await f.t.run(ctx => ctx.db.get(runId)))!;
+    expect(advanced.stage).toBe("specification");
+    const concept = (await f.t.run(ctx => ctx.db.get(advanced.conceptId!)))!;
+    const frozen = JSON.parse(concept.visualPaletteJson!);
+    expect(frozen.entries).toHaveLength(6);
+    expect(frozen.entries.find((c: { colorName: string }) => c.colorName === "Burnt Orange").targetHex).toBe("#A33B00");
+    const tx = await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_userId", q => q.eq("userId", f.userId)).collect());
+    expect(tx.filter(t => t.delta < 0)).toHaveLength(1);
+    expect((await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique()))!.balance).toBe(20 - f.cost);
+  });
+
+  it.each([true, false])("keeps one preview charge and a single refund decision when palette correction succeeds=%s", async corrected => {
+    const f = await fixture();
+    await f.t.mutation(internal.creativeSetup.configure, { textModelId: "gemini-2.5-flash" });
+    const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: `correct-${corrected}`, expectedCost: f.cost });
+    const stage = await f.t.mutation(internal.creationRuns.claimWorkflowStage, { runId, attempt: 1 });
+    if (!stage || stage.kind === "render") throw new Error("Expected palette stage");
+    const composition = (await f.t.run(ctx => ctx.db.get(stage.promptCompositionId)))!;
+    const intent = (JSON.parse(composition.inputSnapshotJson) as CreativeSnapshot).resolvedIntent!;
+    const json = { version: "visual-palette.v3", entries: intent.colors.map(color => ({ colorId: color.colorId, colorName: color.name,
+      roleSlug: color.scope.kind === "inner-frame" ? "inner-frame" : color.scope.kind === "sensors" ? "sensor-color" : color.scope.kind === "markings" ? "markings" : "primary-armor",
+      targetHex: color.hex ?? "#EEEEEE", paintEffect: "solid", rationale: "Keep approved colors" })), sprayNotes: ["Thin coats"] };
+    const invalid = structuredClone(json);
+    invalid.entries[0].roleSlug = "unknown-role";
+    const response = (value: typeof json) => ({ json: value, text: JSON.stringify(value), model: "fixture", profileId: "fixture", providerRequestId: null, usage: null });
+    vi.mocked(executeTextRequest).mockResolvedValueOnce(response(invalid)).mockResolvedValueOnce(response(corrected ? json : invalid));
+    if (corrected) {
+      await f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: stage.promptCompositionId });
+      await f.t.mutation(internal.creationRuns.advanceWorkflow, { runId, attempt: 1 });
+      expect((await f.t.run(ctx => ctx.db.get(runId)))!.stage).toBe("specification");
+    } else {
+      await expect(f.t.action(internal.creativeNode.executeComposition, { promptCompositionId: stage.promptCompositionId })).rejects.toThrow(/unknown role/);
+      const run = (await f.t.run(ctx => ctx.db.get(runId)))!;
+      await f.t.mutation(internal.creationRuns.completeWorkflow, { workflowId: run.workflowId! as WorkflowId, context: { runId, attempt: 1 }, result: { kind: "failed", error: "Palette uses an unknown role" } });
+      await f.t.mutation(internal.creationRuns.expire, { runId, attempt: 1 });
+    }
+    expect(executeTextRequest).toHaveBeenCalledTimes(2);
+    const account = await f.t.run(ctx => ctx.db.query("creditAccounts").withIndex("by_userId", q => q.eq("userId", f.userId)).unique());
+    expect(account!.balance).toBe(corrected ? 20 - f.cost : 20);
+    const tx = await f.t.run(ctx => ctx.db.query("creditTransactions").withIndex("by_userId", q => q.eq("userId", f.userId)).collect());
+    expect(tx.filter(row => row.delta < 0)).toHaveLength(1);
+    expect(tx.filter(row => row.delta > 0)).toHaveLength(corrected ? 0 : 1);
+  });
+
+  it("retains private workflow diagnostics but only exposes a fixed recovery message to the owner", async () => {
+    const f = await fixture();
+    const runId = await f.client.mutation(api.creationRuns.start, { input: f.input, requestKey: "private-diagnostics", expectedCost: f.cost });
+    const reason = "Error: Uncaught ConvexError: Palette violates color-family for Fiery Orange\n at run (../../node_modules/@convex-dev/workflow/src/client/workflowContext.ts:321:9)";
+    await f.t.mutation(internal.creationRuns.fail, { runId, attempt: 1, reason });
+    const publicRun = await f.client.query(api.creationRuns.latest, {});
+    expect(publicRun?.error).toContain("match the palette to your color requirements");
+    expect(publicRun?.error).not.toMatch(/ConvexError|node_modules|workflowContext|Fiery Orange/);
+    expect(publicRun?.refunded).toBe(true);
+    expect((await f.t.run(ctx => ctx.db.get(runId)))?.error).toBe(reason);
+    const other = await seedUser(f.t, { tokenIdentifier: "diagnostics-other", email: "diagnostics-other@example.test", balance: 20 });
+    expect(await other.client.query(api.creationRuns.latest, {})).toBeNull();
+  });
+
   it("starts a saved custom style with two mood clauses and charges the preview once", async () => {
     const f = await fixture();
     const saved = await saveCustomStyle(f, "hazard unit  Industrial Alert", [

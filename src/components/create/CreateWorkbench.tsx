@@ -9,6 +9,7 @@ import { maxCreativeNotesLength, type StyleIntent } from "@/convex/creativeContr
 import { readStyleIntent, resolveStyleRefinements } from "@/convex/styleRefinements";
 import { getCreatorPackAccessCopy } from "@/lib/creatorPackAccess";
 import { convexErrorMessage } from "@/src/lib/convexError";
+import { creationFailureMessage } from "@/lib/creationFailure";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -303,7 +304,7 @@ export function CreateWorkbench({ search = {} }: { search?: CreateWorkbenchSearc
     </>}
     {locked ? <p className="create-flow-error" role="alert">{pack ? access.message : "Loading creator pack access…"}</p> : null}
     {error ? <p className="create-flow-error" role="alert">{error}</p> : null}
-    {latestRun && !shouldShowJobSheet && !styleTakeover ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${latestRun.error ?? "The preview didn’t finish."}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
+    {latestRun && !shouldShowJobSheet && !styleTakeover ? <section className="create-run-status" aria-live="polite"><div><p className="workbench-kicker">Latest build</p><strong>{latestRun.title}</strong><p>{latestRun.status === "succeeded" ? "Your preview is ready in your library." : latestRun.status === "failed" ? `${creationFailureMessage(latestRun.error, latestRun.stage)}${latestRun.refunded ? ` All ${latestRun.cost} credits were returned.` : ""}` : "A preview is in progress."}</p></div>
       <Button variant="outline" onClick={() => { setDismissedRunId(null); setWatchingRunId(latestRun.id); }}>View job status →</Button>
       {latestRun.conceptId ? <Button asChild variant="outline"><Link to="/library/$conceptId" params={{ conceptId: latestRun.conceptId }} search={{ tab: "overview" }}>View details →</Link></Button> : <Link to="/library">Open library →</Link>}
     </section> : null}
